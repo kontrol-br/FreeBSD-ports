@@ -1,5 +1,5 @@
 PORTNAME=	yuzu
-PORTVERSION=	s20210705
+PORTVERSION=	s20210719
 PORTREVISION?=	0
 CATEGORIES=	emulators
 
@@ -15,6 +15,7 @@ PATCHFILES+=	26907dfe941c.patch:-p1 # https://github.com/yuzu-emu/yuzu/pull/5896
 PATCHFILES+=	043027f85b64.patch:-p1 # https://github.com/yuzu-emu/yuzu/pull/5896 mainline-merge
 PATCHFILES+=	169384b954b9.patch:-p1 # https://github.com/yuzu-emu/yuzu/pull/5896 mainline-merge
 PATCHFILES+=	16a67d43d9a4.patch:-p1 # https://github.com/yuzu-emu/yuzu/pull/5896 mainline-merge
+PATCHFILES+=	a24224e27463.patch:-p1 # https://github.com/yuzu-emu/yuzu/pull/6753
 
 MAINTAINER=	jbeich@FreeBSD.org
 COMMENT=	Nintendo Switch emulator/debugger
@@ -43,7 +44,7 @@ LIB_DEPENDS=	liblz4.so:archivers/liblz4 \
 
 USE_GITHUB=	yes
 GH_ACCOUNT=	yuzu-emu
-GH_TAGNAME=	3d03a6ae0
+GH_TAGNAME=	f85bbf3a8
 GH_TUPLE=	yuzu-emu:mbedtls:v2.16.9-115-g8c88150ca:mbedtls/externals/mbedtls \
 		KhronosGroup:SPIRV-Headers:2c51218:SPIRV_Headers/externals/sirit/externals/SPIRV-Headers \
 		KhronosGroup:Vulkan-Headers:v1.2.145:Vulkan_Headers/externals/Vulkan-Headers \

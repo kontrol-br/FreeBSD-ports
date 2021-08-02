@@ -12,12 +12,12 @@ USES=		cmake compiler:c++11-lib cpe desktop-file-utils \
 		gettext kde:5 localbase pathfix qt:5 tar:xz
 USE_KDE=	attica auth codecs completion config configwidgets coreaddons \
 		dbusaddons emoticons i18n iconthemes init itemmodels \
-		itemviews jobwidgets kdelibs4support kio libksysguard \
+		itemviews jobwidgets kio libksysguard \
 		newstuff notifications service widgetsaddons windowsystem \
 		xmlgui \
-		doctools_build
+		doctools_build ecm_build
 USE_QT=		concurrent core dbus gui network widgets xml \
-		buildtools_build qmake_build
+		buildtools_build qmake_build testlib_build
 
 OPTIONS_DEFINE=		INOTIFY
 OPTIONS_DEFAULT=	${OPTIONS_DEFINE}
