@@ -102,6 +102,7 @@ IS ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <strings.h>
 #include <termios.h>
 #include <unistd.h>
+#include <kenv.h>
 
 #define IS_EXT_MODULE
 
@@ -132,6 +133,7 @@ static zend_function_entry pfSense_functions[] = {
     PHP_FE(pfSense_get_pf_states, NULL)
     PHP_FE(pfSense_get_pf_stats, NULL)
     PHP_FE(pfSense_get_os_hw_data, NULL)
+    PHP_FE(pfSense_kenv_dump, NULL)
     PHP_FE(pfSense_get_os_kern_data, NULL)
     PHP_FE(pfSense_vlan_create, NULL)
     PHP_FE(pfSense_interface_rename, NULL)
@@ -569,7 +571,7 @@ PHP_FUNCTION(pfSense_kill_srcstates)
 	struct pfioc_src_node_kill psnk;
 	struct addrinfo *res[2], *resp[2];
 	struct sockaddr last_src, last_dst;
-	int killed, sources, dests;
+	int killed, sources;
 	int ret_ga;
 
 	int dev;
@@ -583,7 +585,7 @@ PHP_FUNCTION(pfSense_kill_srcstates)
 	if ((dev = open("/dev/pf", O_RDWR)) < 0)
 		RETURN_NULL();
 
-	killed = sources = dests = 0;
+	killed = sources = 0;
 
 	memset(&psnk, 0, sizeof(psnk));
 	memset(&psnk.psnk_src.addr.v.a.mask, 0xff,
@@ -622,7 +624,6 @@ PHP_FUNCTION(pfSense_kill_srcstates)
 		}
 
 		if (ip2 != NULL) {
-			dests = 0;
 			memset(&psnk.psnk_dst.addr.v.a.mask, 0xff,
 			    sizeof(psnk.psnk_dst.addr.v.a.mask));
 			memset(&last_dst, 0xff, sizeof(last_dst));
@@ -644,8 +645,6 @@ PHP_FUNCTION(pfSense_kill_srcstates)
 				    sizeof(last_dst)) == 0)
 					continue;
 				last_dst = *(struct sockaddr *)resp[1]->ai_addr;
-
-				dests++;
 
 				if (psnk.psnk_af == AF_INET)
 					psnk.psnk_dst.addr.v.a.addr.v4 =
@@ -689,7 +688,7 @@ PHP_FUNCTION(pfSense_kill_states)
 	struct pfioc_state_kill psk;
 	struct addrinfo *res[2], *resp[2];
 	struct sockaddr last_src, last_dst;
-	int killed, sources, dests;
+	int killed, sources;
 	int ret_ga;
 
 	int dev;
@@ -703,7 +702,7 @@ PHP_FUNCTION(pfSense_kill_states)
 	if ((dev = open("/dev/pf", O_RDWR)) < 0)
 		RETURN_NULL();
 
-	killed = sources = dests = 0;
+	killed = sources = 0;
 
 	memset(&psk, 0, sizeof(psk));
 	memset(&psk.psk_src.addr.v.a.mask, 0xff,
@@ -758,7 +757,6 @@ PHP_FUNCTION(pfSense_kill_states)
 		}
 
 		if (ip2 != NULL && ip2_len > 0) {
-			dests = 0;
 			memset(&psk.psk_dst.addr.v.a.mask, 0xff,
 			    sizeof(psk.psk_dst.addr.v.a.mask));
 			memset(&last_dst, 0xff, sizeof(last_dst));
@@ -782,8 +780,6 @@ PHP_FUNCTION(pfSense_kill_states)
 				    sizeof(last_dst)) == 0)
 					continue;
 				last_dst = *(struct sockaddr *)resp[1]->ai_addr;
-
-				dests++;
 
 				if (psk.psk_af == AF_INET)
 					psk.psk_dst.addr.v.a.addr.v4 =
@@ -913,7 +909,7 @@ table_get_info(ipfw_obj_header *oh, ipfw_xtable_info *i)
 static int
 get_mac_addr_mask(const char *p, uint8_t *addr, uint8_t *mask)
 {
-	int i;
+	int i, ret;
 	size_t l;
 	char *ap, *ptr, *optr;
 	struct ether_addr *mac;
@@ -925,14 +921,15 @@ get_mac_addr_mask(const char *p, uint8_t *addr, uint8_t *mask)
 		return (0);
 	}
 
+	ret = -1;
 	optr = ptr = strdup(p);
 	if ((ap = strsep(&ptr, "&/")) != NULL && *ap != 0) {
 		l = strlen(ap);
 		if (strspn(ap, macset) != l || (mac = ether_aton(ap)) == NULL)
-			return (-1);
+			goto out;
 		bcopy(mac, addr, ETHER_ADDR_LEN);
 	} else
-		return (-1);
+		goto out;
 
 	if (ptr != NULL) { /* we have mask? */
 		if (p[ptr - optr - 1] == '/') { /* mask len */
@@ -945,7 +942,7 @@ get_mac_addr_mask(const char *p, uint8_t *addr, uint8_t *mask)
 			l = strlen(ptr);
 			if (strspn(ptr, macset) != l ||
 			    (mac = ether_aton(ptr)) == NULL)
-				return (-1);
+				goto out;
 			bcopy(mac, mask, ETHER_ADDR_LEN);
 		}
 	} else { /* default mask: ff:ff:ff:ff:ff:ff */
@@ -955,9 +952,11 @@ get_mac_addr_mask(const char *p, uint8_t *addr, uint8_t *mask)
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
 		addr[i] &= mask[i];
 
+	ret = 0;
+out:
 	free(optr);
 
-	return (0);
+	return (ret);
 }
 
 static int
@@ -1251,7 +1250,7 @@ table_show_value(zval *rarray, ipfw_table_value *v, uint32_t vmask)
 {
 	char abuf[INET6_ADDRSTRLEN + IF_NAMESIZE + 2];
 	struct sockaddr_in6 sa6;
-	uint32_t flag, i, l;
+	uint32_t flag, i;
 	struct in_addr a4;
 
 	/*
@@ -1266,8 +1265,6 @@ table_show_value(zval *rarray, ipfw_table_value *v, uint32_t vmask)
 	for (i = 1; i < (1 << 31); i *= 2) {
 		if ((flag = (vmask & i)) == 0)
 			continue;
-		l = 0;
-
 		switch (flag) {
 		case IPFW_VTYPE_TAG:
 			add_assoc_long(rarray, "tag", v->tag);
@@ -2519,15 +2516,17 @@ PHP_FUNCTION(pfSense_ip_to_mac)
 			break;
 		}
 	}
-	free(buf);
 
-	if (found_entry == 0)
+	if (found_entry == 0) {
+		free(buf);
 		RETURN_NULL();
+	}
 
 	array_init(return_value);
 	bzero(outputbuf, sizeof outputbuf);
 	ether_ntoa_r((struct ether_addr *)LLADDR(sdl), outputbuf);
 	add_assoc_string(return_value, "macaddr", outputbuf);
+	free(buf);
 }
 
 PHP_FUNCTION(pfSense_getall_interface_addresses)
@@ -3654,7 +3653,6 @@ PHP_FUNCTION(pfSense_get_pf_states) {
 
 				if (entries == 0) {
 					pfctl_free_states(&states);
-					close(dev);
 					RETURN_NULL();
 				}
 			} ZEND_HASH_FOREACH_END();
@@ -4118,6 +4116,7 @@ errormodem:
 
 PHP_FUNCTION(pfSense_get_os_hw_data) {
 	int mib[4], idata;
+	u_long ldata;
 	size_t len;
 	char *data;
 
@@ -4167,21 +4166,21 @@ PHP_FUNCTION(pfSense_get_os_hw_data) {
 
 	mib[0] = CTL_HW;
 	mib[1] = HW_PHYSMEM;
-	len = sizeof(idata);
-	if (!sysctl(mib, 2, &idata, &len, NULL, 0))
-		add_assoc_long(return_value, "physmem", idata);
+	len = sizeof(ldata);
+	if (!sysctl(mib, 2, &ldata, &len, NULL, 0))
+		add_assoc_long(return_value, "physmem", ldata);
 
 	mib[0] = CTL_HW;
 	mib[1] = HW_USERMEM;
-	len = sizeof(idata);
-	if (!sysctl(mib, 2, &idata, &len, NULL, 0))
-		add_assoc_long(return_value, "usermem", idata);
+	len = sizeof(ldata);
+	if (!sysctl(mib, 2, &ldata, &len, NULL, 0))
+		add_assoc_long(return_value, "usermem", ldata);
 
 	mib[0] = CTL_HW;
 	mib[1] = HW_REALMEM;
-	len = sizeof(idata);
-	if (!sysctl(mib, 2, &idata, &len, NULL, 0))
-		add_assoc_long(return_value, "realmem", idata);
+	len = sizeof(ldata);
+	if (!sysctl(mib, 2, &ldata, &len, NULL, 0))
+		add_assoc_long(return_value, "realmem", ldata);
 }
 
 PHP_FUNCTION(pfSense_get_os_kern_data) {
@@ -4382,4 +4381,37 @@ PHP_FUNCTION(pfSense_ipsec_list_sa) {
 
 	vici_deinit();
 
+}
+
+PHP_FUNCTION(pfSense_kenv_dump) {
+	char *buf, *bp, *cp;
+	int size;
+
+	size = kenv(KENV_DUMP, NULL, NULL, 0);
+	if (size < 0)
+		return;
+	size += 1;
+	buf = malloc(size);
+	if (buf == NULL)
+		return;
+	if (kenv(KENV_DUMP, NULL, buf, size) < 0) {
+		free(buf);
+		return;
+	}
+
+	array_init(return_value);
+
+	/*
+	 * Stolen from bin/kenv
+	 */
+	for (bp = buf; *bp != '\0'; bp += strlen(bp) + 1) {
+		cp = strchr(bp, '=');
+		if (cp == NULL)
+			continue;
+		*cp++ = '\0';
+		add_assoc_string(return_value, bp, cp);
+		bp = cp;
+	}
+
+	free(buf);
 }

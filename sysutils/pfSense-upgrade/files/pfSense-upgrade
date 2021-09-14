@@ -184,7 +184,7 @@ pkg_with_pb() {
 }
 
 fetch_upgrade_packages() {
-	pkg_with_pb "upgrade -F" "Downloading upgrade packages"
+	pkg_with_pb "upgrade -F ${1}" "Downloading upgrade packages"
 
 	# Workaround for pkg bug https://github.com/freebsd/pkg/issues/1613
 	# *ALWAYS* download pkg itself to avoid being bitten by it again
@@ -514,10 +514,10 @@ pkg_upgrade() {
 	if [ "${_model}" = "mvebu_armada-37xx" -o "${_model}" = "SG-2100" ]
 	then
 		_type=$(/usr/sbin/ofwdump -P model -R / 2>/dev/null)
-		if [ "${_type}" = "Netgate SG-1100" ]; then
-			SYSTEM="SG-1100"
-		elif [ "${_type}" = "Netgate SG-2100" ]; then
-			SYSTEM="SG-2100"
+		if [ "${_type}" == "Netgate SG-1100" -o "${_type}" == "Netgate 1100" ]; then
+			SYSTEM="1100"
+		elif [ "${_type}" = "Netgate SG-2100" -o "${_type}" == "Netgate 2100" ]; then
+			SYSTEM="2100"
 		fi
 	fi
 
@@ -533,25 +533,25 @@ pkg_upgrade() {
 		export uboot_bin=u-boot.img
 		export \
 		    uboot_update=/usr/local/share/u-boot/ufw/u-boot-update.sh
-	elif [ "${SYSTEM}" = "SG-1100" ] && \
-	    is_pkg_installed ${product}-u-boot-sg1100\*; then
+	elif [ "${SYSTEM}" = "1100" ] && \
+	    is_pkg_installed ${product}-u-boot-1100\*; then
 		export uboot_pkg=$(_pkg query %n $(_pkg info \
-		    ${product}-u-boot-sg1100\*))
+		    ${product}-u-boot-1100\*))
 		export \
-		    uboot_update=/usr/local/share/u-boot/sg1100/u-boot-update.sh
-	elif is_pkg_installed ${product}-u-boot-sg3100\*; then
+		    uboot_update=/usr/local/share/u-boot/1100/u-boot-update.sh
+	elif is_pkg_installed ${product}-u-boot-3100\*; then
 		export uboot_pkg=$(_pkg query %n $(_pkg info \
-		    ${product}-u-boot-sg3100\*))
+		    ${product}-u-boot-3100\*))
 		export uboot_mntp=/boot/u-boot
 		export uboot_bin=u-boot.bin
 		export \
-		    uboot_update=/usr/local/share/u-boot/sg3100/u-boot-update.sh
-	elif [ "${SYSTEM}" = "SG-2100" ] && \
-	    is_pkg_installed ${product}-u-boot-sg2100\*; then
+		    uboot_update=/usr/local/share/u-boot/3100/u-boot-update.sh
+	elif [ "${SYSTEM}" = "2100" ] && \
+	    is_pkg_installed ${product}-u-boot-2100\*; then
 		export uboot_pkg=$(_pkg query %n $(_pkg info \
-		    ${product}-u-boot-sg2100\*))
+		    ${product}-u-boot-2100\*))
 		export \
-		    uboot_update=/usr/local/share/u-boot/sg2100/u-boot-update.sh
+		    uboot_update=/usr/local/share/u-boot/2100/u-boot-update.sh
 	fi
 
 	if [ -n "${uboot_pkg}" -a -n "${uboot_mntp}" -a \
@@ -710,10 +710,15 @@ pkg_upgrade() {
 			fi
 		fi
 
+		local _force=""
+		if ! cmp -s ${pkg_set_version} ${running_pkg_set_version}; then
+			_force=" -f"
+		fi
+
 		if [ -z "${yes}" ]; then
 			# Show user which packages are going to be upgraded
-			_exec "pkg-static upgrade${dont_update} -nq" "" nomute \
-			    ignore_result do_not_exit
+			_exec "pkg-static upgrade${dont_update}${_force} -nq" \
+			    "" nomute ignore_result do_not_exit
 
 			_echo ""
 			_echo "**** WARNING ****"
@@ -757,7 +762,7 @@ pkg_upgrade() {
 		fi
 
 		# Download all upgrade packages first
-		fetch_upgrade_packages
+		fetch_upgrade_packages ${_force}
 
 		# Then lock it again
 		if [ -n "${NEW_MAJOR}" ]; then
@@ -800,18 +805,18 @@ pkg_upgrade() {
 			if [ -n "${_restore_loaderconf}" ]; then
 				cp -fp /tmp/loader.conf.backup /boot/loader.conf
 			fi
-			if [ "${SYSTEM}" = "SG-1100" ]; then
+			if [ "${SYSTEM}" = "1100" ]; then
 				# Mount /boot/msdos and update the DTB in FAT
 				# slice.
 				mount /boot/msdos >/dev/null 2>&1
-				cp /boot/dtb/armada-3720-sg1100.dtb /boot/msdos
+				cp /boot/dtb/armada-3720-netgate-1100.dtb /boot/msdos
 				umount /boot/msdos >/dev/null 2>&1
 			fi
-			if [ "${SYSTEM}" = "SG-2100" ]; then
+			if [ "${SYSTEM}" = "2100" ]; then
 				# Mount /boot/msdos and update the DTB in FAT
 				# slice.
 				mount /boot/msdos >/dev/null 2>&1
-				cp /boot/dtb/armada-3720-sg2100.dtb /boot/msdos
+				cp /boot/dtb/armada-3720-netgate-2100.dtb /boot/msdos
 				umount /boot/msdos >/dev/null 2>&1
 			fi
 		fi
@@ -872,6 +877,11 @@ pkg_upgrade() {
 			    && rm -f /usr/local/etc/strongswan.conf
 		fi
 
+		local _force=""
+		if ! cmp -s ${pkg_set_version} ${running_pkg_set_version}; then
+			_force=" -f"
+		fi
+
 		if upgrade_available; then
 			delete_annotation=1
 			if [ -n "${is_pkg_locked}" ]; then
@@ -902,13 +912,16 @@ pkg_upgrade() {
 				/etc/rc.php_ini_setup >/dev/null 2>&1
 			fi
 
-			_exec "pkg-static upgrade${dont_update}" \
+			_exec "pkg-static upgrade${dont_update}${_force}" \
 			    "Upgrading necessary packages"
 			delete_annotation=""
 
 			# Always make sure important packages are set as vital
 			set_vital_flag pkg ${kernel_pkg} ${product} \
 			    ${product}-rc ${product}-base ${uboot_pkg}
+
+			# Register that system is running latest pkg_set_version
+			cp -f ${pkg_set_version} ${running_pkg_set_version}
 		fi
 
 		_pkg annotate -q -M ${kernel_pkg} next_stage 3
@@ -1433,6 +1446,16 @@ if [ -n "${force_ipv4}" ]; then
 	export IP_VERSION="4"
 elif [ -n "${force_ipv6}" ]; then
 	export IP_VERSION="6"
+fi
+
+# Flags used to determine if all packages must be reinstalled
+pkg_set_version="/usr/local/share/${product}/next_pkg_set_version"
+running_pkg_set_version="/usr/local/share/${product}/running_pkg_set_version"
+export pkg_set_version running_pkg_set_version
+
+# Initialize running pkg_set_version with zero first time
+if [ ! -f ${running_pkg_set_version} ]; then
+	cp -f /etc/version ${running_pkg_set_version}
 fi
 
 # Force debug if /cf/conf/upgrade_debug is present
