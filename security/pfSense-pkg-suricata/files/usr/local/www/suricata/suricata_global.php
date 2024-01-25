@@ -495,7 +495,7 @@ foreach ($pconfig['extra_rules']['rule'] as $rule) {
 		'deleterow' . $counter,
 		'Delete',
 		null,
-		'fa-trash'
+		'fa-solid fa-trash-can'
 	))->addClass('btn-warning');
 
 	$section->add($group);
@@ -507,7 +507,7 @@ $section->addInput(new Form_Button(
 	'addrow',
 	'Add',
 	null,
-	'fa-plus'
+	'fa-solid fa-plus'
 ))->addClass('btn-success');
 
 $form->add($section);
@@ -586,7 +586,7 @@ $section->addInput(new Form_Select(
 	'log_to_systemlog_priority',
 	'Log Priority',
 	$pconfig['log_to_systemlog_priority'],
-	array( "emerg" => "EMERG", "crit" => "CRIT", "alert" => "ALERT", "err" => "ERR", "warning" => "WARNING", "notice" => "NOTICE", "info" => "INFO" )
+	array( "debug" => "DEBUG", "config" => "CONF", "perf" => "PERF", "error" => "ERR", "warning" => "WARNING", "notice" => "NOTICE", "info" => "INFO" )
 ))->setHelp('Select system log Priority (Level) to use for reporting. Default is NOTICE.');
 
 $section->addInput(new Form_Checkbox(

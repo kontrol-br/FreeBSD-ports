@@ -7,14 +7,14 @@ DISTNAME=	${PORTNAME}_${DISTVERSION}
 
 MAINTAINER=	gahr@FreeBSD.org
 COMMENT=	High-level, extensible programming language
-WWW=		http://seed7.sourceforge.net/
+WWW=		https://seed7.sourceforge.net/
 
 # The interpreter and the example programs use the GPL license, while the
 # runtime library uses the LGPL license.
 LICENSE=	GPLv2 LGPL21
 LICENSE_COMB=	multi
 
-ONLY_FOR_ARCHS=	amd64 armv7 i386 powerpc powerpc64 powerpc64le sparc64
+ONLY_FOR_ARCHS=	amd64 armv7 i386 powerpc powerpc64 powerpc64le
 
 LIB_DEPENDS=	libodbc.so:databases/unixODBC
 

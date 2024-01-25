@@ -35,6 +35,7 @@
     SUBDIR += coffeescript
     SUBDIR += colm
     SUBDIR += cparser
+    SUBDIR += crumb
     SUBDIR += crystal
     SUBDIR += csharp-mode.el
     SUBDIR += cython
@@ -72,19 +73,10 @@
     SUBDIR += ferite
     SUBDIR += ficl
     SUBDIR += fpc
-    SUBDIR += fpc-base
+    SUBDIR += fpc-devel
+    SUBDIR += fpc-devel-source
     SUBDIR += fpc-docs
-    SUBDIR += fpc-lua
-    SUBDIR += fpc-pastojs
-    SUBDIR += fpc-rexx
-    SUBDIR += fpc-rtl-console
-    SUBDIR += fpc-rtl-extra
-    SUBDIR += fpc-rtl-generics
-    SUBDIR += fpc-rtl-objpas
-    SUBDIR += fpc-rtl-unicode
     SUBDIR += fpc-source
-    SUBDIR += fpc-units
-    SUBDIR += fpc-utils
     SUBDIR += frawk
     SUBDIR += fsharp
     SUBDIR += fth
@@ -102,7 +94,6 @@
     SUBDIR += gcc14-devel
     SUBDIR += gcc48
     SUBDIR += gcc6-aux
-    SUBDIR += gcc8
     SUBDIR += gcc9
     SUBDIR += gforth
     SUBDIR += ghc
@@ -143,9 +134,11 @@
     SUBDIR += hla
     SUBDIR += hs-brainfuck
     SUBDIR += hs-futhark
+    SUBDIR += hs-koka
     SUBDIR += hs-unlambda
     SUBDIR += huc
     SUBDIR += icc
+    SUBDIR += inko
     SUBDIR += intel-compute-runtime
     SUBDIR += intercal
     SUBDIR += io
@@ -220,6 +213,7 @@
     SUBDIR += njs
     SUBDIR += nll
     SUBDIR += nqc
+    SUBDIR += numbat
     SUBDIR += nwcc
     SUBDIR += nx
     SUBDIR += nyan
@@ -272,8 +266,6 @@
     SUBDIR += pfe
     SUBDIR += pharo
     SUBDIR += php-mode.el
-    SUBDIR += php80
-    SUBDIR += php80-extensions
     SUBDIR += php81
     SUBDIR += php81-extensions
     SUBDIR += php82
@@ -319,6 +311,7 @@
     SUBDIR += rexx-regutil
     SUBDIR += rexx-wrapper
     SUBDIR += rhino
+    SUBDIR += rizin
     SUBDIR += ruby30
     SUBDIR += ruby31
     SUBDIR += ruby32
@@ -329,6 +322,7 @@
     SUBDIR += rust
     SUBDIR += rust-bootstrap
     SUBDIR += rust-nightly
+    SUBDIR += s7
     SUBDIR += sagittarius-scheme
     SUBDIR += sather-specification
     SUBDIR += sather-tutorial
@@ -371,6 +365,7 @@
     SUBDIR += tolua++
     SUBDIR += tuareg-mode.el
     SUBDIR += twelf
+    SUBDIR += typstfmt
     SUBDIR += ucc
     SUBDIR += urweb
     SUBDIR += v
@@ -384,5 +379,6 @@
     SUBDIR += ypsilon
     SUBDIR += zephir
     SUBDIR += zig
+    SUBDIR += zig010
 
 .include <bsd.port.subdir.mk>

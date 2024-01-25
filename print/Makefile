@@ -52,13 +52,10 @@
     SUBDIR += foomatic-db-engine
     SUBDIR += foomatic-db-hpijs
     SUBDIR += foomatic-filters
-    SUBDIR += fpc-libcups
     SUBDIR += fpdf
     SUBDIR += freetype2
     SUBDIR += ft2demos
     SUBDIR += ghostscript10
-    SUBDIR += ghostscript9-agpl-base
-    SUBDIR += ghostscript9-agpl-x11
     SUBDIR += gimp-gutenprint
     SUBDIR += gl2ps
     SUBDIR += gsfonts
@@ -139,6 +136,7 @@
     SUBDIR += pdfarranger
     SUBDIR += pdfbox
     SUBDIR += pdfchain
+    SUBDIR += pdfcpu
     SUBDIR += pdflib
     SUBDIR += pdflib-perl
     SUBDIR += pdfmixtool
@@ -197,6 +195,7 @@
     SUBDIR += qpdf
     SUBDIR += qpdfview
     SUBDIR += qt5-printsupport
+    SUBDIR += qt6-pdf
     SUBDIR += rlpr
     SUBDIR += rtf2latex2e
     SUBDIR += rubygem-afm
@@ -222,6 +221,7 @@
     SUBDIR += rubygem-rbpdf
     SUBDIR += rubygem-rbpdf-font
     SUBDIR += rubygem-ttfunk
+    SUBDIR += scribus
     SUBDIR += scribus-devel
     SUBDIR += sgf2tex
     SUBDIR += shrinkpdf

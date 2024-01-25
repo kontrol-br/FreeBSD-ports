@@ -8,14 +8,14 @@ MASTER_SITES=	https://bazaar.launchpad.net/~sergio-br2/${PORTNAME}/debian-sdl/do
 DISTFILES=	${PORTNAME}.1:manpage
 EXTRACT_ONLY=	${DISTFILES:N*\:manpage:C/:.*//}
 
-MAINTAINER=	jbeich@FreeBSD.org
+MAINTAINER=	ports@FreeBSD.org
 COMMENT=	PSP emulator in C++ with dynarec JIT for x86, ARM, MIPS
 WWW=		https://www.ppsspp.org/
 
 LICENSE=	GPLv2+
 
 # Bi-endian architectures default to big for some reason
-NOT_FOR_ARCHS=	mips mips64 powerpc powerpc64 powerpcspe sparc64
+NOT_FOR_ARCHS=	mips mips64 powerpc powerpc64 powerpcspe
 NOT_FOR_ARCHS_REASON=	only little-endian is supported, see \
 		https://github.com/hrydgard/ppsspp/issues/8823
 

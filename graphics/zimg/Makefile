@@ -1,15 +1,20 @@
 PORTNAME=	zimg
 PORTVERSION=	5.0.0
-PORTREVISION=	9
+PORTREVISION=	10
 CATEGORIES=	graphics
 MASTER_SITES=	SF/${PORTNAME}/${PORTNAME}/${PORTNAME}-${PORTVERSION}
 
 MAINTAINER=	ports@FreeBSD.org
 COMMENT=	Image-generator that uses ASCII input files to create PNGs/EDFs
-WWW=		http://zimg.sourceforge.net/
+WWW=		https://zimg.sourceforge.net/
+
+LICENSE=	BSD3CLAUSE
+LICENSE_FILE=	${WRKSRC}/COPYING
 
 LIB_DEPENDS=	libgd.so:graphics/gd \
 		libpng.so:graphics/png
+
+USES=		jpeg
 
 CONFLICTS_INSTALL=	sekrit-twc-zimg-* # include/zimg.h
 

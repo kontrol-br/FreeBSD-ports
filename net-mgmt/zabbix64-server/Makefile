@@ -1,6 +1,6 @@
 PORTNAME=	zabbix64
-DISTVERSION=	6.4.7
-PORTREVISION?=	0
+DISTVERSION=	6.4.10
+PORTREVISION?=	1
 CATEGORIES=	net-mgmt
 MASTER_SITES=	https://cdn.zabbix.com/zabbix/sources/stable/${DISTVERSION:R}/
 PKGNAMESUFFIX?=	-server
@@ -74,7 +74,7 @@ CPPFLAGS+=	-I${LOCALBASE}/include
 
 SUB_FILES=	pkg-message
 
-OPTIONS_DEFAULT+=	CURL FPING LIBXML2 MYSQL OPENSSL SNMP SSH UNIXODBC
+OPTIONS_DEFAULT+=	CURL FPING IPMI LIBXML2 MYSQL OPENSSL SNMP SSH UNIXODBC
 OPTIONS_DEFINE=		CURL FPING IPMI IPV6 LDAP LIBXML2 NMAP SNMP SSH \
 			UNIXODBC
 OPTIONS_SINGLE+=	DB SSL
@@ -229,7 +229,7 @@ post-install:
 
 .if ${ZABBIX_BUILD} != "agent" && ${ZABBIX_BUILD} != "java"
 	${MKDIR} ${STAGEDIR}${DATADIR}/${ZABBIX_BUILD:Q}/database
-	@${RM} ${WRKSRC}/database/*/Makefile*
+	${FIND} ${WRKSRC}/database -name 'Makefile*' -delete
 	(cd ${WRKSRC}/database/ && \
 		${COPYTREE_SHARE} "mysql oracle postgresql sqlite3" \
 		${STAGEDIR}${DATADIR}/${ZABBIX_BUILD:Q}/database/)

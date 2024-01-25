@@ -166,6 +166,8 @@ if (empty($pconfig['detect_eng_profile']))
 	$pconfig['detect_eng_profile'] = "medium";
 if (empty($pconfig['mpm_algo']))
 	$pconfig['mpm_algo'] = "auto";
+if (empty($pconfig['spm_algo']))
+	$pconfig['spm_algo'] = "auto";
 if (empty($pconfig['sgh_mpm_context']))
 	$pconfig['sgh_mpm_context'] = "auto";
 if (empty($pconfig['enable_stats_collection']))
@@ -202,6 +204,8 @@ if (empty($pconfig['eve_systemlog_facility']))
 	$pconfig['eve_systemlog_facility'] = "local1";
 if (empty($pconfig['eve_systemlog_priority']))
 	$pconfig['eve_systemlog_priority'] = "notice";
+if (empty($pconfig['eve_log_ethernet']))
+	$pconfig['eve_log_ethernet'] = "no";
 if (empty($pconfig['eve_log_drops']))
 	$pconfig['eve_log_drops'] = "on";
 if (empty($pconfig['eve_log_alert_drops']))
@@ -493,6 +497,7 @@ if (isset($_POST["save"]) && !$input_errors) {
 		if ($_POST['intf_snaplen'] > '0') $natent['intf_snaplen'] = $_POST['intf_snaplen']; else $natent['inspect_recursion_limit'] = "1518";
 		if ($_POST['detect_eng_profile']) $natent['detect_eng_profile'] = $_POST['detect_eng_profile']; else unset($natent['detect_eng_profile']);
 		if ($_POST['mpm_algo']) $natent['mpm_algo'] = $_POST['mpm_algo']; else unset($natent['mpm_algo']);
+		if ($_POST['spm_algo']) $natent['spm_algo'] = $_POST['spm_algo']; else unset($natent['spm_algo']);
 		if ($_POST['sgh_mpm_context']) $natent['sgh_mpm_context'] = $_POST['sgh_mpm_context']; else unset($natent['sgh_mpm_context']);
 		if ($_POST['blockoffenders'] == "on") $natent['blockoffenders'] = 'on'; else $natent['blockoffenders'] = 'off';
 		if ($_POST['ips_mode']) $natent['ips_mode'] = $_POST['ips_mode']; else unset($natent['ips_mode']);
@@ -514,6 +519,7 @@ if (isset($_POST["save"]) && !$input_errors) {
 		}
 		if ($_POST['eve_systemlog_facility']) $natent['eve_systemlog_facility'] = $_POST['eve_systemlog_facility'];
 		if ($_POST['eve_systemlog_priority']) $natent['eve_systemlog_priority'] = $_POST['eve_systemlog_priority'];
+		if ($_POST['eve_log_ethernet'] == "yes") { $natent['eve_log_ethernet'] = 'yes'; }else{ $natent['eve_log_ethernet'] = 'no'; }
 		if ($_POST['eve_log_alerts'] == "on") { $natent['eve_log_alerts'] = 'on'; }else{ $natent['eve_log_alerts'] = 'off'; }
 		if ($_POST['eve_log_alerts_payload']) { $natent['eve_log_alerts_payload'] = $_POST['eve_log_alerts_payload']; }else{ $natent['eve_log_alerts_payload'] = 'off'; }
 		if ($_POST['eve_log_alerts_packet'] == "on") { $natent['eve_log_alerts_packet'] = 'on'; }else{ $natent['eve_log_alerts_packet'] = 'off'; }
@@ -674,6 +680,8 @@ if (isset($_POST["save"]) && !$input_errors) {
 			$natent['delayed_detect'] = 'off';
 			$natent['intf_promisc_mode'] = 'on';
 			$natent['intf_snaplen'] = '1518';
+			$natent['mpm_algo'] = "auto";
+			$natent['spm_algo'] = "auto";
 
 			$natent['app_layer_error_policy'] = "ignore";
 			$natent['asn1_max_frames'] = '256';
@@ -907,7 +915,7 @@ $section->addInput(new Form_Select(
 	'alertsystemlog_priority',
 	'Log Priority',
 	$pconfig['alertsystemlog_priority'],
-	array( "emerg" => "EMERG", "crit" => "CRIT", "alert" => "ALERT", "err" => "ERR", "warning" => "WARNING", "notice" => "NOTICE", "info" => "INFO" )
+	array( "emergency" => "EMERG", "critical" => "CRIT", "alert" => "ALERT", "error" => "ERR", "warning" => "WARNING", "notice" => "NOTICE", "info" => "INFO", "debug" => "DEBUG" )
 ))->setHelp('Select system log Priority (Level) to use for reporting. Default is NOTICE.');
 
 $section->addInput(new Form_Checkbox(
@@ -1198,6 +1206,14 @@ $section->addInput(new Form_Checkbox(
 	$pconfig['eve_log_alerts_xff'] == 'on' ? true:false,
 	'on'
 ));
+$section->addInput(new Form_Checkbox(
+	'eve_log_ethernet',
+	'EVE Ethernet MAC',
+	'Log Ethernet header in events when available.  Default is Not Checked.',
+	$pconfig['eve_log_ethernet'] == 'yes' ? true:false,
+	'yes'
+));
+
 $section->addInput(new Form_Select(
 	'eve_log_alerts_xff_mode',
 	'EVE X-Forwarded-For Operational Mode',
@@ -1756,7 +1772,7 @@ $group->add(new Form_Button(
 	'btnPasslist',
 	' ' . 'View List',
 	'#',
-	'fa-file-text-o'
+	'fa-regular fa-file-lines'
 ))->removeClass('btn-primary')->addClass('btn-info')->addClass('btn-sm')->setAttribute('data-target', '#passlist')->setAttribute('data-toggle', 'modal');
 $group->setHelp('The default Pass List adds Gateways, DNS servers, locally-attached networks, the WAN IP, VPNs and VIPs.  Create a Pass List with an alias to customize whitelisted IP addresses.  ' . 
 		'This option will only be used when block offenders is on.  Choosing "none" will disable Pass List generation.');
@@ -1822,10 +1838,17 @@ $section->addInput(new Form_Select(
 
 $section->addInput(new Form_Select(
 	'mpm_algo',
-	'Pattern Matcher Algorithm',
+	'Multi-Pattern Matcher Algorithm',
 	$pconfig['mpm_algo'],
 	array('auto' => 'Auto', 'ac' => 'AC', 'ac-bs' => 'AC-BS', 'ac-ks' => 'AC-KS', 'hs' => 'Hyperscan')
-))->setHelp('Choose a multi-pattern matcher (MPM) algorithm. Auto is the default, and is the best choice for almost all systems.  Auto will use hyperscan if available.');
+))->setHelp('Choose a multi-pattern matcher (MPM) algorithm. Auto is the default, and is the best choice for almost all systems. Auto will use hyperscan if available.');
+
+$section->addInput(new Form_Select(
+	'spm_algo',
+	' Single-Pattern Matcher Algorithm',
+	$pconfig['spm_algo'],
+	array('auto' => 'Auto', 'bm' => 'BM', 'hs' => 'Hyperscan')
+))->setHelp('Choose a single-pattern matcher (SPM) algorithm. Auto is the default, and is the best choice for almost all systems. Auto will use hyperscan if available.');
 
 $section->addInput(new Form_Select(
 	'sgh_mpm_context',
@@ -1882,7 +1905,7 @@ $group->add(new Form_Button(
 	'btnHomeNet',
 	' ' . 'View List',
 	'#',
-	'fa-file-text-o'
+	'fa-regular fa-file-lines'
 ))->removeClass('btn-primary')->addClass('btn-info')->addClass('btn-sm')->setAttribute('data-toggle', 'modal')->setAttribute('data-target', '#homenet');
 
 $group->setHelp('Default Home Net adds only local networks, WAN IPs, Gateways, VPNs and VIPs.' . '<br />' .
@@ -1903,7 +1926,7 @@ $group->add(new Form_Button(
 	'btnExternalNet',
 	' ' . 'View List',
 	'#',
-	'fa-file-text-o'
+	'fa-regular fa-file-lines'
 ))->removeClass('btn-primary')->addClass('btn-info')->addClass('btn-sm')->setAttribute('data-target', '#externalnet')->setAttribute('data-toggle', 'modal');
 
 $group->setHelp('External Net is networks that are not Home Net.  Most users should leave this setting at default.' . '<br />' .
@@ -1964,7 +1987,7 @@ $group->add(new Form_Button(
 	'btnSuppressList',
 	' ' . 'View List',
 	'#',
-	'fa-file-text-o'
+	'fa-regular fa-file-lines'
 ))->removeClass('btn-primary')
   ->addClass('btn-info btn-sm')
   ->setAttribute('data-target', '#suppresslist')
@@ -2152,6 +2175,7 @@ events.push(function(){
 		hideCheckbox('eve_log_alerts',hide);
 		hideCheckbox('eve_log_anomaly',hide);
 		hideCheckbox('eve_log_alerts_xff',hide);
+		hideCheckbox('eve_log_ethernet',hide);
 		hideCheckbox('eve_log_drops',hide);
 		hideClass('eve_log_info', hide);
 		hideClass('eve_log_drops_options', hide);
@@ -2263,6 +2287,7 @@ events.push(function(){
 		disableInput('detect_eng_profile', disable);
 		disableInput('inspect_recursion_limit', disable);
 		disableInput('mpm_algo', disable);
+		disableInput('spm_algo', disable);
 		disableInput('sgh_mpm_context', disable);
 		disableInput('delayed_detect', disable);
 		disableInput('intf_promisc_mode', disable);
@@ -2358,6 +2383,7 @@ events.push(function(){
 		disableInput('eve_log_alerts_packet',disable)
 		disableInput('eve_log_alerts_payload',disable);
 		disableInput('eve_log_alerts_http',disable);
+		disableInput('eve_log_ethernet',disable);
 		disableInput('eve_log_alerts_xff',disable);
 		disableInput('eve_log_alerts_xff_mode',disable);
 		disableInput('eve_log_alerts_xff_deployment',disable);

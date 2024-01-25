@@ -1,6 +1,7 @@
 PORTNAME=	wcm
 DISTVERSIONPREFIX=	v
 DISTVERSION=	0.8.0
+PORTREVISION=	1
 CATEGORIES=	x11 wayland
 
 PATCH_SITES=	https://github.com/${GH_ACCOUNT}/${GH_PROJECT}/commit/
@@ -41,4 +42,5 @@ WFSHELL_DESC=			Build with wf-shell support
 WFSHELL_BUILD_DEPENDS=		wf-shell>0:x11/wf-shell
 WFSHELL_MESON_ENABLED=		wf_shell
 
+.include "${.CURDIR:H:H}/x11-toolkits/wlroots016/override.mk"
 .include <bsd.port.mk>

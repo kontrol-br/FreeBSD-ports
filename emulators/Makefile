@@ -25,6 +25,7 @@
     SUBDIR += dosbox-staging
     SUBDIR += dosbox-x
     SUBDIR += dps8m
+    SUBDIR += duckstation
     SUBDIR += dynamips-community
     SUBDIR += edumips64
     SUBDIR += elliott-803
@@ -41,14 +42,12 @@
     SUBDIR += gbe
     SUBDIR += gens
     SUBDIR += gngb
-    SUBDIR += gngeo
     SUBDIR += gxemul
     SUBDIR += hatari
     SUBDIR += hercules
     SUBDIR += higan
     SUBDIR += hugo
     SUBDIR += hv_kvp_cmd
-    SUBDIR += ines
     SUBDIR += javatari
     SUBDIR += joytran
     SUBDIR += jzintv
@@ -107,6 +106,7 @@
     SUBDIR += ppsspp
     SUBDIR += ppsspp-qt5
     SUBDIR += py-gns3-converter
+    SUBDIR += py-m64py
     SUBDIR += py-unicorn
     SUBDIR += qemu
     SUBDIR += qemu-cheri
@@ -121,7 +121,6 @@
     SUBDIR += ripes
     SUBDIR += riscv-isa-sim
     SUBDIR += rpcs3
-    SUBDIR += rtc
     SUBDIR += rubygem-fission
     SUBDIR += sameboy
     SUBDIR += simh

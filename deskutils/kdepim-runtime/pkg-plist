@@ -36,6 +36,7 @@ lib/libmaildir.so.%%KDE_APPLICATIONS_SHLIB_VER%%
 %%QT_PLUGINDIR%%/pim5/akonadi/config/akonotesconfig.so
 %%QT_PLUGINDIR%%/pim5/akonadi/config/birthdaysconfig.so
 %%QT_PLUGINDIR%%/pim5/akonadi/config/contactsconfig.so
+%%QT_PLUGINDIR%%/pim5/akonadi/config/googleconfig.so
 %%QT_PLUGINDIR%%/pim5/akonadi/config/icalconfig.so
 %%QT_PLUGINDIR%%/pim5/akonadi/config/icaldirconfig.so
 %%QT_PLUGINDIR%%/pim5/akonadi/config/maildirconfig.so
@@ -1387,7 +1388,6 @@ share/locale/ru/LC_MESSAGES/akonadi_etesync_resource.mo
 share/locale/ru/LC_MESSAGES/akonadi_ews_resource.mo
 share/locale/ru/LC_MESSAGES/akonadi_google_resource.mo
 share/locale/ru/LC_MESSAGES/akonadi_ical_resource.mo
-share/locale/ru/LC_MESSAGES/akonadi_etesync_resource.mo
 share/locale/ru/LC_MESSAGES/akonadi_icaldir_resource.mo
 share/locale/ru/LC_MESSAGES/akonadi_imap_resource.mo
 share/locale/ru/LC_MESSAGES/akonadi_maildir_resource.mo

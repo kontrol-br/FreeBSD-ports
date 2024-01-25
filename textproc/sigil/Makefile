@@ -1,5 +1,6 @@
 PORTNAME=	sigil
-PORTVERSION=	2.0.1
+PORTVERSION=	2.0.2
+PORTREVISION=	1
 CATEGORIES=	textproc
 
 MAINTAINER=	jonc@chen.org.nz
@@ -25,8 +26,8 @@ GH_PROJECT=	Sigil
 
 USE_LDCONFIG=	${PREFIX}/lib/sigil
 
-USE_QT=		base 5compat declarative location \
-		svg tools:build positioning webchannel webengine \
+USE_QT=		base 5compat declarative \
+		svg:run tools:build positioning webchannel webengine \
 		imageformats:run
 
 SHEBANG_FILES=	src/Resource_Files/plugin_launchers/python/*.py \

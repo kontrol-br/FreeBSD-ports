@@ -1,6 +1,5 @@
 PORTNAME=	poudriere
-DISTVERSION=	3.3.7
-PORTREVISION=	4
+DISTVERSION=	3.4.0
 CATEGORIES=	ports-mgmt
 MASTER_SITES=	LOCAL/bdrewery/${PORTNAME}/ \
 		http://mirror.shatow.net/freebsd/${PORTNAME}/ \
@@ -27,7 +26,7 @@ OPTIONS_SUB=	yes
 MANIFESTS_DESC=		Install manifests for jail creation
 MANIFESTS_RUN_DEPENDS+=	freebsd-release-manifests>0:misc/freebsd-release-manifests
 
-PORTCONFIG_DESC=	Install dialog4ports for options command
+PORTCONFIG_DESC=	Install portconfig for options command
 PORTCONFIG_RUN_DEPENDS=	portconfig>0:ports-mgmt/portconfig
 
 QEMU_DESC=	Add qemu-user-static for non-x86 architectures
@@ -47,11 +46,9 @@ PLIST_SUB+=	RM="@comment "
 .endif
 
 post-patch:
-	${CP} -f ${WRKSRC}/src/bin/poudriere ${WRKSRC}/poudriere
 	${REINPLACE_CMD} \
 	    -e "s,^\(POUDRIERE_VERSION\)=.*,\1='${PKGVERSION}'," \
-	    ${WRKSRC}/poudriere
-	${REINPLACE_CMD} '/.PHONY: poudriere/d' ${WRKSRC}/Makefile.*
+	    ${WRKSRC}/src/bin/poudriere.in
 
 post-install:
 	${LN} -fs ${LOCALBASE}/share/freebsd/MANIFESTS \

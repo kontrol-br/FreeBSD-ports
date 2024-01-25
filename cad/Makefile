@@ -6,6 +6,7 @@
     SUBDIR += adms
     SUBDIR += alliance
     SUBDIR += antimony
+    SUBDIR += apio
     SUBDIR += appcsxcad
     SUBDIR += archimedes
     SUBDIR += astk-client
@@ -55,7 +56,6 @@
     SUBDIR += impact
     SUBDIR += irsim
     SUBDIR += iverilog
-    SUBDIR += jspice3
     SUBDIR += k40-whisperer
     SUBDIR += kicad
     SUBDIR += kicad-devel
@@ -153,6 +153,7 @@
     SUBDIR += xcircuit
     SUBDIR += xyce
     SUBDIR += yosys
+    SUBDIR += yosys-ghdl-plugin
     SUBDIR += yosys-systemverilog
     SUBDIR += z88
     SUBDIR += zcad

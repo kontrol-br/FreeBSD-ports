@@ -268,14 +268,17 @@
     SUBDIR += curv
     SUBDIR += cvc5
     SUBDIR += dbcsr
+    SUBDIR += ddfun
     SUBDIR += deal.ii
     SUBDIR += dgl
     SUBDIR += dieharder
     SUBDIR += dihydrogen
     SUBDIR += dionysus
     SUBDIR += disco
+    SUBDIR += dqfun
     SUBDIR += drgeo
     SUBDIR += dsdp
+    SUBDIR += dsfmt
     SUBDIR += dune-alugrid
     SUBDIR += dune-common
     SUBDIR += dune-curvedgeometry
@@ -319,6 +322,7 @@
     SUBDIR += fastops
     SUBDIR += fcl
     SUBDIR += fcl05
+    SUBDIR += fend
     SUBDIR += fenics-basix
     SUBDIR += fflas-ffpack
     SUBDIR += fftw
@@ -329,14 +333,12 @@
     SUBDIR += fftw3-quad
     SUBDIR += flann
     SUBDIR += flexfloat
+    SUBDIR += flexiblas
     SUBDIR += flint2
     SUBDIR += flintqs
     SUBDIR += flopc++
     SUBDIR += form
     SUBDIR += fparser
-    SUBDIR += fpc-fftw
-    SUBDIR += fpc-gmp
-    SUBDIR += fpc-numlib
     SUBDIR += fplll
     SUBDIR += freefem++
     SUBDIR += fricas
@@ -351,7 +353,6 @@
     SUBDIR += gemmlowp
     SUBDIR += geogebra
     SUBDIR += geogram
-    SUBDIR += geonext
     SUBDIR += gexpr
     SUBDIR += gf2x
     SUBDIR += gfan
@@ -379,7 +380,6 @@
     SUBDIR += grace
     SUBDIR += gravity
     SUBDIR += gretl
-    SUBDIR += gri
     SUBDIR += grpn
     SUBDIR += gsl
     SUBDIR += half
@@ -461,6 +461,7 @@
     SUBDIR += librsb
     SUBDIR += libsemigroups
     SUBDIR += libsharp2
+    SUBDIR += libtexprintf
     SUBDIR += libtommath
     SUBDIR += libxls
     SUBDIR += libxlsxwriter
@@ -496,7 +497,6 @@
     SUBDIR += mesquite
     SUBDIR += metis
     SUBDIR += mfem
-    SUBDIR += mingw32-libgmp
     SUBDIR += minisat
     SUBDIR += minizinc
     SUBDIR += minizinc-ide
@@ -640,7 +640,7 @@
     SUBDIR += octave-forge-splines
     SUBDIR += octave-forge-sqlite
     SUBDIR += octave-forge-statistics
-    SUBDIR += octave-forge-statistics-bootstrap
+    SUBDIR += octave-forge-statistics-resampling
     SUBDIR += octave-forge-stk
     SUBDIR += octave-forge-strings
     SUBDIR += octave-forge-struct
@@ -661,6 +661,7 @@
     SUBDIR += onednn252
     SUBDIR += openblas
     SUBDIR += openfst
+    SUBDIR += openfst-vosk
     SUBDIR += openlibm
     SUBDIR += openmesh
     SUBDIR += openscop
@@ -707,7 +708,6 @@
     SUBDIR += p5-Math-BigInt-GMP
     SUBDIR += p5-Math-BigInt-Lite
     SUBDIR += p5-Math-BigInt-Pari
-    SUBDIR += p5-Math-BigRat
     SUBDIR += p5-Math-CDF
     SUBDIR += p5-Math-Calc-Units
     SUBDIR += p5-Math-Cephes
@@ -843,8 +843,6 @@
     SUBDIR += petanque
     SUBDIR += petiga
     SUBDIR += pffft
-    SUBDIR += php80-bcmath
-    SUBDIR += php80-gmp
     SUBDIR += php81-bcmath
     SUBDIR += php81-gmp
     SUBDIR += php82-bcmath
@@ -876,11 +874,14 @@
     SUBDIR += py-Diofant
     SUBDIR += py-GridDataFormats
     SUBDIR += py-MutatorMath
+    SUBDIR += py-POT
     SUBDIR += py-PuLP
+    SUBDIR += py-Py-BOBYQA
     SUBDIR += py-PyMetis
     SUBDIR += py-PySCIPOpt
     SUBDIR += py-PyWavelets
     SUBDIR += py-Pyomo
+    SUBDIR += py-SQNomad
     SUBDIR += py-affine
     SUBDIR += py-algopy
     SUBDIR += py-altgraph
@@ -947,6 +948,7 @@
     SUBDIR += py-hdmedians
     SUBDIR += py-hepstats
     SUBDIR += py-heyoka
+    SUBDIR += py-hmmlearn
     SUBDIR += py-igraph
     SUBDIR += py-iminuit
     SUBDIR += py-intspan
@@ -1004,7 +1006,6 @@
     SUBDIR += py-pdal
     SUBDIR += py-permutation
     SUBDIR += py-petsc4py
-    SUBDIR += py-piranha
     SUBDIR += py-plastex
     SUBDIR += py-point-annotator
     SUBDIR += py-pplpy
@@ -1067,6 +1068,7 @@
     SUBDIR += py-spot
     SUBDIR += py-spreg
     SUBDIR += py-spvcm
+    SUBDIR += py-squarify
     SUBDIR += py-ssm
     SUBDIR += py-statsmodels
     SUBDIR += py-svgmath
@@ -1092,6 +1094,7 @@
     SUBDIR += qrupdate
     SUBDIR += qtiplot-doc
     SUBDIR += qwtplot3d
+    SUBDIR += qxfun
     SUBDIR += randlib
     SUBDIR += rankwidth
     SUBDIR += rapid
@@ -1172,6 +1175,7 @@
     SUBDIR += suitesparse-cxsparse
     SUBDIR += suitesparse-graphblas
     SUBDIR += suitesparse-klu
+    SUBDIR += suitesparse-lagraph
     SUBDIR += suitesparse-ldl
     SUBDIR += suitesparse-mongoose
     SUBDIR += suitesparse-rbio
@@ -1196,6 +1200,7 @@
     SUBDIR += the-algorithms-c++
     SUBDIR += timbl
     SUBDIR += tiny-bignum-c
+    SUBDIR += tinyexpr
     SUBDIR += tinymt
     SUBDIR += tlapack
     SUBDIR += tmv
@@ -1223,7 +1228,6 @@
     SUBDIR += vtk9
     SUBDIR += wavelib
     SUBDIR += wcalc
-    SUBDIR += wfmath
     SUBDIR += wxmaxima
     SUBDIR += xblas
     SUBDIR += xfce4-calculator-plugin

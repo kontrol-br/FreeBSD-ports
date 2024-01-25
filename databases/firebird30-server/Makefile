@@ -1,6 +1,6 @@
 PORTNAME=	firebird
 PORTVERSION=	3.0.10
-PORTREVISION=	3
+PORTREVISION=	4
 CATEGORIES?=	databases
 MASTER_SITES=	https://github.com/FirebirdSQL/${PORTNAME}/releases/download/v${PORTVERSION}/
 PKGNAMESUFFIX?=	${PORTVERSION:R:S/.//}-server
@@ -64,8 +64,6 @@ LD=	${CC}
 STRIP=
 
 ONLY_FOR_ARCHS=	i386 amd64
-# sparc64 fails due to lack of valid AtomicCounter implementation in
-# src/common/classes/fb_atomic.h; presumably other tier-2s would as well
 
 INSTALL_FB=	${INSTALL} ${COPY}
 

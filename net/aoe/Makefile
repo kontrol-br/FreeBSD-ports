@@ -1,13 +1,13 @@
 PORTNAME=	aoe
 PORTVERSION=	1.2.0
-PORTREVISION=	4
+PORTREVISION=	5
 CATEGORIES=	net
 MASTER_SITES=	https://people.freebsd.org/~sson/aoe/
 DISTNAME=	${PORTNAME}-freebsd-${PORTVERSION}
 
 MAINTAINER=	ports@FreeBSD.org
 COMMENT=	FreeBSD driver for ATA over Ethernet (AoE)
-WWW=		http://www.coraid.com/support/freebsd/
+WWW=		https://web.archive.org/web/20120420082041/http://www.coraid.com/support/freebsd/
 
 LICENSE=	BSD2CLAUSE
 

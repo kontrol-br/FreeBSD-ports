@@ -1,7 +1,7 @@
 PORTNAME=	hyprland
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.30.0
-PORTREVISION=	2
+DISTVERSION=	0.34.0
+PORTREVISION=	1
 CATEGORIES=	x11-wm wayland
 
 MAINTAINER=	jbeich@FreeBSD.org
@@ -11,13 +11,13 @@ WWW=		https://hyprland.org/
 LICENSE=	BSD3CLAUSE
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
-BROKEN_FreeBSD_12=	libc++ too old
-
 BUILD_DEPENDS=	cmake:devel/cmake-core \
 		evdev-proto>0:devel/evdev-proto \
 		wayland-protocols>=1.25:graphics/wayland-protocols \
-		wlroots>=0.16.0.668<0.17.0:x11-toolkits/wlroots
-LIB_DEPENDS=	libwayland-server.so:graphics/wayland \
+		wlroots>=0.17.0<0.18.0:x11-toolkits/wlroots
+LIB_DEPENDS=	libtomlplusplus.so:devel/tomlplusplus \
+		libdrm.so:graphics/libdrm \
+		libwayland-server.so:graphics/wayland \
 		libwlroots.so:x11-toolkits/wlroots \
 		libinput.so:x11/libinput \
 		libxkbcommon.so:x11/libxkbcommon
@@ -29,7 +29,7 @@ USE_GNOME=	cairo pango
 USE_XORG=	pixman
 GH_ACCOUNT=	hyprwm
 GH_PROJECT=	Hyprland
-GH_TUPLE=	hyprwm:hyprland-protocols:v0.2:hyprland_protocols/subprojects/hyprland-protocols \
+GH_TUPLE=	hyprwm:hyprland-protocols:v0.2-4-g0c2ce70:hyprland_protocols/subprojects/hyprland-protocols \
 		canihavesomecoffee:udis86:1.7.2-186-g5336633:udis86/subprojects/udis86
 MESON_ARGS=	-Dsystemd=disabled
 
@@ -46,12 +46,19 @@ X11_MESON_ENABLED=	xwayland
 
 post-patch:
 # Extract (snapshot) version from the port instead of meson.build
-	@${REINPLACE_CMD} -i .nogit -e "/GIT_BRANCH/s/run_command.*/'main'/" \
-		-e "/GIT_COMMIT_HASH/s/run_command.*/'${DISTVERSIONFULL}'/" \
-		-e "/GIT_COMMIT_MESSAGE/d" \
-		-e "/GIT_DIRTY/s/run_command.*/'portbld'/" \
+	@${REINPLACE_CMD} -i .nogit \
 		-e "/version.*jq/s/run_command.*/'${DISTVERSIONFULL}',/" \
 		${WRKSRC}/meson.build
+	@${REINPLACE_CMD} -i .nogit \
+		-e '/^HASH/s/=.*/=${DISTVERSIONFULL:C/.*-g//}/' \
+		-e '/^BRANCH/s/=.*/=main/' \
+		-e '/^MESSAGE/s/=.*/="?"/' \
+		-e "/^DATE/s/=.*/=\"$$(date -ur $$(${AWK} \
+			'/TIMESTAMP/ { print $$3 }' ${DISTINFO_FILE}))\"/" \
+		-e '/^DIRTY/s/=.*/=portbld/' \
+		-e '/^TAG/s/=.*/=${DISTVERSIONFULL}/' \
+		${WRKSRC}/scripts/generateVersion.sh
+
 # Respect PREFIX for wallpapers
 	@${REINPLACE_CMD} 's,/usr/share,${DATADIR:H},' \
 		${WRKSRC}/src/render/OpenGL.cpp
@@ -89,11 +96,4 @@ bundled-libcxx:
 	@${DO_MAKE_BUILD:NDESTDIR*} install -C ${WRKDIR}/libcxx_build
 .endif
 .endif # exists(/usr/lib/libc++.so)
-
-.include "${.CURDIR:H:H}/x11-toolkits/wlroots-devel/override.mk"
-post-patch:	wlroots-devel-patch
-wlroots-devel-patch:
-# Prefer <wlr/*> headers (used by <hyprland/*>) from wlroots-devel
-	@${REINPLACE_CMD} -i .devel "/subdirs/s|''|'../wlroots-devel/include', &|" \
-		${WRKSRC}/meson.build
 .include <bsd.port.mk>

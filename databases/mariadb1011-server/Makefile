@@ -1,6 +1,6 @@
 PORTNAME?=	mariadb
-PORTVERSION=	10.11.5
-PORTREVISION?=	0
+PORTVERSION=	10.11.6
+PORTREVISION?=	1
 CATEGORIES=	databases
 MASTER_SITES=	https://mirror.nodesdirect.com/${SITESDIR}/ \
 		https://mirror.one.com/${SITESDIR}/ \
@@ -22,6 +22,8 @@ WWW=		https://mariadb.org/
 
 LICENSE=	GPLv2
 LICENSE_FILE=	${WRKSRC}/COPYING
+
+#EXPIRATION_DATE=	2028-02-01
 
 LIB_DEPENDS+=	libfmt.so:devel/libfmt \
 		liblz4.so:archivers/liblz4 \
@@ -213,6 +215,11 @@ SUB_LIST+=	LEGACY_LIMITS="" MODERN_LIMITS="@comment "
 
 .if ${SSL_DEFAULT} != base && ${PORT_OPTIONS:MGSSAPI_BASE}
 GSSAPI_BASE_IGNORE=	GSSAPI_BASE is not compatible with OpenSSL from ports. Use other GSSAPI options or OpenSSL from base system
+.endif
+
+.if ${SSL_DEFAULT:Mlibressl*}
+CFLAGS+=	-Wno-incompatible-function-pointer-types
+.warning HELLO FROM MAKE LIBRESSL
 .endif
 
 .if ${ARCH} != amd64 && ${ARCH} != aarch64

@@ -1,7 +1,7 @@
 PORTNAME=	mythtv
 DISTVERSIONPREFIX=	v
 DISTVERSION=	33.1
-PORTREVISION=	4
+PORTREVISION=	5
 PORTEPOCH=	1
 CATEGORIES=	multimedia
 
@@ -52,7 +52,7 @@ USE_GL=		gl
 USE_LDCONFIG=	yes
 USE_QT=		buildtools:build core dbus gui imageformats:run \
 		linguist:build multimedia network opengl qmake:build script \
-		sql sql-mysql:run webkit widgets xml
+		sql sql-mysql:run widgets xml
 USE_PERL5=	run build
 USE_XORG=	x11 xv xrandr xxf86vm xinerama xext xcb
 SHEBANG_FILES=	programs/scripts/database/*.pl \
@@ -61,7 +61,8 @@ SHEBANG_FILES=	programs/scripts/database/*.pl \
 HAS_CONFIGURE=	yes
 CONFIGURE_ARGS=	--prefix="${PREFIX}" --cc="${CC}" --cxx="${CXX}" \
 		--libxml2-path="${LOCALBASE}/include/libxml2" \
-		--disable-audio-alsa
+		--disable-audio-alsa \
+		--disable-qtwebkit
 CONFIGURE_ENV=	QMAKESPEC="${QMAKESPEC}" MOC="${MOC}" \
 		QTDIR="${PREFIX}" PKG_CONFIG_PATH="${LOCALBASE}/libdata/pkgconfig"
 MAKE_ENV=	QTDIR="${PREFIX}" \

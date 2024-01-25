@@ -1,7 +1,7 @@
 PORTNAME=	node
 DISTVERSIONPREFIX=	v
 DISTVERSION=	16.20.1
-PORTREVISION?=	1
+PORTREVISION?=	3
 CATEGORIES=	www
 MASTER_SITES=	https://nodejs.org/dist/v${DISTVERSION}/
 PKGNAMESUFFIX=	16
@@ -63,19 +63,8 @@ CONFLICTS_INSTALL=	node[0-9][0-9]
 REINPLACE_ARGS=	-i ''
 PORTSCOUT=	limit:^16\.
 
-OPTIONS_DEFINE=		BUNDLED_SSL COREPACK DOCS DTRACE NLS
-OPTIONS_DEFAULT=	COREPACK DTRACE
-
-.if !exists(/usr/sbin/dtrace)
-OPTIONS_EXCLUDE+=	DTRACE
-.endif
-
-OPTIONS_EXCLUDE_aarch64=	DTRACE
-# dt_modtext:/usr/src/cddl/contrib/opensolaris/lib/libdtrace/common/dt_link.c(820): arm not implemented
-OPTIONS_EXCLUDE_armv6=	DTRACE
-OPTIONS_EXCLUDE_armv7=	DTRACE
-OPTIONS_EXCLUDE_powerpc64=	DTRACE
-OPTIONS_EXCLUDE_powerpc64le=	DTRACE
+OPTIONS_DEFINE=		BUNDLED_SSL COREPACK DOCS NLS
+OPTIONS_DEFAULT=	COREPACK
 
 OPTIONS_SUB=	yes
 
@@ -89,8 +78,6 @@ BUNDLED_SSL_CONFIGURE_OFF=	--openssl-use-def-ca-store \
 
 COREPACK_CONFIGURE_OFF=	--without-corepack
 
-DTRACE_CONFIGURE_ON=	--with-dtrace
-
 NLS_BUILD_DEPENDS=	icu>=69.1:devel/icu
 NLS_LIB_DEPENDS=	libicui18n.so:devel/icu
 NLS_CONFIGURE_ON=	--with-intl=system-icu
@@ -98,10 +85,6 @@ NLS_CONFIGURE_ON=	--with-intl=system-icu
 PREFIX_RELDEST=	${PREFIX:S,^${DESTDIR},,}
 
 .include <bsd.port.pre.mk>
-
-.if (defined(PPC_ABI) && ${PPC_ABI} == ELFv2) || ${ARCH} == powerpc64le
-EXTRA_PATCHES=	${PATCHDIR}/extra-patch-common.gypi
-.endif
 
 .if ${ARCH} == armv6 || ${ARCH} == armv7
 EXTRA_PATCHES=	${PATCHDIR}/extra-patch-tools_v8__gypfiles_v8.gyp
@@ -132,9 +115,5 @@ post-configure:
 post-install:
 	${RM} -rf ${STAGEDIR}${PREFIX}/share/systemtap
 	${STRIP_CMD} ${STAGEDIR}${PREFIX}/bin/node
-
-post-install-DTRACE-on:
-	${MKDIR} ${STAGEDIR}${PREFIX}/lib/dtrace
-	${INSTALL_DATA} ${WRKSRC}/out/Release/node.d ${STAGEDIR}${PREFIX}/lib/dtrace
 
 .include <bsd.port.post.mk>

@@ -1,16 +1,15 @@
 PORTNAME=	xdg-desktop-portal-luminous
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.1.1
+DISTVERSION=	0.1.4
+PORTREVISION=	2
 CATEGORIES=	x11 wayland
 
 MAINTAINER=	jbeich@FreeBSD.org
 COMMENT=	xdg-desktop-portal backend for wlroots
 WWW=		https://github.com/waycrate/xdg-desktop-portal-luminous
 
-LICENSE=	BSD2CLAUSE
+LICENSE=	GPLv3
 LICENSE_FILE=	${WRKSRC}/LICENSE
-
-BROKEN_FreeBSD_12=	ld: error: undefined symbol: memfd_create
 
 LIB_DEPENDS=	libpipewire-0.3.so:multimedia/pipewire \
 		libxkbcommon.so:x11/libxkbcommon

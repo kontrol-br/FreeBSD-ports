@@ -13,9 +13,9 @@ LICENSE_NAME_THIRDPARTY=	Third-party licenses
 LICENSE_FILE_THIRDPARTY=	${WRKSRC}/docs/TPLICENSES.md
 LICENSE_PERMS_THIRDPARTY=	dist-mirror dist-sell pkg-mirror pkg-sell auto-accept
 
-BROKEN_SSL=	libressl openssl30 openssl31
+BROKEN_SSL=	libressl openssl openssl31
 BROKEN_SSL_REASON_libressl=	error: use of undeclared identifier 'EVP_PKEY_X25519' (LibreSSL has no support for Edwards curves)
-BROKEN_SSL_REASON_openssl30=	error: undefined symbol: EVP_PKEY_*
+BROKEN_SSL_REASON_openssl=	error: undefined symbol: EVP_PKEY_*
 BROKEN_SSL_REASON_openssl31=	error: undefined symbol: EVP_PKEY_*
 
 BUILD_DEPENDS=	autoconf-archive>0:devel/autoconf-archive \
@@ -38,8 +38,6 @@ MAKE_ENV=	LIBCRYPTO_RPATH=${OPENSSLBASE}/lib
 
 INSTALL_TARGET=	install-strip
 
-.include <bsd.port.options.mk>
-
 post-extract:
 	@${RMDIR} ${WRKSRC}/.gnulib ${WRKSRC}/include/oasis-pkcs11
 	@${MV} ${WRKSRC_gnulib} ${WRKSRC}/.gnulib
@@ -47,17 +45,6 @@ post-extract:
 
 pre-configure:
 	@cd ${WRKSRC} && BUILD_PORT=1 ${WRKSRC}/bootstrap.sh
-
-# FreeBSD<13 does not have system-deployed openssl information through PKGCONFIG
-# We need to provide a hint at configure time
-
-.if ${OPSYS} == FreeBSD && ( ${OSVERSION} <= 1300000 )
-LIBCRYPTO_CFLAGS+=	-pthread
-LIBCRYPTO_LIBS+=	-lcrypto
-
-do-configure:
-	@cd ${WRKSRC} && ./configure LIBCRYPTO_CFLAGS=${LIBCRYPTO_CFLAGS} LIBCRYPTO_LIBS=${LIBCRYPTO_LIBS}
-.endif
 
 post-install:
 	${MKDIR} ${STAGEDIR}${DOCSDIR}

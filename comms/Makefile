@@ -28,6 +28,7 @@
     SUBDIR += cwstudio
     SUBDIR += cyclonedds
     SUBDIR += dcf77pi
+    SUBDIR += deforaos-phone
     SUBDIR += dfu-programmer
     SUBDIR += dfu-util
     SUBDIR += digiham
@@ -93,12 +94,10 @@
     SUBDIR += mbelib
     SUBDIR += mgetty+sendfax
     SUBDIR += minicom
-    SUBDIR += mlan3
     SUBDIR += morse
     SUBDIR += multimon-ng
     SUBDIR += nanovna-saver
     SUBDIR += nasawash
-    SUBDIR += ncid
     SUBDIR += nec2c
     SUBDIR += nmealib
     SUBDIR += obexapp
@@ -107,7 +106,6 @@
     SUBDIR += opencbm-plugin-xa1541
     SUBDIR += openobex
     SUBDIR += openzwave
-    SUBDIR += openzwave-devel
     SUBDIR += owfs
     SUBDIR += p5-Cisco-UCS
     SUBDIR += p5-Device-Gsm
@@ -167,7 +165,6 @@
     SUBDIR += scmxx
     SUBDIR += scrcpy
     SUBDIR += sdr++
-    SUBDIR += sdr-wspr
     SUBDIR += ser2net
     SUBDIR += serialoverip
     SUBDIR += sigdigger
@@ -192,7 +189,6 @@
     SUBDIR += svxlink
     SUBDIR += syncterm
     SUBDIR += tcpser
-    SUBDIR += telldus-core
     SUBDIR += thebridge
     SUBDIR += tilp2
     SUBDIR += tio
@@ -202,7 +198,6 @@
     SUBDIR += trustedqsl
     SUBDIR += twpsk
     SUBDIR += uarduno
-    SUBDIR += uartlirc
     SUBDIR += uhd
     SUBDIR += uird
     SUBDIR += ujprog

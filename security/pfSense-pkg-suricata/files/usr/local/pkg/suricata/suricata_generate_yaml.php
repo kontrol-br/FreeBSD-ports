@@ -53,10 +53,7 @@ if (!empty($suricatacfg['externallistname']) && $suricatacfg['externallistname']
 	$external_net = "[" . trim($external_net) . "]";
 }
 else {
-	$external_net = "[";
-	foreach ($home_net_list as $ip)
-		$external_net .= "!{$ip}, ";
-	$external_net = trim($external_net, ', ') . "]";
+	$external_net = "[!\$HOME_NET]";
 }
 
 // Set the PASS LIST and write its contents to disk,
@@ -151,6 +148,11 @@ if (!empty($suricatacfg['mpm_algo']))
 	$mpm_algo = $suricatacfg['mpm_algo'];
 else
 	$mpm_algo = "auto";
+
+if (!empty($suricatacfg['spm_algo']))
+	$spm_algo = $suricatacfg['spm_algo'];
+else
+	$spm_algo = "auto";
 
 if (!empty($suricatacfg['inspect_recursion_limit']) || $suricatacfg['inspect_recursion_limit'] == '0')
 	$inspection_recursion_limit = $suricatacfg['inspect_recursion_limit'];
@@ -412,6 +414,12 @@ if (!empty($suricatacfg['eve_systemlog_priority']))
 	$eve_systemlog_priority = $suricatacfg['eve_systemlog_priority'];
 else
 	$eve_systemlog_priority = "info";
+
+// EVE Ethernet headers setting
+if (!empty($suricatacfg['eve_log_ethernet']))
+	$eve_ethernet_output = $suricatacfg['eve_log_ethernet'];
+else
+	$eve_ethernet_output = "no";
 
 // EVE REDIS output settings
 if (!empty($suricatacfg['eve_redis_server']))

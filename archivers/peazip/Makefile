@@ -1,5 +1,6 @@
 PORTNAME=	peazip
-PORTVERSION=	9.4.0
+PORTVERSION=	9.6.0
+PORTREVISION=	0
 CATEGORIES=	archivers
 MASTER_SITES=	https://github.com/giorgiotani/PeaZip/releases/download/${PORTVERSION}/
 PKGNAMESUFFIX=	${LAZARUS_PKGNAMESUFFIX}
@@ -12,7 +13,6 @@ WWW=		https://peazip.github.io
 LICENSE=	LGPL3
 
 USES=		cpe desktop-file-utils dos2unix fpc lazarus:flavors zip xorg
-USE_FPC=	cairo chm fcl-base fcl-image fcl-xml pasjpeg rtl-objpas x11
 USE_XORG=	x11
 
 CPE_VENDOR=	giorgio_tani
@@ -21,6 +21,7 @@ SUB_FILES=	pea peazip
 
 DOS2UNIX_REGEX=		.*\.([txt]|pas|lpi|txt)
 
+LAZARUS_NO_FLAVORS=	qt6
 LAZARUS_PROJECT_FILES=	dev/project_pea.lpi dev/project_peach.lpi
 LAZBUILD_ARGS=		-d
 
@@ -80,7 +81,8 @@ PLIST_SUB+=	UNACE="@comment "
 .include <bsd.port.pre.mk>
 
 post-patch:
-	${REINPLACE_CMD} 's|GetSelectedNodePath|Path|g' ${WRKSRC}/dev/peach.pas
+	${REINPLACE_CMD} -e 's|GetSelectedNodePath|Path|g' \
+		-e 's|fileutil|LazFileUtils, fileutil|g' ${WRKSRC}/dev/peach.pas
 
 pre-install:
 	@${ECHO_CMD} "#" > ${WRKSRC}/altconf.txt

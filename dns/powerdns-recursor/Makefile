@@ -1,6 +1,5 @@
 PORTNAME=	recursor
-DISTVERSION=	4.9.1
-PORTREVISION=	1
+DISTVERSION=	4.9.2
 CATEGORIES=	dns
 MASTER_SITES=	http://downloads.powerdns.com/releases/
 PKGNAMEPREFIX=	powerdns-
@@ -15,7 +14,6 @@ LICENSE_FILE=	${WRKSRC}/COPYING
 
 BROKEN_armv6=	fails to compile: use of overloaded operator << is ambiguous
 BROKEN_armv7=	fails to compile: use of overloaded operator << is ambiguous
-BROKEN_FreeBSD_12_powerpc64=	fails to compile: Assembler messages: unaligned opcodes detected in executable segment
 NOT_FOR_ARCHS=	i386
 NOT_FOR_ARCHS_REASON=	archs with 32-bits time_t are no longer supported by upstream
 

@@ -1,7 +1,7 @@
 PORTNAME=	erlang
 DISTVERSIONPREFIX=	OTP-
 DISTVERSION=	23.3.4.19
-PORTREVISION=	1
+PORTREVISION=	2
 CATEGORIES=	lang parallel java
 PKGNAMESUFFIX=	-runtime23
 DIST_SUBDIR=	erlang
@@ -11,8 +11,6 @@ COMMENT=	Functional programming language from Ericsson
 WWW=		https://www.erlang.org/
 
 LICENSE=	APACHE20
-
-BROKEN_sparc64=	Fails to build: error: fp_except undeclared
 
 USES=		autoreconf:build compiler cpe gmake ncurses perl5
 USE_GITHUB=	nodefault

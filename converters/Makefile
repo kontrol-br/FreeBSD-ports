@@ -28,7 +28,6 @@
     SUBDIR += fconv
     SUBDIR += fix-mime-charset
     SUBDIR += fondu
-    SUBDIR += fpc-iconvenc
     SUBDIR += fribidi
     SUBDIR += gbase
     SUBDIR += gbsdconv
@@ -137,8 +136,6 @@
     SUBDIR += pear-Services_JSON
     SUBDIR += pecl-igbinary
     SUBDIR += php-bsdconv
-    SUBDIR += php80-iconv
-    SUBDIR += php80-mbstring
     SUBDIR += php81-iconv
     SUBDIR += php81-mbstring
     SUBDIR += php82-iconv
@@ -168,6 +165,7 @@
     SUBDIR += rubygem-url_safe_base64
     SUBDIR += rubygem-xdr
     SUBDIR += showkey
+    SUBDIR += simdutf
     SUBDIR += ta2as
     SUBDIR += tnef
     SUBDIR += trans

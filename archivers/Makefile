@@ -10,6 +10,7 @@
     SUBDIR += arc
     SUBDIR += arj
     SUBDIR += ark
+    SUBDIR += ark-devel
     SUBDIR += atool
     SUBDIR += bicom
     SUBDIR += brotli
@@ -31,8 +32,6 @@
     SUBDIR += engrampa
     SUBDIR += fastjar
     SUBDIR += file-roller
-    SUBDIR += fpc-bzip2
-    SUBDIR += fpc-unzip
     SUBDIR += gcab
     SUBDIR += gcpio
     SUBDIR += gnome-autoar
@@ -45,8 +44,8 @@
     SUBDIR += hlextract
     SUBDIR += innoextract
     SUBDIR += javatar
-    SUBDIR += jzlib
     SUBDIR += kf5-karchive
+    SUBDIR += kf6-karchive
     SUBDIR += kzip
     SUBDIR += laszip
     SUBDIR += lazperf
@@ -87,6 +86,7 @@
     SUBDIR += lzmalib
     SUBDIR += lzo2
     SUBDIR += lzop
+    SUBDIR += lzsa
     SUBDIR += makeself
     SUBDIR += mar
     SUBDIR += maxcso
@@ -159,10 +159,6 @@
     SUBDIR += php-lz4
     SUBDIR += php-snappy
     SUBDIR += php-zstd
-    SUBDIR += php80-bz2
-    SUBDIR += php80-phar
-    SUBDIR += php80-zip
-    SUBDIR += php80-zlib
     SUBDIR += php81-bz2
     SUBDIR += php81-phar
     SUBDIR += php81-zip
@@ -192,6 +188,7 @@
     SUBDIR += py-bz2file
     SUBDIR += py-compressed-rtf
     SUBDIR += py-cramjam
+    SUBDIR += py-laszip
     SUBDIR += py-libarchive-c
     SUBDIR += py-lz4
     SUBDIR += py-lzma

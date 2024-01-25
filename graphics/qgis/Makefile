@@ -1,5 +1,5 @@
 PORTNAME=	qgis
-DISTVERSION=	3.32.3
+DISTVERSION=	3.34.2
 CATEGORIES=	graphics geography
 MASTER_SITES=	https://qgis.org/downloads/
 
@@ -32,7 +32,8 @@ BUILD_DEPENDS=	gpsbabel>=1.7.0:astro/gpsbabel \
 		${PYTHON_PKGNAMEPREFIX}six>=1.16.0:devel/py-six@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}sqlite3>=3.7.16:databases/py-sqlite3@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}yaml>=5.4.1:devel/py-yaml@${PY_FLAVOR}
-LIB_DEPENDS=	libexiv2.so:graphics/exiv2 \
+LIB_DEPENDS=	libdraco.so:archivers/draco \
+		libexiv2.so:graphics/exiv2 \
 		libexpat.so:textproc/expat2 \
 		libgdal.so:graphics/gdal \
 		libgeos.so:graphics/geos \
@@ -67,6 +68,7 @@ RUN_DEPENDS=	astyle:devel/astyle \
 		${PYTHON_PKGNAMEPREFIX}httplib2>=0.20.2:www/py-httplib2@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}jedi>=0.18.1:devel/py-jedi@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}Jinja2>=3.1.2:devel/py-Jinja2@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}laspy>=2.5.1:misc/py-laspy@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}markupsafe>=2.1.1:textproc/py-markupsafe@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}matplotlib>=3.4.3:math/py-matplotlib@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}mock>=4.0.3:devel/py-mock@${PY_FLAVOR} \
@@ -103,8 +105,6 @@ RUN_DEPENDS=	astyle:devel/astyle \
 USES=		bison cmake compiler:features desktop-file-utils \
 		fortran gl gmake gnome pgsql pyqt:5 python qca qt:5 \
 		shebangfix sqlite:3 tar:bz2
-# math/pdal fails in pdal_wrench() with "undefined reference to symbol 'pthread_create@@FBSD_1.0'"
-CXXFLAGS+=	-pthread
 USE_GL=		gl
 USE_GNOME=	libxml2
 USE_LDCONFIG=	yes
@@ -113,7 +113,7 @@ USE_QT=		3d buildtools:build core concurrent dbus declarative \
 		designer:build qdoc:build gamepad gui linguist:build location \
 		multimedia network printsupport qmake:build script serialport \
 		sql sql-pgsql sql-sqlite3 svg testlib uitools:build \
-		webengine webkit widgets xml
+		webengine widgets xml
 
 SHEBANG_FILES=	src/plugins/grass/scripts/*.py
 
@@ -127,10 +127,13 @@ CMAKE_ARGS+=	-DCMAKE_BUILD_TYPE:STRING=Release \
 		-DQWT_INCLUDE_DIR:PATH=${LOCALBASE}/include/qt5/qwt6 \
 		-DQWT_LIBRARY:FILEPATH=${LOCALBASE}/lib/qt5/libqwt6.so \
 		-DQGIS_MANUAL_SUBDIR:PATH=share/man
-CMAKE_ON=	USE_OPENCL WITH_3D WITH_ASTYLE WITH_BINDINGS \
-		WITH_COPC WITH_CUSTOM_WIDGETS WITH_EPT  WITH_INTERNAL_LAZPERF \
-		WITH_POSTGRESQL
-CMAKE_OFF=	ENABLE_TESTING WITH_INTERNAL_MDAL WITH_QWTPOLAR
+CMAKE_ON=	USE_OPENCL WITH_ASTYLE WITH_BINDINGS WITH_COPC \
+		WITH_CUSTOM_WIDGETS WITH_DRACO WITH_EPT \
+		WITH_INTERNAL_LAZPERF WITH_POSTGRESQL
+CMAKE_OFF=	ENABLE_TESTING WITH_INTERNAL_MDAL WITH_QTWEBKIT WITH_QWTPOLAR
+
+# math/pdal fails in pdal_wrench() with "undefined reference to symbol 'pthread_create@@FBSD_1.0'"
+CXXFLAGS+=	-pthread
 
 CONFLICTS_INSTALL=	qgis-ltr
 
@@ -141,27 +144,28 @@ CMAKE_ARGS+=	-Wno-dev
 CMAKE_OFF+=	SUPPRESS_QT_WARNINGS
 .endif
 
-OPTIONS_DEFINE=		GRASS SERVER
-OPTIONS_DEFAULT=	GRASS SERVER
-NO_OPTIONS_SORT=	yes
-
+OPTIONS_DEFINE=		SERVER
+OPTIONS_DEFAULT=	SERVER GRASS8
+OPTIONS_RADIO=		GRASS
+OPTIONS_RADIO_GRASS=	GRASS7 GRASS8
+#NO_OPTIONS_SORT=	yes
 OPTIONS_SUB=		yes
+
+GRASS_DESC=		Add GRASS GIS to processing tools
 SERVER_DESC=		Enable QGIS server
 
-GRASS_BUILD_DEPENDS=	grass7:databases/grass7
-GRASS_RUN_DEPENDS=	${GRASS_BUILD_DEPENDS}
-GRASS_CMAKE_BOOL=	WITH_GRASS7
+GRASS7_BUILD_DEPENDS=	grass7:databases/grass7
+GRASS7_RUN_DEPENDS=	${GRASS7_BUILD_DEPENDS}
+GRASS7_CMAKE_BOOL=	WITH_GRASS7
+GRASS7_CMAKE_OFF=	WITH_GRASS8
+GRASS8_BUILD_DEPENDS=	grass8:databases/grass8
+GRASS8_RUN_DEPENDS=	${GRASS8_BUILD_DEPENDS}
+GRASS8_CMAKE_BOOL=	WITH_GRASS8
+GRASS8_CMAKE_OFF=	WITH_GRASS7
 SERVER_LIB_DEPENDS=	libfcgi.so:www/fcgi
 SERVER_CMAKE_BOOL=	WITH_SERVER WITH_SERVER_PLUGINS WITH_QSPATIALITE
 
 .include <bsd.port.pre.mk>
-
-# QGIS requires flex >= 2.5.6, see
-# https://github.com/qgis/QGIS/blob/fb0f334b06e0828e5695ffcaa7c7eb82d6516cb0/INSTALL.md
-.if (${OPSYS} == FreeBSD && ${OSVERSION} < 1300501)
-BUILD_DEPENDS+=	${LOCALBASE}/bin/flex:textproc/flex
-CMAKE_ARGS+=	-DFLEX_EXECUTABLE:FILEPATH=${LOCALBASE}/bin/flex
-.endif
 
 pre-patch:
 	# Only PostgreSQL Client headers, not Server
@@ -169,6 +173,8 @@ pre-patch:
 		${WRKSRC}/cmake/FindPostgres.cmake
 
 post-patch:
+	@${REINPLACE_CMD} -e 's|%%LOCALBASE%%|${LOCALBASE}|g' \
+		${WRKSRC}/cmake/FindGRASS.cmake
 # On i386, '-mllvm -inline-threshold=128' does not build under all circumstances
 # See bugs 242557 and 241687.
 .if ${OPSYS} == FreeBSD && ${ARCH} == "i386"
@@ -178,6 +184,12 @@ post-patch:
 
 pre-configure:
 	${MKDIR} ${CONFIGURE_WRKSRC}/bin && ${LN} -s ${PYTHON_CMD} ${CONFIGURE_WRKSRC}/bin/python3
+.if ${PORT_OPTIONS:MGRASS7} || ${PORT_OPTIONS:MGRASS8}
+PLIST_SUB+=	GRASS="" NO_GRASS="@comment "
+.else
+PLIST_SUB+=	GRASS="@comment " NO_GRASS=""
+.endif
+
 
 post-install:
 	@${RM} ${STAGEDIR}${DATADIR}/python/pytz/tzfile.py.bak

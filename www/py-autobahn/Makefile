@@ -1,5 +1,6 @@
 PORTNAME=	autobahn
 PORTVERSION=	23.6.2
+PORTREVISION=	1
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www python
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -43,7 +44,7 @@ ENCRYPTION_RUN_DEPENDS=		${PYTHON_PKGNAMEPREFIX}openssl>=20.0.1:security/py-open
 				${PYTHON_PKGNAMEPREFIX}pynacl>=1.4.0:security/py-pynacl@${PY_FLAVOR} \
 				${PYTHON_PKGNAMEPREFIX}qrcode>=7.3.1:textproc/py-qrcode@${PY_FLAVOR} \
 				${PYTHON_PKGNAMEPREFIX}pytrie>=0.4.0:devel/py-pytrie@${PY_FLAVOR} \
-				${PYTHON_PKGNAMEPREFIX}service_identity>=18.1.0:security/py-service_identity@${PY_FLAVOR}
+				${PYTHON_PKGNAMEPREFIX}service-identity>=18.1.0:security/py-service-identity@${PY_FLAVOR}
 SCRAM_RUN_DEPENDS=		${PYTHON_PKGNAMEPREFIX}argon2-cffi>=20.1.0:security/py-argon2-cffi@${PY_FLAVOR} \
 				${PYTHON_PKGNAMEPREFIX}cffi>=1.14.5:devel/py-cffi@${PY_FLAVOR} \
 				${PYTHON_PKGNAMEPREFIX}passlib>=1.7.4:security/py-passlib@${PY_FLAVOR}
@@ -63,7 +64,9 @@ COMPLETE_OPTIONS_LIST:=		${COMPLETE_OPTIONS_LIST:NASYNCIO}
 PORT_OPTIONS:=			${PORT_OPTIONS:NASYNCIO}
 
 post-stage:
+.if exists(${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/_nvx_utf8validator.abi3.so)
 	@${STRIP_CMD} ${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/_nvx_utf8validator.abi3.so
+.endif
 
 do-test-ASYNCIO-on:
 	@cd ${WRKSRC} && USE_ASYNCIO=1 ${PYTHON_CMD} -m pytest -v -rs ${WRKSRC}/autobahn

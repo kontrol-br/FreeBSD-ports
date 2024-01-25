@@ -1,5 +1,5 @@
 PORTNAME=	openssh
-DISTVERSION=	9.3p2
+DISTVERSION=	9.6p1
 PORTREVISION=	1
 PORTEPOCH=	1
 CATEGORIES=	security
@@ -21,9 +21,9 @@ USES=			alias autoreconf compiler:c11 cpe localbase ncurses \
 			pkgconfig ssl
 GNU_CONFIGURE=		yes
 CONFIGURE_ARGS=		--prefix=${PREFIX} \
+			--without-zlib-version-check \
 			--with-ssl-engine \
-			--with-mantype=man \
-			--with-Werror
+			--with-mantype=man
 
 ETCOLD=			${PREFIX}/etc
 
@@ -127,7 +127,7 @@ CONFIGURE_LIBS+=	-lblacklist
 
 # https://www.psc.edu/hpn-ssh https://github.com/rapier1/openssh-portable/tree/hpn-openssl1.1-7_7_P1
 .if ${PORT_OPTIONS:MHPN} || ${PORT_OPTIONS:MNONECIPHER}
-#BROKEN=			HPN: Not yet updated for ${DISTVERSION} yet.
+BROKEN=			HPN: Not yet updated for ${DISTVERSION} yet.
 PORTDOCS+=		HPN-README
 HPN_VERSION=		14v15
 HPN_DISTVERSION=	7.7p1

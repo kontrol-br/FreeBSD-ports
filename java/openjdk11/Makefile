@@ -1,7 +1,6 @@
 PORTNAME=	openjdk
 DISTVERSIONPREFIX=	jdk-
 DISTVERSION=	${JDK_MAJOR_VERSION}.${JDK_MINOR_VERSION}.${JDK_PATCH_VERSION}+${JDK_BUILD_NUMBER}-${BSD_JDK_VERSION}
-PORTREVISION=	1
 CATEGORIES=	java devel
 PKGNAMESUFFIX?=	${JDK_MAJOR_VERSION}
 
@@ -63,8 +62,8 @@ NOPRECIOUSMAKEVARS=	yes
 
 JDK_MAJOR_VERSION=	11
 JDK_MINOR_VERSION=	0
-JDK_PATCH_VERSION=	20
-JDK_BUILD_NUMBER=	8
+JDK_PATCH_VERSION=	21
+JDK_BUILD_NUMBER=	9
 BSD_JDK_VERSION=	1
 
 JDK_BUG_URL=	https://bugs.freebsd.org/bugzilla/enter_bug.cgi?product=Ports%20%26%20Packages&component=Individual%20Port(s)&short_desc=java/${PORTNAME}${JDK_MAJOR_VERSION}%3A%20
@@ -164,17 +163,14 @@ CXX=		${LOCALBASE}/bin/clang++${LLVM_VER}
 .if ${ARCH} == aarch64 || ${ARCH:Marmv*} || ${ARCH:Mpowerpc64*}
 CONFIGURE_ARGS+=	--disable-warnings-as-errors
 .endif
-.if ${ARCH} == aarch64 || ${ARCH:Marmv*} || (defined(PPC_ABI) && ${PPC_ABI} == ELFv1)
+.if ${ARCH} == aarch64 || ${ARCH:Marmv*}
 CONFIGURE_ARGS+=	--disable-dtrace
 .endif
-.if (defined(PPC_ABI) && ${PPC_ABI} == ELFv2) || ${ARCH} == powerpc64le
+.if ${ARCH:Mpowerpc64*}
 CONFIGURE_ARGS+=	--disable-precompiled-headers
 .endif
 .if ${ARCH} != amd64
 CONFIGURE_ARGS+=	--enable-aot=no
-.endif
-.if ${ARCH} == powerpc64 && ${OSREL:C/\.[0-9]//} == 12
-EXTRA_PATCHES=		${PATCHDIR}/extra-patch-src_hotspot_cpu_ppc_vm__version__ppc.hpp
 .endif
 
 .if empty(ICONV_LIB)

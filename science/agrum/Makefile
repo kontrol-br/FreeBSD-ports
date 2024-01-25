@@ -1,5 +1,5 @@
 PORTNAME=	agrum
-DISTVERSION=	1.9.0
+DISTVERSION=	1.10.0
 CATEGORIES=	science math
 
 MAINTAINER=	yuri@FreeBSD.org
@@ -9,8 +9,6 @@ WWW=		https://agrum.gitlab.io/
 LICENSE=	GPLv3
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
-BROKEN_FreeBSD_12=	requires modern C++ compiler: error: invalid value 'c++2b'
-
 USES=		cmake compiler:c++20-lang shebangfix # the 'act' executable uses 'python' and is broken, when act is broken CMakeLists.txt builds with default configuration which is fine
 USE_LDCONFIG=	yes
 
@@ -19,7 +17,7 @@ LLD_UNSAFE=	yes
 USE_GITLAB=	yes
 GL_ACCOUNT=	agrumery
 GL_PROJECT=	aGrUM
-GL_TAGNAME=	7c2adb9092fd8e3f85bc16ffc748c39ea0c056f4
+GL_TAGNAME=	e733b2a6b23d6d8d7a29e621fcd698e0a2204bfb
 
 SHEBANG_FILES=	act
 

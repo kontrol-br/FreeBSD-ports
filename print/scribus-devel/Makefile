@@ -1,6 +1,6 @@
 PORTNAME=	scribus
 PORTVERSION=	1.5.8
-PORTREVISION=	22
+PORTREVISION=	24
 CATEGORIES=	print editors
 MASTER_SITES=	SF/${PORTNAME}/${PORTNAME}${PKGNAMESUFFIX}/${PORTVERSION}/ \
 		http://www.scribus.net/downloads/${PORTVERSION}/
@@ -48,6 +48,8 @@ CMAKE_ARGS+=	-DWANT_HUNSPELL=YES \
 		-DWANT_CPP17=YES \
 		-DCMAKE_COLOR_MAKEFILE:BOOL=ON
 
+CONFLICTS_INSTALL=	scribus
+
 OPTIONS_DEFINE=	DOCS
 
 .include <bsd.port.pre.mk>
@@ -64,7 +66,6 @@ post-patch:
 	@${REINPLACE_CMD} -e 's|std::unary_function|std::__unary_function|' \
 		${WRKSRC}/scribus/desaxe/digester.cpp
 .endif
-
 
 post-install:
 		${LN} -sf ../share/icons/1_5_1/scribus.png \

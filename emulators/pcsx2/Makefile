@@ -1,7 +1,7 @@
 PORTNAME=	pcsx2
 PORTVERSION=	1.7.4970
 DISTVERSIONPREFIX=	v
-PORTREVISION=	1
+PORTREVISION=	2
 CATEGORIES=	emulators
 
 MAINTAINER=	martymac@FreeBSD.org
@@ -29,6 +29,9 @@ LIB_DEPENDS=	libpng.so:graphics/png \
 		libjack.so:audio/jack \
 		libsndio.so:audio/sndio \
 		libbacktrace.so:devel/libbacktrace
+# XXX Necessary for Qt6/FindWrapVulkanHeaders.cmake
+# then vulkan-haders and glslang are unconditionnaly included from 3rdparty/
+BUILD_DEPENDS=	vulkan-headers>0:graphics/vulkan-headers
 
 USES=		cmake compiler:c++20-lang \
 		desktop-file-utils elfctl gl pkgconfig qt:6 sdl xorg
@@ -58,7 +61,6 @@ CMAKE_ARGS+=	\
 		-DCMAKE_REQUIRED_INCLUDES:STRING=${LOCALBASE}/include/ \
 		-DPCSX2_RESOURCES_PATH:STRING=${DATADIR}/resources \
 		-DUSE_VTUNE:BOOL=OFF \
-		-DUSE_VULKAN:BOOL=OFF \
 		-DWAYLAND_API=OFF \
 		-DENABLE_TESTS:BOOL=OFF
 
@@ -93,11 +95,4 @@ Makefile.tuples::
 			https://github.com/${PORTNAME}/${PORTNAME} . && \
 		${SH} ${FILESDIR}/gen_gh_tuple.sh >> ${.CURDIR}/Makefile.tuples
 
-.include <bsd.port.pre.mk>
-
-# Fixed in 13.2 with commit 4b6eb0e63c69 (libc++ update)
-.if (${OSVERSION} <= 1301503)
-BROKEN=		needs libc++ with std::bit_cast support
-.endif
-
-.include <bsd.port.post.mk>
+.include <bsd.port.mk>
