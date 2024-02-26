@@ -190,6 +190,7 @@
     SUBDIR += formication
     SUBDIR += foswiki
     SUBDIR += free-sa-devel
+    SUBDIR += freenginx
     SUBDIR += fswiki
     SUBDIR += fusionpbx
     SUBDIR += g-cows
@@ -329,6 +330,7 @@
     SUBDIR += litmus
     SUBDIR += ljdeps
     SUBDIR += llhttp
+    SUBDIR += loco
     SUBDIR += logswan
     SUBDIR += logtools
     SUBDIR += ls-qpack
