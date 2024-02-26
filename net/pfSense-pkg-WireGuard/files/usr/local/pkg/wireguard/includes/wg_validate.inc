@@ -3,8 +3,8 @@
  * wg_validate.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,7 @@
  * limitations under the License.
  */
 
-// pfSense includes 
+// pfSense includes
 require_once('config.inc');
 require_once('pfsense-utils.inc');
 require_once('util.inc');
@@ -83,7 +83,7 @@ function wg_validate_settings_post($pconfig) {
 	if (wg_is_wg_assigned() && (isset($enable) && (empty($enable) || ($enable == 'off')))) {
 		$input_errors[] = gettext('Cannot disable WireGuard when one or more tunnels is assigned to a pfSense interface.');
 	}
-	
+
 	// Check endpoint hostname resolve interval
 	$resolve_interval = $pconfig['resolve_interval'];
 

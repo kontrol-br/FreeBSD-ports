@@ -3,8 +3,8 @@
  * wg_api.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * Copyright (c) 2021 Vajonam
  * All rights reserved.
  *
@@ -43,7 +43,7 @@ function wg_get_status($json = false) {
 
 /*
 * Returns a massive associative array of current wg status
-* 
+*
 * $extras returns additional info not provided by `wg show all dump`
 */
 function wg_get_running_config($extras = false, $json = false) {
@@ -210,13 +210,13 @@ function wg_ifconfig_if_updown($if_name, $up = true, &$cmds = null) {
 	global $wgg;
 
 	$s = fn($x) => $x;
-	
+
 	$state = fn($up) => $up ? 'up' : 'down';
 
 	$ret_code = 0;
 
 	// Is this even a real interface?
-	if (wg_is_valid_tunnel($if_name, true)) { 
+	if (wg_is_valid_tunnel($if_name, true)) {
 		// Are we trying to down-an-up or up-a-down? Anything else is wrong in this context...
 		if ((!wg_interface_status($if_name) && $up) || (wg_interface_status($if_name) && !$up)) {
 			$cmd = "{$wgg['ifconfig']} {$s(escapeshellarg($if_name))} {$s(escapeshellarg($state($up)))} 2>&1";
@@ -247,7 +247,7 @@ function wg_interface_update_addresses($if_name, &$cmds = null) {
 
 			// Get an array of the addresses to be assigned to the interface
 			$desired = array_map(function($x) {
-				return "{$x['address']}/{$x['mask']}"; 
+				return "{$x['address']}/{$x['mask']}";
 			}, $tunnel['addresses']['row']);
 
 			// Determine the addresses to remove
@@ -279,7 +279,7 @@ function wg_interface_update_addresses($if_name, &$cmds = null) {
 	return $res;
 }
 
-/* 
+/*
  * Translates WireGuard interface names to pfSense interface names and descriptions
  */
 function wg_get_pfsense_interface_info($tunnel_name) {
@@ -324,7 +324,7 @@ function wg_peer_set_remove($tunnel_name, $public_key, &$cmds = null) {
 
 /*
 * A wrapper for `wg set <wg_ifname> peer <public_key> <key> <value>`
-* 
+*
 * If $key and $value are null, this will just create a peer entry
 */
 function wg_peer_set_config($tunnel_name, $public_key, $key = null, $value = null, $error_flag = 0, &$cmds = null) {
@@ -390,13 +390,13 @@ function wg_exec($cmd, $error_type = null, $error_flag = 1) {
 	$ret_code = 0;
 
 	$output = $errors = array();
-	
+
 	exec($cmd, $output, $ret_code);
 
 	$ret_code = ($ret_code <> 0) ? $error_flag : $ret_code;
 
 	$errors = wg_get_errors($error_type, $ret_code);
-	
+
 	return array('cmd' => $cmd, 'output' => $output, 'ret_code' => $ret_code, 'errors' => $errors);
 }
 
@@ -490,7 +490,7 @@ function wg_ifconfig_if_group_addremove($if_name, $group, $remove = false, &$cmd
 	    && ((!wg_interface_in_group($if_name, $group) && !$remove) || (wg_interface_in_group($if_name, $group) && $remove))) {
 		$cmd = "{$wgg['ifconfig']} {$s(escapeshellarg($if_name))} {$s(escapeshellarg($action))} {$s(escapeshellarg($group))} 2>&1";
 		$cmds[] = $res = wg_exec($cmd, 'interface', WG_ERROR_IF_GROUP);
-		$ret_code = ($res['ret_code']);	
+		$ret_code = ($res['ret_code']);
 	}
 
 	return ($ret_code == 0);
@@ -614,24 +614,24 @@ function wg_gen_publickey($privkey, $json = false) {
 /*
  * Reference0: https://lists.zx2c4.com/pipermail/wireguard/2021-June/006787.html
  * Reference1: https://git.zx2c4.com/wireguard-freebsd/tree/src/crypto.h#n100
- * 
+ *
  * Even though any 256-bit bitstring generated from a csprng is a fine private key,
  * the kernel clamps private keys according to the transformation implemented here.
  * Some WireGuard key generators aren't properly pre-clamping generated keys and this
- * can cause confusion for some users who might stumble across local .conf files 
+ * can cause confusion for some users who might stumble across local .conf files
  * and wg(8) output and see 'different' private keys, even though these keys result in
  * the same public key.
- * 
+ *
  * The way WireGuard is implemented, you can technically have two valid private keys,
  * one that is pre-clamped and one that is not, that can both result in the same public key.
- * 
+ *
  * These routines detect if the key is clamped or not, so we can at least include a note
  * in the .conf file so users who stumble onto them during troubleshooting won't freak out.
- * 
+ *
  * These routines might also become useful in the future for logging facilities.
- * 
+ *
  * Private keys and pre-shared Keys must undergo this transformaton.
- * 
+ *
  */
 function wg_clamp_key($key) {
         if (!wg_is_valid_key($key)) {
@@ -660,7 +660,7 @@ function wg_is_key_clamped($key) {
 
 /*
  * Reference0: https://lists.zx2c4.com/pipermail/wireguard/2020-December/006222.html
- * 
+ *
  * Checks if a given private, public, or pre-shared key is valid
  */
 function wg_is_valid_key($key) {
@@ -960,7 +960,7 @@ function wg_tunnel_get_peers_config($tunnel_name) {
 
 /*
  * This returns an array of peer keys for a given tunnel
- * 
+ *
  * These are actually *running* and bound to a tunnel
  */
 function wg_tunnel_get_peers_running_keys($tunnel_name) {
@@ -981,12 +981,12 @@ function wg_tunnel_get_peers_running_keys($tunnel_name) {
 
 /*
  * This returns an array of peer keys for a given tunnel
- * 
+ *
  * These are actually *configured* and bound to a tunnel
  */
 function wg_tunnel_get_peers_config_keys($tunnel_name) {
 	// Pull out the public keys
-	$keys = array_map(function($s) { 
+	$keys = array_map(function($s) {
 		[$peer_idx, $peer, $is_new] = $s;
 
 		return $peer['publickey'];
@@ -995,7 +995,7 @@ function wg_tunnel_get_peers_config_keys($tunnel_name) {
 	return $keys;
 }
 
-/* 
+/*
  * Return WireGuard tunnel networks for a given address family
  */
 function wg_get_tunnel_networks($family = 'both') {
@@ -1016,7 +1016,7 @@ function wg_get_tunnel_networks($family = 'both') {
 		foreach ((array) $tunnel['addresses']['row'] as $address) {
 			$masked_address = "{$address['address']}/{$address['mask']}";
 
-			if ((is_ipaddrv6($masked_address) && ($family == 'ipv4')) 
+			if ((is_ipaddrv6($masked_address) && ($family == 'ipv4'))
 			    || (is_ipaddrv4($masked_address) && ($family == 'ipv6'))) {
 				continue;
 			}
@@ -1025,7 +1025,7 @@ function wg_get_tunnel_networks($family = 'both') {
 				$network = gen_subnet($address['address'], $address['mask']);
 
 				$wg_tunnel_networks[] 	= array(
-								'network' => $network, 
+								'network' => $network,
 								'mask' => $address['mask'],
 								'tun' => $tunnel['name'],
 								'descr' => $tunnel['descr']);

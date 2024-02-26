@@ -3,8 +3,8 @@
  * wg.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * Copyright (c) 2020 Ascrod
  * All rights reserved.
  *
@@ -60,7 +60,7 @@ function wg_toggle_tunnel($tunnel_name) {
 			$wgg['tunnels'][$tun_idx] = $tunnel;
 
 			$action_txt = $is_enabled ? 'Disabled' : 'Enabled';
-			
+
 			// Sync with configuration backend
 			wg_write_config("{$action_text} tunnel {$tunnel['name']}.", true);
 
@@ -189,7 +189,7 @@ function wg_delete_tunnel($tunnel_name) {
 
 			// Sync with configuration backend
 			wg_write_config("Deleted tunnel {$tunnel['name']}.", true);
-			
+
 			// Mark any peers as unassigned
 			wg_tunnel_unassign_peers($tunnel['name']);
 
@@ -226,7 +226,7 @@ function wg_tunnel_unassign_peers($tunnel_name) {
 
 	// Assume there is no peers to unassign...
 	$changes = false;
-	
+
 	foreach (wg_tunnel_get_peers_config($tunnel_name) as [$peer_idx, $peer, $is_new]) {
 		$wgg['peers'][$peer_idx]['tun'] = 'unassigned';
 
@@ -241,7 +241,7 @@ function wg_tunnel_unassign_peers($tunnel_name) {
 }
 
 /*
- * This transforms a raw peer post consisting of repeatables 
+ * This transforms a raw peer post consisting of repeatables
  */
 function wg_peer_allowedips($post) {
 	// Convert the post into proper arrays
@@ -259,8 +259,8 @@ function wg_peer_allowedips($post) {
 			$row['address'] = gen_subnet($row['address'], $row['address_subnet']);
 
 			$ret_array[] 	= array(
-						'address'	=> $row['address'], 
-						'mask'		=> $row['address_subnet'], 
+						'address'	=> $row['address'],
+						'mask'		=> $row['address_subnet'],
 						'descr'		=> $row['address_descr']);
 		}
 	}
@@ -270,7 +270,7 @@ function wg_peer_allowedips($post) {
 }
 
 /*
- * This transforms a raw tunnel post consisting of repeatables 
+ * This transforms a raw tunnel post consisting of repeatables
  */
 function wg_tunnel_addresses($post) {
 	// Convert the post into proper arrays
@@ -285,8 +285,8 @@ function wg_tunnel_addresses($post) {
 
 		if (!empty($row['address'])) {
 			$ret_array[] 	= array(
-						'address' 	=> $row['address'], 
-						'mask' 		=> $row['address_subnet'], 
+						'address' 	=> $row['address'],
+						'mask' 		=> $row['address_subnet'],
 						'descr' 	=> $row['address_descr']);
 		}
 	}
@@ -364,7 +364,7 @@ function wg_resolve_endpoints() {
 /*
  * Determines if endpoint hostnames should be re-resolved
  * based on the last time the hostnames were re-resolved
- * 
+ *
  * An interval of 0 will effectively disable re-resolving
  */
 function wg_should_reresolve_endpoints($last_update_time) {
@@ -393,13 +393,13 @@ function wg_get_endpoint_resolve_interval() {
 	global $config, $wgg;
 
 	// Are we tracking the system value?
-	if (isset($wgg['config']['resolve_interval_track']) 
+	if (isset($wgg['config']['resolve_interval_track'])
 	    && ($wgg['config']['resolve_interval_track'] == 'yes')) {
-		if (isset($config['system']['aliasesresolveinterval']) 
+		if (isset($config['system']['aliasesresolveinterval'])
 		    && is_numeric($config['system']['aliasesresolveinterval'])) {
 			return $config['system']['aliasesresolveinterval'];
 		}
-			
+
 		// Package default is the same as pfSense default (300 seconds)
 		return $wgg['default_resolve_interval'];
 	} elseif (isset($wgg['config']['resolve_interval'])
@@ -499,7 +499,7 @@ function wg_do_peer_post($post) {
 
 		/*
 		 * Figure out what tunnel to sync to make these changes (if any).
-		 * 
+		 *
 		 * If the peer is re-unassigned, then $old_pconfig['tun'] needs to be resynced.
 		 */
 		foreach (array($pconfig['tun'], $old_pconfig['tun']) as $tun) {
@@ -664,17 +664,17 @@ function wg_tunnel_sync($tunnel_names, $restart_services = false, $resolve_endpo
 			// Collect the return from each individual tunnel
 			$tunnels[] = array(
 					'name' 		=> $tun_sync_status['config']['name'],
-					'ret_code' 	=> $tun_sync_status['ret_code'], 
+					'ret_code' 	=> $tun_sync_status['ret_code'],
 					'errors' 	=> $tun_sync_status['errors'],
 					'config' 	=> $tun_sync_status['config']);
 
 			// We need to destroy any rogue peers too...
 			wg_destroy_rogue_peers($tunnel_name);
 		}
-		
+
 		// Reconfigure system routing
 		system_routing_configure();
-		
+
 		// Reconfigure pf packet filter
 		filter_configure();
 
@@ -730,8 +730,8 @@ function wg_tunnel_sync_by_name($tunnel_name, $json = false) {
 
 	// Build the return array
 	$res = array(
-		'ret_code'	=> $parsed_cmds['ret_code'], 
-		'errors'	=> $parsed_cmds['errors'], 
+		'ret_code'	=> $parsed_cmds['ret_code'],
+		'errors'	=> $parsed_cmds['errors'],
 		'cmds'		=> $parsed_cmds['cmds'],
 		'config'	=> $tunnel);
 
@@ -743,7 +743,7 @@ function wg_tunnel_sync_by_name($tunnel_name, $json = false) {
  */
 function wg_parse_cmds_array($cmds) {
 	$ret_code = 0;
-	
+
 	$errors = array();
 
 	if (isset($cmds) && is_array($cmds)) {
@@ -847,7 +847,7 @@ function wg_create_config_files($clean = true) {
 	}
 }
 
-/* 
+/*
  * Remove all wg .conf files from any potential configuration directory
  */
 function wg_delete_config_files() {
@@ -859,7 +859,7 @@ function wg_delete_config_files() {
 	}
 }
 
-/* 
+/*
  * Removes any configuration xml paths as defined by $wgg['xml_conf_tags']
  */
 function wg_remove_config_settings() {

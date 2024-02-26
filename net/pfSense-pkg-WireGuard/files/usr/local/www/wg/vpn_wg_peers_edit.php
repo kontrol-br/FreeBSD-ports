@@ -3,8 +3,8 @@
  * vpn_wg_peers_edit.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ if ($_POST) {
 			$res = wg_do_peer_post($_POST);
 			$input_errors = $res['input_errors'];
 			$pconfig = $res['pconfig'];
-	
+
 			if (empty($input_errors)) {
 				if (wg_is_service_running() && $res['changes']) {
 					// Everything looks good so far, so mark the subsystem dirty
@@ -70,7 +70,7 @@ if ($_POST) {
 				// Save was successful
 				header('Location: /wg/vpn_wg_peers.php');
 			}
-			
+
 			break;
 
 		case 'genpsk':
@@ -93,7 +93,7 @@ if (isset($peer_idx) && is_array($wgg['peers'][$peer_idx])) {
 	// Default to enabled
 	$pconfig['enabled'] = 'yes';
 
-	// Automatically choose a tunnel based on the request 
+	// Automatically choose a tunnel based on the request
 	$pconfig['tun'] = $tun_name;
 
 	// Default to a dynamic tunnel, so hide the endpoint form group
@@ -244,7 +244,7 @@ if (!is_array($pconfig['allowedips'])
     || !is_array($pconfig['allowedips']['row'])
     || empty($pconfig['allowedips']['row'])) {
 		wg_init_config_arr($pconfig, array('allowedips', 'row', 0));
-	
+
 		// Hack to ensure empty lists default to /128 mask
 		$pconfig['allowedips']['row'][0]['mask'] = '128';
 }

@@ -3,8 +3,8 @@
  * wg_install.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,15 +151,15 @@ function wg_defaults_install() {
 	$wgg['config']['keep_conf']			= isset($wgg['config']['keep_conf']) ? $wgg['config']['keep_conf'] : 'yes';
 
 	$wgg['config']['resolve_interval']		= isset($wgg['config']['resolve_interval']) ? $wgg['config']['resolve_interval'] : $wgg['default_resolve_interval'];
-	
+
 	$wgg['config']['resolve_interval_track']	= isset($wgg['config']['resolve_interval_track']) ? $wgg['config']['resolve_interval_track'] : 'no';
-	
+
 	$wgg['config']['interface_group']		= isset($wgg['config']['interface_group']) ? $wgg['config']['interface_group'] : 'all';
-	
+
 	$wgg['config']['hide_secrets'] 			= isset($wgg['config']['hide_secrets']) ? $wgg['config']['hide_secrets'] : 'yes';
 
 	$wgg['config']['hide_peers'] 			= isset($wgg['config']['hide_peers']) ? $wgg['config']['hide_peers'] : 'yes';
-	
+
 	wg_write_config('Applied package default settings as necessary.', false);
 }
 
@@ -277,7 +277,7 @@ function wg_earlyshellcmd_deinstall() {
 	wg_globals();
 
 	init_config_arr(array('system', 'earlyshellcmd'));
-	
+
 	init_config_arr(array('installedpackages', 'shellcmdsettings', 'config'));
 
 	$a_earlyshellcmd = &$config['system']['earlyshellcmd'];

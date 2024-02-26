@@ -3,8 +3,8 @@
  * wireguard.widget.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * Copyright (c) 2021 Vajonam
  * Copyright (c) 2020 Ascrod
  * All rights reserved.
@@ -61,10 +61,10 @@ if (isset($_POST['save'])) {
 
 	// Process settings post
 	wg_do_widget_settings_post($_POST, $user_settings);
-	
+
 	// Redirect back to home...
 	header('Location: /');
-	
+
 	// We are done here...
 	exit();
 

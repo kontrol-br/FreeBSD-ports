@@ -3,8 +3,8 @@
  * vpn_wg_tunnels_edit.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +73,7 @@ if ($_POST) {
 				$res = wg_do_tunnel_post($_POST);
 				$input_errors = $res['input_errors'];
 				$pconfig = $res['pconfig'];
-		
+
 				if (empty($input_errors)) {
 					if (wg_is_service_running() && $res['changes']) {
 						// Everything looks good so far, so mark the subsystem dirty
@@ -82,7 +82,7 @@ if ($_POST) {
 						// Add tunnel to the list to apply
 						wg_apply_list_add('tunnels', $res['tuns_to_sync']);
 					}
-		
+
 					// Save was successful
 					header('Location: /wg/vpn_wg_tunnels.php');
 				}
@@ -202,7 +202,7 @@ $tun_enable = new Form_Checkbox(
 	$pconfig['enabled'] == 'yes'
 );
 
-$tun_enable->setHelp('<span class="text-danger">Note: </span>Tunnel must be <b>enabled</b> in order to be assigned to a pfSense interface.');	
+$tun_enable->setHelp('<span class="text-danger">Note: </span>Tunnel must be <b>enabled</b> in order to be assigned to a pfSense interface.');
 
 // Disable the tunnel enabled button if interface is assigned in pfSense
 if (is_wg_tunnel_assigned($pconfig['name'])) {
@@ -315,7 +315,7 @@ if (!is_wg_tunnel_assigned($pconfig['name'])) {
 		  ->setHelp($counter == $last ? 'IPv4 or IPv6 address assigned to the tunnel interface.' : '')
 		  ->addMask("address_subnet{$counter}", $item['mask'])
 		  ->setWidth(4);
-		
+
 		$group->add(new Form_Input(
 			"address_descr{$counter}",
 			'Description',
@@ -330,7 +330,7 @@ if (!is_wg_tunnel_assigned($pconfig['name'])) {
 			null,
 			'fa-solid fa-trash-can'
 		))->addClass('btn-warning btn-sm');
-	
+
 		$section->add($group);
 	}
 

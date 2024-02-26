@@ -3,8 +3,8 @@
  * vpn_wg_settings.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2021-2023 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2021 R. Christian McDonald (https://github.com/theonemcdonald)
+ * Copyright (c) 2021-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2021 R. Christian McDonald (https://github.com/rcmcdonald91)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -209,7 +209,7 @@ $section->addInput(new Form_Checkbox(
 	$pconfig['hide_peers'] == 'yes'
 ))->setHelp("<span class=\"text-danger\">{$s(gettext('Note:'))} </span>
 		{$s(gettext("With 'Hide Peers' enabled (default), all peers for all tunnels will initially be hidden on the status page."))}");
-		
+
 $form->add($section);
 
 $form->addGlobal(new Form_Input(
