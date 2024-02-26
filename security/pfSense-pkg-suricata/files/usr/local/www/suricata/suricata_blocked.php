@@ -7,7 +7,7 @@
  * Copyright (c) 2003-2004 Manuel Kasper
  * Copyright (c) 2005 Bill Marquette
  * Copyright (c) 2009 Robert Zelaya Sr. Developer
- * Copyright (c) 2023 Bill Meeks
+ * Copyright (c) 2024 Bill Meeks
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -298,7 +298,7 @@ print($form);
 			$tmpblocked = array_flip($blocked_ips_array);
 			$src_ip_list = array();
 
-			foreach (glob("{$suricatalogdir}*/block.log*") as $alertfile) {
+			foreach (glob("{$suricatalogdir}*/block.log") as $alertfile) {
 				$fd = fopen($alertfile, "r");
 				if ($fd) {
 
@@ -327,7 +327,12 @@ print($form);
 
 						// Create a DateTime object from the event timestamp that
 						// we can use to easily manipulate output formats.
-						$event_tm = date_create_from_format("m/d/Y-H:i:s.u", $fields['time']);
+						try {
+							$event_tm = date_create_from_format("m/d/Y-H:i:s.u", $fields['time']);
+						} catch (Exception $e) {
+							syslog(LOG_WARNING, "[suricata] WARNING: found invalid timestamp entry in current blocks.log, the line will be ignored and skipped.");
+							continue;
+						}
 
 						// Field 1 is the action
 						if (strpos($buf, '[') !== FALSE && strpos($buf, ']') !== FALSE)

@@ -7,7 +7,7 @@
  * Copyright (c) 2003-2004 Manuel Kasper
  * Copyright (c) 2005 Bill Marquette
  * Copyright (c) 2009 Robert Zelaya Sr. Developer
- * Copyright (c) 2023 Bill Meeks
+ * Copyright (c) 2024 Bill Meeks
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -156,6 +156,8 @@ if (empty($pconfig['ips_netmap_threads']))
 	$pconfig['ips_netmap_threads'] = 'auto';
 if (empty($pconfig['block_drops_only']))
 	$pconfig['block_drops_only'] = "off";
+if (empty($pconfig['passlist_debug_log']))
+	$pconfig['passlist_debug_log'] = "off";
 if (empty($pconfig['runmode']))
 	$pconfig['runmode'] = "autofp";
 if (empty($pconfig['autofp_scheduler']))
@@ -166,6 +168,8 @@ if (empty($pconfig['detect_eng_profile']))
 	$pconfig['detect_eng_profile'] = "medium";
 if (empty($pconfig['mpm_algo']))
 	$pconfig['mpm_algo'] = "auto";
+if (empty($pconfig['spm_algo']))
+	$pconfig['spm_algo'] = "auto";
 if (empty($pconfig['sgh_mpm_context']))
 	$pconfig['sgh_mpm_context'] = "auto";
 if (empty($pconfig['enable_stats_collection']))
@@ -495,12 +499,14 @@ if (isset($_POST["save"]) && !$input_errors) {
 		if ($_POST['intf_snaplen'] > '0') $natent['intf_snaplen'] = $_POST['intf_snaplen']; else $natent['inspect_recursion_limit'] = "1518";
 		if ($_POST['detect_eng_profile']) $natent['detect_eng_profile'] = $_POST['detect_eng_profile']; else unset($natent['detect_eng_profile']);
 		if ($_POST['mpm_algo']) $natent['mpm_algo'] = $_POST['mpm_algo']; else unset($natent['mpm_algo']);
+		if ($_POST['spm_algo']) $natent['spm_algo'] = $_POST['spm_algo']; else unset($natent['spm_algo']);
 		if ($_POST['sgh_mpm_context']) $natent['sgh_mpm_context'] = $_POST['sgh_mpm_context']; else unset($natent['sgh_mpm_context']);
 		if ($_POST['blockoffenders'] == "on") $natent['blockoffenders'] = 'on'; else $natent['blockoffenders'] = 'off';
 		if ($_POST['ips_mode']) $natent['ips_mode'] = $_POST['ips_mode']; else unset($natent['ips_mode']);
 		if ($_POST['ips_netmap_threads']) $natent['ips_netmap_threads'] = $_POST['ips_netmap_threads']; else $natent['ips_netmap_threads'] = "auto";
 		if ($_POST['blockoffenderskill'] == "on") $natent['blockoffenderskill'] = 'on'; else $natent['blockoffenderskill'] = 'off';
 		if ($_POST['block_drops_only'] == "on") $natent['block_drops_only'] = 'on'; else $natent['block_drops_only'] = 'off';
+		if ($_POST['passlist_debug_log'] == "on") $natent['passlist_debug_log'] = 'on'; else $natent['passlist_debug_log'] = 'off';
 		if ($_POST['blockoffendersip']) $natent['blockoffendersip'] = $_POST['blockoffendersip']; else unset($natent['blockoffendersip']);
 		if ($_POST['passlistname']) $natent['passlistname'] =  $_POST['passlistname']; else unset($natent['passlistname']);
 		if ($_POST['homelistname']) $natent['homelistname'] =  $_POST['homelistname']; else unset($natent['homelistname']);
@@ -677,6 +683,8 @@ if (isset($_POST["save"]) && !$input_errors) {
 			$natent['delayed_detect'] = 'off';
 			$natent['intf_promisc_mode'] = 'on';
 			$natent['intf_snaplen'] = '1518';
+			$natent['mpm_algo'] = "auto";
+			$natent['spm_algo'] = "auto";
 
 			$natent['app_layer_error_policy'] = "ignore";
 			$natent['asn1_max_frames'] = '256';
@@ -819,8 +827,8 @@ if ($savemsg2) {
 }
 
 // If using Inline IPS, check that CSO, TSO and LRO are all disabled
-if ($pconfig['enable'] == 'on' && $pconfig['ips_mode'] == 'ips_mode_inline' && (!config_path_enabled('system','disablechecksumoffloading') || !config_path_enabled('system', 'disablesegmentationoffloading') || !config_path_enabled('system', 'disablelargereceiveoffloading'))) {
-	print_info_box(gettext('WARNING! IPS inline mode requires that Hardware Checksum Offloading, Hardware TCP Segmentation Offloading and Hardware Large Receive Offloading ' .
+if ($pconfig['enable'] == 'on' && (!config_path_enabled('system','disablechecksumoffloading') || !config_path_enabled('system', 'disablesegmentationoffloading') || !config_path_enabled('system', 'disablelargereceiveoffloading'))) {
+	print_info_box(gettext('WARNING! Suricata now requires that Hardware Checksum Offloading, Hardware TCP Segmentation Offloading and Hardware Large Receive Offloading ' .
 				'all be disabled for proper operation. This firewall currently has one or more of these Offloading settings NOT disabled. Visit the ') . '<a href="/system_advanced_network.php">' . 
 			        gettext('System > Advanced > Networking') . '</a>' . gettext(' tab and ensure all three of these Offloading settings are disabled.'));
 }
@@ -1773,6 +1781,15 @@ $group->setHelp('The default Pass List adds Gateways, DNS servers, locally-attac
 		'This option will only be used when block offenders is on.  Choosing "none" will disable Pass List generation.');
 $section->add($group);
 
+$section->addInput(new Form_Checkbox(
+	'passlist_debug_log',
+	'Enable Passlist Debugging Log',
+	'Checking this option will enable detailed Passlist operations logging to file ' .
+	$suricatalogdir . 'suricata_' . $if_real . $suricata_uuid . '/passlist_debug.log.  Default is Not Checked.',
+	$pconfig['passlist_debug_log'] == 'on' ? true:false,
+	'on'
+));
+
 $form->add($section);
 
 // Add Inline IPS rule edit warning modal pop-up
@@ -1833,10 +1850,17 @@ $section->addInput(new Form_Select(
 
 $section->addInput(new Form_Select(
 	'mpm_algo',
-	'Pattern Matcher Algorithm',
+	'Multi-Pattern Matcher Algorithm',
 	$pconfig['mpm_algo'],
 	array('auto' => 'Auto', 'ac' => 'AC', 'ac-bs' => 'AC-BS', 'ac-ks' => 'AC-KS', 'hs' => 'Hyperscan')
-))->setHelp('Choose a multi-pattern matcher (MPM) algorithm. Auto is the default, and is the best choice for almost all systems.  Auto will use hyperscan if available.');
+))->setHelp('Choose a multi-pattern matcher (MPM) algorithm. Auto is the default, and is the best choice for almost all systems. Auto will use hyperscan if available.');
+
+$section->addInput(new Form_Select(
+	'spm_algo',
+	' Single-Pattern Matcher Algorithm',
+	$pconfig['spm_algo'],
+	array('auto' => 'Auto', 'bm' => 'BM', 'hs' => 'Hyperscan')
+))->setHelp('Choose a single-pattern matcher (SPM) algorithm. Auto is the default, and is the best choice for almost all systems. Auto will use hyperscan if available.');
 
 $section->addInput(new Form_Select(
 	'sgh_mpm_context',
@@ -2037,6 +2061,7 @@ events.push(function(){
 		var hide = ! $('#blockoffenders').prop('checked');
 		hideCheckbox('blockoffenderskill', hide);
 		hideCheckbox('block_drops_only', hide);
+		hideCheckbox('passlist_debug_log', hide);
 		hideSelect('blockoffendersip', hide);
 		hideSelect('ips_mode', hide);
 		hideClass('passlist', hide);
@@ -2044,6 +2069,7 @@ events.push(function(){
 			hideInput('ips_netmap_threads', hide);
 			hideCheckbox('blockoffenderskill', true);
 			hideCheckbox('block_drops_only', true);
+			hideCheckbox('passlist_debug_log', true);
 			hideSelect('blockoffendersip', true);
 			hideClass('passlist', true);
 			hideInput('intf_snaplen', true);
@@ -2266,6 +2292,7 @@ events.push(function(){
 		disableInput('ips_mode', disable);
 		disableInput('blockoffenderskill', disable);
 		disableInput('block_drops_only', disable);
+		disableInput('passlist_debug_log', disable);
 		disableInput('blockoffendersip', disable);
 		disableInput('ips_netmap_threads', disable);
 		disableInput('performance', disable);
@@ -2275,6 +2302,7 @@ events.push(function(){
 		disableInput('detect_eng_profile', disable);
 		disableInput('inspect_recursion_limit', disable);
 		disableInput('mpm_algo', disable);
+		disableInput('spm_algo', disable);
 		disableInput('sgh_mpm_context', disable);
 		disableInput('delayed_detect', disable);
 		disableInput('intf_promisc_mode', disable);
@@ -2560,6 +2588,7 @@ events.push(function(){
 		if ($('#ips_mode').val() == 'ips_mode_inline') {
 			hideCheckbox('blockoffenderskill', true);
 			hideCheckbox('block_drops_only', true);
+			hideCheckbox('passlist_debug_log', true);
 			hideSelect('blockoffendersip', true);
 			hideClass('passlist', true);
 			hideInput('intf_snaplen', true);
@@ -2570,6 +2599,7 @@ events.push(function(){
 		else {
 			hideCheckbox('blockoffenderskill', false);
 			hideCheckbox('block_drops_only', false);
+			hideCheckbox('passlist_debug_log', false);
 			hideSelect('blockoffendersip', false);
 			hideInput('intf_snaplen', false);
 			hideClass('passlist', false);
