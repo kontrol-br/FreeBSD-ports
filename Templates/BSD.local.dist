@@ -669,8 +669,20 @@
             ..
             cat8
             ..
+            cat9
+            ..
             es              uname=root
 /set uname=root
+                man7
+                ..
+                man8
+                ..
+            ..
+            fr
+                man7
+                ..
+            ..
+            it
                 man7
                 ..
                 man8
@@ -679,6 +691,8 @@
             ja              uname=root
 /set uname=root
                 man1
+                ..
+                man7
                 ..
             ..
             man1

@@ -1,3 +1,300 @@
+  <vuln vid="fd3401a1-b6df-4577-917a-2c22fee99d34">
+    <topic>chromium -- multiple security fixes</topic>
+    <affects>
+      <package>
+       <name>chromium</name>
+       <range><lt>122.0.6261.111</lt></range>
+      </package>
+      <package>
+       <name>ungoogled-chromium</name>
+       <range><lt>122.0.6261.111</lt></range>
+      </package>
+    </affects>
+    <description>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+       <p>Chrome Releases reports:</p>
+       <blockquote cite="https://chromereleases.googleblog.com/2024/03/stable-channel-update-for-desktop.html">
+	 <p>This update includes 3 security fixes:</p>
+	 <ul>
+	    <li>[325893559] High CVE-2024-2173: Out of bounds memory access in V8. Reported by 5fceb6172bbf7e2c5a948183b53565b9 on 2024-02-19</li>
+	    <li>[325866363] High CVE-2024-2174: Inappropriate implementation in V8. Reported by 5f46f4ee2e17957ba7b39897fb376be8 on 2024-02-19</li>
+	    <li>[325936438] High CVE-2024-2176: Use after free in FedCM. Reported by Anonymous on 2024-02-20</li>
+	 </ul>
+       </blockquote>
+      </body>
+    </description>
+    <references>
+      <cvename>CVE-2024-2173</cvename>
+      <cvename>CVE-2024-2174</cvename>
+      <cvename>CVE-2024-2176</cvename>
+      <url>https://chromereleases.googleblog.com/2024/03/stable-channel-update-for-desktop.html</url>
+    </references>
+    <dates>
+      <discovery>2024-03-05</discovery>
+      <entry>2024-03-06</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="0ef3398e-da21-11ee-b23a-080027a5b8e9">
+    <topic>Django -- multiple vulnerabilities</topic>
+    <affects>
+      <package>
+	<name>py39-django32</name>
+	<name>py310-django32</name>
+	<name>py311-django32</name>
+	<range><lt>3.2.25</lt></range>
+      </package>
+      <package>
+	<name>py39-django42</name>
+	<name>py310-django42</name>
+	<name>py311-django42</name>
+	<range><lt>4.2.11</lt></range>
+      </package>
+      <package>
+	<name>py310-django50</name>
+	<name>py311-django50</name>
+	<range><lt>5.0.3</lt></range>
+      </package>
+    </affects>
+    <description>
+	<body xmlns="http://www.w3.org/1999/xhtml">
+	<p>Django reports:</p>
+	<blockquote cite="https://www.djangoproject.com/weblog/2024/mar/04/security-releases/">
+	  <p>CVE-2024-27351: Potential regular expression denial-of-service in
+	    django.utils.text.Truncator.words().</p>
+	</blockquote>
+	</body>
+    </description>
+    <references>
+      <cvename>CVE-2024-27351</cvename>
+      <url>https://www.djangoproject.com/weblog/2024/mar/04/security-releases/</url>
+    </references>
+    <dates>
+      <discovery>2024-02-25</discovery>
+      <entry>2024-03-04</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="77a6f1c9-d7d2-11ee-bb12-001b217b3468">
+    <topic>NodeJS -- Vulnerabilities</topic>
+    <affects>
+      <package>
+	<name>node</name>
+	<range><ge>21.0.0</ge><lt>21.6.2</lt></range>
+	<range><ge>20.0.0</ge><lt>20.11.1</lt></range>
+	<range><ge>18.0.0</ge><lt>18.19.1</lt></range>
+	<range><ge>16.0.0</ge><lt>16.20.3</lt></range>
+      </package>
+      <package>
+	<name>node16</name>
+	<range><ge>16.0.0</ge><lt>16.20.3</lt></range>
+      </package>
+      <package>
+	<name>node18</name>
+	<range><ge>18.0.0</ge><lt>18.19.1</lt></range>
+      </package>
+      <package>
+	<name>node20</name>
+	<range><ge>20.0.0</ge><lt>20.11.1</lt></range>
+      </package>
+      <package>
+	<name>node21</name>
+	<range><ge>21.0.0</ge><lt>21.6.2</lt></range>
+      </package>
+    </affects>
+    <description>
+	<body xmlns="http://www.w3.org/1999/xhtml">
+	<p>Node.js reports:</p>
+	<blockquote cite="https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V20.md#2024-02-14-version-20111-iron-lts-rafaelgss-prepared-by-marco-ippolito">
+	  <p>Code injection and privilege escalation through Linux capabilities- (High)</p>
+	  <p>http: Reading unprocessed HTTP request with unbounded chunk extension allows DoS attacks- (High)</p>
+	  <p>Path traversal by monkey-patching Buffer internals- (High)</p>
+	  <p>setuid() does not drop all privileges due to io_uring - (High)</p>
+	  <p>Node.js is vulnerable to the Marvin Attack (timing variant of the Bleichenbacher attack against PKCS#1 v1.5 padding) - (Medium)</p>
+	  <p>Multiple permission model bypasses due to improper path traversal sequence sanitization - (Medium)</p>
+	  <p>Improper handling of wildcards in --allow-fs-read and --allow-fs-write (Medium)</p>
+	  <p>Denial of Service by resource exhaustion in fetch() brotli decoding - (Medium)</p>
+	</blockquote>
+	</body>
+    </description>
+    <references>
+      <cvename>CVE-2024-21892</cvename>
+      <cvename>CVE-2024-22019</cvename>
+      <cvename>CVE-2024-21896</cvename>
+      <cvename>CVE-2024-22017</cvename>
+      <cvename>CVE-2023-46809</cvename>
+      <cvename>CVE-2024-21891</cvename>
+      <cvename>CVE-2024-21890</cvename>
+      <cvename>CVE-2024-22025</cvename>
+      <url>https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V20.md#2024-02-14-version-20111-iron-lts-rafaelgss-prepared-by-marco-ippolito</url>
+    </references>
+    <dates>
+      <discovery>2024-02-14</discovery>
+      <entry>2024-03-01</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="46a9eb0f-d7d2-11ee-bb12-001b217b3468">
+    <topic>null -- null</topic>
+    <affects>
+      <package>
+	<name>null</name>
+	<range><lt>null</lt></range>
+      </package>
+    </affects>
+    <description>
+	<body xmlns="http://www.w3.org/1999/xhtml">
+	<p>support@hackerone.com reports:</p>
+	<blockquote cite="https://hackerone.com/reports/2237545">
+	  <p>On Linux, Node.js ignores certain environment variables if those
+	may have been set by an unprivileged user while the process is
+	running with elevated privileges with the only exception of
+	CAP_NET_BIND_SERVICE.  Due to a bug in the implementation of this
+	exception, Node.js incorrectly applies this exception even when
+	certain other capabilities have been set.  This allows unprivileged
+	users to inject code that inherits the process&apos;s elevated
+	privileges.</p>
+	</blockquote>
+	</body>
+    </description>
+    <references>
+      <cvename>CVE-2024-21892</cvename>
+      <url>https://nvd.nist.gov/vuln/detail/CVE-2024-21892</url>
+    </references>
+    <dates>
+      <discovery>2024-02-20</discovery>
+      <entry>2024-03-01</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="3567456a-6b17-41f7-ba7f-5cd3efb2b7c9">
+    <topic>electron{27,28} -- Use after free in Mojo</topic>
+    <affects>
+      <package>
+	<name>electron27</name>
+	<range><lt>27.3.4</lt></range>
+      </package>
+      <package>
+	<name>electron28</name>
+	<range><lt>28.2.5</lt></range>
+      </package>
+    </affects>
+    <description>
+	<body xmlns="http://www.w3.org/1999/xhtml">
+	<p>Electron developers report:</p>
+	<blockquote cite="https://github.com/electron/electron/releases/tag/v27.3.4">
+	  <p>This update fixes the following vulnerability:</p>
+	  <ul>
+	    <li>Security: backported fix for CVE-2024-1670.</li>
+	  </ul>
+	</blockquote>
+	</body>
+    </description>
+    <references>
+      <cvename>CVE-2024-1670</cvename>
+      <url>https://github.com/advisories/GHSA-wjv4-j3hc-gxvv</url>
+    </references>
+    <dates>
+      <discovery>2024-02-28</discovery>
+      <entry>2024-02-29</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="31bb1b8d-d6dc-11ee-86bb-a8a1599412c6">
+    <topic>chromium -- multiple security fixes</topic>
+    <affects>
+      <package>
+       <name>chromium</name>
+       <range><lt>122.0.6261.94</lt></range>
+      </package>
+      <package>
+       <name>ungoogled-chromium</name>
+       <range><lt>122.0.6261.94</lt></range>
+      </package>
+    </affects>
+    <description>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+       <p>Chrome Releases reports:</p>
+       <blockquote cite="https://chromereleases.googleblog.com/2024/02/stable-channel-update-for-desktop_27.html">
+	 <p>This update includes 4 security fixes:</p>
+	 <ul>
+	    <li>[324596281] High CVE-2024-1938: Type Confusion in V8. Reported by 5f46f4ee2e17957ba7b39897fb376be8 on 2024-02-11</li>
+	    <li>[323694592] High CVE-2024-1939: Type Confusion in V8. Reported by Bohan Liu (@P4nda20371774) of Tencent Security Xuanwu Lab on 2024-02-05</li>
+	 </ul>
+       </blockquote>
+      </body>
+    </description>
+    <references>
+      <cvename>CVE-2024-1938</cvename>
+      <cvename>CVE-2024-1939</cvename>
+      <url>https://chromereleases.googleblog.com/2024/02/stable-channel-update-for-desktop_27.html</url>
+    </references>
+    <dates>
+      <discovery>2024-02-27</discovery>
+      <entry>2024-02-29</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="3dada2d5-4e17-4e39-97dd-14fdbd4356fb">
+    <topic>null -- Routinator terminates when RTR connection is reset too quickly after opening</topic>
+    <affects>
+      <package>
+       <name>null</name>
+       <range><lt>null</lt></range>
+      </package>
+    </affects>
+    <description>
+       <body xmlns="http://www.w3.org/1999/xhtml">
+       <p>sep@nlnetlabs.nl reports:</p>
+       <blockquote cite="https://www.nlnetlabs.nl/downloads/routinator/CVE-2024-1622.txt">
+       <p>Due to a mistake in error checking, Routinator will terminate when
+       an incoming RTR connection is reset by the peer too quickly after
+       opening.</p>
+       </blockquote>
+       </body>
+    </description>
+    <references>
+      <cvename>CVE-2024-1622</cvename>
+      <url>https://nvd.nist.gov/vuln/detail/CVE-2024-1622</url>
+    </references>
+    <dates>
+      <discovery>2024-02-26</discovery>
+      <entry>2024-02-28</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="02e33cd1-c655-11ee-8613-08002784c58d">
+    <topic>curl -- OCSP verification bypass with TLS session reuse</topic>
+    <affects>
+      <package>
+	<name>curl</name>
+	<range><lt>8.6.0</lt></range>
+      </package>
+    </affects>
+    <description>
+	<body xmlns="http://www.w3.org/1999/xhtml">
+	<p>Hiroki Kurosawa reports:</p>
+	<blockquote cite="https://curl.se/docs/CVE-2024-0853.html">
+	  <p>
+	    curl inadvertently kept the SSL session ID for connections
+	    in its cache even when the verify status (OCSP stapling)
+	    test failed. A subsequent transfer to the same hostname
+	    could then succeed if the session ID cache was still
+	    fresh, which then skipped the verify status check.
+	  </p>
+	</blockquote>
+	</body>
+    </description>
+    <references>
+      <cvename>CVE-2024-0853</cvename>
+      <url>https://curl.se/docs/CVE-2024-0853.html</url>
+    </references>
+    <dates>
+      <discovery>2024-01-31</discovery>
+      <entry>2024-02-28</entry>
+    </dates>
+  </vuln>
+
   <vuln vid="5ecfb588-d2f4-11ee-ad82-dbdfaa8acfc2">
     <topic>gitea -- Fix XSS vulnerabilities</topic>
     <affects>

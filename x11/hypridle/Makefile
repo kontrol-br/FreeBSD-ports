@@ -1,11 +1,7 @@
 PORTNAME=	hypridle
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.1.0
+DISTVERSION=	0.1.1
 CATEGORIES=	x11 wayland
-
-PATCH_SITES=	https://github.com/${GH_ACCOUNT}/${GH_PROJECT}/commit/
-PATCHFILES+=	56f334cbe867.patch:-p1 # https://github.com/hyprwm/hypridle/issues/7
-PATCHFILES+=	ea8588fefbe5.patch:-p1 # https://github.com/hyprwm/hypridle/pull/19
 
 MAINTAINER=	jbeich@FreeBSD.org
 COMMENT=	Hyprland's idle daemon #'
@@ -24,6 +20,12 @@ USE_GITHUB=	yes
 GH_ACCOUNT=	hyprwm
 LDFLAGS+=	-Wl,--as-needed # sdbus-cpp deps
 PLIST_FILES=	bin/${PORTNAME}
+
+# XXX Drop after FreeBSD 14.0 EOL around 2025-03-01
+.if exists(/usr/include/c++/v1/__format/format_functions.h) && \
+   !exists(/usr/include/c++/v1/__format/write_escaped.h)
+CXXFLAGS+=	-fexperimental-library
+.endif
 
 post-patch:
 # https://github.com/ConsoleKit2/ConsoleKit2/issues/150
