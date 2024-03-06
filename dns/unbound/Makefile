@@ -1,6 +1,5 @@
 PORTNAME=	unbound
-DISTVERSION=	1.18.0
-PORTREVISION=	1
+DISTVERSION=	1.19.1
 CATEGORIES=	dns
 MASTER_SITES=	https://www.nlnetlabs.nl/downloads/unbound/
 
@@ -19,6 +18,7 @@ USE_LDCONFIG=	yes
 USE_RC_SUBR=	unbound
 
 GNU_CONFIGURE=	yes
+GNU_CONFIGURE_MANPREFIX=${PREFIX}/share
 CONFIGURE_ARGS=	--with-libexpat=${LOCALBASE} \
 		--with-ssl=${OPENSSLBASE}
 TEST_TARGET=	test
@@ -32,9 +32,9 @@ PORTDOCS=	CNAME-basedRedirectionDesignNotes.pdf CREDITS Changelog \
 		control_proto_spec.txt example.conf ietf67-design-02.odp \
 		ietf67-design-02.pdf requirements.txt
 
-OPTIONS_DEFINE=		DEP-RSA1024 DNSCRYPT DNSTAP DOCS DOH ECDSA EVAPI \
-			DYNLIB FILTER_AAAA GOST HIREDIS LIBEVENT MUNIN_PLUGIN \
-			PYTHON SUBNET TFOCL TFOSE THREADS
+OPTIONS_DEFINE=		DEP-RSA1024 DNSCRYPT DNSTAP DOCS DOH DYNLIB ECDSA EVAPI \
+			FILTER_AAAA GOST HIREDIS LIBEVENT MUNIN_PLUGIN PYTHON \
+			SUBNET TFOCL TFOSE THREADS
 OPTIONS_DEFAULT=	DNSCRYPT DOH DYNLIB ECDSA GOST LIBEVENT THREADS
 OPTIONS_SUB=		yes
 
@@ -98,14 +98,18 @@ post-patch:
 		${WRKSRC}/Makefile.in
 
 post-patch-FILTER_AAAA-on:
-	 ${CAT} ${WRKSRC}/contrib/aaaa-filter-iterator.patch | ${PATCH} -d ${WRKSRC} -p1 -s
+	@${CAT} ${WRKSRC}/contrib/aaaa-filter-iterator.patch | \
+		${PATCH} -d ${WRKSRC} -p1 -s
 
 post-build:
-	@for s in ${STRIP_FILES}; do ${STRIP_CMD} ${WRKSRC}/$$s; done
+	@for s in ${STRIP_FILES}; \
+		do ${STRIP_CMD} ${WRKSRC}/$$s; \
+		done
 
 post-install-DOCS-on:
 	${MKDIR} ${STAGEDIR}${DOCSDIR}
-	${INSTALL_DATA} ${PORTDOCS:S|^|${WRKSRC}/doc/|} ${STAGEDIR}${DOCSDIR}
+	${INSTALL_DATA} ${PORTDOCS:S|^|${WRKSRC}/doc/|} \
+		${STAGEDIR}${DOCSDIR}
 
 post-install-MUNIN_PLUGIN-on:
 	@${MKDIR} ${STAGEDIR}${PREFIX}/share/munin/plugins
