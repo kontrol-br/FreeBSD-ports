@@ -39,8 +39,8 @@ require("/usr/local/pkg/suricata/suricata_defs.inc");
 
 global $g;
 
-// Suricata GUI needs some extra PHP memory space to manipulate large rules arrays
-ini_set("memory_limit", "512M");
+// Suricata GUI needs at least 512MB to manipulate large rules arrays
+ini_set("memory_limit", config_get_path('system/php_memory_limit', '512') . "M");
 
 function suricata_generate_id() {
 
