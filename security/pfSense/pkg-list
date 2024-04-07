@@ -200,6 +200,8 @@ bin/parser_readme.md
 @(,,755) bin/pfSlogcat
 @(,,755) bin/ping_hosts.sh
 @(,,755) bin/runmsntp.sh
+@(,,755) bin/usermgrpasswd
+@(,,755) bin/usermgrwhoami
 @(,,755) bin/viconfig
 captiveportal/captiveportal-default-logo.png
 captiveportal/index.php
@@ -389,6 +391,8 @@ share/locale/zh_TW/LC_MESSAGES/pfSense.po
 %%DATADIR%%/keys/pkg/trusted/plus-pkg.pfsense.org.20160406
 %%DATADIR%%/ssl/netgate-ca.pem
 %%DATADIR%%/ssl/openssl.cnf
+www/404.html
+www/50x.html
 www/android-chrome-192x192.png
 www/android-chrome-512x512.png
 www/apple-touch/apple-touch-icon-ipad-76x76-precomposed.png
