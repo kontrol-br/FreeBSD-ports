@@ -481,7 +481,6 @@
     SUBDIR += py-pytorch
     SUBDIR += py-pytorch-lightning
     SUBDIR += py-pyviz-comms
-    SUBDIR += py-qiskit-machine-learning
     SUBDIR += py-safetensors
     SUBDIR += py-scikit-fusion
     SUBDIR += py-scikit-quant
@@ -652,7 +651,6 @@
     SUBDIR += xfce4-appfinder
     SUBDIR += xfce4-weather-plugin
     SUBDIR += xfce4-wm-themes
-    SUBDIR += xgas
     SUBDIR += xgboost
     SUBDIR += xiphos
     SUBDIR += xless

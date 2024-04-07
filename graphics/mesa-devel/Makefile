@@ -1,6 +1,6 @@
 PORTNAME=	mesa
-DISTVERSION=	24.0-branchpoint-3875
-DISTVERSIONSUFFIX=	-g3f50d72ec56
+DISTVERSION=	24.0-branchpoint-4478
+DISTVERSIONSUFFIX=	-gd5aefb7a16d
 CATEGORIES=	graphics
 PKGNAMESUFFIX=	-devel
 
@@ -38,7 +38,6 @@ MESON_ARGS=	-Dgallium-omx=disabled \
 		-Dlmsensors=disabled \
 		-Dmicrosoft-clc=disabled \
 		-Dvalgrind=disabled \
-		-Dglvnd=true \
 		-Dplatforms=${PLATFORMS:O:[-1..1]:ts,} \
 		-Dvideo-codecs=all \
 		${NULL}
