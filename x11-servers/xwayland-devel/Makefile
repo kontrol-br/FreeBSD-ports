@@ -1,12 +1,9 @@
 PORTNAME=	xwayland
 DISTVERSIONPREFIX=	xorg-server-
-DISTVERSION=	21.0.99.1-910
-DISTVERSIONSUFFIX=	-g337d8d48b
+DISTVERSION=	21.0.99.1-930
+DISTVERSIONSUFFIX=	-g385226bda
 CATEGORIES=	x11-servers
 PKGNAMESUFFIX=	-devel
-
-PATCH_SITES+=	${GL_SITE}/${GL_ACCOUNT}/${GL_PROJECT}/-/commit/
-PATCHFILES+=	cc43713d49ab.patch:-p1 # https://gitlab.freedesktop.org/xorg/xserver/-/merge_requests/1481
 
 MAINTAINER=	jbeich@FreeBSD.org
 COMMENT=	X11 server as Wayland client (development snapshot)

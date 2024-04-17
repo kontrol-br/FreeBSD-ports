@@ -617,6 +617,7 @@
     SUBDIR += electron25
     SUBDIR += electron27
     SUBDIR += electron28
+    SUBDIR += electron29
     SUBDIR += elf
     SUBDIR += elf-dissector
     SUBDIR += elfcat
@@ -4247,6 +4248,7 @@
     SUBDIR += py-aioitertools
     SUBDIR += py-aiologger
     SUBDIR += py-aiorpcX
+    SUBDIR += py-aiorpcX-legacy
     SUBDIR += py-aiortc
     SUBDIR += py-aiorwlock
     SUBDIR += py-aiosignal
@@ -4606,7 +4608,6 @@
     SUBDIR += py-datasette
     SUBDIR += py-datatest
     SUBDIR += py-dateparser
-    SUBDIR += py-dateutil
     SUBDIR += py-dateutils
     SUBDIR += py-datrie
     SUBDIR += py-dbt-extractor
@@ -5509,6 +5510,7 @@
     SUBDIR += py-pytest4-flakes
     SUBDIR += py-python-application
     SUBDIR += py-python-bugzilla
+    SUBDIR += py-python-dateutil
     SUBDIR += py-python-dbusmock
     SUBDIR += py-python-decouple
     SUBDIR += py-python-distutils-extra
@@ -5854,6 +5856,7 @@
     SUBDIR += py-urlimport
     SUBDIR += py-urwid
     SUBDIR += py-urwid-readline
+    SUBDIR += py-urwidgets
     SUBDIR += py-urwidtrees
     SUBDIR += py-us
     SUBDIR += py-user_agents
@@ -6295,6 +6298,7 @@
     SUBDIR += rubygem-aws-sdk-connectcontactlens
     SUBDIR += rubygem-aws-sdk-connectparticipant
     SUBDIR += rubygem-aws-sdk-connectwisdomservice
+    SUBDIR += rubygem-aws-sdk-controlcatalog
     SUBDIR += rubygem-aws-sdk-controltower
     SUBDIR += rubygem-aws-sdk-core
     SUBDIR += rubygem-aws-sdk-core2

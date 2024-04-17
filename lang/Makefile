@@ -40,7 +40,6 @@
     SUBDIR += crystal
     SUBDIR += csharp-mode.el
     SUBDIR += cython
-    SUBDIR += cython-devel
     SUBDIR += cython3
     SUBDIR += dhall
     SUBDIR += dlang-tools
@@ -228,7 +227,6 @@
     SUBDIR += ocaml
     SUBDIR += ocaml-autoconf
     SUBDIR += ocaml-camlidl
-    SUBDIR += ocaml-nox11
     SUBDIR += oo2c
     SUBDIR += opencoarrays
     SUBDIR += opensycl
@@ -307,7 +305,6 @@
     SUBDIR += python38
     SUBDIR += python39
     SUBDIR += qmasm
-    SUBDIR += qscheme
     SUBDIR += quickjs
     SUBDIR += quilc
     SUBDIR += racket
