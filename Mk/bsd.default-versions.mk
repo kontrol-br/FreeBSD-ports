@@ -56,14 +56,14 @@ FPC_DEFAULT?=		3.2.2
 .  else
 FPC_DEFAULT?=		3.3.1
 .  endif
-# Possible values: 9, 10, 11, 12, 13, 14
+# Possible values: 9, 10, 11, 12, 13, 14, 15
 # (Any other version is completely unsupported and not meant for general use.)
 GCC_DEFAULT?=		13
 # Possible values: 10
 GHOSTSCRIPT_DEFAULT?=	10
 # Possible values: mesa-libs, mesa-devel
 GL_DEFAULT?=		mesa-libs
-# Possible values: 1.19, 1.20, 1.21, 1.22, 1.23-devel
+# Possible values: 1.20, 1.21, 1.22, 1.23-devel
 GO_DEFAULT?=		1.21
 # Possible values: 1.8, 2.2, 3.0
 GUILE_DEFAULT?=		2.2

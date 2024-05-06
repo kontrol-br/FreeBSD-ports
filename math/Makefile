@@ -132,6 +132,7 @@
     SUBDIR += R-cran-scatterplot3d
     SUBDIR += R-cran-sets
     SUBDIR += R-cran-sf
+    SUBDIR += R-cran-slam
     SUBDIR += R-cran-sm
     SUBDIR += R-cran-sp
     SUBDIR += R-cran-spData
@@ -487,7 +488,6 @@
     SUBDIR += math77
     SUBDIR += mathgl
     SUBDIR += mathicsscript
-    SUBDIR += mathlibtools
     SUBDIR += mathmod
     SUBDIR += mathomatic
     SUBDIR += mathpresso
@@ -653,6 +653,7 @@
     SUBDIR += octave-forge-symbolic
     SUBDIR += octave-forge-tablicious
     SUBDIR += octave-forge-tcl-octave
+    SUBDIR += octave-forge-timer
     SUBDIR += octave-forge-tsa
     SUBDIR += octave-forge-velas
     SUBDIR += octave-forge-video
@@ -961,6 +962,7 @@
     SUBDIR += py-intspan
     SUBDIR += py-iohexperimenter
     SUBDIR += py-ipyopt
+    SUBDIR += py-islpy
     SUBDIR += py-isosurfaces
     SUBDIR += py-jacobi
     SUBDIR += py-jax

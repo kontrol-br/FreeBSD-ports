@@ -1,6 +1,5 @@
 PORTNAME=	freerdp
-DISTVERSION=	3.4.0
-PORTREVISION=	1
+DISTVERSION=	3.5.1
 CATEGORIES=	net comms
 MASTER_SITES=	https://pub.freerdp.com/releases/ \
 		https://github.com/FreeRDP/FreeRDP/releases/download/${DISTVERSION}/
@@ -133,7 +132,7 @@ OPUS_LIB_DEPENDS=	libopus.so:audio/opus
 OPUS_CMAKE_BOOL=	WITH_OPUS
 
 # LoadLibraryA("libpcsclite.so")
-PCSC_LIB_DEPENDS=	libpcsclite.so:devel/pcsc-lite
+PCSC_RUN_DEPENDS=	${LOCALBASE}/lib/libpcsclite.so:devel/pcsc-lite
 PCSC_CMAKE_BOOL=	WITH_PCSC
 
 PKCS11_BUILD_DEPENDS=	${LOCALBASE}/include/pkcs11-helper-1.0/pkcs11.h:security/pkcs11-helper
@@ -176,8 +175,7 @@ WAYLAND_CMAKE_BOOL=	WITH_WAYLAND
 WEBP_LIB_DEPENDS=	libwebp.so:graphics/webp
 WEBP_CMAKE_BOOL=	WINPR_UTILS_IMAGE_WEBP
 
-X11_USES=		xorg
-X11_USE=		xorg=x11,xcursor,xext,xorgproto,xfixes,xi,xinerama,xkbfile,xrandr,xrender,xv
+X11_USE=		xorg=xcursor,xfixes,xi,xinerama,xkbfile,xorgproto,xrandr,xrender,xv
 X11_CMAKE_ON=		-DWITH_X11:BOOL=ON -DWITH_XCURSOR:BOOL=ON \
 			-DWITH_XEXT:BOOL=ON -DWITH_XFIXES:BOOL=ON \
 			-DWITH_XI:BOOL=ON -DWITH_XINERAMA:BOOL=ON \

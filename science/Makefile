@@ -278,6 +278,7 @@
     SUBDIR += py-GPy
     SUBDIR += py-GPyOpt
     SUBDIR += py-HepMC3
+    SUBDIR += py-HofstadterTools
     SUBDIR += py-MDAnalysis
     SUBDIR += py-MDAnalysisTests
     SUBDIR += py-OpenFermion
@@ -382,6 +383,7 @@
     SUBDIR += py-paida
     SUBDIR += py-paramz
     SUBDIR += py-penaltymodel
+    SUBDIR += py-periodictable
     SUBDIR += py-phono3py
     SUBDIR += py-phonopy
     SUBDIR += py-pupynere

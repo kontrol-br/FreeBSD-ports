@@ -58,6 +58,7 @@
     SUBDIR += apache-xmlbeans
     SUBDIR += apertium
     SUBDIR += apertium-eng
+    SUBDIR += aq
     SUBDIR += arianna
     SUBDIR += asciidoc
     SUBDIR += asm-xml
@@ -344,6 +345,7 @@
     SUBDIR += jo
     SUBDIR += jq
     SUBDIR += jql
+    SUBDIR += jqp
     SUBDIR += jrefentry
     SUBDIR += jshon
     SUBDIR += json-yaml
@@ -1434,6 +1436,7 @@
     SUBDIR += py-mistune2
     SUBDIR += py-mkdocs
     SUBDIR += py-mkdocs-autorefs
+    SUBDIR += py-mkdocs-get-deps
     SUBDIR += py-mkdocs-git-revision-date-localized-plugin
     SUBDIR += py-mkdocs-material
     SUBDIR += py-mkdocs-material-extensions
@@ -1550,6 +1553,7 @@
     SUBDIR += py-rst2ansi
     SUBDIR += py-rst2html5
     SUBDIR += py-scour
+    SUBDIR += py-segno
     SUBDIR += py-sense2vec
     SUBDIR += py-sentencepiece
     SUBDIR += py-simplebayes
@@ -1749,6 +1753,7 @@
     SUBDIR += rubygem-colored
     SUBDIR += rubygem-colored2
     SUBDIR += rubygem-commonmarker
+    SUBDIR += rubygem-commonmarker0
     SUBDIR += rubygem-creole
     SUBDIR += rubygem-css_parser
     SUBDIR += rubygem-cssmin
@@ -1914,6 +1919,7 @@
     SUBDIR += rubygem-sixarm_ruby_unaccent
     SUBDIR += rubygem-spreadsheet
     SUBDIR += rubygem-stamp
+    SUBDIR += rubygem-static_holmes
     SUBDIR += rubygem-syntax
     SUBDIR += rubygem-termcolor
     SUBDIR += rubygem-terminal-table
