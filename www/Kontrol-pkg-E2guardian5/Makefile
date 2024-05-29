@@ -12,7 +12,7 @@ MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Kontrol E2guardian Package
 
 LICENSE=	APACHE20
-BUILD_DEPENDS=	${PYTHON_VERSION}:lang/python${PYTHON_SUFFIX}
+BUILD_DEPENDS=	python39:lang/python39
 RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
 		/usr/local/sbin/clamd:security/clamav \
 		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss
