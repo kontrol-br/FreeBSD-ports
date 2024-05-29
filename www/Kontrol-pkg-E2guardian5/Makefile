@@ -25,6 +25,8 @@ NO_MTREE=	yes
 SUB_FILES=	pkg-install pkg-deinstall
 SUB_LIST=	PORTNAME=${PORTNAME}
 
+DEFAULT_VERSIONS+=ssl=openssl111
+
 do-extract:
 	${MKDIR} ${WRKSRC}
 
