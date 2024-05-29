@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-E2guardian5
-PORTVERSION=	0.6.4.5
+PORTVERSION=	0.6.4.6
 PORTREVISION=
 CATEGORIES=	www
 MASTER_SITES=	# empty
@@ -39,6 +39,10 @@ do-install:
 	${MKDIR} ${STAGEDIR}${DATADIR}
 	${INSTALL_DATA} ${FILESDIR}/etc/inc/priv/e2guardian.priv.inc \
 		${STAGEDIR}/etc/inc/priv
+	${INSTALL_DATA} ${FILESDIR}/usr/local/lib/libcrypto.so.111 \
+		${STAGEDIR}/usr/local/lib
+	${INSTALL_DATA} ${FILESDIR}/usr/local/lib/libssl.so.111 \
+		${STAGEDIR}/usr/local/lib
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_antivirus_acl.xml \
