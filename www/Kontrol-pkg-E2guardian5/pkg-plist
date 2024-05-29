@@ -43,5 +43,5 @@ www/shortcuts/pkg_e2guardian.inc
 %%DATADIR%%/info.xml
 @dir /etc/inc/priv
 /etc/inc/priv/e2guardian.priv.inc
-/usr/local/lib/libssl.so.111
-/usr/local/lib/libcrypto.so.111
+lib/libssl.so.111
+lib/libcrypto.so.111
