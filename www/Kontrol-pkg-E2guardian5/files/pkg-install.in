@@ -3,7 +3,7 @@
 if [ "${2}" != "POST-INSTALL" ]; then
 	exit 0
 fi
-ln -s  /usr/lib/libssl.so /usr/lib/libssl.so.11
-ln -s /usr/lib/libcrypto.so /usr/lib/libcrypto.so.11
+#ln -s  /usr/lib/libssl.so /usr/lib/libssl.so.111
+#ln -s /usr/lib/libcrypto.so /usr/lib/libcrypto.so.111
 
 /usr/local/bin/php -f /etc/rc.packages %%PORTNAME%% ${2}
