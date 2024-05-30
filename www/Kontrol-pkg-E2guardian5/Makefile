@@ -14,7 +14,7 @@ COMMENT=	Kontrol E2guardian Package
 LICENSE=	APACHE20
 
 RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
-		python3.9>=0:lang/python39 \
+		python3.9:lang/python39 \
 		/usr/local/sbin/clamd:security/clamav \
 		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss \
 		e2guardian>=0:www/e2guardian
