@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-E2guardian5
-PORTVERSION=	0.6.4.7
+PORTVERSION=	0.6.4.8
 PORTREVISION=
 CATEGORIES=	www
 MASTER_SITES=	# empty
@@ -17,7 +17,8 @@ RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
 		python39>=0:lang/python39 \
 		/usr/local/sbin/clamd:security/clamav \
 		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss \
-		e2guardian>=0:www/e2guardian
+		e2guardian>=0:www/e2guardian \
+		openssl111>=0:security/openssl111
 
 
 CONFLITS_WITH=	www/e2guardian5
@@ -45,10 +46,6 @@ do-install:
 	${MKDIR} ${STAGEDIR}${DATADIR}
 	${INSTALL_DATA} ${FILESDIR}/etc/inc/priv/e2guardian.priv.inc \
 		${STAGEDIR}/etc/inc/priv
-	${INSTALL_DATA} ${FILESDIR}/usr/local/lib/libcrypto.so.111 \
-		${STAGEDIR}/usr/local/lib
-	${INSTALL_DATA} ${FILESDIR}/usr/local/lib/libssl.so.111 \
-		${STAGEDIR}/usr/local/lib
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_antivirus_acl.xml \
