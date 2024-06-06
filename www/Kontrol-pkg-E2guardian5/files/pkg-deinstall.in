@@ -1,3 +1,5 @@
 #!/bin/sh
 
+pkg autoremove -y
+pkg clean -a -y
 /usr/local/bin/php -f /etc/rc.packages %%PORTNAME%% ${2}
