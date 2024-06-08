@@ -3,7 +3,5 @@
 if [ "${2}" != "POST-INSTALL" ]; then
 	exit 0
 fi
-pkg autoremove -y
-pkg clean -a -y
 
 /usr/local/bin/php -f /etc/rc.packages %%PORTNAME%% ${2}
