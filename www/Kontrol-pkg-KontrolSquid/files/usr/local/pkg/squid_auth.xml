@@ -88,8 +88,8 @@
 			<type>select</type>
 			<default_value>none</default_value>
 			<options>
-				<option><name>None</name><value>none</value></option>
-				<option><name>Local</name><value>local</value></option>
+				<option><name>NONE-Direct to E2G</name><value>none</value></option>
+				<option><name>LOCAL Auth</name><value>local</value></option>
 				<option><name>LDAP</name><value>ldap</value></option>
 				<option><name>RADIUS</name><value>radius</value></option>
 				<option><name>Captive Portal</name><value>cp</value></option>
@@ -131,14 +131,14 @@
 			<description>The number of authenticator processes to spawn. If many authentications are expected within a short timeframe, increase this number accordingly.</description>
 			<type>input</type>
 			<size>5</size>
-			<default_value>5</default_value>
+			<default_value>15</default_value>
 		</field>
 		<field>
 			<fielddescr>Authentication TTL</fielddescr>
 			<fieldname>auth_ttl</fieldname>
 			<description>
 				<![CDATA[
-				This specifies for how long (in minutes for NTLM/Kerberos | in seconds for Transparent Auth) the proxy server assumes an externally validated username and password combination to be valid.<br/>
+				This specifies for how long (in minutes for NTLM/Kerberos/Local | in seconds for Transparent Auth) the proxy server assumes an externally validated username and password combination to be valid.<br/>
 				When the Time To Live expires, the user will be prompted for credentials again.
 				<span class="text-info">Default: 5</span>
 				]]>

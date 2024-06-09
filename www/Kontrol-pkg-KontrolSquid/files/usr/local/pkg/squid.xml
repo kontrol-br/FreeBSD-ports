@@ -257,21 +257,6 @@
 			<type>info</type>
 		</field>
 		<field>
-			<fielddescr>Resolve DNS IPv4 First</fielddescr>
-			<fieldname>dns_v4_first</fieldname>
-			<description>
-				<![CDATA[
-				Enable this to force DNS IPv4 lookup first.
-				]]>
-			</description>
-			<sethelp>
-				<![CDATA[
-				This option is very useful if you have problems accessing HTTPS sites.
-				]]>
-			</sethelp>
-			<type>checkbox</type>
-		</field>
-		<field>
 			<fielddescr>Disable ICMP</fielddescr>
 			<fieldname>disable_pinger</fieldname>
 			<description>
