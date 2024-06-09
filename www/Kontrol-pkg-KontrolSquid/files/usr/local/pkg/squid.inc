@@ -1247,18 +1247,18 @@ function squid_resync_general() {
 					} elseif ($settings['dhparams_size'] == '1024') {
 						$sslproxy_dhparams = "tls-dh=prime256v1:/etc/dh-parameters.1024";
 					}
-					$sslproxy_options .= ",SINGLE_DH_USE,SINGLE_ECDH_USE";
+					#$sslproxy_options .= ",SINGLE_DH_USE,SINGLE_ECDH_USE";
 				} elseif (file_exists("/etc/dh-parameters.2048")) {
 					// Fallback options for defaults on install
 					$sslproxy_dhparams = "tls-dh=prime256v1:/etc/dh-parameters.2048";
-					$sslproxy_options .= ",SINGLE_DH_USE,SINGLE_ECDH_USE";
+					#$sslproxy_options .= ",SINGLE_DH_USE,SINGLE_ECDH_USE";
 				} else {
 					// Should never get here
 					$sslproxy_dhparams = "";
 				}
 				file_put_contents($crt_pk, unixnewlines(base64_decode($srv_cert['prv']) . "\n" . base64_decode($srv_cert['crt'])));
 				$sslcrtd_children = ($settings['sslcrtd_children'] ? $settings['sslcrtd_children'] : 5);
-				$ssl_interception .= "ssl-bump generate-host-certificates=on dynamic_cert_mem_cache_size=" . ($sslcrtd_children*2) . "MB cert={$crt_pk} cafile={$crt_cafile} capath={$crt_capath} cipher={$sslproxy_cipher} {$sslproxy_dhparams} options={$sslproxy_options}\n";
+				$ssl_interception .= "ssl-bump generate-host-certificates=on dynamic_cert_mem_cache_size=" . ($sslcrtd_children*2) . "MB cert={$crt_pk} tls-cafile={$crt_cafile} capath={$crt_capath} cipher={$sslproxy_cipher} {$sslproxy_dhparams} options={$sslproxy_options}\n";
 				if ($squid4) {
 					$interception_checks = "sslcrtd_program " . SQUID_LOCALBASE . "/libexec/squid/security_file_certgen -s " . SQUID_SSL_DB . " -M 4MB -b 2048\n";
 					$interception_checks .= "tls_outgoing_options cafile={$crt_cafile}\n";
@@ -1401,7 +1401,6 @@ function squid_resync_general() {
 		}
 	}
 	$icp_port = ($settings['icp_port'] ? $settings['icp_port'] : 0);
-	$dns_v4_first = ($settings['dns_v4_first'] == "on" ? "on" : "off");
 	$piddir = g_get('varrun_path') . '/squid';
 	$pidfile = "{$piddir}/squid.pid";
 	if (!is_dir($piddir)) {
@@ -1443,7 +1442,6 @@ function squid_resync_general() {
 	$conf .= <<< EOD
 icp_port {$icp_port}
 digest_generation {$digest_generation}
-dns_v4_first {$dns_v4_first}
 pid_filename {$pidfile}
 cache_effective_user {$squid_uid}
 cache_effective_group {$squid_gid}
@@ -2034,6 +2032,12 @@ function squid_resync_auth() {
 			$conf .= "# Allow local network(s) on interface(s)\n";
 			$allowed[] = "localnet";
 		}
+
+		$conf .= "####SENDING CONNECTIONS DIRECT TO E2GUARDIAN WITH NO AUTH #### \n";
+		$conf .= "always_direct deny all \n";
+		$conf .= "never_direct allow all \n";
+		$conf .= "cache_peer 127.0.0.1 parent 8080 0 login=PASSTHRU no-digest no-netdb-exchange \n";
+
 		$allowed = array_filter($allowed, 'squid_is_valid_acl');
 		foreach ($allowed as $acl) {
 			$conf .= "http_access allow $acl\n";
@@ -2054,6 +2058,9 @@ function squid_resync_auth() {
 		switch ($auth_method) {
 			case 'local':
 				$conf .= 'auth_param basic program ' . SQUID_LOCALBASE . '/libexec/squid/basic_ncsa_auth ' . SQUID_PASSWD . "\n";
+				$conf .= "cache_peer 127.0.0.1 parent 8080 0 login=*:password no-digest no-netdb-exchange \n";
+				$conf .= "always_direct deny all \n";
+				$conf .= "never_direct allow all \n";
 				break;
 			case 'ldap':
 				$port = '';
@@ -2175,6 +2182,7 @@ EOD;
 		if (($settingsconfig['log_sqd']) && ($auth_method != 'transparent')) {
 			$conf .= "http_access deny password sglog\n";
 		}
+
 
 		// Allow the other ACLs as long as they authenticate
 		foreach ($password as $acl) {
