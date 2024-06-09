@@ -8,7 +8,7 @@ MASTER_SITES=	# empty
 DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
 
-MAINTAINER=	contato@konntrol.com.br
+MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Kontrol Custom Squid Package
 
 LICENSE=	APACHE20
