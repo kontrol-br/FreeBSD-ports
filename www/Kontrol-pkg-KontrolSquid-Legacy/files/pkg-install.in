@@ -4,6 +4,15 @@ if [ "${2}" != "POST-INSTALL" ]; then
 	exit 0
 fi
 
+#replacing original squid 6.3 by squid 4.15 (Legacy version - NTLM compatible)
+rm /usr/local/sbin/squid 2> /dev/null
+rm /usr/local/sbin/squidclient 2> /dev/null
+mv /usr/local/sbin/squid415 /usr/local/sbin/squid 2> /dev/null
+mv /usr/local/sbin/squidclient415 /usr/local/sbin/squidclient 2> /dev/null
+cp /usr/local/etc/squid/mime.conf.sample /usr/local/etc/squid/mime.conf 2> /dev/null
+chmod +x /usr/local/sbin/squidclient
+chmod +x /usr/local/sbin/squid
+
 ln -s /usr/local/etc/squid/errors/template /usr/local/etc/squid/errors/en
 
 #Checking the existing CA root certs and make it available for downloading
