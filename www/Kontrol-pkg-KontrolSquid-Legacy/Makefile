@@ -46,6 +46,10 @@ do-install:
 	${MKDIR} ${STAGEDIR}${DATADIR}
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/squid.xml \
 		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/sbin/squid415 \
+		${STAGEDIR}${PREFIX}/sbin
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/sbin/squidclient415 \
+		${STAGEDIR}${PREFIX}/sbin
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/squid.inc \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/squid_antivirus.inc \
