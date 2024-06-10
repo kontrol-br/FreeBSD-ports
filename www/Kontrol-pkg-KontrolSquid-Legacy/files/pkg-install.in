@@ -13,8 +13,8 @@ cp /usr/local/etc/squid/mime.conf.sample /usr/local/etc/squid/mime.conf 2> /dev/
 chmod +x /usr/local/sbin/squidclient
 chmod +x /usr/local/sbin/squid
 
-ln -s /usr/local/etc/squid/errors/template /usr/local/etc/squid/errors/en-us
-ln -s /usr/local/etc/squid/errors/template /usr/local/etc/squid/errors/en
+ln -s /usr/local/etc/squid/errors/templates /usr/local/etc/squid/errors/en-us
+ln -s /usr/local/etc/squid/errors/templates /usr/local/etc/squid/errors/en
 
 #Checking the existing CA root certs and make it available for downloading
 		cp /cf/conf/config.xml /cf/conf/check.xml
