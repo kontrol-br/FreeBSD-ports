@@ -12,7 +12,7 @@ COMMENT=	Kontrol Custom Squid Package
 
 LICENSE=	APACHE20
 
-BUILD_DEPENDS=	squid=4.15:www/squid 
+BUILD_DEPENDS=	squid=4.15:www/squid
 RUN_DEPENDS=	squid=4.15:www/squid \
 		squid_radius_auth>=0:www/squid_radius_auth \
 		c-icap-modules>=0:www/c-icap-modules \
@@ -33,6 +33,7 @@ do-extract:
 
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/pkg
+	${MKDIR} ${STAGEDIR}${PREFIX}/sbin
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/widgets/include
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/shortcuts
 	${MKDIR} ${STAGEDIR}${PREFIX}/etc

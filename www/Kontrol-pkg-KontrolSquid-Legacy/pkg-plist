@@ -19,6 +19,8 @@ pkg/squid_sync.xml
 pkg/squid_traffic.xml
 pkg/squid_upstream.xml
 pkg/squid_users.xml
+sbin/squidclient415
+sbin/squid415
 www/widgets/widgets/squid_antivirus_status.widget.php
 www/squid_clwarn.php
 www/squid_monitor.php
