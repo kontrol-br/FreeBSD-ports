@@ -840,7 +840,7 @@ function squid_validate_general($post, &$input_errors) {
 	unset($port, $webgui_port);
 
 	if ($post['transparent_proxy'] == 'on') {
-		if (preg_match("/(local|ldap|radius|kerbntlm)/", config_get_path('installedpackages/squidauth/config/0/auth_method'))) {
+		if (preg_match("/(local|ldap|radius|ntlm|kerbntlm)/", config_get_path('installedpackages/squidauth/config/0/auth_method'))) {
 			$input_errors[] = "Transparent mode cannot be enabled while specific proxy authentication is enabled";
 		}
 		if (empty($post['transparent_active_interface'])) {
@@ -1140,7 +1140,7 @@ function squid_validate_auth($post, &$input_errors) {
 	unset($num_fields);
 
 	$auth_method = $post['auth_method'];
-	if (($auth_method != 'none') && ($auth_method != 'local') && ($auth_method != 'cp')  && ($auth_method != 'transparent') && ($auth_method != 'kerbntlm')) {
+	if (($auth_method != 'none') && ($auth_method != 'local') && ($auth_method != 'cp')  && ($auth_method != 'transparent') && ($auth_method != 'ntlm') && ($auth_method != 'kerbntlm')) {
 		$server = trim($post['auth_server']);
 		if (empty($server)) {
 			$input_errors[] = "'Authentication server' is required.";
@@ -2104,11 +2104,33 @@ function squid_resync_auth() {
 						$conf .= "always_direct deny all \n";
 						$conf .= "never_direct allow all \n";
 					break;
+					case 'ntlm':
+						$conf .= "#### NTLM AUTHENTICATION ONLY #### \n";
+						$conf .= "auth_param ntlm program /usr/local/bin/ntlm_auth --helper-protocol=squid-2.5-ntlmssp \n";
+						$conf .= "auth_param ntlm children {$processes} startup=15 idle=5 \n";
+						$conf .= "auth_param ntlm keep_alive off \n";
+						$conf .= "\n";
+						$conf .= "#### STARTING CUSTOM ACLs #### \n";
+						$conf .= "acl auth proxy_auth REQUIRED \n";
+						$conf .= " \n";
+						$conf .= "#### STARTING CUSTOM AUTHORIZATION ACL ### \n";
+						$conf .= "http_access allow auth \n";
+						$conf .= " \n";
+						$conf .= "####SENDING CONNECTIONS TO E2GUARDIAN AFTER AUTH #### \n";
+						$conf .= "cache_peer 127.0.0.1 parent 8080 0 login=*:password no-digest no-netdb-exchange \n";
+						$conf .= "always_direct deny all \n";
+						$conf .= "never_direct allow all \n";
+					break;
 					case 'kerbntlm':
 						$conf .= "#### TRY KERBEROS Authentication #### \n";
 						$conf .= "auth_param negotiate program /usr/local/libexec/squid/negotiate_kerberos_auth -r -i -s HTTP/$myhostname@$mydomain \n";
 						$conf .= "auth_param negotiate children {$processes} startup=15 idle=5 \n";
 						$conf .= "auth_param negotiate keep_alive on \n";
+						$conf .= "\n";
+						$conf .= "#### NTLM AUTHENTICATION In case KERBEROS Failed #### \n";
+						$conf .= "auth_param ntlm program /usr/local/bin/ntlm_auth --helper-protocol=squid-2.5-ntlmssp \n";
+						$conf .= "auth_param ntlm children {$processes} startup=15 idle=5 \n";
+						$conf .= "auth_param ntlm keep_alive off \n";
 						$conf .= "\n";
 						$conf .= "#### STARTING CUSTOM ACLs #### \n";
 						$conf .= "acl auth proxy_auth REQUIRED \n";
