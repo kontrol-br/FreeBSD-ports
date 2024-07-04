@@ -240,7 +240,6 @@
     SUBDIR += consul-alerts
     SUBDIR += consul-replicate
     SUBDIR += consul_exporter
-    SUBDIR += container-diff
     SUBDIR += containerd
     SUBDIR += containers-common
     SUBDIR += contractor
@@ -386,6 +385,7 @@
     SUBDIR += extipl
     SUBDIR += eza
     SUBDIR += ezjail
+    SUBDIR += f-upgrade
     SUBDIR += f2
     SUBDIR += f3
     SUBDIR += facter
@@ -565,7 +565,6 @@
     SUBDIR += hostctl
     SUBDIR += hourglass
     SUBDIR += hpacucli
-    SUBDIR += hploscripts
     SUBDIR += hptcli
     SUBDIR += hs-cputype
     SUBDIR += hstr
@@ -580,6 +579,7 @@
     SUBDIR += imgurbash2
     SUBDIR += immortal
     SUBDIR += incron
+    SUBDIR += infracost
     SUBDIR += initool
     SUBDIR += inotify-tools
     SUBDIR += installwatch
@@ -599,7 +599,6 @@
     SUBDIR += ipa
     SUBDIR += ipad_charge
     SUBDIR += ipdbtools
-    SUBDIR += ipfs-go
     SUBDIR += ipfs-go-fs-repo-migrations
     SUBDIR += ipget
     SUBDIR += ipmi_exporter
@@ -658,6 +657,7 @@
     SUBDIR += kshutdown
     SUBDIR += ksystemlog
     SUBDIR += kubectl
+    SUBDIR += kubo-go
     SUBDIR += kvmclock-kmod
     SUBDIR += lava
     SUBDIR += lbl-cf
@@ -681,6 +681,7 @@
     SUBDIR += libptytty
     SUBDIR += libsunacl
     SUBDIR += libsysstat
+    SUBDIR += libsysstat-qt6
     SUBDIR += libtpms
     SUBDIR += libtree
     SUBDIR += libudisks
@@ -728,6 +729,7 @@
     SUBDIR += lxqt-config
     SUBDIR += lxqt-policykit
     SUBDIR += lxqt-powermanagement
+    SUBDIR += lxqt-qt6plugin
     SUBDIR += lxqt-qtplugin
     SUBDIR += lxsplit
     SUBDIR += lxtask
@@ -826,6 +828,7 @@
     SUBDIR += nerdctl
     SUBDIR += netevent
     SUBDIR += nfcutils
+    SUBDIR += ngbuddy
     SUBDIR += nitrogen
     SUBDIR += nix
     SUBDIR += nmdaemon
@@ -1053,6 +1056,7 @@
     SUBDIR += polkit
     SUBDIR += polkit-gnome
     SUBDIR += polkit-qt-1
+    SUBDIR += popeye
     SUBDIR += pot
     SUBDIR += potnet
     SUBDIR += poweralertd
@@ -1211,8 +1215,8 @@
     SUBDIR += retail
     SUBDIR += rex
     SUBDIR += rhc
-    SUBDIR += rkbin
     SUBDIR += rinse
+    SUBDIR += rkbin
     SUBDIR += rmlint
     SUBDIR += rocinante
     SUBDIR += rocr
@@ -1226,7 +1230,6 @@
     SUBDIR += rsyncbackup
     SUBDIR += rsyncrypto
     SUBDIR += rsyslog8
-    SUBDIR += rtsx-kmod
     SUBDIR += rtty
     SUBDIR += rubygem-backup
     SUBDIR += rubygem-bolt
@@ -1325,6 +1328,7 @@
     SUBDIR += rust-coreutils
     SUBDIR += rust-findutils
     SUBDIR += rw
+    SUBDIR += rw-tui
     SUBDIR += s-tui
     SUBDIR += s6
     SUBDIR += s6-rc
@@ -1470,7 +1474,6 @@
     SUBDIR += tmux23
     SUBDIR += topgrade
     SUBDIR += topless
-    SUBDIR += torque
     SUBDIR += toshctl
     SUBDIR += touchegg
     SUBDIR += toybox

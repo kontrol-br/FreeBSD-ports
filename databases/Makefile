@@ -78,7 +78,6 @@
     SUBDIR += freetds-devel
     SUBDIR += frontbase-jdbc
     SUBDIR += futuresql
-    SUBDIR += galera
     SUBDIR += galera26
     SUBDIR += gdbm
     SUBDIR += geoserver-mysql-plugin
@@ -181,6 +180,8 @@
     SUBDIR += mariadb105-server
     SUBDIR += mariadb106-client
     SUBDIR += mariadb106-server
+    SUBDIR += mariadb114-client
+    SUBDIR += mariadb114-server
     SUBDIR += mdbtools
     SUBDIR += mdbx
     SUBDIR += mdcached
@@ -727,7 +728,6 @@
     SUBDIR += py-aioredis
     SUBDIR += py-aiosqlite
     SUBDIR += py-alembic
-    SUBDIR += py-alembic14
     SUBDIR += py-apache-arrow
     SUBDIR += py-apsw
     SUBDIR += py-asyncmy
@@ -820,9 +820,6 @@
     SUBDIR += py-sqlalchemy-migrate
     SUBDIR += py-sqlalchemy-utils
     SUBDIR += py-sqlalchemy10
-    SUBDIR += py-sqlalchemy11
-    SUBDIR += py-sqlalchemy12
-    SUBDIR += py-sqlalchemy13
     SUBDIR += py-sqlalchemy14
     SUBDIR += py-sqlalchemy20
     SUBDIR += py-sqlcipher3
@@ -844,6 +841,7 @@
     SUBDIR += py-whisper
     SUBDIR += py-xapian
     SUBDIR += py-zodbpickle
+    SUBDIR += pythoncego
     SUBDIR += qdbm
     SUBDIR += qdbm-plus
     SUBDIR += qdrant
@@ -1005,11 +1003,9 @@
     SUBDIR += rubygem-redis-client
     SUBDIR += rubygem-redis-cluster-client
     SUBDIR += rubygem-redis-clustering
-    SUBDIR += rubygem-redis-clustering50
     SUBDIR += rubygem-redis-namespace
     SUBDIR += rubygem-redis-namespace110
     SUBDIR += rubygem-redis4
-    SUBDIR += rubygem-redis50
     SUBDIR += rubygem-ruby-mysql
     SUBDIR += rubygem-scenic61
     SUBDIR += rubygem-sdbm
@@ -1071,7 +1067,6 @@
     SUBDIR += tokyocabinet
     SUBDIR += tokyotyrant
     SUBDIR += trilogy
-    SUBDIR += tsearch_extras
     SUBDIR += tuning-primer
     SUBDIR += twemproxy
     SUBDIR += unixODBC

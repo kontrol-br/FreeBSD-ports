@@ -1,6 +1,7 @@
 PORTNAME=	pyenv
-PORTVERSION=	2.4.1
+PORTVERSION=	2.4.5
 DISTVERSIONPREFIX=	v
+PORTREVISION=	1
 CATEGORIES=	devel python
 
 MAINTAINER=	olgeni@FreeBSD.org
@@ -26,6 +27,8 @@ post-patch:
 	@${REINPLACE_CMD} ${REINPLACE_ARGS} -e "s|\$${root}/completions|${DATADIR}/completions|g" \
 		${WRKSRC}/libexec/pyenv-init
 	@${RM} ${WRKSRC}/libexec/pyenv.orig
+	@${FIND} ${WRKSRC} -name .gitignore -delete
+	@${FIND} ${WRKSRC} -type d -empty -delete
 
 do-install:
 	CC="${CC}" ${WRKSRC}/src/${CONFIGURE_CMD}
