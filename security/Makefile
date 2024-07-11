@@ -323,6 +323,7 @@
     SUBDIR += libssh
     SUBDIR += libssh2
     SUBDIR += libtasn1
+    SUBDIR += libtatsu
     SUBDIR += libtomcrypt
     SUBDIR += libu2f-host
     SUBDIR += libuecc
@@ -970,9 +971,9 @@
     SUBDIR += py-liboqs-python
     SUBDIR += py-m2crypto
     SUBDIR += py-maec
-    SUBDIR += py-mkpasswd
     SUBDIR += py-merkletools
     SUBDIR += py-mixbox
+    SUBDIR += py-mkpasswd
     SUBDIR += py-mnemonic
     SUBDIR += py-msoffcrypto-tool
     SUBDIR += py-muacrypt
@@ -1237,6 +1238,7 @@
     SUBDIR += rubygem-vault
     SUBDIR += rubygem-webauthn
     SUBDIR += rubygem-webpush
+    SUBDIR += rustls-ffi
     SUBDIR += rustscan
     SUBDIR += s2n-tls
     SUBDIR += safesh
