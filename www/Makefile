@@ -9,7 +9,10 @@
     SUBDIR += R-cran-htmlwidgets
     SUBDIR += R-cran-httpuv
     SUBDIR += R-cran-httr
+    SUBDIR += R-cran-httr2
     SUBDIR += R-cran-jquerylib
+    SUBDIR += R-cran-miniUI
+    SUBDIR += R-cran-pkgdown
     SUBDIR += R-cran-rvest
     SUBDIR += R-cran-scrapeR
     SUBDIR += R-cran-selectr
@@ -128,6 +131,7 @@
     SUBDIR += ddgr
     SUBDIR += deforaos-surfer
     SUBDIR += deno
+    SUBDIR += deno-dom
     SUBDIR += devd
     SUBDIR += dezoomify-rs
     SUBDIR += dillo2
@@ -139,6 +143,7 @@
     SUBDIR += dolibarr17
     SUBDIR += dolibarr18
     SUBDIR += domoticz
+    SUBDIR += domoticz-devel
     SUBDIR += dooble
     SUBDIR += dot-http
     SUBDIR += dpp
@@ -181,6 +186,7 @@
     SUBDIR += flickcurl
     SUBDIR += foreign-cdm
     SUBDIR += forgejo
+    SUBDIR += forgejo7
     SUBDIR += formication
     SUBDIR += foswiki
     SUBDIR += free-sa-devel
@@ -315,7 +321,9 @@
     SUBDIR += links1
     SUBDIR += linux-c7-qtwebkit
     SUBDIR += linux-chrome
+    SUBDIR += linux-freetube
     SUBDIR += linux-rl9-libnghttp2
+    SUBDIR += linux-vieb
     SUBDIR += linux-widevine-cdm
     SUBDIR += litmus
     SUBDIR += ljdeps
@@ -344,7 +352,6 @@
     SUBDIR += mattermost-server
     SUBDIR += mattermost-webapp
     SUBDIR += mediawiki139
-    SUBDIR += mediawiki140
     SUBDIR += mediawiki141
     SUBDIR += mediawiki142
     SUBDIR += mergelog
@@ -405,6 +412,7 @@
     SUBDIR += mod_php81
     SUBDIR += mod_php82
     SUBDIR += mod_php83
+    SUBDIR += mod_php84
     SUBDIR += mod_proctitle
     SUBDIR += mod_qos
     SUBDIR += mod_realdoc
@@ -442,6 +450,7 @@
     SUBDIR += netstiff
     SUBDIR += netsurf
     SUBDIR += newsboat
+    SUBDIR += newsraft
     SUBDIR += nextcloud
     SUBDIR += nextcloud-appointments
     SUBDIR += nextcloud-calendar
@@ -1056,6 +1065,7 @@
     SUBDIR += p5-Newsletter
     SUBDIR += p5-Nginx-ReadBody
     SUBDIR += p5-Nginx-Simple
+    SUBDIR += p5-Nodejs-Util
     SUBDIR += p5-OpenAPI-Client
     SUBDIR += p5-PHP-Session
     SUBDIR += p5-POE-Component-Client-HTTP
@@ -1401,6 +1411,9 @@
     SUBDIR += php83-opcache
     SUBDIR += php83-session
     SUBDIR += php83-tidy
+    SUBDIR += php84-opcache
+    SUBDIR += php84-session
+    SUBDIR += php84-tidy
     SUBDIR += phpbb3
     SUBDIR += phpfpmtop
     SUBDIR += phpgroupware
@@ -1604,6 +1617,7 @@
     SUBDIR += py-django-widget-tweaks
     SUBDIR += py-django42
     SUBDIR += py-django50
+    SUBDIR += py-django51
     SUBDIR += py-django_compressor
     SUBDIR += py-djangocms-admin-style
     SUBDIR += py-djangoql
@@ -1716,14 +1730,12 @@
     SUBDIR += py-httpretty
     SUBDIR += py-httptools
     SUBDIR += py-httpx
-    SUBDIR += py-httpx-cache
     SUBDIR += py-httpx-gssapi
     SUBDIR += py-httpx-oauth
     SUBDIR += py-httpx-socks
     SUBDIR += py-hypercorn
     SUBDIR += py-hyperframe
     SUBDIR += py-hyperlink
-    SUBDIR += py-imdbpy
     SUBDIR += py-inlinestyler
     SUBDIR += py-instabot
     SUBDIR += py-internetarchive
@@ -1806,6 +1818,7 @@
     SUBDIR += py-scrapy
     SUBDIR += py-seafdav
     SUBDIR += py-seafobj
+    SUBDIR += py-searxng-devel
     SUBDIR += py-secure-cookie
     SUBDIR += py-selector
     SUBDIR += py-selenium
@@ -1820,8 +1833,10 @@
     SUBDIR += py-soupsieve
     SUBDIR += py-splinter
     SUBDIR += py-spyne
+    SUBDIR += py-sse-starlette
     SUBDIR += py-sseclient
     SUBDIR += py-starlette
+    SUBDIR += py-starlette-context
     SUBDIR += py-strawberry-graphql-django
     SUBDIR += py-streamlit
     SUBDIR += py-swapper
@@ -2083,7 +2098,6 @@
     SUBDIR += rubygem-jsbundling-rails-rails70
     SUBDIR += rubygem-jsobfu
     SUBDIR += rubygem-json-jwt
-    SUBDIR += rubygem-json-jwt115
     SUBDIR += rubygem-jsonb_accessor
     SUBDIR += rubygem-jwt
     SUBDIR += rubygem-kaminari
@@ -2141,7 +2155,6 @@
     SUBDIR += rubygem-net-http-persistent
     SUBDIR += rubygem-net-http-persistent2
     SUBDIR += rubygem-net-http-pipeline
-    SUBDIR += rubygem-net-http011
     SUBDIR += rubygem-nicovideo
     SUBDIR += rubygem-ntlm-http
     SUBDIR += rubygem-octopress
@@ -2383,7 +2396,6 @@
     SUBDIR += tomcat-native
     SUBDIR += tomcat-native2
     SUBDIR += tomcat101
-    SUBDIR += tomcat85
     SUBDIR += tomcat9
     SUBDIR += tomee
     SUBDIR += tor-browser

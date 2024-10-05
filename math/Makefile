@@ -862,14 +862,14 @@
     SUBDIR += php82-gmp
     SUBDIR += php83-bcmath
     SUBDIR += php83-gmp
+    SUBDIR += php84-bcmath
+    SUBDIR += php84-gmp
     SUBDIR += physcalc
     SUBDIR += picosat
     SUBDIR += piranha
     SUBDIR += planarity
     SUBDIR += plantri
     SUBDIR += plman
-    SUBDIR += ploticus
-    SUBDIR += ploticus-nox11
     SUBDIR += plplot
     SUBDIR += poly2tri
     SUBDIR += polyclipper
@@ -892,7 +892,6 @@
     SUBDIR += py-Py-BOBYQA
     SUBDIR += py-PyMetis
     SUBDIR += py-PySCIPOpt
-    SUBDIR += py-PyWavelets
     SUBDIR += py-Pyomo
     SUBDIR += py-SQNomad
     SUBDIR += py-affine
@@ -915,6 +914,7 @@
     SUBDIR += py-bitmath
     SUBDIR += py-bitvector
     SUBDIR += py-blis
+    SUBDIR += py-blis07
     SUBDIR += py-bottleneck
     SUBDIR += py-brial
     SUBDIR += py-chaospy
@@ -1000,6 +1000,7 @@
     SUBDIR += py-moarchiving
     SUBDIR += py-mpmath
     SUBDIR += py-munkres
+    SUBDIR += py-narwhals
     SUBDIR += py-ndindex
     SUBDIR += py-networkx
     SUBDIR += py-nevergrad
@@ -1056,6 +1057,7 @@
     SUBDIR += py-python-picard
     SUBDIR += py-pytorchvideo
     SUBDIR += py-pyvtk
+    SUBDIR += py-pywavelets
     SUBDIR += py-qats
     SUBDIR += py-qdldl
     SUBDIR += py-quadprog
@@ -1109,6 +1111,7 @@
     SUBDIR += qposases
     SUBDIR += qrupdate
     SUBDIR += qtiplot-doc
+    SUBDIR += quich
     SUBDIR += qwtplot3d
     SUBDIR += qxfun
     SUBDIR += randlib

@@ -1,7 +1,8 @@
 PORTNAME=	mapserver
-DISTVERSION=	8.2.0
+DISTVERSION=	8.2.2
 CATEGORIES=	graphics www geography
-MASTER_SITES=	https://download.osgeo.org/${PORTNAME}/
+MASTER_SITES=	https://download.osgeo.org/${PORTNAME}/ \
+		https://github.com/MapServer/MapServer/releases/download/rel-${DISTVERSION:S|.|-|g}/
 
 MAINTAINER=	wen@FreeBSD.org
 COMMENT=	System for developing web-based GIS applications
@@ -128,7 +129,7 @@ do-install:
 
 do-install-PYTHON-on:
 	@${MKDIR} ${STAGEDIR}${PYTHON_SITELIBDIR}/
-	${INSTALL_SCRIPT} ${BUILD_WRKSRC}/mapscript/python/mapscript.py ${STAGEDIR}${PYTHON_SITELIBDIR}
-	${INSTALL_LIB} ${BUILD_WRKSRC}/mapscript/python/_mapscript.so ${STAGEDIR}${PYTHON_SITELIBDIR}
+	${INSTALL_SCRIPT} ${BUILD_WRKSRC}/src/mapscript/python/mapscript.py ${STAGEDIR}${PYTHON_SITELIBDIR}
+	${INSTALL_LIB} ${BUILD_WRKSRC}/src/mapscript/python/_mapscript.so ${STAGEDIR}${PYTHON_SITELIBDIR}
 
 .include <bsd.port.mk>

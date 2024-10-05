@@ -29,6 +29,7 @@
     SUBDIR += aimage
     SUBDIR += aird
     SUBDIR += alfio
+    SUBDIR += alloy
     SUBDIR += am-utils
     SUBDIR += amazon-ssm-agent
     SUBDIR += amazon-ssm-plugin
@@ -47,7 +48,6 @@
     SUBDIR += ansible-sshjail
     SUBDIR += ansible-sysrc
     SUBDIR += anvil
-    SUBDIR += apache-mesos
     SUBDIR += apachetop
     SUBDIR += apcctrl
     SUBDIR += apcpwr
@@ -129,13 +129,13 @@
     SUBDIR += battray
     SUBDIR += bchunk
     SUBDIR += beadm
-    SUBDIR += beadm-devel
     SUBDIR += beats7
     SUBDIR += beats8
     SUBDIR += bfs
     SUBDIR += bhyve+
     SUBDIR += bhyve-firmware
     SUBDIR += bhyve-rc
+    SUBDIR += bhyvemgr
     SUBDIR += biosfont
     SUBDIR += bkpupsd
     SUBDIR += bksh
@@ -199,9 +199,11 @@
     SUBDIR += cfengine-masterfiles321
     SUBDIR += cfengine-masterfiles322
     SUBDIR += cfengine-masterfiles323
+    SUBDIR += cfengine-masterfiles324
     SUBDIR += cfengine321
     SUBDIR += cfengine322
     SUBDIR += cfengine323
+    SUBDIR += cfengine324
     SUBDIR += chaoskube
     SUBDIR += checkrestart
     SUBDIR += chezmoi
@@ -426,6 +428,7 @@
     SUBDIR += foremost
     SUBDIR += fortunelock
     SUBDIR += fpart
+    SUBDIR += framework-system
     SUBDIR += frand
     SUBDIR += freebsd-bsdlabel
     SUBDIR += freebsd-fdisk
@@ -974,6 +977,7 @@
     SUBDIR += parafly
     SUBDIR += parallel
     SUBDIR += parkverbot
+    SUBDIR += pass-coffin
     SUBDIR += pass-otp
     SUBDIR += pass-secrets
     SUBDIR += pass-update
@@ -1016,6 +1020,8 @@
     SUBDIR += php82-posix
     SUBDIR += php83-fileinfo
     SUBDIR += php83-posix
+    SUBDIR += php84-fileinfo
+    SUBDIR += php84-posix
     SUBDIR += phybs
     SUBDIR += pick
     SUBDIR += pidof
@@ -1145,6 +1151,7 @@
     SUBDIR += py-ptyprocess
     SUBDIR += py-puremagic
     SUBDIR += py-py-cpuinfo
+    SUBDIR += py-pyinfra
     SUBDIR += py-python-bareos
     SUBDIR += py-python-consul
     SUBDIR += py-python-consul2
@@ -1163,6 +1170,7 @@
     SUBDIR += py-scarab
     SUBDIR += py-supervisor
     SUBDIR += py-tarsnapper
+    SUBDIR += py-tldr
     SUBDIR += py-tmuxp
     SUBDIR += py-upt
     SUBDIR += py-upt-cpan
@@ -1179,6 +1187,7 @@
     SUBDIR += qjail
     SUBDIR += qjail54
     SUBDIR += qlogtools
+    SUBDIR += qmk_hid
     SUBDIR += qsudo
     SUBDIR += qt5-qtdiag
     SUBDIR += qt5-qtpaths
@@ -1354,6 +1363,8 @@
     SUBDIR += schilyutils
     SUBDIR += screen
     SUBDIR += screen-devel
+    SUBDIR += screen49
+    SUBDIR += screen50
     SUBDIR += screenfetch
     SUBDIR += screenie
     SUBDIR += scterc
@@ -1500,6 +1511,7 @@
     SUBDIR += u-boot-bananapim2
     SUBDIR += u-boot-beaglebone
     SUBDIR += u-boot-bhyve-arm64
+    SUBDIR += u-boot-bhyve-riscv
     SUBDIR += u-boot-chip
     SUBDIR += u-boot-clearfog
     SUBDIR += u-boot-cubieboard
@@ -1569,7 +1581,6 @@
     SUBDIR += uhidd
     SUBDIR += uif2iso
     SUBDIR += unetbootin
-    SUBDIR += unieject
     SUBDIR += uniutils
     SUBDIR += unquote
     SUBDIR += unstow

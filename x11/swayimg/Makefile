@@ -1,6 +1,6 @@
 PORTNAME=	swayimg
 DISTVERSIONPREFIX=	v
-DISTVERSION=	2.4
+DISTVERSION=	3.2
 CATEGORIES=	x11 wayland
 
 MAINTAINER=	jbeich@FreeBSD.org
@@ -28,7 +28,9 @@ PLIST_FILES=	bin/${PORTNAME} \
 		share/man/man5/${PORTNAME}rc.5.gz \
 		share/applications/${PORTNAME}.desktop \
 		share/icons/hicolor/64x64/apps/${PORTNAME}.png \
-		${DATADIR}/swayimgrc \
+		share/icons/hicolor/128x128/apps/${PORTNAME}.png \
+		share/icons/hicolor/256x256/apps/${PORTNAME}.png \
+		${DATADIR}/${PORTNAME}rc \
 		${NULL}
 
 # XXX Drop after FreeBSD 13.4 EOL around 2026-01-31
@@ -49,7 +51,6 @@ BASH_MESON_ENABLED=	bash
 BASH_PLIST_FILES=	share/bash-completion/completions/${PORTNAME}
 
 GIF_LIB_DEPENDS=	libgif.so:graphics/giflib
-GIF_USES=		localbase:ldflags
 GIF_MESON_ENABLED=	gif
 
 HEIF_LIB_DEPENDS=	libheif.so:graphics/libheif

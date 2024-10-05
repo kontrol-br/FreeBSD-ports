@@ -1,10 +1,12 @@
     COMMENT = Emulators for other operating systems
 
+    SUBDIR += 86Box
     SUBDIR += adamem
     SUBDIR += almostti
     SUBDIR += anese
     SUBDIR += aqemu
     SUBDIR += aranym
+    SUBDIR += ares
     SUBDIR += atari800
     SUBDIR += bfe
     SUBDIR += bochs
@@ -30,6 +32,7 @@
     SUBDIR += elliott-803
     SUBDIR += emu64
     SUBDIR += emulationstation
+    SUBDIR += es-de
     SUBDIR += fceux
     SUBDIR += flexemu
     SUBDIR += fmsx

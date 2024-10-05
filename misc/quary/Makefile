@@ -1,6 +1,7 @@
 PORTNAME=	quary
 DISTVERSIONPREFIX=	v
 DISTVERSION=	0.3.2
+PORTREVISION=	2
 CATEGORIES=	misc
 
 MAINTAINER=	yuri@FreeBSD.org
@@ -523,6 +524,13 @@ CARGO_CRATES=	addr2line-0.22.0 \
 		zeroize-1.8.1
 
 PLIST_FILES=	bin/${PORTNAME}
+
+.include <bsd.port.options.mk>
+
+.if ${ARCH} == powerpc
+LIB_DEPENDS+=	libatomic.so:lang/gcc${GCC_DEFAULT}
+LDFLAGS+=	-L/usr/local/lib/gcc${GCC_DEFAULT} -latomic
+.endif
 
 do-install:
 	${INSTALL_PROGRAM} \

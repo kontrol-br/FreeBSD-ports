@@ -124,6 +124,7 @@
     SUBDIR += go120
     SUBDIR += go121
     SUBDIR += go122
+    SUBDIR += go123
     SUBDIR += gomacro
     SUBDIR += gprolog
     SUBDIR += gptscript
@@ -240,6 +241,7 @@
     SUBDIR += p5-ExtUtils-F77
     SUBDIR += p5-Interpolation
     SUBDIR += p5-JSAN
+    SUBDIR += p5-JavaScript-QuickJS
     SUBDIR += p5-JavaScript-Squish
     SUBDIR += p5-JavaScript-Value-Escape
     SUBDIR += p5-List-MoreUtils
@@ -280,6 +282,8 @@
     SUBDIR += php82-extensions
     SUBDIR += php83
     SUBDIR += php83-extensions
+    SUBDIR += php84
+    SUBDIR += php84-extensions
     SUBDIR += picoc
     SUBDIR += picolisp
     SUBDIR += pkl
@@ -293,6 +297,7 @@
     SUBDIR += py-dhall
     SUBDIR += py-hy
     SUBDIR += py-lupa
+    SUBDIR += py-sly
     SUBDIR += py-textX
     SUBDIR += python
     SUBDIR += python-doc-html

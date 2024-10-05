@@ -79,6 +79,7 @@
     SUBDIR += cvsmail
     SUBDIR += cyrus-imapd25
     SUBDIR += cyrus-imapd30
+    SUBDIR += cyrus-imapd310
     SUBDIR += cyrus-imapd32
     SUBDIR += cyrus-imapd34
     SUBDIR += cyrus-imapd36
@@ -459,6 +460,7 @@
     SUBDIR += pear-Net_Cyrus
     SUBDIR += pear-Net_IMAP
     SUBDIR += pear-Net_LMTP
+    SUBDIR += pecl-imap
     SUBDIR += pecl-mailparse
     SUBDIR += perdition
     SUBDIR += pflogsumm
@@ -603,6 +605,7 @@
     SUBDIR += rubygem-email_reply_parser
     SUBDIR += rubygem-email_reply_parser-discourse
     SUBDIR += rubygem-email_reply_trimmer
+    SUBDIR += rubygem-email_validator
     SUBDIR += rubygem-exception_notification
     SUBDIR += rubygem-extended_email_reply_parser
     SUBDIR += rubygem-gitlab-mail_room
@@ -623,7 +626,6 @@
     SUBDIR += rubygem-premailer-rails-rails61
     SUBDIR += rubygem-premailer-rails-rails70
     SUBDIR += rubygem-premailer-rails-rails71
-    SUBDIR += rubygem-premailer-rails110-rails70
     SUBDIR += rubygem-rmail
     SUBDIR += rubygem-roadie
     SUBDIR += rubygem-roadie-rails-rails4

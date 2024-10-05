@@ -43,7 +43,6 @@ share/applications/emacsclient.desktop
 %%DATADIR%%/%%EMACS_VER%%/etc/NEWS.28
 %%DATADIR%%/%%EMACS_VER%%/etc/NEWS.29
 %%DATADIR%%/%%EMACS_VER%%/etc/NEWS.30
-%%DATADIR%%/%%EMACS_VER%%/etc/NEWS.unknown
 %%DATADIR%%/%%EMACS_VER%%/etc/NEXTSTEP
 %%DATADIR%%/%%EMACS_VER%%/etc/NXML-NEWS
 %%DATADIR%%/%%EMACS_VER%%/etc/ORG-NEWS
@@ -931,6 +930,7 @@ share/applications/emacsclient.desktop
 %%DATADIR%%/%%EMACS_VER%%/etc/srecode/test.srt
 %%DATADIR%%/%%EMACS_VER%%/etc/srecode/texi.srt
 %%DATADIR%%/%%EMACS_VER%%/etc/srecode/wisent.srt
+%%DATADIR%%/%%EMACS_VER%%/etc/symbol-releases.eld
 %%DATADIR%%/%%EMACS_VER%%/etc/themes/adwaita-theme.el
 %%DATADIR%%/%%EMACS_VER%%/etc/themes/deeper-blue-theme.el
 %%DATADIR%%/%%EMACS_VER%%/etc/themes/dichromacy-theme.el
@@ -1648,6 +1648,8 @@ share/applications/emacsclient.desktop
 %%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/comp.elc
 %%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/compat.el.gz
 %%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/compat.elc
+%%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/cond-star.el.gz
+%%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/cond-star.elc
 %%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/copyright.el.gz
 %%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/copyright.elc
 %%DATADIR%%/%%EMACS_VER%%/lisp/emacs-lisp/crm.el.gz
@@ -2680,6 +2682,8 @@ share/applications/emacsclient.desktop
 %%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/thai.elc
 %%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/tibetan.el.gz
 %%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/tibetan.elc
+%%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/tifinagh.el.gz
+%%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/tifinagh.elc
 %%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/tsang-b5.el.gz
 %%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/tsang-b5.elc
 %%DATADIR%%/%%EMACS_VER%%/lisp/leim/quail/tsang-cns.el.gz

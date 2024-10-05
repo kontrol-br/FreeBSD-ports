@@ -1,5 +1,5 @@
 PORTNAME=	eksctl
-PORTVERSION=	0.184.0
+PORTVERSION=	0.190.0
 DISTVERSIONPREFIX=	v
 CATEGORIES=	sysutils
 
@@ -17,7 +17,7 @@ PLIST_FILES=	bin/${PORTNAME}
 
 GO_MODULE=	github.com/eksctl-io/${PORTNAME}
 GO_TARGET=	./cmd/${PORTNAME}
-GO_BUILDFLAGS=	-ldflags="-X github.com/weaveworks/eksctl/pkg/version.gitCommit=a6bc00f420ed \
+GO_BUILDFLAGS=	-ldflags="-X github.com/weaveworks/eksctl/pkg/version.gitCommit=3fccc8ed8683 \
 		-X github.com/weaveworks/eksctl/pkg/version.buildDate=$$(date +%Y-%m-%dT%H:%M:%SZ)"
 
 .include <bsd.port.mk>
