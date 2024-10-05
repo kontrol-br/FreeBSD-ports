@@ -181,7 +181,7 @@ function tinc_install() {
 	/* Don't add the interface group if it already exists */
 	$found = false;
 	foreach (config_get_path('ifgroups/ifgroupentry', []) as $ifg) {
-		if ($ifg == "pkg_tinc") {
+		if ($ifg['ifname'] == "pkg_tinc") {
 			$found = true;
 		}
 	}
@@ -214,23 +214,19 @@ function tinc_deinstall() {
 		}
 	}
 
-	if ($myid >= 0 && config_get_path("ifgroups/ifgroupentry/{$myid}")) {
-		$members = explode(" ", config_get_path("ifgroups/ifgroupentry/{$_GET['id']}/members"));
+	if (is_numericint($myid) && config_get_path("ifgroups/ifgroupentry/{$myid}")) {
+		$members = array_filter(explode(" ", config_get_path("ifgroups/ifgroupentry/{$myid}/members")));
 		foreach ($members as $ifs) {
 			$realif = get_real_interface($ifs);
 			if ($realif) {
-				mwexec("/sbin/ifconfig {$realif} -group " . escapeshellarg(config_get_path("ifgroups/ifgroupentry/{$_GET['id']}/ifname")));
+				mwexec("/sbin/ifconfig {$realif} -group " . escapeshellarg(config_get_path("ifgroups/ifgroupentry/{$myid}/ifname")));
 			}
 		}
 		config_del_path("ifgroups/ifgroupentry/{$myid}");
-		/*
-		* XXX: Do not remove this, otherwise the interface group may not be removed properly.
-		*/
-		unlink_if_exists("{$g['tmp_path']}/config.cache");
-		write_config("[tinc] Package uninstalled.");
 	}
 	rmdir_recursive("/var/tmp/tinc");
 	rmdir_recursive("/usr/local/etc/tinc*");
+	write_config("[tinc] Package uninstalled.");
 }
 
 function tinc_validate_input($post, &$input_errors) {
