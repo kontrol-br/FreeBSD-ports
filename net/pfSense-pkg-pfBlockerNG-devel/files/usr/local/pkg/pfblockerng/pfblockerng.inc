@@ -264,6 +264,7 @@ $pfb['mime_types'] = array_flip(array(	'inode/x-empty',
 					'text/csv',
 					'application/csv',
 					'application/json',
+					'application/x-ndjason',
 					'application/x-tar',
 					'application/gzip',
 					'application/x-gzip',
@@ -691,18 +692,12 @@ function pfb_global() {
 	// Reload config.xml to get any recent changes
 	config_read_file(true);
 
-	config_init_path('installedpackages/pfblockerng/config/0');
-	config_init_path('installedpackages/pfblockerngipsettings/config/0');
-	config_init_path('installedpackages/pfblockerngdnsblsettings/config/0');
-	config_init_path('installedpackages/pfblockerngblacklist');
-	config_init_path('installedpackages/pfblockerngglobal');
-
 	// General variables
-	$pfb['config']		= config_get_path('installedpackages/pfblockerng/config/0');
-	$pfb['ipconfig']	= config_get_path('installedpackages/pfblockerngipsettings/config/0');
-	$pfb['dnsblconfig']	= config_get_path('installedpackages/pfblockerngdnsblsettings/config/0');
-	$pfb['blconfig']	= config_get_path('installedpackages/pfblockerngblacklist');
-	$pfb['config_global']	= config_get_path('installedpackages/pfblockerngglobal');
+	$pfb['config']		= config_get_path('installedpackages/pfblockerng/config/0', []);
+	$pfb['ipconfig']	= config_get_path('installedpackages/pfblockerngipsettings/config/0', []);
+	$pfb['dnsblconfig']	= config_get_path('installedpackages/pfblockerngdnsblsettings/config/0', []);
+	$pfb['blconfig']	= config_get_path('installedpackages/pfblockerngblacklist', []);
+	$pfb['config_global']	= config_get_path('installedpackages/pfblockerngglobal', []);
 
 	$pfb['enable']		= $pfb['config']['enable_cb'];			// Enable/Disable of pfBlockerNG
 	$pfb['keep']		= $pfb['config']['pfb_keep'];			// Keep blocklists on pfBlockerNG Disable
@@ -776,7 +771,6 @@ function pfb_global() {
 	}
 
 	// SafeSearch
-	config_init_path('installedpackages/pfblockerngsafesearch');
 	$pfb['safesearch_enable']	= config_get_path('installedpackages/pfblockerngsafesearch/safesearch_enable', 'Disable');
 	$pfb['safesearch_youtube']	= config_get_path('installedpackages/pfblockerngsafesearch/safesearch_youtube', 'Disable');
 	$pfb['safesearch_doh']		= config_get_path('installedpackages/pfblockerngsafesearch/safesearch_doh', 'Disable');
@@ -2033,10 +2027,7 @@ function pfb_create_dnsbl($mode) {
 
 		// Update config.xml, if changes required
 		if ($pfbupdate) {
-			config_init_path('nat/rule');
 			config_set_path('nat/rule', $new_nat);
-
-			config_init_path('virtualip/vip');
 			config_set_path('virtualip/vip', $new_vip);
 			write_config('pfBlockerNG: saving DNSBL changes');
 		}
@@ -2185,7 +2176,6 @@ function pfb_unbound_dnsbl($mode) {
 	$unbound_include = "server:include: {$pfb['dnsbl_file']}.*conf";
 
 	// Collect Unbound custom option pfSense conf line
-	config_init_path('unbound');
 	$pfb['unboundconfig']	= config_get_path('unbound/custom_options');
 
 	if (!empty($pfb['unboundconfig'])) {
@@ -2463,7 +2453,6 @@ function pfb_unbound_python($mode) {
 	config_read_file(true);
 
 	$pfbpython = FALSE;
-	config_init_path('unbound');
 
 	// Ensure log file permissions are set as 'unbound:unbound'
 	foreach (array('dnsbl.log', 'dns_reply.log', 'unified.log') as $logfile) {
@@ -4750,10 +4739,7 @@ function pfb_aliastables($mode) {
 	// Reload config.xml to get any recent changes
 	config_read_file(true);
 
-	config_init_path('system/earlyshellcmd');
 	$a_earlyshellcmd = config_get_path('system/earlyshellcmd', []);
-
-	config_init_path('installedpackages/shellcmdsettings/config');
 	$a_shellcmdsettings = config_get_path('installedpackages/shellcmdsettings/config', []);
 
 	// Only execute function if Ramdisks are used.
@@ -5426,7 +5412,6 @@ function pfb_daemon_filterlog() {
 	}
 
 	// Proofpoint ET IQRisk header name reference
-	config_init_path('installedpackages/pfblockerngreputation/config/0');
 	$et_header	= config_get_path('installedpackages/pfblockerngreputation/config/0/et_header', '');
 	$et_enabled = TRUE;
 	if (empty($et_header)) {
@@ -6698,7 +6683,7 @@ function pfb_livetail($logfile, $mode) {
 function convert_feeds_json() {
 	global $pfb;
 
-	$aconfig		= config_get_path('installedpackages/pfblockerngglobal');
+	$aconfig		= config_get_path('installedpackages/pfblockerngglobal', []);
 	$pfb['feeds_list']	= $merge_feeds = $feed_info = array();
 
 	$feed_info_raw = json_decode(@file_get_contents("{$pfb['feeds']}"), TRUE);
@@ -7122,8 +7107,7 @@ function sync_package_pfblockerng($cron='') {
 	$pfb['dnsbl_alexa_inc'] = pfb_filter($pfb['dnsbl_alexa_inc'], PFB_FILTER_CSV, 'Validate pfB Script variable');
 
 	// Reputation config variables
-	config_init_path('installedpackages/pfblockerngreputation/config/0');
-	$pfb['config_rep'] = config_get_path('installedpackages/pfblockerngreputation/config/0');
+	$pfb['config_rep'] = config_get_path('installedpackages/pfblockerngreputation/config/0', []);
 
 	// Validate pfB Script variables
 	foreach (array(
@@ -7285,14 +7269,26 @@ function sync_package_pfblockerng($cron='') {
 	// Determine max Domain count available for DNSBL TLD analysis (Avoid Unbound memory exhaustion)
 	$pfs_memory = (round(get_single_sysctl('hw.physmem') / (1024*1024)) ?: 1000);
 
-	if (!$pfb['dnsbl_py_blacklist']) {
-		$pfb['pfs_mem'] = array(   '0' => '100000', '1500' =>  '150000', '2000' =>  '200000', '2500' =>  '250000', '3000' =>  '400000',
-					'4000' => '600000', '5000' => '1000000', '6000' => '1500000', '7000' => '2000000', '8000' => '2500000',
-					'12000' => '3000000', '16000' => '4000000', '32000' => '8000000');
-	} else {
-		$pfb['pfs_mem'] = array(   '0' => '200000', '1500' =>  '300000', '2000' =>  '400000', '2500' =>  '500000', '3000' =>  '800000',
-					'4000' => '1200000', '5000' => '2000000', '6000' => '3000000', '7000' => '4000000', '8000' => '5000000',
-					'12000' => '6000000', '16000' => '8000000', '32000' => '16000000');
+	$pfb['pfs_mem'] = [
+		'0' => '100000',
+		'1500' => '150000',
+		'2000' => '200000',
+		'2500' => '250000',
+		'3000' => '400000',
+		'4000' => '600000',
+		'5000' => '1000000',
+		'6000' => '1500000',
+		'7000' => '2000000',
+		'8000' => '2500000',
+		'12000' => '3000000',
+		'16000' => '4000000',
+		'32000' => '8000000'
+	];
+
+	if ($pfb['dnsbl_py_blacklist']) {
+		array_walk($pfb['pfs_mem'], function (&$value) {
+			$value = $value * 3;
+		});
 	}
 
 	foreach ($pfb['pfs_mem'] as $pfb_mem => $domain_max) {
@@ -10095,7 +10091,6 @@ function sync_package_pfblockerng($cron='') {
 	// Reload config.xml to get any recent changes
 	config_read_file(true);
 
-	config_init_path('aliases');
 	$exist_aliases = config_get_path('aliases/alias', []);
 	foreach ($exist_aliases as $cbalias) {
 
@@ -10145,7 +10140,6 @@ function sync_package_pfblockerng($cron='') {
 			$orig_rules_nocreated = $new_rules_nocreated = array();
 
 			// Collect all existing rules
-			config_init_path('filter/rule');
 			$rules = config_get_path('filter/rule', []);
 
 			// Collect existing pfSense rules 'pass', 'match' and 'other' pfSense rules into new arrays.
@@ -10636,7 +10630,7 @@ function sync_package_pfblockerng($cron='') {
 	#	XMLRPC - sync process		#
 	#########################################
 
-	if (!platform_booting() && !$g['pfblockerng_install'] && $pfb['conf_mod'] && isset($pfb_config)) {
+	if (!platform_booting() && !$g['pfblockerng_install']) {
 		pfblockerng_sync_on_changes();
 	}
 

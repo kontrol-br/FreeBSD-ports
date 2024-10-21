@@ -36,8 +36,7 @@ $aglobal_array = array(	'pfbunicnt' => 200, 'pfbdenycnt' => 25, 'pfbpermitcnt' =
 			'pfbdnscnt' => 25, 'pfbdnsreplycnt' => 200,
 			'ipfilterlimitentries' => 100, 'dnsblfilterlimitentries' => 100, 'dnsfilterlimitentries' => 100); 
 
-config_init_path('installedpackages/pfblockerngglobal');
-$pfb['aglobal'] = config_get_path('installedpackages/pfblockerngglobal');
+$pfb['aglobal'] = config_get_path('installedpackages/pfblockerngglobal', []);
 
 $alertrefresh	= isset($pfb['aglobal']['alertrefresh'])	? $pfb['aglobal']['alertrefresh']	: 'on';
 $pfbpageload	= $pfb['aglobal']['pfbpageload']	!= ''	? $pfb['aglobal']['pfbpageload']	: 'unified';
@@ -229,9 +228,6 @@ if (!$alert_summary) {
 			}
 		}
 	}
-
-	config_init_path('installedpackages/pfblockerngipsettings/config/0');
-	config_init_path('installedpackages/pfblockerngdnsblsettings/config/0');
 
 	config_set_path('installedpackages/pfblockerngipsettings/config/0/v4suppression', 
 		config_get_path('installedpackages/pfblockerngipsettings/config/0/v4suppression') ?: '');
@@ -4417,10 +4413,10 @@ elseif ($alert_summary):
 if (!$pfb['filterlogentries']):?>
 
 <form action="/pfblockerng/pfblockerng_alerts.php" method="post" name="iform_stats" id="iform_stats" class="form-horizontal">
-<script src="../vendor/d3/d3.min.js"></script>
+<script src="../vendor/d3/d3.min.js?v=<?=filemtime('/usr/local/www/vendor/d3/d3.min.js')?>"></script>
 <script src="../vendor/d3pie/d3pie.min.js"></script>
-<script src="../vendor/nvd3/nv.d3.js"></script>
-<link href="../vendor/nvd3/nv.d3.css" media="screen, projection" rel="stylesheet" type="text/css">
+<script src="../vendor/nvd3/nv.d3.min.js?v=<?=filemtime('/usr/local/www/vendor/nvd3/nv.d3.min.js')?>"></script>
+<link href="../vendor/nvd3/nv.d3.min.css" media="screen, projection" rel="stylesheet" type="text/css">
 
 <div class="panel panel-default">
 <div class="panel-heading">

@@ -1506,8 +1506,7 @@ $options_agateway_in		= $options_agateway_out		= pfb_get_gateways();
 $continent_display		= str_replace('_', ' ', "{$continent}");				// Continent name displayed on page
 $conf_type			= 'pfblockerng' . strtolower(str_replace('_', '', $continent_en));	// XML config location
 
-config_init_path("installedpackages/{$conf_type}/config/0");
-$pfb['geoipconfig'] = config_get_path("installedpackages/{$conf_type}/config/0");
+$pfb['geoipconfig'] = config_get_path("installedpackages/{$conf_type}/config/0", []);
 
 $active[$continent_display]	= TRUE;
 
@@ -1666,7 +1665,7 @@ if ($_POST) {
 			$pfb['geoipconfig']['autoproto_out']		= $_POST['autoproto_out']				?: '';
 			$pfb['geoipconfig']['agateway_out']		= $_POST['agateway_out']				?: '';
 
-			config_set_path('installedpackages/{$conf_type}/config/0', $pfb['geoipconfig']);
+			config_set_path("installedpackages/{$conf_type}/config/0", $pfb['geoipconfig']);
 			write_config("[pfBlockerNG] save GeoIP [ {$continent_display} ] settings");
 			header("Location: /pfblockerng/pfblockerng_{$continent_en}.php");
 			exit;
@@ -2063,8 +2062,7 @@ require_once('/usr/local/pkg/pfblockerng/pfblockerng.inc');
 global $pfb;
 pfb_global();
 
-config_init_path('installedpackages/pfblockerngreputation/config/0');
-$pfb['repconfig'] = config_get_path('installedpackages/pfblockerngreputation/config/0');
+$pfb['repconfig'] = config_get_path('installedpackages/pfblockerngreputation/config/0', []);
 
 $pconfig = array();
 $pconfig['enable_rep']		= $pfb['repconfig']['enable_rep'];

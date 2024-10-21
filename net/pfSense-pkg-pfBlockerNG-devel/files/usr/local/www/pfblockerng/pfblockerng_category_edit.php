@@ -140,8 +140,7 @@ if (($action == 'add' || $action == 'addgroup') && !empty($atype) && !isset($_PO
 	$disable_move	= TRUE;
 	$all_group	= $new_group = array();
 
-	config_init_path("installedpackages/{$conf_type}/config");
-	$rowdata	= config_get_path("installedpackages/{$conf_type}/config");
+	$rowdata	= config_get_path("installedpackages/{$conf_type}/config", []);
 
 	$feed_info = convert_feeds_json();			// Load/convert Feeds (w/alternative aliasname(s), if user-configured
 	if (is_array($feed_info) &&
@@ -162,7 +161,6 @@ if (($action == 'add' || $action == 'addgroup') && !empty($atype) && !isset($_PO
 
 					// If an alternate URL is defined, add applicable URL
 					if (isset($feed['alternate'])) {
-						config_init_path('installedpackages/pfblockerngglobal');
 						$selected = config_get_path('installedpackages/pfblockerngglobal/feed_alt_' . strtolower($feed['header']));
 						$selected = str_replace('alt_', '', $selected);
 
@@ -287,8 +285,6 @@ $pgtitle = array(gettext('Firewall'), gettext('pfBlockerNG'), gettext($pgtype), 
 $pglinks = array('', '/pfblockerng/pfblockerng_general.php', "{$pg_url}", '@self');
 
 include_once('head.inc');
-config_init_path("installedpackages/{$conf_type}/config/0");
-
 
 // Select field options
 
@@ -669,9 +665,6 @@ if ($_POST && isset($_POST['save'])) {
 	}
 
 	if (!$input_errors) {
-
-		config_init_path("installedpackages/{$conf_type}/config/{$rowid}");
-
 		config_set_path("installedpackages/{$conf_type}/config/{$rowid}/aliasname", $_POST['aliasname'] ?: '');
 
 		if (isset($_POST['description']) && !empty($_POST['description'])) {
@@ -729,7 +722,6 @@ if ($_POST && isset($_POST['save'])) {
 			touch("{$pfbarr['folder']}/{$aname}_custom{$suffix}.update");
 		}
 
-		config_init_path("installedpackages/{$conf_type}/config/{$rowid}");
 		config_set_path("installedpackages/{$conf_type}/config/{$rowid}/custom", base64_encode($_POST['custom']) ?: '');
 
 		$rowhelper_exist = array();
@@ -745,7 +737,9 @@ if ($_POST && isset($_POST['save'])) {
 				if (!empty($value) && $k_field[0] != 'url') {
 					$value = pfb_filter($value, PFB_FILTER_HTML, 'Category_edit save');
 				}
-				config_init_path("installedpackages/{$conf_type}/config/{$rowid}/row/{$k_field[1]}");
+				if (($k_field[0] == 'url') && ($_POST["format-{$k_field[1]}"] == 'asn')) {
+					$value = htmlentities($value);
+				}
 				config_set_path("installedpackages/{$conf_type}/config/{$rowid}/row/{$k_field[1]}/{$k_field[0]}", $value);
 			}
 		}
@@ -760,7 +754,6 @@ if ($_POST && isset($_POST['save'])) {
 		// Remove unused xml tag
 		config_del_path("installedpackages/{$conf_type}/config/{$rowid}/infolists");
 
-		config_init_path("installedpackages/{$conf_type}/config/{$rowid}");
 		$name = config_get_path("installedpackages/{$conf_type}/config/{$rowid}/aliasname") ?: 'Unknown';
 		$savemsg = "Saved [ Type:{$type}, Name:{$name} ] configuration";
 		write_config("pfBlockerNG: {$savemsg}");
@@ -785,8 +778,7 @@ else {
 	if ($action == 'addgroup' || $action == 'add') {
 		;
 	} else {
-		config_init_path("installedpackages/{$conf_type}/config");
-		$rowdata = config_get_path("installedpackages/{$conf_type}/config");
+		$rowdata = config_get_path("installedpackages/{$conf_type}/config", []);
 	}
 
 	$pconfig				= array();
@@ -989,7 +981,6 @@ if (empty($rowdata[$rowid]['row'])) {
 							'state' 	=> 'Disabled',
 							'url'		=> '',
 							'header'	=> '' ) );
-	config_set_path("installedpackages/{$conf_type}/config/{$rowid}/row", $rowdata[$rowid]['row']);
 }
 
 // Sort row by Header/Label field followed by Enabled/Disabled State settings
@@ -1074,7 +1065,7 @@ foreach ($rowdata[$rowid] as $tags) {
 				'url-' . $r_id,
 				'',
 				'text',
-				$row['url']
+				(($row['format'] == 'asn') ? html_entity_decode($row['url']) : $row['url'])
 		))->setHelp(($numrows == $rowcounter) ? 'Source' : NULL)
 		  ->setWidth(5);
 

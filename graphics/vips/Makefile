@@ -1,5 +1,5 @@
 PORTNAME=	vips
-PORTVERSION=	8.15.3
+PORTVERSION=	8.15.4
 CATEGORIES=	graphics
 MASTER_SITES=	https://github.com/libvips/libvips/releases/download/v${PORTVERSION}/
 
@@ -16,7 +16,7 @@ LIB_DEPENDS=	libexpat.so:textproc/expat2 \
 		libharfbuzz.so:print/harfbuzz
 RUN_DEPENDS=	bash:shells/bash
 
-USES=		compiler:c++11-lang cpe gettext gnome localbase meson pkgconfig python shebangfix tar:xz
+USES=		compiler:c++11-lang cpe gettext-tools gnome localbase meson pkgconfig python shebangfix tar:xz
 USE_GNOME=	glib20
 
 MESON_ARGS=	--default-library=both \
@@ -38,7 +38,7 @@ MESON_ARGS=	--default-library=both \
 		-Dzlib=enabled
 USE_LDCONFIG=	yes
 
-PLIST_SUB=	VERSION=${PORTVERSION:R}
+PLIST_SUB=	PORTVERSION=${PORTVERSION} VERSION=${PORTVERSION:R}
 
 FLAVORS=	x11 nox11
 FLAVOR?=	${FLAVORS:[1]}
@@ -60,6 +60,7 @@ IMAGEQUANT_DESC=Image Quantization support
 GRAPHICSMAGICK_DESC=	Image processing via GraphicsMagick
 MATIO_DESC=	Matlab MAT format support
 ORC_DESC=	Accelerate loops with ORC
+SPNG_DESC=	Simple PNG support
 
 CFITSIO_LIB_DEPENDS=	libcfitsio.so:astro/cfitsio
 CFITSIO_MESON_ENABLED=	cfitsio
