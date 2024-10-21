@@ -314,7 +314,6 @@
     SUBDIR += gstreamer1-plugins-openexr
     SUBDIR += gstreamer1-plugins-openjpeg
     SUBDIR += gstreamer1-plugins-png
-    SUBDIR += gstreamer1-plugins-qt
     SUBDIR += gstreamer1-plugins-rsvg
     SUBDIR += gstreamer1-plugins-vulkan
     SUBDIR += gstreamer1-plugins-webp
@@ -507,8 +506,6 @@
     SUBDIR += libsixel
     SUBDIR += libspiro
     SUBDIR += libspng
-    SUBDIR += libsvg
-    SUBDIR += libsvg-cairo
     SUBDIR += libsvgtiny
     SUBDIR += libvisual
     SUBDIR += libvisual04
@@ -982,6 +979,7 @@
     SUBDIR += py-pyzbar
     SUBDIR += py-qpageview
     SUBDIR += py-qrencode
+    SUBDIR += py-qt5-3d
     SUBDIR += py-qt6-3d
     SUBDIR += py-qudida
     SUBDIR += py-railroad-diagrams
@@ -993,6 +991,7 @@
     SUBDIR += py-s2
     SUBDIR += py-scikit-image
     SUBDIR += py-seqdiag
+    SUBDIR += py-simplejpeg
     SUBDIR += py-sorl-thumbnail
     SUBDIR += py-spectra
     SUBDIR += py-sqlalchemy-imageattach
@@ -1155,7 +1154,6 @@
     SUBDIR += ssocr
     SUBDIR += sswf
     SUBDIR += stamp
-    SUBDIR += svg2png
     SUBDIR += svgalib
     SUBDIR += svgbob
     SUBDIR += svgpp

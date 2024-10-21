@@ -1,9 +1,12 @@
 PORTNAME=	calibre
-PORTVERSION=	7.17.0
+PORTVERSION=	7.20.0
+PORTREVISION=	1
 CATEGORIES=	deskutils python
-MASTER_SITES=	http://download.calibre-ebook.com/${PORTVERSION}/
-DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
+MASTER_SITES=	https://download.calibre-ebook.com/${PORTVERSION}/:DEFAULT \
+		https://raw.githubusercontent.com/rhasspy/piper/${PIPER_VOICES_HASH}/:piper
+DISTFILES=	${DISTNAME}${EXTRACT_SUFX}:DEFAULT VOICES.md:piper
 DIST_SUBDIR=	${PORTNAME}
+EXTRACT_ONLY=	${DISTFILES:C/:.*//:S/VOICES.md//1}
 
 MAINTAINER=	madpilot@FreeBSD.org
 COMMENT=	Ebook management application
@@ -29,7 +32,8 @@ BUILD_DEPENDS=		${LOCALBASE}/bin/cmake:devel/cmake-core \
 			${PYTHON_PKGNAMEPREFIX}zeroconf>0:net/py-zeroconf@${PY_FLAVOR} \
 			liberation-fonts-ttf>=2.1.3:x11-fonts/liberation-fonts-ttf \
 			MathJax3>0:www/mathjax3
-LIB_DEPENDS=		libfreetype.so:print/freetype2 \
+LIB_DEPENDS=		libavcodec.so:multimedia/ffmpeg \
+			libfreetype.so:print/freetype2 \
 			libhunspell-1.7.so:textproc/hunspell \
 			libhyphen.so:textproc/hyphen \
 			libicudata.so:devel/icu \
@@ -64,15 +68,15 @@ RUN_DEPENDS=		${PYTHON_PKGNAMEPREFIX}apsw>=3.43.0.0:databases/py-apsw@${PY_FLAVO
 USES=		desktop-file-utils gettext-runtime:build gl localbase:ldflags \
 		pkgconfig pyqt:6 python:3.11+ qt:6 shared-mime-info shebangfix sqlite ssl \
 		tar:xz xorg
+USE_GITHUB=	nodefault
+GH_TUPLE=	kovidgoyal:calibre-translations:0e909e6:translations \
+		LibreOffice:dictionaries:b871dff:hypenation
+PIPER_VOICES_HASH=	40c852d339fc7532cbbf28a4a942a7c96c185c96
 USE_GL=		opengl
-USE_PYQT=	pyqt6 pysip qtbuilder sip webengine
+USE_PYQT=	pyqt6 pysip webengine qtbuilder:build sip:build
 USE_QT=		base
 USE_RC_SUBR=	calibre
 USE_XORG=	x11 xext xrender
-
-USE_GITHUB=	nodefault
-GH_TUPLE=	kovidgoyal:calibre-translations:b30a463:translations \
-		LibreOffice:dictionaries:0fbb94c:hypenation
 
 SHEBANG_GLOB=	*.py *.recipe *.sh
 python_OLD_CMD=	"/usr/bin/env  python" ${LOCALBASE}/bin/python3
@@ -122,6 +126,7 @@ do-build:
 		--path-to-translations=${WRKSRC_translations} \
 		--path-to-cacerts=${LOCALBASE}/share/certs/ca-root-nss.crt \
 		--path-to-isocodes=${ISOCODESWRKSRC} --isocodes-extracted \
+		--path-to-piper_voices=${DISTDIR}/${DIST_SUBDIR}/VOICES.md \
 	)
 	@${RMDIR} ${LOCALBASE}/libexec/qt6/locales 2>/dev/null || ${TRUE}
 

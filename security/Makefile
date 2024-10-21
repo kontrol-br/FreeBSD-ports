@@ -39,6 +39,7 @@
     SUBDIR += aws-c-auth
     SUBDIR += aws-c-cal
     SUBDIR += aws-iam-authenticator
+    SUBDIR += aws-lc
     SUBDIR += aws-vault
     SUBDIR += axc
     SUBDIR += barnyard2
@@ -98,7 +99,6 @@
     SUBDIR += clamsmtp
     SUBDIR += clamtk
     SUBDIR += cloak
-    SUBDIR += clusterssh
     SUBDIR += cops
     SUBDIR += courier-authlib
     SUBDIR += courier-authlib-base
@@ -160,7 +160,6 @@
     SUBDIR += fizz
     SUBDIR += flawfinder
     SUBDIR += flawz
-    SUBDIR += fprint_demo
     SUBDIR += fprintd
     SUBDIR += fragroute
     SUBDIR += fragrouter
@@ -281,6 +280,7 @@
     SUBDIR += lasso
     SUBDIR += lastpass-cli
     SUBDIR += lego
+    SUBDIR += libaegis
     SUBDIR += libargon2
     SUBDIR += libassuan
     SUBDIR += libcaes
@@ -294,6 +294,7 @@
     SUBDIR += libgpg-error
     SUBDIR += libgsasl
     SUBDIR += libhijack
+    SUBDIR += libhydrogen
     SUBDIR += libident
     SUBDIR += libkleo
     SUBDIR += libkpass
@@ -401,7 +402,6 @@
     SUBDIR += nextcloud-end_to_end_encryption
     SUBDIR += nextcloud-passman
     SUBDIR += nextcloud-twofactor_admin
-    SUBDIR += nextcloud-twofactor_nextcloud_notification
     SUBDIR += nextcloud-twofactor_webauthn
     SUBDIR += nflib
     SUBDIR += ngrok
@@ -425,6 +425,7 @@
     SUBDIR += olm
     SUBDIR += onionscan
     SUBDIR += op
+    SUBDIR += openbao
     SUBDIR += openbsm
     SUBDIR += openca-ocspd
     SUBDIR += openconnect
@@ -450,6 +451,7 @@
     SUBDIR += openssl31-quictls
     SUBDIR += openssl32
     SUBDIR += openssl33
+    SUBDIR += openssl34
     SUBDIR += openvas
     SUBDIR += openvpn
     SUBDIR += openvpn-admin
@@ -474,6 +476,7 @@
     SUBDIR += p5-Alt-Crypt-RSA-BigInt
     SUBDIR += p5-Apache-Htpasswd
     SUBDIR += p5-App-Acmeman
+    SUBDIR += p5-App-ClusterSSH
     SUBDIR += p5-App-Genpass
     SUBDIR += p5-App-TLSMe
     SUBDIR += p5-Auth-YubikeyDecrypter
@@ -747,7 +750,6 @@
     SUBDIR += pam-modules
     SUBDIR += pam-mysql
     SUBDIR += pam-pgsql
-    SUBDIR += pam_fprint
     SUBDIR += pam_google_authenticator
     SUBDIR += pam_helper
     SUBDIR += pam_howdy
@@ -997,6 +999,7 @@
     SUBDIR += py-paramiko
     SUBDIR += py-pass-audit
     SUBDIR += py-pass-git-helper
+    SUBDIR += py-passhole
     SUBDIR += py-passlib
     SUBDIR += py-pbkdf2
     SUBDIR += py-pem
@@ -1017,6 +1020,8 @@
     SUBDIR += py-pyelliptic
     SUBDIR += py-pyhanko
     SUBDIR += py-pyhanko-certvalidator
+    SUBDIR += py-pykeepass
+    SUBDIR += py-pykeepass-cache
     SUBDIR += py-pylibacl
     SUBDIR += py-pymacaroons
     SUBDIR += py-pynacl
@@ -1086,7 +1091,6 @@
     SUBDIR += py-yara-python-dex
     SUBDIR += py-yubikey-manager
     SUBDIR += py-zkg
-    SUBDIR += py-zope.password
     SUBDIR += py-zxcvbn
     SUBDIR += pygost
     SUBDIR += qt-sudo
@@ -1117,6 +1121,7 @@
     SUBDIR += rubygem-bcrypt
     SUBDIR += rubygem-bcrypt-ruby
     SUBDIR += rubygem-bcrypt_pbkdf
+    SUBDIR += rubygem-brakeman
     SUBDIR += rubygem-cancancan
     SUBDIR += rubygem-cose
     SUBDIR += rubygem-cvss-suite
@@ -1226,7 +1231,6 @@
     SUBDIR += rubygem-ruby-hmac
     SUBDIR += rubygem-ruby-rc4
     SUBDIR += rubygem-ruby-saml
-    SUBDIR += rubygem-ruby-saml115
     SUBDIR += rubygem-safety_net_attestation
     SUBDIR += rubygem-scrypt
     SUBDIR += rubygem-securecompare
