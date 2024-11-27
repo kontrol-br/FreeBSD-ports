@@ -1497,6 +1497,7 @@
     SUBDIR += py-cssselect
     SUBDIR += py-cssutils
     SUBDIR += py-daphne
+    SUBDIR += py-dash
     SUBDIR += py-dj-database-url
     SUBDIR += py-dj50-django-auth-ldap
     SUBDIR += py-dj50-django-choices-field
@@ -1664,6 +1665,7 @@
     SUBDIR += py-flask-collect
     SUBDIR += py-flask-compress
     SUBDIR += py-flask-cors
+    SUBDIR += py-flask-dance
     SUBDIR += py-flask-flatpages
     SUBDIR += py-flask-json
     SUBDIR += py-flask-jwt
@@ -1751,6 +1753,7 @@
     SUBDIR += py-httpx-gssapi
     SUBDIR += py-httpx-oauth
     SUBDIR += py-httpx-socks
+    SUBDIR += py-httpx-ws
     SUBDIR += py-hypercorn
     SUBDIR += py-hyperframe
     SUBDIR += py-hyperlink
@@ -2034,21 +2037,27 @@
     SUBDIR += rubygem-faraday-em_http1
     SUBDIR += rubygem-faraday-em_synchrony
     SUBDIR += rubygem-faraday-follow_redirects
+    SUBDIR += rubygem-faraday-follow_redirects-gitlab
+    SUBDIR += rubygem-faraday-gitlab
     SUBDIR += rubygem-faraday-http-cache
     SUBDIR += rubygem-faraday-httpclient
     SUBDIR += rubygem-faraday-httpclient1
     SUBDIR += rubygem-faraday-multipart
     SUBDIR += rubygem-faraday-net_http
+    SUBDIR += rubygem-faraday-net_http-gitlab
     SUBDIR += rubygem-faraday-net_http1
     SUBDIR += rubygem-faraday-net_http_persistent
+    SUBDIR += rubygem-faraday-net_http_persistent-gitlab
     SUBDIR += rubygem-faraday-net_http_persistent1
     SUBDIR += rubygem-faraday-patron
     SUBDIR += rubygem-faraday-patron1
     SUBDIR += rubygem-faraday-rack
     SUBDIR += rubygem-faraday-rack1
     SUBDIR += rubygem-faraday-retry
+    SUBDIR += rubygem-faraday-retry-gitlab
     SUBDIR += rubygem-faraday-retry1
     SUBDIR += rubygem-faraday-typhoeus
+    SUBDIR += rubygem-faraday-typhoeus-gitlab
     SUBDIR += rubygem-faraday0
     SUBDIR += rubygem-faraday1
     SUBDIR += rubygem-faraday_middleware
@@ -2128,6 +2137,7 @@
     SUBDIR += rubygem-jsbundling-rails-rails71
     SUBDIR += rubygem-jsobfu
     SUBDIR += rubygem-json-jwt
+    SUBDIR += rubygem-json-jwt-gitlab
     SUBDIR += rubygem-jsonb_accessor
     SUBDIR += rubygem-jwt
     SUBDIR += rubygem-kaminari
@@ -2185,6 +2195,7 @@
     SUBDIR += rubygem-net-http-persistent
     SUBDIR += rubygem-net-http-persistent2
     SUBDIR += rubygem-net-http-pipeline
+    SUBDIR += rubygem-net-http041
     SUBDIR += rubygem-nicovideo
     SUBDIR += rubygem-ntlm-http
     SUBDIR += rubygem-octopress
@@ -2277,6 +2288,7 @@
     SUBDIR += rubygem-responders-rails61
     SUBDIR += rubygem-responders-rails70
     SUBDIR += rubygem-responders-rails71
+    SUBDIR += rubygem-responders-rails72
     SUBDIR += rubygem-rest-client
     SUBDIR += rubygem-rfacebook
     SUBDIR += rubygem-rfeedfinder
