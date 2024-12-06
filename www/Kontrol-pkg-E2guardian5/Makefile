@@ -1,14 +1,14 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-E2guardian5
-PORTVERSION=	0.6.4.1
+PORTVERSION=	0.6.5.1
 PORTREVISION=
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
 
-MAINTAINER=	contato@konntrol.com.br
+MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Kontrol E2guardian Package
 
 LICENSE=	APACHE20
