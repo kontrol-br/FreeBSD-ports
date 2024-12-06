@@ -124,8 +124,8 @@ RUN_DEPENDS+=	dmidecode>=0:sysutils/dmidecode \
 do-install:
 	${MKDIR} ${STAGEDIR}/etc
 	${ECHO} ${PORTREVISION} > ${STAGEDIR}/etc/version.patch
-  ${ECHO} "${PFSENSE_COMMITHASH}" > ${STAGEDIR}/etc/version.lastcommit
-	${ECHO} "${PFSENSE_DATESTRING}" > ${STAGEDIR}/etc/version.buildtime
+#  ${ECHO} "${PFSENSE_COMMITHASH}" > ${STAGEDIR}/etc/version.lastcommit
+#	${ECHO} "${PFSENSE_DATESTRING}" > ${STAGEDIR}/etc/version.buildtime
 	${MKDIR} "${STAGEDIR}/cf/conf"
 
 .include <bsd.port.post.mk>
