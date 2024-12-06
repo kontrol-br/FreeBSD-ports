@@ -98,17 +98,17 @@ CONFLICTS=	pfSense-vmware-[0-9]*
 PLIST_FILES=	/etc/version.patch
 PLIST_DIRS=	/etc
 
-USE_GITHUB=	yes
+#USE_GITLAB=	yes
 #GL_SITE=	https://gitlab.netgate.com
-GH_ACCOUNT=	kontrol-br
-GH_PROJECT=	pfsense
-GH_TAGNAME=	${PFSENSE_COMMITHASH}
-MASTER_SITE_BACKUP=
-NO_CHECKSUM=yes
+#GL_ACCOUNT=	pfSense
+#GL_PROJECT=	${PFSENSE_SRC_REPO}
+#GL_COMMIT=	${PFSENSE_COMMITHASH}
+#MASTER_SITE_BACKUP=
+#NO_CHECKSUM=yes
 
-SUB_FILES=	pkg-post-install
-SUB_LIST=	PRODUCT_NAME=${PRODUCT_NAME}
-PKGPOSTINSTALL=	${WRKDIR}/pkg-post-install
+#SUB_FILES=	pkg-post-install
+#SUB_LIST=	PRODUCT_NAME=${PRODUCT_NAME}
+#PKGPOSTINSTALL=	${WRKDIR}/pkg-post-install
 
 .include <bsd.port.pre.mk>
 
@@ -124,8 +124,8 @@ RUN_DEPENDS+=	dmidecode>=0:sysutils/dmidecode \
 do-install:
 	${MKDIR} ${STAGEDIR}/etc
 	${ECHO} ${PORTREVISION} > ${STAGEDIR}/etc/version.patch
-#  ${ECHO} "${PFSENSE_COMMITHASH}" > ${STAGEDIR}/etc/version.lastcommit
-#	${ECHO} "${PFSENSE_DATESTRING}" > ${STAGEDIR}/etc/version.buildtime
-	${MKDIR} "${STAGEDIR}/cf/conf"
+#	#${ECHO} "${PFSENSE_COMMITHASH}" > ${STAGEDIR}/etc/version.lastcommit
+#	#${ECHO} "${PFSENSE_DATESTRING}" > ${STAGEDIR}/etc/version.buildtime
+#	${MKDIR} "${STAGEDIR}/cf/conf"
 
 .include <bsd.port.post.mk>
