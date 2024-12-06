@@ -1,5 +1,5 @@
-TIMESTAMP = 1732445789
-SHA256 (zigbee2mqtt-nodemodules-1.41.0.tar.gz) = ad41a8975dd50ddb9ca7cc2fd19d42369fcb82b4f8726a09d3cceede793b750c
-SIZE (zigbee2mqtt-nodemodules-1.41.0.tar.gz) = 28113815
-SHA256 (Koenkk-zigbee2mqtt-1.41.0_GH0.tar.gz) = 53c619c17d9c535fb63df850036ffafc678f94e56a4d742325eefb043e294f75
-SIZE (Koenkk-zigbee2mqtt-1.41.0_GH0.tar.gz) = 554558
+TIMESTAMP = 1733088278
+SHA256 (zigbee2mqtt-nodemodules-1.42.0.tar.gz) = 691168209b2a7fa3edcf785ce40fb9e4bb315649d421c44a34d1bd1301898651
+SIZE (zigbee2mqtt-nodemodules-1.42.0.tar.gz) = 18290432
+SHA256 (Koenkk-zigbee2mqtt-1.42.0_GH0.tar.gz) = 8bdc6e3570241b4c9a5b676396456b3845b66040844a80084bc456f7a774c1dd
+SIZE (Koenkk-zigbee2mqtt-1.42.0_GH0.tar.gz) = 561234

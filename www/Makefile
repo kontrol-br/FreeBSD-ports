@@ -143,6 +143,7 @@
     SUBDIR += dolibarr16
     SUBDIR += dolibarr17
     SUBDIR += dolibarr18
+    SUBDIR += dolibarr19
     SUBDIR += domoticz
     SUBDIR += domoticz-devel
     SUBDIR += dooble
@@ -266,6 +267,7 @@
     SUBDIR += httpclient
     SUBDIR += httpcore
     SUBDIR += httptunnel
+    SUBDIR += httpx
     SUBDIR += httrack
     SUBDIR += hurl
     SUBDIR += hypermail
@@ -295,9 +297,9 @@
     SUBDIR += kf5-kjsembed
     SUBDIR += kineto
     SUBDIR += kiwix-tools
-    SUBDIR += kohana
     SUBDIR += ladybird
     SUBDIR += lagrange
+    SUBDIR += lexbor
     SUBDIR += libapreq2
     SUBDIR += libdatachannel
     SUBDIR += libdom
@@ -481,7 +483,6 @@
     SUBDIR += nostromo
     SUBDIR += novnc
     SUBDIR += novnc-websockify
-    SUBDIR += npapi-xine
     SUBDIR += npc
     SUBDIR += npm
     SUBDIR += npm-node18
@@ -1750,7 +1751,7 @@
     SUBDIR += py-httpretty
     SUBDIR += py-httptools
     SUBDIR += py-httpx
-    SUBDIR += py-httpx-gssapi
+    SUBDIR += py-httpx_gssapi
     SUBDIR += py-httpx-oauth
     SUBDIR += py-httpx-socks
     SUBDIR += py-httpx-ws
@@ -2040,6 +2041,7 @@
     SUBDIR += rubygem-faraday-follow_redirects-gitlab
     SUBDIR += rubygem-faraday-gitlab
     SUBDIR += rubygem-faraday-http-cache
+    SUBDIR += rubygem-faraday-http-cache-gitlab
     SUBDIR += rubygem-faraday-httpclient
     SUBDIR += rubygem-faraday-httpclient1
     SUBDIR += rubygem-faraday-multipart
