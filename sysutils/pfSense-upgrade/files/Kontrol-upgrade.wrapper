@@ -21,6 +21,9 @@
 pfsense_upgrade=$(realpath -q $(dirname $0)/../libexec/$(basename $0))
 lockfile="/tmp/$(basename $0).lock"
 
+#updating pkg just in case
+pkg update
+
 if [ ! -f ${pfsense_upgrade} ]; then
 	echo "ERROR: Unable to find ${pfsense_upgrade}"
 	exit 1
