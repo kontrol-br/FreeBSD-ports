@@ -290,6 +290,7 @@
     SUBDIR += kanboard
     SUBDIR += kannel
     SUBDIR += kannel-sqlbox
+    SUBDIR += katana
     SUBDIR += kcgi
     SUBDIR += kdsoap
     SUBDIR += kf5-khtml
@@ -1485,6 +1486,7 @@
     SUBDIR += py-cachecontrol
     SUBDIR += py-cachelib
     SUBDIR += py-caldav
+    SUBDIR += py-calibreweb
     SUBDIR += py-channels
     SUBDIR += py-channels-redis
     SUBDIR += py-cheroot
