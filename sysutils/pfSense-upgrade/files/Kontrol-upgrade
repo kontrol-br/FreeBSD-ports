@@ -695,6 +695,16 @@ pkg_upgrade() {
 			_exit 1
 		fi
 
+		# Do not upgrade if E2guardian is installed.
+		if [ -f /usr/local/sbin/e2guardian ]; then
+			notice "ERROR: Remove E2Guardian package before" \
+					"upgrading."
+			_echo "ERROR: Remove E2Guardian package before" \
+					"upgrading."
+			_exit 1
+		fi
+		
+
 		# Do not upgrade while wg interfaces are assigned
 		if sed '/<interfaces>/,/<\/interfaces>/!d' /cf/conf/config.xml \
 		    | grep -q '<if>wg'; then
