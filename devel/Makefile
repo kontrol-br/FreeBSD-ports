@@ -412,18 +412,32 @@
     SUBDIR += cityhash
     SUBDIR += cjose
     SUBDIR += cl-alexandria
+    SUBDIR += cl-alexandria-ccl
+    SUBDIR += cl-alexandria-clisp
     SUBDIR += cl-alexandria-sbcl
     SUBDIR += cl-asdf
+    SUBDIR += cl-asdf-ccl
+    SUBDIR += cl-asdf-clisp
+    SUBDIR += cl-asdf-sbcl
     SUBDIR += cl-cffi
+    SUBDIR += cl-freebsd-asdf-init
     SUBDIR += cl-infix
+    SUBDIR += cl-infix-ccl
+    SUBDIR += cl-infix-clisp
     SUBDIR += cl-infix-sbcl
     SUBDIR += cl-port
     SUBDIR += cl-port-sbcl
     SUBDIR += cl-split-sequence
+    SUBDIR += cl-split-sequence-ccl
+    SUBDIR += cl-split-sequence-clisp
     SUBDIR += cl-split-sequence-sbcl
     SUBDIR += cl-trivial-features
+    SUBDIR += cl-trivial-features-ccl
+    SUBDIR += cl-trivial-features-clisp
     SUBDIR += cl-trivial-features-sbcl
     SUBDIR += cl-trivial-gray-streams
+    SUBDIR += cl-trivial-gray-streams-ccl
+    SUBDIR += cl-trivial-gray-streams-clisp
     SUBDIR += cl-trivial-gray-streams-sbcl
     SUBDIR += clazy
     SUBDIR += cld2
@@ -4197,6 +4211,7 @@
     SUBDIR += pecl-json_post
     SUBDIR += pecl-msgpack
     SUBDIR += pecl-mustache
+    SUBDIR += pecl-pcov
     SUBDIR += pecl-protobuf
     SUBDIR += pecl-psr
     SUBDIR += pecl-raphf2
@@ -4586,6 +4601,7 @@
     SUBDIR += py-cachetools
     SUBDIR += py-cachey
     SUBDIR += py-cacheyou
+    SUBDIR += py-cachier
     SUBDIR += py-cachy
     SUBDIR += py-cadquery-pywrap
     SUBDIR += py-calver
@@ -4655,6 +4671,7 @@
     SUBDIR += py-cluster
     SUBDIR += py-cmd2
     SUBDIR += py-cmdtest
+    SUBDIR += py-cobble
     SUBDIR += py-codecov
     SUBDIR += py-codegen
     SUBDIR += py-cog
@@ -5217,6 +5234,7 @@
     SUBDIR += py-mondrian
     SUBDIR += py-mongokit
     SUBDIR += py-monkeytype
+    SUBDIR += py-monotable
     SUBDIR += py-monotonic
     SUBDIR += py-monty
     SUBDIR += py-more-itertools
@@ -5395,6 +5413,7 @@
     SUBDIR += py-pew
     SUBDIR += py-pex
     SUBDIR += py-phabricator
+    SUBDIR += py-phmdoctest
     SUBDIR += py-phonenumbers
     SUBDIR += py-phply
     SUBDIR += py-phpserialize
@@ -5675,6 +5694,7 @@
     SUBDIR += py-pytest-regtest
     SUBDIR += py-pytest-relaxed
     SUBDIR += py-pytest-remotedata
+    SUBDIR += py-pytest-repeat
     SUBDIR += py-pytest-rerunfailures
     SUBDIR += py-pytest-ruff
     SUBDIR += py-pytest-runner
@@ -5934,6 +5954,7 @@
     SUBDIR += py-strictyaml
     SUBDIR += py-stringbrewer
     SUBDIR += py-stringcase
+    SUBDIR += py-stringzilla
     SUBDIR += py-structlog
     SUBDIR += py-subprocess-tee
     SUBDIR += py-subversion
@@ -6368,6 +6389,7 @@
     SUBDIR += ruby-setup.rb
     SUBDIR += ruby-subversion
     SUBDIR += rubygem-CFPropertyList
+    SUBDIR += rubygem-CFPropertyList-gitlab
     SUBDIR += rubygem-abstract
     SUBDIR += rubygem-actionpack-action_caching
     SUBDIR += rubygem-actionpack-page_caching
@@ -6477,9 +6499,12 @@
     SUBDIR += rubygem-aws-sdk-backupstorage
     SUBDIR += rubygem-aws-sdk-batch
     SUBDIR += rubygem-aws-sdk-bcmdataexports
+    SUBDIR += rubygem-aws-sdk-bcmpricingcalculator
     SUBDIR += rubygem-aws-sdk-bedrock
     SUBDIR += rubygem-aws-sdk-bedrockagent
     SUBDIR += rubygem-aws-sdk-bedrockagentruntime
+    SUBDIR += rubygem-aws-sdk-bedrockdataautomation
+    SUBDIR += rubygem-aws-sdk-bedrockdataautomationruntime
     SUBDIR += rubygem-aws-sdk-bedrockruntime
     SUBDIR += rubygem-aws-sdk-billing
     SUBDIR += rubygem-aws-sdk-billingconductor
@@ -6565,6 +6590,7 @@
     SUBDIR += rubygem-aws-sdk-docdb
     SUBDIR += rubygem-aws-sdk-docdbelastic
     SUBDIR += rubygem-aws-sdk-drs
+    SUBDIR += rubygem-aws-sdk-dsql
     SUBDIR += rubygem-aws-sdk-dynamodb
     SUBDIR += rubygem-aws-sdk-dynamodbstreams
     SUBDIR += rubygem-aws-sdk-ebs
@@ -6622,6 +6648,7 @@
     SUBDIR += rubygem-aws-sdk-inspector2
     SUBDIR += rubygem-aws-sdk-inspectorscan
     SUBDIR += rubygem-aws-sdk-internetmonitor
+    SUBDIR += rubygem-aws-sdk-invoicing
     SUBDIR += rubygem-aws-sdk-iot
     SUBDIR += rubygem-aws-sdk-iot1clickdevicesservice
     SUBDIR += rubygem-aws-sdk-iot1clickprojects
@@ -6712,12 +6739,14 @@
     SUBDIR += rubygem-aws-sdk-neptunedata
     SUBDIR += rubygem-aws-sdk-neptunegraph
     SUBDIR += rubygem-aws-sdk-networkfirewall
+    SUBDIR += rubygem-aws-sdk-networkflowmonitor
     SUBDIR += rubygem-aws-sdk-networkmanager
     SUBDIR += rubygem-aws-sdk-networkmonitor
     SUBDIR += rubygem-aws-sdk-nimblestudio
     SUBDIR += rubygem-aws-sdk-notifications
     SUBDIR += rubygem-aws-sdk-notificationscontacts
     SUBDIR += rubygem-aws-sdk-oam
+    SUBDIR += rubygem-aws-sdk-observabilityadmin
     SUBDIR += rubygem-aws-sdk-omics
     SUBDIR += rubygem-aws-sdk-opensearchserverless
     SUBDIR += rubygem-aws-sdk-opensearchservice
@@ -6781,6 +6810,7 @@
     SUBDIR += rubygem-aws-sdk-s3-gitlab
     SUBDIR += rubygem-aws-sdk-s3control
     SUBDIR += rubygem-aws-sdk-s3outposts
+    SUBDIR += rubygem-aws-sdk-s3tables
     SUBDIR += rubygem-aws-sdk-sagemaker
     SUBDIR += rubygem-aws-sdk-sagemakeredgemanager
     SUBDIR += rubygem-aws-sdk-sagemakerfeaturestoreruntime
@@ -6792,6 +6822,7 @@
     SUBDIR += rubygem-aws-sdk-schemas
     SUBDIR += rubygem-aws-sdk-secretsmanager
     SUBDIR += rubygem-aws-sdk-securityhub
+    SUBDIR += rubygem-aws-sdk-securityir
     SUBDIR += rubygem-aws-sdk-securitylake
     SUBDIR += rubygem-aws-sdk-serverlessapplicationrepository
     SUBDIR += rubygem-aws-sdk-servicecatalog
@@ -7341,6 +7372,7 @@
     SUBDIR += rubygem-google-iam-credentials
     SUBDIR += rubygem-google-iam-credentials-v1
     SUBDIR += rubygem-google-iam-v1
+    SUBDIR += rubygem-google-logging-utils
     SUBDIR += rubygem-google-protobuf
     SUBDIR += rubygem-google-protobuf3
     SUBDIR += rubygem-googleapis-common-protos
@@ -7452,6 +7484,7 @@
     SUBDIR += rubygem-librarianp
     SUBDIR += rubygem-libyajl2
     SUBDIR += rubygem-license_finder
+    SUBDIR += rubygem-license_finder-gitlab
     SUBDIR += rubygem-licensee
     SUBDIR += rubygem-licensee-gitlab
     SUBDIR += rubygem-listen
@@ -8272,6 +8305,7 @@
     SUBDIR += umlgraph
     SUBDIR += undead
     SUBDIR += unibilium
+    SUBDIR += unit-otel
     SUBDIR += universal-ctags
     SUBDIR += unordered-dense
     SUBDIR += upnp

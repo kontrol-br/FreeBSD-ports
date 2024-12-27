@@ -1288,6 +1288,7 @@
     SUBDIR += rubygem-epp-client-secdns
     SUBDIR += rubygem-epp-client-smallregistry
     SUBDIR += rubygem-fog-aliyun
+    SUBDIR += rubygem-fog-aliyun-gitlab
     SUBDIR += rubygem-fog-atmos
     SUBDIR += rubygem-fog-aws
     SUBDIR += rubygem-fog-aws328
@@ -1363,6 +1364,7 @@
     SUBDIR += rubygem-google-cloud-trace-v1
     SUBDIR += rubygem-google-cloud-trace-v2
     SUBDIR += rubygem-grpc
+    SUBDIR += rubygem-grpc-tools
     SUBDIR += rubygem-hangouts-chat
     SUBDIR += rubygem-http-parser
     SUBDIR += rubygem-http_parser.rb
@@ -1619,6 +1621,7 @@
     SUBDIR += udt
     SUBDIR += uget
     SUBDIR += uhttpmock
+    SUBDIR += uhttpmock0
     SUBDIR += ulxmlrpcpp
     SUBDIR += unfs3
     SUBDIR += unison
