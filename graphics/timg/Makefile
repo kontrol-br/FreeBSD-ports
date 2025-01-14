@@ -1,6 +1,6 @@
 PORTNAME=	timg
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.6.0
+DISTVERSION=	1.6.1
 CATEGORIES=	graphics
 
 MAINTAINER=	uzsolt@FreeBSD.org
@@ -9,6 +9,9 @@ WWW=		https://github.com/hzeller/timg
 
 LICENSE=	GPLv2
 LICENSE_FILE=	${WRKSRC}/LICENSE
+
+NOT_FOR_ARCHS=	i386
+NOT_FOR_ARCHS_REASON=	non-constant-expression cannot be narrowed from type 'int64_t' (aka 'long long') to 'long' in initializer list
 
 LIB_DEPENDS=	libavutil.so:multimedia/ffmpeg \
 		libdeflate.so:archivers/libdeflate \
