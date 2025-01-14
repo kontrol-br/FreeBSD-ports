@@ -42,6 +42,7 @@
     SUBDIR += check_mysql_health
     SUBDIR += check_nwc_health
     SUBDIR += check_ssl_cert
+    SUBDIR += check_syncthing
     SUBDIR += check_ups_health
     SUBDIR += check_wg
     SUBDIR += chillispot
@@ -403,6 +404,7 @@
     SUBDIR += triton-guesttools
     SUBDIR += unbound_exporter
     SUBDIR += unifi8
+    SUBDIR += unifi9
     SUBDIR += victoria-logs
     SUBDIR += victoria-metrics
     SUBDIR += virt-viewer
@@ -423,15 +425,15 @@
     SUBDIR += zabbix6-java
     SUBDIR += zabbix6-proxy
     SUBDIR += zabbix6-server
-    SUBDIR += zabbix64-agent
-    SUBDIR += zabbix64-frontend
-    SUBDIR += zabbix64-java
-    SUBDIR += zabbix64-proxy
-    SUBDIR += zabbix64-server
     SUBDIR += zabbix7-agent
     SUBDIR += zabbix7-frontend
     SUBDIR += zabbix7-java
     SUBDIR += zabbix7-proxy
     SUBDIR += zabbix7-server
+    SUBDIR += zabbix72-agent
+    SUBDIR += zabbix72-frontend
+    SUBDIR += zabbix72-java
+    SUBDIR += zabbix72-proxy
+    SUBDIR += zabbix72-server
 
 .include <bsd.port.subdir.mk>

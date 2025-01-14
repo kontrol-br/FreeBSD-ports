@@ -108,6 +108,9 @@
     SUBDIR += bareos22-client
     SUBDIR += bareos22-server
     SUBDIR += bareos22-traymonitor
+    SUBDIR += bareos23-client
+    SUBDIR += bareos23-server
+    SUBDIR += bareos23-traymonitor
     SUBDIR += barrier
     SUBDIR += bashtop
     SUBDIR += bastille
@@ -187,10 +190,12 @@
     SUBDIR += cfengine-masterfiles322
     SUBDIR += cfengine-masterfiles323
     SUBDIR += cfengine-masterfiles324
+    SUBDIR += cfengine-masterfiles325
     SUBDIR += cfengine321
     SUBDIR += cfengine322
     SUBDIR += cfengine323
     SUBDIR += cfengine324
+    SUBDIR += cfengine325
     SUBDIR += chaoskube
     SUBDIR += checkrestart
     SUBDIR += chezmoi
@@ -412,6 +417,7 @@
     SUBDIR += freebsd-bsdlabel
     SUBDIR += freebsd-fdisk
     SUBDIR += freebsd-rustdate
+    SUBDIR += freebsd-shar
     SUBDIR += freebsd-snapshot
     SUBDIR += freecolor
     SUBDIR += freedt
@@ -1359,6 +1365,7 @@
     SUBDIR += tcplist
     SUBDIR += tdir
     SUBDIR += tealdeer
+    SUBDIR += tempo
     SUBDIR += tenshi
     SUBDIR += tere
     SUBDIR += terraform

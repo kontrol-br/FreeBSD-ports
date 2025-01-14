@@ -659,17 +659,6 @@ pkg_upgrade() {
 			unlock_pkg=1
 		fi
 
-		# Before 2.4.5, pfSense-repo used to depend of pfSense-upgrade
-		# and then it is upgraded to latest version in pkg_upgrade_repo
-		# call below.  Detect when a new version is available early on
-		# old versions and make it to exit returning code 99
-		local _new_pfsense_upgrade=""
-		if [ "$(compare_pkg_version ${product}-upgrade)" != "=" ]; then
-			_new_pfsense_upgrade=1
-		fi
-
-		pkg_upgrade_repo
-
 		# If a new version of pfSense-upgrade is available, upgrade it
 		# and return a special code 99 used by wrapper to run newer
 		# version again using the same parameters
@@ -703,7 +692,7 @@ pkg_upgrade() {
 					"upgrading."
 			_exit 1
 		fi
-		
+
 
 		# Do not upgrade while wg interfaces are assigned
 		if sed '/<interfaces>/,/<\/interfaces>/!d' /cf/conf/config.xml \
@@ -920,6 +909,23 @@ pkg_upgrade() {
 
 		if [ -n "${NEW_MAJOR}" ]; then
 			_pkg annotate -q -M ${kernel_pkg} new_major 1
+
+			#
+			# Workaround a problem with the change of the local
+			# sqlite database path in pkg.
+			# pkg(8) needs to be updated while the network is up to
+			# update/recreate the local database.
+			# In this specific case - from 23.09 and 23.09.1 - it
+			# is safe to update the pkg before booting the new kernel.
+			# See #15964.
+			#
+			if [ "$(_pkg query %v "${product}" | \
+			    /usr/bin/grep -c "23.09")" = "1" ] && \
+			    [ "$(compare_pkg_version pkg)" = "<" ]; then
+				pkg_unlock pkg
+				_exec "pkg-static upgrade${dont_update} pkg" \
+				    "Upgrading pkg" mute
+			fi
 		fi
 
 		_pkg annotate -q -M ${kernel_pkg} next_stage 2

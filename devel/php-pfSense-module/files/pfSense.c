@@ -2,7 +2,7 @@
  * pfsense.c
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2004-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2004-2025 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1585,9 +1585,6 @@ fill_interface_params(zval *val, struct ifaddrs *mb)
 			break;
 		case IFT_TUNNEL:
 		case IFT_GIF:
-#if (__FreeBSD_version < 1100000)
-		case IFT_FAITH:
-#endif
 		case IFT_ENC:
 		case IFT_PFLOG:
 		case IFT_PFSYNC:

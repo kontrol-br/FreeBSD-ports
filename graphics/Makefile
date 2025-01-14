@@ -122,6 +122,7 @@
     SUBDIR += curtail
     SUBDIR += cuttlefish
     SUBDIR += cxxplot
+    SUBDIR += d2
     SUBDIR += darktable
     SUBDIR += dataplot
     SUBDIR += dbow2
@@ -337,6 +338,7 @@
     SUBDIR += hobbes-icons-xpm
     SUBDIR += hppsmtools
     SUBDIR += hugin
+    SUBDIR += hyprgraphics
     SUBDIR += icat
     SUBDIR += icc-profiles-adobe-cs4
     SUBDIR += icc-profiles-basiccolor
@@ -566,6 +568,7 @@
     SUBDIR += linux-rl9-webp
     SUBDIR += lua-gd
     SUBDIR += luminance-qt5
+    SUBDIR += lunasvg
     SUBDIR += lux
     SUBDIR += lximage-qt
     SUBDIR += magnum
@@ -609,6 +612,7 @@
     SUBDIR += mypaint-brushes2
     SUBDIR += nanort
     SUBDIR += nanosvg
+    SUBDIR += natron
     SUBDIR += netpbm
     SUBDIR += nip2
     SUBDIR += noaa-apt
@@ -783,6 +787,7 @@
     SUBDIR += panomatic
     SUBDIR += partio
     SUBDIR += pastel
+    SUBDIR += pcdtojpeg
     SUBDIR += pcl-pointclouds
     SUBDIR += pdf2svg
     SUBDIR += pdfpc
@@ -836,6 +841,8 @@
     SUBDIR += plantuml
     SUBDIR += plasma-kmod
     SUBDIR += plotutils
+    SUBDIR += plutosvg
+    SUBDIR += plutovg
     SUBDIR += png
     SUBDIR += png++
     SUBDIR += png2html

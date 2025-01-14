@@ -3,7 +3,7 @@
  * suricata_alerts.widget.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2016-2024 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2016-2025 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2003-2004 Manuel Kasper
  * Copyright (c) 2005 Bill Marquette
  * Copyright (c) 2009 Robert Zelaya Sr. Developer
@@ -307,7 +307,7 @@ function suricata_widget_get_alerts() {
 
 <script type="text/javascript">
 //<![CDATA[
-	var suricataupdateDelay = 5000; // update every 5 seconds
+	var suricataupdateDelay = 15000; // update every 15 seconds
 	var suri_nentries = <?php echo $suri_nentries; ?>; // default is 5
 //]]>
 </script>
