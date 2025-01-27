@@ -1,13 +1,11 @@
-PORTNAME=	pfSense
-DISTVERSION=	2.8.0
-PORTREVISION=	0
+PORTNAME=	pfSense-system
+DISTVERSION=	${PRODUCT_VERSION}
+DISTVERSIONPREFIX=	v
 CATEGORIES=	security
-MASTER_SITES=	# empty
-DISTFILES=	# empty
-EXTRACT_ONLY=	# empty
 
 MAINTAINER=	coreteam@pfsense.org
-COMMENT?=	Main pfSense package
+COMMENT?=	pfSense system package
+WWW=	https://www.pfsense.org/
 
 LICENSE=	APACHE20
 
@@ -55,7 +53,7 @@ RUN_DEPENDS=	bind-tools>=0:dns/bind-tools \
 		${PHP_PKGNAMEPREFIX}phpseclib>=0:security/phpseclib@${PHP_FLAVOR} \
 		pfSense-Status_Monitoring${PHP_PKGNAMESUFFIX}>=0:sysutils/pfSense-Status_Monitoring@${PHP_FLAVOR} \
 		pfSense-composer-deps>=0:devel/pfSense-composer-deps \
-		pfSense-repo>=0:sysutils/pfSense-repo \
+		pfSense-gnid>=0:security/pfSense-gnid \
 		pfSense-upgrade>=0:sysutils/pfSense-upgrade \
 		pftop>=0:sysutils/pftop \
 		qstats>=0:sysutils/qstats \
@@ -91,24 +89,21 @@ USE_PHP=	bz2 bcmath ctype curl dom filter gettext gmp intl json mbstring \
 		sysvshm sqlite3 tokenizer xml ldap zlib xmlreader xmlwriter
 
 NO_BUILD=	yes
-NO_MTREE=	yes
 
 CONFLICTS=	pfSense-vmware-[0-9]*
 
-PLIST_FILES=	/etc/version.patch
-PLIST_DIRS=	/etc
+USE_GITLAB=	yes
+GL_SITE=	https://gitlab.netgate.com
+GL_ACCOUNT=	pfSense
+GL_PROJECT=	${PFSENSE_SRC_REPO}
+GL_COMMIT=	${PFSENSE_COMMITHASH}
+MASTER_SITE_BACKUP=
+NO_CHECKSUM=yes
 
-#USE_GITLAB=	yes
-#GL_SITE=	https://gitlab.netgate.com
-#GL_ACCOUNT=	pfSense
-#GL_PROJECT=	${PFSENSE_SRC_REPO}
-#GL_COMMIT=	${PFSENSE_COMMITHASH}
-#MASTER_SITE_BACKUP=
-#NO_CHECKSUM=yes
-
-#SUB_FILES=	pkg-post-install
-#SUB_LIST=	PRODUCT_NAME=${PRODUCT_NAME}
-#PKGPOSTINSTALL=	${WRKDIR}/pkg-post-install
+SUB_FILES=	pkg-post-install
+SUB_LIST=	PRODUCT_NAME=${PRODUCT_NAME}
+PKGPOSTINSTALL=	${WRKDIR}/pkg-post-install
+DATADIR=	${PREFIX}/share/pfSense
 
 .include <bsd.port.pre.mk>
 
@@ -122,10 +117,7 @@ RUN_DEPENDS+=	dmidecode>=0:sysutils/dmidecode \
 .endif
 
 do-install:
-	${MKDIR} ${STAGEDIR}/etc
-	${ECHO} ${PORTREVISION} > ${STAGEDIR}/etc/version.patch
-#	#${ECHO} "${PFSENSE_COMMITHASH}" > ${STAGEDIR}/etc/version.lastcommit
-#	#${ECHO} "${PFSENSE_DATESTRING}" > ${STAGEDIR}/etc/version.buildtime
-#	${MKDIR} "${STAGEDIR}/cf/conf"
+	(cd ${WRKSRC}/src && ${COPYTREE_SHARE} "etc usr" ${STAGEDIR})
+	${MKDIR} "${STAGEDIR}/cf/conf"
 
-.include <bsd.port.mk>
+.include <bsd.port.post.mk>
