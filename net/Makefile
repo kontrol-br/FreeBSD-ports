@@ -1479,6 +1479,7 @@
     SUBDIR += sakisafecli
     SUBDIR += samba416
     SUBDIR += samba419
+    SUBDIR += samba420
     SUBDIR += samplicator
     SUBDIR += savvycan
     SUBDIR += sbm
@@ -1653,6 +1654,7 @@
     SUBDIR += waypipe
     SUBDIR += wayvnc
     SUBDIR += webalizer-geodb
+    SUBDIR += wgcf
     SUBDIR += whois
     SUBDIR += widentd
     SUBDIR += wifi-firmware-ath10k-kmod
