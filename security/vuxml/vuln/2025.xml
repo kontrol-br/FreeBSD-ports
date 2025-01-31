@@ -1,3 +1,62 @@
+  <vuln vid="186101b4-dfa6-11ef-8c1c-a8a1599412c6">
+    <topic>chromium -- multiple security fixes</topic>
+    <affects>
+      <package>
+       <name>chromium</name>
+       <range><lt>132.0.6834.159</lt></range>
+      </package>
+      <package>
+       <name>ungoogled-chromium</name>
+       <range><lt>132.0.6834.159</lt></range>
+      </package>
+    </affects>
+    <description>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+       <p>Chrome Releases reports:</p>
+       <blockquote cite="https://chromereleases.googleblog.com/2025/01/stable-channel-update-for-desktop_28.html">
+	 <p>This update includes 2 security fixes:</p>
+	 <ul>
+	    <li>[384844003] Medium CVE-2025-0762: Use after free in DevTools. Reported by Sakana.S on 2024-12-18</li>
+	 </ul>
+       </blockquote>
+      </body>
+    </description>
+    <references>
+      <cvename>CVE-2025-0762</cvename>
+      <url>https://chromereleases.googleblog.com/2025/01/stable-channel-update-for-desktop_28.html</url>
+    </references>
+    <dates>
+      <discovery>2025-01-18</discovery>
+      <entry>2025-01-31</entry>
+    </dates>
+  </vuln>
+
+  <vuln vid="cd2ace09-df23-11ef-a205-901b0e9408dc">
+    <topic>dendrite -- Server-side request forgery vulnerability</topic>
+    <affects>
+      <package>
+	<name>dendrite</name>
+	<range><lt>0.14.1</lt></range>
+      </package>
+    </affects>
+    <description>
+	<body xmlns="http://www.w3.org/1999/xhtml">
+	<p>Dendrite team reports:</p>
+	<blockquote cite="https://github.com/matrix-org/gomatrixserverlib/security/advisories/GHSA-4ff6-858j-r822">
+	  <p>This is a security release, gomatrixserverlib was vulnerable to server-side request forgery, serving content from a private network it can access, under certain conditions.</p>
+	</blockquote>
+	</body>
+    </description>
+    <references>
+      <cvename>CVE-2024-52594</cvename>
+      <url>https://github.com/matrix-org/gomatrixserverlib/security/advisories/GHSA-4ff6-858j-r822</url>
+    </references>
+    <dates>
+      <discovery>2025-01-16</discovery>
+      <entry>2025-01-30</entry>
+    </dates>
+  </vuln>
+
   <vuln vid="2830b374-debd-11ef-87ba-002590c1f29c">
     <topic>FreeBSD -- Uninitialized kernel memory disclosure via ktrace(2)</topic>
     <affects>
@@ -165,7 +224,7 @@
   </vuln>
 
   <vuln vid="41711c0d-db27-11ef-873e-8447094a420f">
-    <topic>Vaultwarden -- Muiltiple vulnerabilities</topic>
+    <topic>Vaultwarden -- Multiple vulnerabilities</topic>
     <affects>
       <package>
 	<name>vaultwarden</name>
@@ -183,7 +242,10 @@
 	</body>
     </description>
     <references>
-      <url>https://github.com/dani-garcia/vaultwarden/releases/tag/1.33.0</url>
+      <cvename>CVE-2025-24364</cvename>
+      <url>https://github.com/dani-garcia/vaultwarden/security/advisories/GHSA-j4h8-vch3-f797</url>
+      <cvename>CVE-2025-24365</cvename>
+      <url>https://github.com/dani-garcia/vaultwarden/security/advisories/GHSA-h6cc-rc6q-23j4</url>
     </references>
     <dates>
       <discovery>2025-01-25</discovery>
