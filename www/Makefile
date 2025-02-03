@@ -493,6 +493,7 @@
     SUBDIR += npm-node20
     SUBDIR += npm-node22
     SUBDIR += npm-node23
+    SUBDIR += nyxt
     SUBDIR += oauth2-proxy
     SUBDIR += obhttpd
     SUBDIR += offpunk
@@ -1776,6 +1777,7 @@
     SUBDIR += py-jsonfield
     SUBDIR += py-kiss-headers
     SUBDIR += py-laces
+    SUBDIR += py-legacy-cgi
     SUBDIR += py-lektor
     SUBDIR += py-lesscpy
     SUBDIR += py-libsass
@@ -1949,6 +1951,7 @@
     SUBDIR += reddsaver
     SUBDIR += redmine50
     SUBDIR += redmine51
+    SUBDIR += redmine60
     SUBDIR += rejik
     SUBDIR += remark42
     SUBDIR += reportmagic

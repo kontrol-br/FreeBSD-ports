@@ -136,6 +136,7 @@
     SUBDIR += R-cran-sessioninfo
     SUBDIR += R-cran-sfsmisc
     SUBDIR += R-cran-sourcetools
+    SUBDIR += R-cran-sparsevctrs
     SUBDIR += R-cran-sys
     SUBDIR += R-cran-systemfonts
     SUBDIR += R-cran-testit
@@ -153,6 +154,7 @@
     SUBDIR += R-cran-vcd
     SUBDIR += R-cran-vctrs
     SUBDIR += R-cran-waldo
+    SUBDIR += R-cran-webfakes
     SUBDIR += R-cran-whisker
     SUBDIR += R-cran-whoami
     SUBDIR += R-cran-withr
@@ -731,6 +733,7 @@
     SUBDIR += freebsd-git-devtools
     SUBDIR += freebsd-sysroot
     SUBDIR += frink
+    SUBDIR += fruit
     SUBDIR += fsmtrie
     SUBDIR += fstrcmp
     SUBDIR += fstrm
@@ -939,6 +942,7 @@
     SUBDIR += gradle6
     SUBDIR += gradle62
     SUBDIR += gradle761
+    SUBDIR += gradle8
     SUBDIR += grantlee5
     SUBDIR += grcov
     SUBDIR += grex
@@ -1044,6 +1048,7 @@
     SUBDIR += ipython
     SUBDIR += ireport
     SUBDIR += isa-l
+    SUBDIR += isa-l_crypto
     SUBDIR += iscd-commons
     SUBDIR += isfreedesktop
     SUBDIR += isl
@@ -1566,6 +1571,7 @@
     SUBDIR += linux_libusb
     SUBDIR += listserialc
     SUBDIR += liteide
+    SUBDIR += llama.el
     SUBDIR += llbuild
     SUBDIR += lldb-mi
     SUBDIR += llnextgen
