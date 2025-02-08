@@ -120,7 +120,6 @@
 @(,,755) /etc/rc.dumpon
 @(,,755) /etc/rc.dyndns.update
 @(,,755) /etc/rc.ecl
-@(,,755) /etc/rc.embedded
 @(,,755) /etc/rc.expireaccounts
 @(,,755) /etc/rc.filter_configure
 @(,,755) /etc/rc.filter_configure_sync
@@ -378,6 +377,7 @@ share/locale/zh_Hant_TW/LC_MESSAGES/pfSense.mo
 share/locale/zh_Hant_TW/LC_MESSAGES/pfSense.po
 share/locale/zh_TW/LC_MESSAGES/pfSense.mo
 share/locale/zh_TW/LC_MESSAGES/pfSense.po
+share/pfSense/radius/dictionary.pfsense
 %%DATADIR%%/ascii-art/pfsense-logo-small.txt
 %%DATADIR%%/fix_for_SA-19-10.ufs
 %%DATADIR%%/iso_3166-1_list_en.xml
@@ -860,8 +860,8 @@ www/wizards/traffic_shaper_wizard_dedicated.xml
 www/wizards/traffic_shaper_wizard_multi_all.inc
 www/wizards/traffic_shaper_wizard_multi_all.xml
 www/xmlrpc.php
-@dir /cf
 @dir /cf/conf
+@dir /cf
 @dir /etc/inc/priv
 @dir /etc/inc
 @dir /etc/phpshellsessions
