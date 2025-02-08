@@ -10,6 +10,7 @@
     SUBDIR += R-cran-httpuv
     SUBDIR += R-cran-httr
     SUBDIR += R-cran-httr2
+    SUBDIR += R-cran-jose
     SUBDIR += R-cran-jquerylib
     SUBDIR += R-cran-miniUI
     SUBDIR += R-cran-pkgdown
@@ -293,6 +294,7 @@
     SUBDIR += katana
     SUBDIR += kcgi
     SUBDIR += kdsoap
+    SUBDIR += kdsoap-ws-discovery-client
     SUBDIR += kf5-khtml
     SUBDIR += kf5-kjs
     SUBDIR += kf5-kjsembed
@@ -580,7 +582,6 @@
     SUBDIR += p5-CGI-Application-Plugin-Forward
     SUBDIR += p5-CGI-Application-Plugin-HTDot
     SUBDIR += p5-CGI-Application-Plugin-HTMLPrototype
-    SUBDIR += p5-CGI-Application-Plugin-HtmlTidy
     SUBDIR += p5-CGI-Application-Plugin-JSON
     SUBDIR += p5-CGI-Application-Plugin-LinkIntegrity
     SUBDIR += p5-CGI-Application-Plugin-LogDispatch
@@ -1437,7 +1438,6 @@
     SUBDIR += phpvirtualbox
     SUBDIR += phpvirtualbox-legacy
     SUBDIR += piwigo
-    SUBDIR += plasma5-plasma-browser-integration
     SUBDIR += plasma6-plasma-browser-integration
     SUBDIR += pmwiki
     SUBDIR += pnews
@@ -1527,6 +1527,25 @@
     SUBDIR += py-dj50-drf-spectacular
     SUBDIR += py-dj50-drf-spectacular-sidecar
     SUBDIR += py-dj50-strawberry-graphql-django
+    SUBDIR += py-dj51-channels
+    SUBDIR += py-dj51-django-auth-ldap
+    SUBDIR += py-dj51-django-choices-field
+    SUBDIR += py-dj51-django-cors-headers
+    SUBDIR += py-dj51-django-debug-toolbar
+    SUBDIR += py-dj51-django-filter
+    SUBDIR += py-dj51-django-htmx
+    SUBDIR += py-dj51-django-js-asset
+    SUBDIR += py-dj51-django-mptt
+    SUBDIR += py-dj51-django-prometheus
+    SUBDIR += py-dj51-django-redis
+    SUBDIR += py-dj51-django-rich
+    SUBDIR += py-dj51-django-tables2
+    SUBDIR += py-dj51-django-taggit
+    SUBDIR += py-dj51-django-timezone-field
+    SUBDIR += py-dj51-djangorestframework
+    SUBDIR += py-dj51-drf-spectacular
+    SUBDIR += py-dj51-drf-spectacular-sidecar
+    SUBDIR += py-dj51-strawberry-graphql-django
     SUBDIR += py-django-admin-rangefilter
     SUBDIR += py-django-advanced-filters
     SUBDIR += py-django-allauth
@@ -1624,9 +1643,11 @@
     SUBDIR += py-django-statici18n
     SUBDIR += py-django-staticinline
     SUBDIR += py-django-storages
+    SUBDIR += py-django-stubs-ext
     SUBDIR += py-django-tables2
     SUBDIR += py-django-tagging
     SUBDIR += py-django-taggit
+    SUBDIR += py-django-tasks
     SUBDIR += py-django-tastypie
     SUBDIR += py-django-templatetag-sugar
     SUBDIR += py-django-timezone-field
@@ -2398,7 +2419,6 @@
     SUBDIR += scloader
     SUBDIR += script4rss
     SUBDIR += seahub
-    SUBDIR += searx
     SUBDIR += selenium
     SUBDIR += serendipity
     SUBDIR += serf

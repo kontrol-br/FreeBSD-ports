@@ -240,7 +240,6 @@
     SUBDIR += mp3cd
     SUBDIR += mp4v2
     SUBDIR += mpc-qt
-    SUBDIR += mpeg_encode
     SUBDIR += mplayer
     SUBDIR += mplayer-skins
     SUBDIR += mplex
@@ -295,7 +294,6 @@
     SUBDIR += pipe-viewer
     SUBDIR += pipewire
     SUBDIR += pitivi
-    SUBDIR += plasma5-plank-player
     SUBDIR += plasmatube
     SUBDIR += playerctl
     SUBDIR += plexmediaserver

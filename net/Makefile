@@ -10,10 +10,10 @@
     SUBDIR += addrwatch
     SUBDIR += afpfs-ng
     SUBDIR += aget
+    SUBDIR += akhq
     SUBDIR += akonadi-calendar
     SUBDIR += akonadi-contacts
     SUBDIR += akonadi-mime
-    SUBDIR += akonadi-notes
     SUBDIR += akonadi-search
     SUBDIR += alligator
     SUBDIR += aluminum
@@ -473,6 +473,7 @@
     SUBDIR += micro_inetd
     SUBDIR += micro_proxy
     SUBDIR += microsocks
+    SUBDIR += mimetreeparser
     SUBDIR += minidlna
     SUBDIR += minissdpd
     SUBDIR += miniupnpc
@@ -1664,6 +1665,7 @@
     SUBDIR += wifi-firmware-iwlwifi-kmod
     SUBDIR += wifi-firmware-kmod
     SUBDIR += wifi-firmware-mt76-kmod
+    SUBDIR += wifi-firmware-mtw-kmod
     SUBDIR += wifi-firmware-rtw88-kmod
     SUBDIR += wifi-firmware-rtw89-kmod
     SUBDIR += wifibox

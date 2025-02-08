@@ -48,6 +48,7 @@
     SUBDIR += R-cran-devtools
     SUBDIR += R-cran-diffobj
     SUBDIR += R-cran-doParallel
+    SUBDIR += R-cran-docopt
     SUBDIR += R-cran-ellipsis
     SUBDIR += R-cran-evaluate
     SUBDIR += R-cran-fansi
@@ -621,7 +622,6 @@
     SUBDIR += doctest
     SUBDIR += doctorj
     SUBDIR += dolphin-plugins
-    SUBDIR += dolphin-plugins-devel
     SUBDIR += dotconf
     SUBDIR += double-conversion
     SUBDIR += doxygen
@@ -1171,7 +1171,7 @@
     SUBDIR += kodi-platform
     SUBDIR += kokkos
     SUBDIR += kommit
-    SUBDIR += kore
+    SUBDIR += kopeninghours
     SUBDIR += kpublictransport
     SUBDIR += kronosnet
     SUBDIR += ksql
@@ -1182,9 +1182,6 @@
     SUBDIR += lager
     SUBDIR += laminar
     SUBDIR += lasi
-    SUBDIR += lattice-ice40-examples-hx1k
-    SUBDIR += lattice-ice40-examples-hx8k
-    SUBDIR += lattice-ice40-tools
     SUBDIR += lazygit
     SUBDIR += lcov
     SUBDIR += leaktracer
@@ -1589,6 +1586,7 @@
     SUBDIR += llvm17
     SUBDIR += llvm18
     SUBDIR += llvm19
+    SUBDIR += llvm20
     SUBDIR += lm4tools
     SUBDIR += lmdbg
     SUBDIR += lndir
@@ -2996,6 +2994,7 @@
     SUBDIR += p5-Module-Build
     SUBDIR += p5-Module-Build-Convert
     SUBDIR += p5-Module-Build-Kwalitee
+    SUBDIR += p5-Module-Build-Parse-Yapp
     SUBDIR += p5-Module-Build-Pluggable
     SUBDIR += p5-Module-Build-Pluggable-CPANfile
     SUBDIR += p5-Module-Build-Pluggable-ReadmeMarkdownFromPod
@@ -3673,7 +3672,6 @@
     SUBDIR += p5-Test-Fixture-DBIC-Schema
     SUBDIR += p5-Test-Future-IO-Impl
     SUBDIR += p5-Test-Group
-    SUBDIR += p5-Test-HTML-Tidy
     SUBDIR += p5-Test-Harness
     SUBDIR += p5-Test-Harness-Straps
     SUBDIR += p5-Test-HasVersion
@@ -4311,9 +4309,6 @@
     SUBDIR += pkgconf
     SUBDIR += plan9port
     SUBDIR += plasma
-    SUBDIR += plasma5-khotkeys
-    SUBDIR += plasma5-kwrited
-    SUBDIR += plasma5-plasma-sdk
     SUBDIR += plasma6-kwrited
     SUBDIR += plasma6-plasma-sdk
     SUBDIR += plasma6-plasma5support
@@ -4798,6 +4793,8 @@
     SUBDIR += py-distributed
     SUBDIR += py-dj50-django-rq
     SUBDIR += py-dj50-strawberry-graphql
+    SUBDIR += py-dj51-django-rq
+    SUBDIR += py-dj51-strawberry-graphql
     SUBDIR += py-django-rq
     SUBDIR += py-dm-tree
     SUBDIR += py-docformatter
@@ -5014,6 +5011,7 @@
     SUBDIR += py-icalendar
     SUBDIR += py-ice
     SUBDIR += py-ice37
+    SUBDIR += py-id
     SUBDIR += py-identify
     SUBDIR += py-ijson
     SUBDIR += py-imgkit
@@ -5557,7 +5555,6 @@
     SUBDIR += py-pydevd
     SUBDIR += py-pydispatcher
     SUBDIR += py-pydocstyle
-    SUBDIR += py-pydrive
     SUBDIR += py-pyee
     SUBDIR += py-pyee11
     SUBDIR += py-pyelftools
@@ -6173,6 +6170,9 @@
     SUBDIR += py-xerox
     SUBDIR += py-xmltodict
     SUBDIR += py-xsdata
+    SUBDIR += py-xsdata-attrs
+    SUBDIR += py-xsdata-plantuml
+    SUBDIR += py-xsdata-pydantic
     SUBDIR += py-xstatic
     SUBDIR += py-xstatic-angular
     SUBDIR += py-xstatic-angular-bootstrap
@@ -7136,7 +7136,6 @@
     SUBDIR += rubygem-cucumber-messages22
     SUBDIR += rubygem-cucumber-messages24
     SUBDIR += rubygem-cucumber-messages25
-    SUBDIR += rubygem-cucumber-messages26
     SUBDIR += rubygem-cucumber-rails
     SUBDIR += rubygem-cucumber-tag-expressions
     SUBDIR += rubygem-cucumber-wire
@@ -7593,6 +7592,7 @@
     SUBDIR += rubygem-opentelemetry-instrumentation-active_job
     SUBDIR += rubygem-opentelemetry-instrumentation-active_model_serializers
     SUBDIR += rubygem-opentelemetry-instrumentation-active_record
+    SUBDIR += rubygem-opentelemetry-instrumentation-active_storage
     SUBDIR += rubygem-opentelemetry-instrumentation-active_support
     SUBDIR += rubygem-opentelemetry-instrumentation-aws_sdk
     SUBDIR += rubygem-opentelemetry-instrumentation-base
