@@ -9,6 +9,7 @@
     SUBDIR += O2-tools
     SUBDIR += R-cran-DiagrammeR
     SUBDIR += R-cran-GDD
+    SUBDIR += R-cran-R.devices
     SUBDIR += R-cran-RColorBrewer
     SUBDIR += R-cran-colorspace
     SUBDIR += R-cran-cowplot
@@ -151,6 +152,7 @@
     SUBDIR += drm-510-kmod
     SUBDIR += drm-515-kmod
     SUBDIR += drm-61-kmod
+    SUBDIR += drm-66-kmod
     SUBDIR += drm-kmod
     SUBDIR += drm_info
     SUBDIR += dspdfviewer
@@ -1263,6 +1265,7 @@
     SUBDIR += xglurbules
     SUBDIR += xgrasp
     SUBDIR += ximaging
+    SUBDIR += xiccd
     SUBDIR += xli
     SUBDIR += xmedcon
     SUBDIR += xmlgraphics-commons
