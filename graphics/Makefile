@@ -561,6 +561,12 @@
     SUBDIR += linux-rl9-qt5-qtimageformats
     SUBDIR += linux-rl9-qt5-qtsvg
     SUBDIR += linux-rl9-qt5-qtwayland
+    SUBDIR += linux-rl9-sdl2_gfx
+    SUBDIR += linux-rl9-sdl2_image
+    SUBDIR += linux-rl9-sdl2_ttf
+    SUBDIR += linux-rl9-sdl_gfx
+    SUBDIR += linux-rl9-sdl_image
+    SUBDIR += linux-rl9-sdl_ttf
     SUBDIR += linux-rl9-shaderc
     SUBDIR += linux-rl9-spirv-tools
     SUBDIR += linux-rl9-tiff
@@ -625,6 +631,7 @@
     SUBDIR += nvidia-drm-510-kmod
     SUBDIR += nvidia-drm-515-kmod
     SUBDIR += nvidia-drm-61-kmod
+    SUBDIR += nvidia-drm-66-kmod
     SUBDIR += nvidia-drm-kmod
     SUBDIR += nvidia-texture-tools
     SUBDIR += ocaml-cairo
@@ -841,6 +848,7 @@
     SUBDIR += pixie
     SUBDIR += plantuml
     SUBDIR += plasma-kmod
+    SUBDIR += plasma6-spectacle
     SUBDIR += plotutils
     SUBDIR += plutosvg
     SUBDIR += plutovg
@@ -1176,7 +1184,6 @@
     SUBDIR += simpleviewer
     SUBDIR += skanlite
     SUBDIR += skanpage
-    SUBDIR += spectacle
     SUBDIR += spirv-cross
     SUBDIR += spirv-tools
     SUBDIR += springgraph
@@ -1264,8 +1271,8 @@
     SUBDIR += xfractint
     SUBDIR += xglurbules
     SUBDIR += xgrasp
-    SUBDIR += ximaging
     SUBDIR += xiccd
+    SUBDIR += ximaging
     SUBDIR += xli
     SUBDIR += xmedcon
     SUBDIR += xmlgraphics-commons
