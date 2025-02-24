@@ -486,6 +486,7 @@
     SUBDIR += mdbook
     SUBDIR += mdbook-linkcheck
     SUBDIR += mdbook-mermaid
+    SUBDIR += mdq
     SUBDIR += meilisearch
     SUBDIR += meld
     SUBDIR += metauml
@@ -2132,10 +2133,11 @@
     SUBDIR += ugrep
     SUBDIR += uim
     SUBDIR += uim-el
-    SUBDIR += uim-gtk
+    SUBDIR += uim-gtk2
     SUBDIR += uim-gtk3
     SUBDIR += uim-m17nlib
     SUBDIR += uim-qt5
+    SUBDIR += uim-qt6
     SUBDIR += uml2svg
     SUBDIR += uncle
     SUBDIR += uncrustify
