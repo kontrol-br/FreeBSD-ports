@@ -94,8 +94,6 @@ $pfb['dnsbl_cache']	= '/var/unbound/pfb_py_cache.sqlite';
 $pfb['asn_cache']	= "{$pfb['dbdir']}/asn_cache.sqlite";
 $pfb['ip_cache']	= "{$pfb['dbdir']}/ip_cache.sqlite";
 
-$pfb['asn_list']	= '/pfblockerng/pfblockerng_asn.txt';	// used by Ajax function in pfBlockerNG.js
-
 $pfb['script']		= '/usr/local/pkg/pfblockerng/pfblockerng.sh';
 $pfb['feeds']		= '/usr/local/www/pfblockerng/pfblockerng_feeds.json';
 $pfb['aliasarchive']	= '/usr/local/etc/aliastables.tar.bz2';
@@ -213,8 +211,8 @@ $pfb['rfc7231'] = array(
 			83 => 'SSL Issurer failure',		84 => 'FTP PRET failure',			85 => 'RTSP CSeq number error',
 			86 => 'RTSP Session mismatch',		87 => 'FTP Bad file list',			88 => 'Chunk callback error',
 			89 => 'No connection available',	90 => 'Pin Key match failure',			91 => 'Invalid Certificate status',
-			92 => 'HTTP/2 framing error',		93 => 'Recursive API call error',		94 => 'Authentication error',
-			95 => 'HTTP/3 layer error',		94 => 'Authentication function error',		95 => 'HTTP/3 layer error',
+			92 => 'HTTP/2 framing error',		93 => 'Recursive API call error',		94 => 'Authentication function error',
+			95 => 'HTTP/3 layer error',
 			96 => 'QUIC connect error',		97 => 'Proxy handshake error',			98 => 'SSL Client certificate required',
 			99 => 'Unrecoveranle Poll error',
 
@@ -264,7 +262,7 @@ $pfb['mime_types'] = array_flip(array(	'inode/x-empty',
 					'text/csv',
 					'application/csv',
 					'application/json',
-					'application/x-ndjason',
+					'application/x-ndjson',
 					'application/x-tar',
 					'application/gzip',
 					'application/x-gzip',
@@ -6006,7 +6004,7 @@ function pfb_dnsbl_parse($mode='daemon', $domain, $src_ip, $req_agent) {
 				if (!isset($cnames)) {
 					$domain_esc = escapeshellarg($domain);
 					$extdns_esc = escapeshellarg("@{$pfb['extdns']}");
-					exec("/usr/bin/drill {$domain_esc} {$extdns} | /usr/bin/awk '/CNAME/ {sub(\"\.\$\", \"\", \$5); print \$5;}'", $cnames);
+					exec("/usr/bin/drill {$domain_esc} {$extdns_esc} | /usr/bin/awk '/CNAME/ {sub(\"\.\$\", \"\", \$5); print \$5;}'", $cnames);
 					if (is_array($cnames) && !empty($cnames)) {
 						foreach ($cnames as $key => $cname) {
 							// Remove invalid CNAMES

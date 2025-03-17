@@ -1147,13 +1147,13 @@ check_upgrade() {
 				;;
 		esac
 
-		local _new_version=$(_pkg rquery -U %v ${_package})
-		[ -z "${_mute}" ] \
-		    && _echo \
-		    "${_new_version} version of ${product} is available"
-		return 2
-	done
-
+			_new_version="$(_pkg ${_pkg} rquery -U %v ${_package} | /usr/bin/cut -f -5 -d.)"
+			if [ -z "${_mute}" ]; then
+				_echo "${_new_version} version of ${product} is available"
+			fi
+			return 2
+		done
+	fi
 	[ -z "${_mute}" ] \
 	    && _echo "Your system is up to date"
 	return 0

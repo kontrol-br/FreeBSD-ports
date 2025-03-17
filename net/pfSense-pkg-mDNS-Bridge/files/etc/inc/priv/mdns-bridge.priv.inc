@@ -1,13 +1,10 @@
 <?php
 /*
- * pfblockerng_alerts_ar.php
+ * mdns-bridge.priv.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015-2025 Rubicon Communications, LLC (Netgate)
- * Copyright (c) 2015-2016 BBcan177@gmail.com
+ * Copyright (c) 2024 Denny Page
  * All rights reserved.
- *
- * Javascript Hostname Lookup modifications by J. Nieuwenhuizen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +19,13 @@
  * limitations under the License.
  */
 
-// Auto-resolve hostnames
-if (isset($_REQUEST['getpfhostname'])) {
-	$getpfhostname = trim(htmlspecialchars($_REQUEST['getpfhostname']));
-	if (strlen($getpfhostname) >= 8) {
-		$hostname = htmlspecialchars(gethostbyaddr($getpfhostname), ENT_QUOTES);
-	} else {
-		$hostname = $getpfhostname;
-	}
-	if ($hostname == $getpfhostname) {
-		$hostname = 'unknown';
-	}
-	echo $hostname;
-}
+global $priv_list;
+
+$priv_list['page-services-mdns-bridge'] = array();
+$priv_list['page-services-mdns-bridge']['name'] = "WebCfg - Services: mDNS Bridge";
+$priv_list['page-services-mdns-bridge']['descr'] = "Access the mDNS Bridge package GUI";
+
+$priv_list['page-services-mdns-bridge']['match'] = array();
+$priv_list['page-services-mdns-bridge']['match'][] = "mdns-bridge.php*";
 
 ?>
