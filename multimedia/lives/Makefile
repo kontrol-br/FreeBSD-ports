@@ -16,7 +16,7 @@ LICENSE_FILE_LGPL3+ =	${WRKSRC}/COPYING.LGPL
 
 BROKEN=		fails to build with FFmpeg 6
 DEPRECATED=	Marked broken in 2023, sunset port
-EXPIRATION_DATE=2025-02-28
+EXPIRATION_DATE=2025-03-31
 
 BUILD_DEPENDS=	${LOCALBASE}/include/linux/input.h:devel/evdev-proto \
 		analyseplugin:audio/ladspa
@@ -32,7 +32,7 @@ USES=		autoreconf compiler:c++11-lib gettext-runtime gettext-tools \
 		gl gnome libtool localbase pathfix perl5 pkgconfig python \
 		sdl shebangfix xorg
 USE_GL=		gl glu
-USE_GNOME=	cairo gdkpixbuf2 gtk30 intltool
+USE_GNOME=	cairo gdkpixbuf gtk30 intltool
 USE_LDCONFIG=	yes
 USE_SDL=	sdl sdl2
 USE_XORG=	x11 xrender

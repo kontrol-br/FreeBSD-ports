@@ -1,6 +1,7 @@
 PORTNAME=	gauth
 DISTVERSIONPREFIX=	v
 DISTVERSION=	1.5.0
+PORTREVISION=	2
 CATEGORIES=	security
 
 MAINTAINER=	nxjoseph@protonmail.com

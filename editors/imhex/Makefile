@@ -1,5 +1,5 @@
 PORTNAME=	imhex
-PORTVERSION=	1.37.1
+PORTVERSION=	1.37.4
 DISTVERSIONPREFIX=	v
 CATEGORIES=	editors
 MASTER_SITES=	https://git.sr.ht/~danyspin97/xdgpp/blob/f01f810714443d0f10c333d4d1d9c0383be41375/:xdg \
@@ -32,7 +32,7 @@ LIB_DEPENDS=	libcurl.so:ftp/curl \
 
 USES=		cmake desktop-file-utils gl gnome pkgconfig python xorg
 USE_GL=		gl glu opengl
-USE_GNOME=	cairo gdkpixbuf2 gtk30
+USE_GNOME=	cairo gdkpixbuf gtk30
 USE_XORG=	x11 xcb xau xdmcp
 USE_GITHUB=	yes
 

@@ -1,7 +1,7 @@
 PORTNAME=	electron
 DISTVERSIONPREFIX=	v
 DISTVERSION=	${ELECTRON_VER:S/-beta./.b/}
-PORTREVISION=	2
+PORTREVISION=	5
 PULSEMV=	16
 PULSEV=		${PULSEMV}.1
 CATEGORIES=	devel
@@ -25,6 +25,9 @@ WWW=		https://electronjs.org/
 LICENSE=	BSD3CLAUSE LGPL21 MPL11 MIT
 LICENSE_COMB=	multi
 LICENSE_FILE=	${WRKSRC}/electron/LICENSE
+
+DEPRECATED=	EOLed upstream, switch to newer version
+EXPIRATION_DATE=	2025-03-31
 
 ONLY_FOR_ARCHS=	aarch64 amd64 i386
 
@@ -88,7 +91,7 @@ GH_TUPLE=	nodejs:node:v${NODE_VER}:node \
 		Mantle:Mantle:${MANTLE_VER}:mantle \
 		EngFlow:reclient-configs:${ENGFLOW_RECLIENT_CONFIGS_VER}:reclient_configs
 USE_GL=		gbm gl glesv2
-USE_GNOME=	atk cairo gdkpixbuf2 gtk30 libxml2 libxslt pango
+USE_GNOME=	atk cairo gdkpixbuf gtk30 libxml2 libxslt pango
 USE_XORG=	x11 xcb xcomposite xcursor xdamage xext xfixes xi xrandr \
 		xrender xscrnsaver xtst
 

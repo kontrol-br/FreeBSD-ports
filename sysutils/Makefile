@@ -236,6 +236,7 @@
     SUBDIR += coreos-ct
     SUBDIR += coreutils
     SUBDIR += cpdup
+    SUBDIR += cpdup-FreeBSD
     SUBDIR += cpu-microcode
     SUBDIR += cpu-microcode-amd
     SUBDIR += cpu-microcode-intel
@@ -265,6 +266,7 @@
     SUBDIR += daggy
     SUBDIR += damager
     SUBDIR += dar
+    SUBDIR += data-prepper
     SUBDIR += dateutils
     SUBDIR += dc3dd
     SUBDIR += dcfldd
@@ -277,6 +279,7 @@
     SUBDIR += debootstrap
     SUBDIR += deltarpm
     SUBDIR += deltup
+    SUBDIR += deskflow
     SUBDIR += desktop-installer
     SUBDIR += detox
     SUBDIR += devctl-jail-kmod
@@ -402,7 +405,6 @@
     SUBDIR += flog
     SUBDIR += flowgger
     SUBDIR += fluent-bit
-    SUBDIR += fluxengine
     SUBDIR += fonteditfs
     SUBDIR += foremost
     SUBDIR += fortunelock
@@ -642,6 +644,7 @@
     SUBDIR += lmon
     SUBDIR += lnav
     SUBDIR += loaders-update
+    SUBDIR += localsearch
     SUBDIR += lockfile-progs
     SUBDIR += loganalyzer
     SUBDIR += logrotate
@@ -893,7 +896,6 @@
     SUBDIR += parkverbot
     SUBDIR += pass-coffin
     SUBDIR += pass-otp
-    SUBDIR += pass-secrets
     SUBDIR += pass-update
     SUBDIR += password-store
     SUBDIR += passwordsafe
@@ -1055,7 +1057,6 @@
     SUBDIR += py-pyinfra
     SUBDIR += py-python-bareos
     SUBDIR += py-python-consul
-    SUBDIR += py-python-consul2
     SUBDIR += py-python-crontab
     SUBDIR += py-python-nomad
     SUBDIR += py-pytsk
@@ -1154,6 +1155,8 @@
     SUBDIR += rubygem-chef-telemetry
     SUBDIR += rubygem-chef-utils
     SUBDIR += rubygem-chef-vault
+    SUBDIR += rubygem-chef-winrm
+    SUBDIR += rubygem-chef-winrm-elevated
     SUBDIR += rubygem-chef-zero
     SUBDIR += rubygem-choria-mcorpc-support
     SUBDIR += rubygem-facter
@@ -1383,9 +1386,6 @@
     SUBDIR += toshctl
     SUBDIR += touchegg
     SUBDIR += toybox
-    SUBDIR += tracker
-    SUBDIR += tracker-miners
-    SUBDIR += tracker3
     SUBDIR += tree
     SUBDIR += triton
     SUBDIR += trueos-libqt5
@@ -1512,12 +1512,14 @@
     SUBDIR += vivid
     SUBDIR += vm-bhyve
     SUBDIR += vm-bhyve-devel
+    SUBDIR += vm-bhyve-zcomp
     SUBDIR += vmdktool
     SUBDIR += vmstated
     SUBDIR += vmtouch
     SUBDIR += vobcopy
     SUBDIR += volman
     SUBDIR += vpnc-scripts
+    SUBDIR += vtm
     SUBDIR += vttest
     SUBDIR += wait_on
     SUBDIR += walk

@@ -35,6 +35,7 @@
     SUBDIR += cx88
     SUBDIR += dav1d
     SUBDIR += decord
+    SUBDIR += deforaos-camera
     SUBDIR += deforaos-player
     SUBDIR += dirac
     SUBDIR += dovi_tool
@@ -168,7 +169,6 @@
     SUBDIR += libdvdcss
     SUBDIR += libdvdnav
     SUBDIR += libdvdread
-    SUBDIR += libfame
     SUBDIR += libgav1
     SUBDIR += libhdhomerun
     SUBDIR += libmatroska
@@ -261,6 +261,7 @@
     SUBDIR += nymphcast
     SUBDIR += nymphcastlib
     SUBDIR += nymphrpc
+    SUBDIR += obs-multi-rtmp
     SUBDIR += obs-recursion-effect
     SUBDIR += obs-streamfx
     SUBDIR += obs-studio
