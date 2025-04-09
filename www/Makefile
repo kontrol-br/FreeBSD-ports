@@ -101,7 +101,6 @@
     SUBDIR += cgiwrap
     SUBDIR += checkbot
     SUBDIR += chisel
-    SUBDIR += choqok
     SUBDIR += chpasswd
     SUBDIR += chrome-gnome-shell
     SUBDIR += chromium
@@ -151,6 +150,7 @@
     SUBDIR += domoticz-devel
     SUBDIR += dooble
     SUBDIR += dot-http
+    SUBDIR += dothttp
     SUBDIR += dpp
     SUBDIR += drill
     SUBDIR += drupal10
@@ -218,10 +218,12 @@
     SUBDIR += gitlab
     SUBDIR += gitlab-pages
     SUBDIR += gitlab-workhorse
+    SUBDIR += glance
     SUBDIR += glassfish
     SUBDIR += glassfish4
     SUBDIR += glpi
     SUBDIR += gnome-user-share
+    SUBDIR += go-anubis
     SUBDIR += go-www
     SUBDIR += gobuffalo
     SUBDIR += gohugo
@@ -1055,6 +1057,7 @@
     SUBDIR += p5-Mojolicious-Plugin-HamlRenderer
     SUBDIR += p5-Mojolicious-Plugin-Mongodb
     SUBDIR += p5-Mojolicious-Plugin-OpenAPI
+    SUBDIR += p5-Mojolicious-Plugin-RenderFile
     SUBDIR += p5-Mojolicious-Plugin-SetUserGroup
     SUBDIR += p5-Mojolicious-Plugin-TtRenderer
     SUBDIR += p5-Mojolicious-Plugin-YamlConfig
@@ -1598,7 +1601,6 @@
     SUBDIR += py-django-hashid-field
     SUBDIR += py-django-haystack
     SUBDIR += py-django-hierarkey
-    SUBDIR += py-django-hijack
     SUBDIR += py-django-htmlmin
     SUBDIR += py-django-htmx
     SUBDIR += py-django-i18nfield
@@ -1666,6 +1668,7 @@
     SUBDIR += py-django42
     SUBDIR += py-django50
     SUBDIR += py-django51
+    SUBDIR += py-django52
     SUBDIR += py-django_compressor
     SUBDIR += py-djangocms-admin-style
     SUBDIR += py-djangoql
@@ -1719,7 +1722,6 @@
     SUBDIR += py-flask-restful
     SUBDIR += py-flask-restx
     SUBDIR += py-flask-script
-    SUBDIR += py-flask-security
     SUBDIR += py-flask-session
     SUBDIR += py-flask-simpleldap
     SUBDIR += py-flask-smorest
@@ -1748,6 +1750,7 @@
     SUBDIR += py-google-cloud-appengine-logging
     SUBDIR += py-google-cloud-audit-log
     SUBDIR += py-google-cloud-bigquery
+    SUBDIR += py-google-cloud-bigquery-storage
     SUBDIR += py-google-cloud-bigtable
     SUBDIR += py-google-cloud-compute
     SUBDIR += py-google-cloud-core
@@ -1790,6 +1793,7 @@
     SUBDIR += py-httpx
     SUBDIR += py-httpx-oauth
     SUBDIR += py-httpx-socks
+    SUBDIR += py-httpx-sse
     SUBDIR += py-httpx-ws
     SUBDIR += py-httpx_gssapi
     SUBDIR += py-hypercorn
@@ -1973,7 +1977,6 @@
     SUBDIR += radicale
     SUBDIR += rearx
     SUBDIR += reddsaver
-    SUBDIR += redmine50
     SUBDIR += redmine51
     SUBDIR += redmine60
     SUBDIR += rejik
@@ -2114,7 +2117,6 @@
     SUBDIR += rubygem-fuzzyurl
     SUBDIR += rubygem-geminabox
     SUBDIR += rubygem-gitlab-flowdock-git-hook
-    SUBDIR += rubygem-gitlab-gollum-lib
     SUBDIR += rubygem-gitlab-gollum-rugged_adapter
     SUBDIR += rubygem-gitlab-turbolinks-classic
     SUBDIR += rubygem-goldfinger
@@ -2441,7 +2443,6 @@
     SUBDIR += snarf
     SUBDIR += so
     SUBDIR += sogo
-    SUBDIR += sogo-activesync
     SUBDIR += sogo2
     SUBDIR += sogo2-activesync
     SUBDIR += spawn-fcgi
@@ -2635,8 +2636,8 @@
     SUBDIR += yaws
     SUBDIR += you-get
     SUBDIR += yourls
+    SUBDIR += youtube
     SUBDIR += yt-dlp
-    SUBDIR += ytdl
     SUBDIR += yuicompressor
     SUBDIR += zenphoto
     SUBDIR += zerowait-httpd

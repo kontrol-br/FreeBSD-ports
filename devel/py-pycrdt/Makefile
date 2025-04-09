@@ -1,5 +1,5 @@
 PORTNAME=	pycrdt
-PORTVERSION=	0.12.8
+PORTVERSION=	0.12.9
 PORTREVISION=	1
 CATEGORIES=	devel python
 MASTER_SITES=	PYPI
@@ -14,7 +14,7 @@ WWW=		https://jupyter-server.github.io/pycrdt/ \
 LICENSE=	MIT
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
-BUILD_DEPENDS=	${PYTHON_PKGNAMEPREFIX}maturin>=1.4.0<2:devel/py-maturin@${PY_FLAVOR}
+BUILD_DEPENDS=	${PYTHON_PKGNAMEPREFIX}maturin>=1.8.2<2:devel/py-maturin@${PY_FLAVOR}
 RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}anyio>=4.4.0<5.0.0:devel/py-anyio@${PY_FLAVOR}
 
 USES=		cargo python
