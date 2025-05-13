@@ -1982,6 +1982,12 @@ function pfb_create_dnsbl($mode) {
 			}
 		}
 
+		foreach ($dnsbl_ex_vip as $vip) {
+			$vip_id = $vip['uniqid'] ?? uniqid();
+			$vip_index = ($vip['subnet_bits'] == '32') ? 0 : 1;
+			$dnsbl_new_vip[$vip_index]['uniqid'] = $vip_id;
+		}
+
 		if ($mode == 'enabled') {
 			// Compare existing to new and if they are not identical update
 			if ($dnsbl_ex_vip !== $dnsbl_new_vip) {

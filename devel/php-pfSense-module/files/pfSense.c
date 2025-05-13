@@ -2729,6 +2729,7 @@ pfSense_append_state(struct pfctl_state *s, void *arg) {
 	uint8_t proto;
 	uint32_t expire, creation;
 	uint64_t bytes[2], id, packets[2];
+	bool afto;
 	zval array;
 	zval *val, *val2;
 	zend_long lkey, lkey2;
@@ -2790,6 +2791,7 @@ pfSense_append_state(struct pfctl_state *s, void *arg) {
 	}
 
 	found = 0;
+	afto = sk->af != nk->af;
 
 	array_init(&array);
 
@@ -2803,38 +2805,40 @@ pfSense_append_state(struct pfctl_state *s, void *arg) {
 	} else
 		add_assoc_long(&array, "proto", (long)proto);
 	add_assoc_string(&array, "direction",
-	    ((s->direction == PF_OUT) ? "out" : "in"));
+	    ((s->direction == PF_OUT || (afto && s->direction == PF_IN)) ? "out" : "in"));
 
 	memset(buf, 0, sizeof(buf));
-	pf_print_host(&nk->addr[1], nk->port[1], af, buf, sizeof(buf));
-	add_assoc_string(&array, ((s->direction == PF_OUT) ? "src" : "dst"), buf);
+	pf_print_host(&nk->addr[1], nk->port[1], nk->af, buf, sizeof(buf));
+	add_assoc_string(&array, ((s->direction == PF_OUT || (afto && s->direction == PF_IN)) ? "src" : "dst"), buf);
 	if (a->filter != NULL && !found && strstr(buf, a->filter))
 		found = 1;
 
-	if (PF_ANEQ(&nk->addr[1], &sk->addr[1], af) ||
+	if (afto || PF_ANEQ(&nk->addr[1], &sk->addr[1], nk->af) ||
 	    nk->port[1] != sk->port[1]) {
+		int idx = afto ? 0 : 1;
 		memset(buf, 0, sizeof(buf));
-		pf_print_host(&sk->addr[1], sk->port[1], af, buf,
+		pf_print_host(&sk->addr[idx], sk->port[idx], sk->af, buf,
 		    sizeof(buf));
 		add_assoc_string(&array,
-		    ((s->direction == PF_OUT) ? "src-orig" : "dst-orig"), buf);
+		    ((s->direction == PF_OUT || (afto && s->direction == PF_IN)) ? "src-orig" : "dst-orig"), buf);
 		if (a->filter != NULL && !found && strstr(buf, a->filter))
 			found = 1;
 	}
 
 	memset(buf, 0, sizeof(buf));
-	pf_print_host(&nk->addr[0], nk->port[0], af, buf, sizeof(buf));
-	add_assoc_string(&array, ((s->direction == PF_OUT) ? "dst" : "src"), buf);
+	pf_print_host(&nk->addr[0], nk->port[0], nk->af, buf, sizeof(buf));
+	add_assoc_string(&array, ((s->direction == PF_OUT || (afto && s->direction == PF_IN)) ? "dst" : "src"), buf);
 	if (a->filter != NULL && !found && strstr(buf, a->filter))
 		found = 1;
 
-	if (PF_ANEQ(&nk->addr[0], &sk->addr[0], af) ||
+	if (afto || PF_ANEQ(&nk->addr[0], &sk->addr[0], nk->af) ||
 	    nk->port[0] != sk->port[0]) {
+		int idx = afto ? 1 : 0;
 		memset(buf, 0, sizeof(buf));
-		pf_print_host(&sk->addr[0], sk->port[0], af, buf,
+		pf_print_host(&sk->addr[idx], sk->port[idx], sk->af, buf,
 		    sizeof(buf));
 		add_assoc_string(&array,
-		    ((s->direction == PF_OUT) ? "dst-orig" : "src-orig"), buf);
+		    ((s->direction == PF_OUT || (afto && s->direction == PF_IN)) ? "dst-orig" : "src-orig"), buf);
 		if (a->filter != NULL && !found && strstr(buf, a->filter))
 			found = 1;
 	}
