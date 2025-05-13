@@ -1,5 +1,5 @@
 PORTNAME=	libjwt
-PORTVERSION=	2.1.1
+PORTVERSION=	2.1.2
 CATEGORIES=	www
 MASTER_SITES=	https://github.com/benmcollins/libjwt/releases/download/v${PORTVERSION}/
 

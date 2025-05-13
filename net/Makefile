@@ -96,7 +96,6 @@
     SUBDIR += corosync3
     SUBDIR += courier-authlib-ldap
     SUBDIR += courier-sox
-    SUBDIR += cpp-pcp-client
     SUBDIR += cppzmq
     SUBDIR += croc
     SUBDIR += cryptcat
@@ -112,6 +111,7 @@
     SUBDIR += datapipe
     SUBDIR += dbeacon
     SUBDIR += delegate
+    SUBDIR += deltachat-rpc-server
     SUBDIR += deviceatlas-enterprise-c
     SUBDIR += dgd
     SUBDIR += dgd-kernel
@@ -138,6 +138,7 @@
     SUBDIR += dtcpclient
     SUBDIR += dual-dhclient
     SUBDIR += dual-dhclient-daemon
+    SUBDIR += dumbpipe
     SUBDIR += ecal
     SUBDIR += echoping
     SUBDIR += empty
@@ -148,6 +149,7 @@
     SUBDIR += evans
     SUBDIR += eventviews
     SUBDIR += exabgp4
+    SUBDIR += exoscale-cli
     SUBDIR += fb303
     SUBDIR += fiche
     SUBDIR += file2pcap
@@ -426,7 +428,6 @@
     SUBDIR += libslirp
     SUBDIR += libsockpp
     SUBDIR += libsrtp2
-    SUBDIR += libtnl
     SUBDIR += libtrace
     SUBDIR += libunp
     SUBDIR += libusipp
@@ -445,13 +446,13 @@
     SUBDIR += linux-c7-openldap
     SUBDIR += linux-c7-tcp_wrappers-libs
     SUBDIR += linux-rl9-avahi-libs
-    SUBDIR += linux-rl9-libproxy
     SUBDIR += linux-rl9-openldap
     SUBDIR += linux-rl9-sdl2_net
     SUBDIR += linux-rl9-sdl_net
     SUBDIR += linux-rl9-tcp_wrappers-libs
     SUBDIR += liveMedia
     SUBDIR += lla
+    SUBDIR += lldap
     SUBDIR += lua-luasocket
     SUBDIR += lualdap
     SUBDIR += mDNSResponder
@@ -573,7 +574,6 @@
     SUBDIR += ooni-mini
     SUBDIR += ooni-probe-cli
     SUBDIR += open-isns
-    SUBDIR += openbgpd
     SUBDIR += openbgpd6
     SUBDIR += openbgpd7
     SUBDIR += openbgpd8
@@ -1040,6 +1040,7 @@
     SUBDIR += py-aiocoap
     SUBDIR += py-aiohappyeyeballs
     SUBDIR += py-aiohttp-socks
+    SUBDIR += py-aiostalk
     SUBDIR += py-amqp
     SUBDIR += py-amqplib
     SUBDIR += py-avahi
@@ -1065,6 +1066,7 @@
     SUBDIR += py-gdown
     SUBDIR += py-geopy
     SUBDIR += py-gntp
+    SUBDIR += py-greenstalk
     SUBDIR += py-gspread
     SUBDIR += py-h11
     SUBDIR += py-haproxy-cli
@@ -1280,6 +1282,7 @@
     SUBDIR += rubygem-cloudflare
     SUBDIR += rubygem-connection_pool
     SUBDIR += rubygem-devfile
+    SUBDIR += rubygem-devfile-gitlab
     SUBDIR += rubygem-docker-api
     SUBDIR += rubygem-dogapi
     SUBDIR += rubygem-domain_name
@@ -1497,6 +1500,7 @@
     SUBDIR += self-service-password
     SUBDIR += sems
     SUBDIR += sendemail
+    SUBDIR += sendme
     SUBDIR += sendsms
     SUBDIR += sendsnpp
     SUBDIR += serveez
