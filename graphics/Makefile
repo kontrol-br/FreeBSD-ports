@@ -92,6 +92,7 @@
     SUBDIR += cadubi
     SUBDIR += cairo
     SUBDIR += cairomm
+    SUBDIR += cairomm11
     SUBDIR += cal3d
     SUBDIR += camerakit
     SUBDIR += catimg
@@ -897,6 +898,7 @@
     SUBDIR += py-colorthief
     SUBDIR += py-colorz
     SUBDIR += py-colour
+    SUBDIR += py-colour-science
     SUBDIR += py-contextily
     SUBDIR += py-descartes
     SUBDIR += py-diplib
@@ -1098,7 +1100,6 @@
     SUBDIR += rubygem-dragonfly
     SUBDIR += rubygem-emoji
     SUBDIR += rubygem-exifr
-    SUBDIR += rubygem-ezprint
     SUBDIR += rubygem-fastimage
     SUBDIR += rubygem-flamegraph
     SUBDIR += rubygem-gd2
@@ -1116,7 +1117,6 @@
     SUBDIR += rubygem-mini_magick
     SUBDIR += rubygem-mini_magick4
     SUBDIR += rubygem-opengl
-    SUBDIR += rubygem-pdfkit
     SUBDIR += rubygem-png
     SUBDIR += rubygem-railroad
     SUBDIR += rubygem-red-colors

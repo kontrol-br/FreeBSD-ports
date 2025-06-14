@@ -103,7 +103,6 @@
     SUBDIR += gcc6-aux
     SUBDIR += gforth
     SUBDIR += ghc
-    SUBDIR += ghc810
     SUBDIR += ghc92
     SUBDIR += ghc94
     SUBDIR += ghc96
@@ -166,7 +165,6 @@
     SUBDIR += kawa
     SUBDIR += kf5-kross
     SUBDIR += kotlin
-    SUBDIR += kross-interpreters
     SUBDIR += kturtle
     SUBDIR += lafontaine
     SUBDIR += lci

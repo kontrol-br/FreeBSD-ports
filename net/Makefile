@@ -17,6 +17,7 @@
     SUBDIR += akonadi-search
     SUBDIR += alligator
     SUBDIR += aluminum
+    SUBDIR += amqpcat
     SUBDIR += aoe
     SUBDIR += apache-commons-net
     SUBDIR += apinger
@@ -109,6 +110,7 @@
     SUBDIR += dante
     SUBDIR += daq
     SUBDIR += datapipe
+    SUBDIR += dataplaneapi
     SUBDIR += dbeacon
     SUBDIR += delegate
     SUBDIR += deltachat-rpc-server
@@ -243,13 +245,10 @@
     SUBDIR += hanstunnel
     SUBDIR += haproxy
     SUBDIR += haproxy-devel
-    SUBDIR += haproxy22
     SUBDIR += haproxy24
-    SUBDIR += haproxy25
     SUBDIR += haproxy26
-    SUBDIR += haproxy27
     SUBDIR += haproxy28
-    SUBDIR += haproxy29
+    SUBDIR += haproxy30
     SUBDIR += hblock
     SUBDIR += hexinject
     SUBDIR += hlmaster
@@ -360,7 +359,6 @@
     SUBDIR += l2tpd
     SUBDIR += ladvd
     SUBDIR += lambdamoo
-    SUBDIR += landrop
     SUBDIR += latd
     SUBDIR += lavinmq
     SUBDIR += ldap-stats
@@ -574,7 +572,6 @@
     SUBDIR += ooni-mini
     SUBDIR += ooni-probe-cli
     SUBDIR += open-isns
-    SUBDIR += openbgpd6
     SUBDIR += openbgpd7
     SUBDIR += openbgpd8
     SUBDIR += openldap25-client
@@ -1009,7 +1006,6 @@
     SUBDIR += php84-soap
     SUBDIR += php84-sockets
     SUBDIR += phpldapadmin
-    SUBDIR += pichi
     SUBDIR += pimcommon
     SUBDIR += pimd
     SUBDIR += pimdd
@@ -1211,7 +1207,6 @@
     SUBDIR += quagga
     SUBDIR += quiche
     SUBDIR += quoted
-    SUBDIR += rabbiteer
     SUBDIR += rabbitmq
     SUBDIR += rabbitmq-c
     SUBDIR += rabbitmqadmin

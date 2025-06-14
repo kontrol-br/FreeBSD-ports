@@ -552,6 +552,7 @@
     SUBDIR += jail_exporter
     SUBDIR += jailadmin
     SUBDIR += jaildaemon
+    SUBDIR += jailmanager
     SUBDIR += jailme
     SUBDIR += jailrc
     SUBDIR += jailutils
@@ -762,6 +763,7 @@
     SUBDIR += nmrpflash
     SUBDIR += node_exporter
     SUBDIR += nomad
+    SUBDIR += nomad-driver-podman
     SUBDIR += nomad-pot-driver
     SUBDIR += npadmin
     SUBDIR += npmount
@@ -1073,11 +1075,6 @@
     SUBDIR += py-tarsnapper
     SUBDIR += py-tldr
     SUBDIR += py-tmuxp
-    SUBDIR += py-upt
-    SUBDIR += py-upt-cpan
-    SUBDIR += py-upt-freebsd
-    SUBDIR += py-upt-pypi
-    SUBDIR += py-upt-rubygems
     SUBDIR += py-uptime
     SUBDIR += qchroot
     SUBDIR += qdirstat
@@ -1264,8 +1261,6 @@
     SUBDIR += schilyutils
     SUBDIR += screen
     SUBDIR += screen-devel
-    SUBDIR += screen49
-    SUBDIR += screen50
     SUBDIR += screenfetch
     SUBDIR += screenie
     SUBDIR += scterc
