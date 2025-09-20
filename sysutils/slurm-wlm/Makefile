@@ -1,11 +1,11 @@
 PORTNAME=	slurm
 DISTVERSION=	23.11.7
-PORTREVISION=	4
+PORTREVISION=	12
 CATEGORIES=	sysutils
 MASTER_SITES=	https://download.schedmd.com/slurm/
 PKGNAMESUFFIX=	-wlm
 
-MAINTAINER=	ports@FreeBSD.org
+MAINTAINER=	rikka.goering@outlook.de
 COMMENT=	Simple Linux Utility for Resource Management
 WWW=		https://slurm.schedmd.com/
 
@@ -43,7 +43,8 @@ GNU_CONFIGURE=	yes
 GNU_CONFIGURE_MANPREFIX=${PREFIX}/share
 INSTALL_TARGET=	install-strip
 TEST_TARGET=	check
-PLIST_SUB=	PORTVERSION="${DISTVERSION}" VER="${DISTVERSION:R}"
+PLIST_SUB=	PORTVERSION="${DISTVERSION}" VER="${DISTVERSION:R}"	\
+		USERS=${USERS} GROUPS=${GROUPS}
 SHEBANG_FILES=	doc/html/shtml2html.py doc/man/man2html.py
 PORTDOCS=	*
 
@@ -114,12 +115,20 @@ PROC2FIX=	common/callerid.c common/fd.c common/fetch_config.c	\
 		plugins/switch/cray_aries/scaling.c	\
 		plugins/task/affinity/affinity.c slurmd/common/set_oomadj.c	\
 		slurmd/common/xcpuinfo.c slurmd/slurmstepd/pdebug.c	\
+		slurmctld/controller.c	\
+		slurmd/slurmd/slurmd.c	\
 		slurmd/slurmstepd/req.c
 
 LLD2FIX=	api plugins/openapi sacctmgr sackd scontrol scrontab scrun	\
 		slurmctld slurmd/slurmd squeue
 
 .include <bsd.port.options.mk>
+
+post-extract:
+	@${MKDIR} ${WRKSRC}/src/plugins/task/pgid
+# Use an existing plugin's Makefile.in as a template
+	@${CP}	${WRKSRC}/src/plugins/task/cray_aries/Makefile.in \
+		${WRKSRC}/src/plugins/task/pgid/Makefile.in
 
 # Hack around nonfunctional --disable-gtktest flag
 pre-configure-GUI-off:
@@ -162,6 +171,8 @@ pre-configure:
 		${REINPLACE_CMD} -e 's|htmldir = \$${datadir.*$$|htmldir = @htmldir@|'
 
 post-install:
+	@${MKDIR} ${STAGEDIR}/var/spool/slurmctld
+	@${CHMOD} 700 ${STAGEDIR}/var/spool/slurmctld
 	${INSTALL_DATA} ${WRKSRC}/etc/slurm.conf.example \
 		${STAGEDIR}${PREFIX}/etc/slurm.conf.sample
 

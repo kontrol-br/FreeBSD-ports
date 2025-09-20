@@ -1,6 +1,6 @@
 PORTNAME=	vault
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.19.5
+DISTVERSION=	1.20.3
 CATEGORIES=	security
 MASTER_SITES=	https://raw.githubusercontent.com/hashicorp/vault/${DISTVERSIONFULL}/ \
 		LOCAL/bofh/security/${PORTNAME}/:web_ui
@@ -27,7 +27,7 @@ EXTRACT_DEPENDS=npm-node20>0:www/npm-node20 \
 		yarn-node20>0:www/yarn-node20
 .endif
 
-USES=		cpe go:1.24,modules
+USES=		cpe go:modules
 CPE_VENDOR=	hashicorp
 USE_GITHUB=	yes
 GH_ACCOUNT=	hashicorp
@@ -46,7 +46,7 @@ GROUPS=		vault
 
 PLIST_FILES=	bin/${PORTNAME}
 
-GITID=	7010adf2c67686681908f04ec8e9357f19066f4f
+GITID=	7665ff29d77e5cb3ea9ddbeaed49ee312e53c6b8
 
 .include <bsd.port.pre.mk>
 
@@ -59,7 +59,7 @@ post-patch:
 	${CP} -Rf ${WRKDIR}/web_ui ${WRKSRC}/http/
 
 .if defined(MAINTAINER_MODE)
-_make-web_ui: extract
+_make-web_ui: clean extract
 	cd ${WRKSRC}/ui && ${SETENV} ${MAKE_ENV} yarn
 	cd ${WRKSRC}/ui && ${SETENV} ${MAKE_ENV} npm rebuild node-sass
 	cd ${WRKSRC}/ui && ${SETENV} ${MAKE_ENV} yarn run build

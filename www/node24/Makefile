@@ -1,7 +1,7 @@
 PORTNAME=	node
 PORTVERSION=	${NODEJS_PORTVERSION}
-DISTVERSIONPREFIX=	v
 PORTREVISION=	1
+DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 MASTER_SITES=	https://nodejs.org/dist/v${PORTVERSION}/
 PKGNAMESUFFIX=	${PORTVERSION:R:R}
@@ -43,6 +43,7 @@ CONFIGURE_ARGS=	--prefix=${PREFIX:S|^${DESTDIR}||} \
 		--shared-zstd \
 		--with-intl=system-icu \
 		--without-npm
+CXXFLAGS_powerpc64=	-mpower8-vector
 HAS_CONFIGURE=	yes
 MAKE_ENV=	CC.host="${CCACHE_BIN} ${CC}" \
 		CFLAGS.host="${CFLAGS}" \

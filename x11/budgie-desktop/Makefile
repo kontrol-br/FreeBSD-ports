@@ -1,6 +1,6 @@
 PORTNAME=	budgie-desktop
 DISTVERSION=	10.8.2
-PORTREVISION=	5
+PORTREVISION=	7
 DISTVERSIONPREFIX=	v
 CATEGORIES=	x11 budgie
 MASTER_SITES=	BUDGIE
@@ -18,7 +18,7 @@ BUILD_DEPENDS=	gnome-settings-daemon>0:sysutils/gnome-settings-daemon \
 		zenity>0:x11/zenity
 LIB_DEPENDS=	libpolkit-gobject-1.so:sysutils/polkit \
 		libpeas-1.0.so:devel/libpeas1 \
-		libuuid.so:misc/e2fsprogs-libuuid \
+		libuuid.so:misc/libuuid \
 		libnotify.so:devel/libnotify \
 		libaccountsservice.so:sysutils/accountsservice \
 		libpulse.so:audio/pulseaudio \
@@ -71,6 +71,8 @@ GLIB_SCHEMAS=	20_buddiesofbudgie.budgie-desktop.notifications.gschema.override \
 		org.buddiesofbudgie.budgie-desktop.raven.widget.UsageMonitor.gschema.xml \
 		org.buddiesofbudgie.budgie-desktop.screenshot.gschema.xml \
 		25_org.buddiesofbudgie-default-settings.gschema.override
+
+NO_SHLIB_REQUIRES_GLOB=	libmagpie-clutter-0.so.0 libmagpie-cogl-0.so.0
 
 .include <bsd.port.options.mk>
 

@@ -1,4 +1,4 @@
---- content/public/browser/content_browser_client.cc.orig	2025-05-28 14:55:43 UTC
+--- content/public/browser/content_browser_client.cc.orig	2025-09-06 10:01:20 UTC
 +++ content/public/browser/content_browser_client.cc
 @@ -1394,7 +1394,7 @@ bool ContentBrowserClient::ShouldRunOutOfProcessSystem
  // that can be adequately sandboxed.

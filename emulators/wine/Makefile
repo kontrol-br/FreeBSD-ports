@@ -1,6 +1,6 @@
 PORTNAME=	wine
 DISTVERSION=	10.0
-PORTREVISION=	1
+PORTREVISION=	2
 PORTEPOCH=	1
 CATEGORIES=	emulators
 MASTER_SITES=	https://dl.winehq.org/wine/source/10.0/
@@ -35,6 +35,7 @@ CONFIGURE_ARGS+=--verbose \
 		--without-capi \
 		--without-coreaudio \
 		--without-dbus \
+		--without-ffmpeg \
 		--without-gettext --without-gettextpo \
 		--without-gphoto \
 		--without-gssapi \
@@ -81,7 +82,7 @@ GECKO_DESC=	Bundle Gecko MSI package for Wine
 MONO_DESC=	Bundle Mono MSI package for Wine
 WAYLAND_DESC=	Wayland Support
 
-PORTSCOUT=	limit:^9\.0
+PORTSCOUT=	limit:^10\.0
 
 ALSA_CONFIGURE_WITH=	alsa
 ALSA_USES=		gnome gstreamer

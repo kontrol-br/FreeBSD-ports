@@ -95,6 +95,13 @@ BUILD_DEPENDS+=	as:devel/binutils
 CMAKE_ARGS+=	-DCMAKE_ASM_FLAGS=-no-integrated-as
 .endif
 
+.if exists(/usr/include/sys/inotify.h)
+PLIST_SUB+=	INOTIFY="" KQUEUE="@comment "
+EXTRA_PATCHES+=	${FILESDIR}/extrapatch-inotify
+.else
+PLIST_SUB+=	INOTIFY="@comment " KQUEUE=""
+.endif
+
 post-patch:
 	@${REINPLACE_CMD} -e 's|%%OPENSSLLIB%%|${OPENSSLLIB}|g' \
 		${WRKSRC}/src/plugins/tls/openssl/qsslsocket_openssl_symbols.cpp

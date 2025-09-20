@@ -73,7 +73,6 @@
     SUBDIR += caps-lv2
     SUBDIR += caps-plugins
     SUBDIR += cardinal
-    SUBDIR += carla
     SUBDIR += cava
     SUBDIR += cd-discid
     SUBDIR += cddb-bundle
@@ -199,6 +198,7 @@
     SUBDIR += ft2-clone
     SUBDIR += ft2play
     SUBDIR += furnace
+    SUBDIR += g4music
     SUBDIR += ganv
     SUBDIR += gbsplay
     SUBDIR += geonkick-lv2
@@ -281,6 +281,7 @@
     SUBDIR += icecast
     SUBDIR += icegenerator
     SUBDIR += ices
+    SUBDIR += id3edit
     SUBDIR += id3el
     SUBDIR += id3lib
     SUBDIR += id3mtag
@@ -334,8 +335,10 @@
     SUBDIR += libbpm
     SUBDIR += libbs2b
     SUBDIR += libcanberra
+    SUBDIR += libcanberra-gstreamer
     SUBDIR += libcanberra-gtk2
     SUBDIR += libcanberra-gtk3
+    SUBDIR += libcanberra-pulse
     SUBDIR += libcdaudio
     SUBDIR += libconvolve
     SUBDIR += libcoverart
@@ -424,7 +427,6 @@
     SUBDIR += liquidsfz
     SUBDIR += listener
     SUBDIR += littlefly-lv2
-    SUBDIR += lmms
     SUBDIR += logitechmediaserver
     SUBDIR += logitechmediaserver-dynamicplaylist
     SUBDIR += logitechmediaserver-lazysearch
@@ -519,6 +521,7 @@
     SUBDIR += noise-suppression-for-voice-lv2
     SUBDIR += normalize
     SUBDIR += nosefart
+    SUBDIR += noson
     SUBDIR += noson-app
     SUBDIR += nyquist
     SUBDIR += oaml
@@ -594,6 +597,8 @@
     SUBDIR += pianod2
     SUBDIR += picard
     SUBDIR += picard-plugins
+    SUBDIR += piper
+    SUBDIR += piper-phonemize
     SUBDIR += pipewire-module-xrdp
     SUBDIR += pipewire-spa-oss
     SUBDIR += pithos
@@ -648,7 +653,7 @@
     SUBDIR += py-pydub
     SUBDIR += py-pyjacklib
     SUBDIR += py-pylast
-    SUBDIR += py-pyliblo
+    SUBDIR += py-pyliblo3
     SUBDIR += py-pymad
     SUBDIR += py-pyogg
     SUBDIR += py-pyradio
@@ -850,6 +855,7 @@
     SUBDIR += webrtc-audio-processing0
     SUBDIR += webrtc-audio-processing2
     SUBDIR += welle.io
+    SUBDIR += whisper.cpp
     SUBDIR += whysynth
     SUBDIR += wildmidi
     SUBDIR += wmix

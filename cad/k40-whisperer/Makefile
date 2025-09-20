@@ -1,10 +1,11 @@
 PORTNAME=	k40-whisperer
 DISTVERSION=	0.59
+PORTREVISION=	3
 CATEGORIES=	cad python
 MASTER_SITES=	http://www.scorchworks.com/K40whisperer/
 DISTNAME=	K40_Whisperer-${DISTVERSION}_src
 
-MAINTAINER=	0mp@FreeBSD.org
+MAINTAINER=	ports@FreeBSD.org
 COMMENT=	GUI control software for the stock K40 laser cutter controller
 WWW=		https://www.scorchworks.com/K40whisperer/k40whisperer.html
 

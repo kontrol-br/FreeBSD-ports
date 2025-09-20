@@ -1,6 +1,6 @@
 PORTNAME=	gimp
-DISTVERSION=	3.0.2
-PORTREVISION=	1
+DISTVERSION=	3.0.4
+PORTREVISION=	2
 CATEGORIES?=	graphics gnome
 MASTER_SITES=	GIMP/gimp/v${PORTVERSION:R}
 PKGNAMESUFFIX=	3-app
@@ -35,7 +35,6 @@ LIB_DEPENDS=	libpng.so:graphics/png \
 		libappstream-glib.so:devel/appstream-glib \
 		libImath.so:math/Imath \
 		libwebp.so:graphics/webp \
-		libgjs.so:lang/gjs \
 		libOpenEXR.so:graphics/openexr \
 		libIex.so:graphics/openexr \
 		libjson-glib-1.0.so:devel/json-glib \
@@ -50,8 +49,7 @@ LIB_DEPENDS_powerpc64le=	libunwind.so:devel/libunwind
 
 RUN_DEPENDS=	${LOCALBASE}/libdata/pkgconfig/iso-codes.pc:misc/iso-codes \
 		glib-networking>=0:net/glib-networking \
-		mypaint-brushes>0:graphics/mypaint-brushes \
-		gjs-console:lang/gjs
+		mypaint-brushes>0:graphics/mypaint-brushes
 
 USES=		cpe desktop-file-utils gettext gnome jpeg libarchive \
 		localbase:ldflags meson ninja perl5 pkgconfig python:3.7+ \
@@ -78,10 +76,10 @@ MESON_ARGS=	-Dappdata-test=disabled \
 		-Diff=disabled \
 		-Dfits=disabled
 
-OPTIONS_DEFINE?=	AALIB GHOSTSCRIPT HEIF HELP OPENJPEG JXL LIBMNG WMF DOCS VALA CFITSIO
-OPTIONS_DEFAULT?=	AALIB GHOSTSCRIPT HEIF OPENJPEG JXL WMF DOCS VALA LUA CFITSIO
-OPTIONS_RADIO=		SCRIPTS
-OPTIONS_RADIO_SCRIPTS=	LUA LUAJIT
+OPTIONS_DEFINE?=	AALIB GHOSTSCRIPT HEIF HELP OPENJPEG JS JXL LIBMNG WMF DOCS VALA CFITSIO
+OPTIONS_DEFAULT?=	AALIB GHOSTSCRIPT HEIF OPENJPEG JS JXL WMF DOCS VALA LUA CFITSIO
+OPTIONS_SINGLE=		SCRIPTS
+OPTIONS_SINGLE_SCRIPTS=	LUA LUAJIT LUA_NONE
 OPTIONS_SUB=	yes
 
 AALIB_LIB_DEPENDS=	libaa.so:graphics/aalib
@@ -113,6 +111,11 @@ WMF_LIB_DEPENDS=	libexpat.so:textproc/expat2 \
 			libwmf.so:graphics/libwmf
 WMF_MESON_ENABLED=	wmf
 
+JS_DESC=                Install Javascript plug-ins
+JS_LIB_DEPENDS=         libgjs.so:lang/gjs
+JS_RUN_DEPENDS=         gjs-console:lang/gjs
+JS_MESON_ENABLED=       javascript
+
 DOCS_BUILD_DEPENDS=	gi-docgen:textproc/py-gi-docgen
 DOCS_MESON_ENABLED=	gi-docgen
 
@@ -121,11 +124,15 @@ VALA_USES=		vala:build
 VALA_MESON_ENABLED=	vala
 
 LUA_USES=		lua:51
-LUA_MESON_TRUE=		lua
+LUA_BUILD_DEPENDS=	${LUA_REFMODLIBDIR}/lgi/corelgilua${LUA_VER_STR}.so:devel/lua-lgi@${LUA_FLAVOR}
+LUA_RUN_DEPENDS=	${LUA_REFMODLIBDIR}/lgi/corelgilua${LUA_VER_STR}.so:devel/lua-lgi@${LUA_FLAVOR}
 
 LUAJIT_DESC?=		Lua scripting language support via Luajit
 LUAJIT_USES=		luajit
-LUAJIT_MESON_TRUE=	lua
+LUAJIT_BROKEN=		LuaJIT cannot use devel/lua-lgi module yet
+
+LUA_NONE_DESC?=		Disable Lua scripting language support
+LUA_NONE_MESON_FALSE=	lua
 
 LIBS+=		-lexecinfo -lm
 CPE_PRODUCT=	gimp
@@ -134,11 +141,20 @@ CPE_VENDOR=	gnu
 SHEBANG_FILES=	plug-ins/python/*.py \
 		plug-ins/python/python-console/*.py \
 		extensions/goat-exercises/*.py \
-		extensions/goat-exercises/*.js
+		extensions/goat-exercises/*.js \
+		extensions/goat-exercises/*.lua
 
 SHEBANG_LANG+=	gjs
 
 PLIST_SUB+=	BINVER=${PORTVERSION:R:R} ABIVER=${PORTVERSION:R} SHLIBVER=${PORTVERSION:E}
+
+.include <bsd.port.options.mk>
+
+.if ${PORT_OPTIONS:MLUA} || ${PORT_OPTIONS:MLUAJIT}
+PLIST_SUB+=	LUASCRIPTS=""
+.else
+PLIST_SUB+=	LUASCRIPTS="@comment "
+.endif
 
 #post-patch:
 #.for s in 16 22 24 32 48 64 256

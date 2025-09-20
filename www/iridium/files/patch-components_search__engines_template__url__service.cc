@@ -1,6 +1,6 @@
---- components/search_engines/template_url_service.cc.orig	2025-05-07 06:48:23 UTC
+--- components/search_engines/template_url_service.cc.orig	2025-09-11 13:19:19 UTC
 +++ components/search_engines/template_url_service.cc
-@@ -3435,7 +3435,7 @@ bool TemplateURLService::MatchesDefaultSearchProvider(
+@@ -3591,7 +3591,7 @@ bool TemplateURLService::MatchesDefaultSearchProvider(
  std::unique_ptr<EnterpriseSearchManager>
  TemplateURLService::GetEnterpriseSearchManager(PrefService* prefs) {
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \

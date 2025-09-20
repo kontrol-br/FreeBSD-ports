@@ -16,6 +16,7 @@
     SUBDIR += apwal
     SUBDIR += arandr
     SUBDIR += arcan-trayicon
+    SUBDIR += ashell
     SUBDIR += aterm
     SUBDIR += autorandr
     SUBDIR += babl
@@ -133,8 +134,10 @@
     SUBDIR += hypridle
     SUBDIR += hyprland-qtutils
     SUBDIR += hyprlock
+    SUBDIR += hyprls
     SUBDIR += hyprpaper
     SUBDIR += hyprpicker
+    SUBDIR += hyprviz
     SUBDIR += i3bar-river
     SUBDIR += i3blocks
     SUBDIR += i3lock-color
@@ -245,6 +248,7 @@
     SUBDIR += linux-nvidia-libs-340
     SUBDIR += linux-nvidia-libs-390
     SUBDIR += linux-nvidia-libs-470
+    SUBDIR += linux-nvidia-libs-devel
     SUBDIR += linux-rl9-libxkbcommon
     SUBDIR += linux-rl9-pixman
     SUBDIR += linux-rl9-qt5-qtx11extras
@@ -296,6 +300,7 @@
     SUBDIR += nvidia-driver-340
     SUBDIR += nvidia-driver-390
     SUBDIR += nvidia-driver-470
+    SUBDIR += nvidia-driver-devel
     SUBDIR += nvidia-settings
     SUBDIR += nvidia-xconfig
     SUBDIR += nwg-bar
@@ -346,6 +351,7 @@
     SUBDIR += py-i3-quickterm
     SUBDIR += py-i3ipc
     SUBDIR += py-mouseinfo
+    SUBDIR += py-nwg-displays
     SUBDIR += py-pyautogui
     SUBDIR += py-pynput
     SUBDIR += py-pyscreenshot
@@ -451,15 +457,19 @@
     SUBDIR += virglrenderer
     SUBDIR += virtboard
     SUBDIR += virtualgl
+    SUBDIR += walker
     SUBDIR += wallutils
     SUBDIR += wapanel
     SUBDIR += watershot
     SUBDIR += way-displays
     SUBDIR += waybar
+    SUBDIR += waycheck
+    SUBDIR += waycorner
     SUBDIR += wayidle
     SUBDIR += wayland-logout
     SUBDIR += waylock
     SUBDIR += wayout
+    SUBDIR += wayst
     SUBDIR += wbar
     SUBDIR += wcm
     SUBDIR += wdisplays

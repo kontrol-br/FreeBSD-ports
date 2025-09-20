@@ -1,11 +1,10 @@
 PORTNAME=	calibre
-PORTVERSION=	8.4.0
+PORTVERSION=	8.10.0
+PORTREVISION=	1
 CATEGORIES=	deskutils python
-MASTER_SITES=	https://download.calibre-ebook.com/${PORTVERSION}/:DEFAULT \
-		https://raw.githubusercontent.com/rhasspy/piper/${PIPER_VOICES_HASH}/:piper
-DISTFILES=	${DISTNAME}${EXTRACT_SUFX}:DEFAULT VOICES.md:piper
+MASTER_SITES=	https://download.calibre-ebook.com/${PORTVERSION}/
+DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
 DIST_SUBDIR=	${PORTNAME}
-EXTRACT_ONLY=	${DISTFILES:C/:.*//:S/VOICES.md//1}
 
 MAINTAINER=	madpilot@FreeBSD.org
 COMMENT=	Ebook management application
@@ -68,9 +67,8 @@ USES=		desktop-file-utils gettext-runtime:build gl localbase:ldflags \
 		pkgconfig pyqt:6 python:3.11+ qt:6 shared-mime-info shebangfix sqlite ssl \
 		tar:xz xorg
 USE_GITHUB=	nodefault
-GH_TUPLE=	kovidgoyal:calibre-translations:f2af128:translations \
-		LibreOffice:dictionaries:0d46e01:hypenation
-PIPER_VOICES_HASH=	c0670df63daf07070c9be36b5c4bed270ad72383
+GH_TUPLE=	kovidgoyal:calibre-translations:9cc1de1:translations \
+		LibreOffice:dictionaries:f092998:hypenation
 USE_GL=		opengl
 USE_PYQT=	pyqt6 pysip webengine qtbuilder:build sip:build
 USE_QT=		base
@@ -96,9 +94,7 @@ MAKE_ENV=	CALIBRE_CONFIG_DIRECTORY=${WRKDIR}/calibre-config \
 		XDG_UTILS_INSTALL_MODE=system
 SUB_LIST=	PYTHON_VERSION=${PYTHON_VERSION}
 
-.include <bsd.port.pre.mk>
-
-ISOCODESWRKSRC!=	${BSDMAKE} -C ${.CURDIR}/../../misc/iso-codes -V WRKSRC
+ISOCODESWRKSRC_CMD=	${BSDMAKE} -C ${.CURDIR}/../../misc/iso-codes -V WRKSRC
 
 post-extract:
 	@${CP} ${FILESDIR}/user-agent-data.json ${WRKSRC}/resources
@@ -124,8 +120,7 @@ do-build:
 		--path-to-hyphenation=${WRKSRC_hypenation} \
 		--path-to-translations=${WRKSRC_translations} \
 		--path-to-cacerts=${LOCALBASE}/share/certs/ca-root-nss.crt \
-		--path-to-isocodes=${ISOCODESWRKSRC} --isocodes-extracted \
-		--path-to-piper_voices=${DISTDIR}/${DIST_SUBDIR}/VOICES.md \
+		--path-to-isocodes=$$(${ISOCODESWRKSRC_CMD}) --isocodes-extracted \
 	)
 	@${RMDIR} ${LOCALBASE}/libexec/qt6/locales 2>/dev/null || ${TRUE}
 
@@ -150,4 +145,4 @@ update-recent-uas: patch
 		${PYSETUP} recent_uas)
 	${CP} ${BUILD_WRKSRC}/resources/user-agent-data.json ${FILESDIR}
 
-.include <bsd.port.post.mk>
+.include <bsd.port.mk>

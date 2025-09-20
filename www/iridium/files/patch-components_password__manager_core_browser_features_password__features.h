@@ -1,6 +1,6 @@
---- components/password_manager/core/browser/features/password_features.h.orig	2025-05-07 06:48:23 UTC
+--- components/password_manager/core/browser/features/password_features.h.orig	2025-09-11 13:19:19 UTC
 +++ components/password_manager/core/browser/features/password_features.h
-@@ -108,7 +108,7 @@ BASE_DECLARE_FEATURE(kPasswordManualFallbackAvailable)
+@@ -131,7 +131,7 @@ BASE_DECLARE_FEATURE(kPasswordManagerLogToTerminal);
  // Detects password reuse based on hashed password values.
  BASE_DECLARE_FEATURE(kReuseDetectionBasedOnPasswordHashes);
  

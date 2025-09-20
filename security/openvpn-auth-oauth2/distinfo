@@ -1,5 +1,5 @@
-TIMESTAMP = 1749590370
-SHA256 (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.23.1/v1.23.1.mod) = 4eb4d0d5b5373d77a532a0f89455335a95d3ff146ac4575a69cc43297c15ba5b
-SIZE (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.23.1/v1.23.1.mod) = 1329
-SHA256 (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.23.1/v1.23.1.zip) = b414c238de9b1052c4e276b129d9daddaa83bc350848e979252817c7ae1a25f0
-SIZE (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.23.1/v1.23.1.zip) = 1864404
+TIMESTAMP = 1754885003
+SHA256 (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.25.2/v1.25.2.mod) = d0f750c04d64d7442d246f72b825d2f9fc0ed4210e066ea5f6787b9eb877f963
+SIZE (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.25.2/v1.25.2.mod) = 1370
+SHA256 (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.25.2/v1.25.2.zip) = 0ac1f121f8eb6842a65e67e4b2a16a52c6c2f2cc068e79b06a5f90b04cce0a4e
+SIZE (go/security_openvpn-auth-oauth2/openvpn-auth-oauth2-v1.25.2/v1.25.2.zip) = 1875487

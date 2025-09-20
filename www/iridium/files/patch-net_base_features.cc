@@ -1,6 +1,6 @@
---- net/base/features.cc.orig	2025-05-07 06:48:23 UTC
+--- net/base/features.cc.orig	2025-09-11 13:19:19 UTC
 +++ net/base/features.cc
-@@ -26,7 +26,7 @@ BASE_FEATURE(kCapReferrerToOriginOnCrossOrigin,
+@@ -32,7 +32,7 @@ BASE_FEATURE(kCapReferrerToOriginOnCrossOrigin,
  BASE_FEATURE(kAsyncDns,
               "AsyncDns",
  #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_ANDROID) || \
@@ -9,16 +9,12 @@
               base::FEATURE_ENABLED_BY_DEFAULT
  #else
               base::FEATURE_DISABLED_BY_DEFAULT
-@@ -548,7 +548,12 @@ BASE_FEATURE(kSpdyHeadersToHttpResponseUseBuilder,
-              "SpdyHeadersToHttpResponseUseBuilder",
-              base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -711,7 +711,7 @@ BASE_FEATURE(kReportingApiEnableEnterpriseCookieIssues
  
-+#if BUILDFLAG(IS_OPENBSD)
-+// No IP_RECVTOS support
-+BASE_FEATURE(kReportEcn, "ReportEcn", base::FEATURE_DISABLED_BY_DEFAULT);
-+#else
- BASE_FEATURE(kReportEcn, "ReportEcn", base::FEATURE_ENABLED_BY_DEFAULT);
-+#endif
- 
- BASE_FEATURE(kUseNewAlpsCodepointHttp2,
-              "UseNewAlpsCodepointHttp2",
+ BASE_FEATURE(kSimdutfBase64Support,
+              "SimdutfBase64Support",
+-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+              base::FEATURE_ENABLED_BY_DEFAULT
+ #else
+              base::FEATURE_DISABLED_BY_DEFAULT

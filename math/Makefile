@@ -25,7 +25,6 @@
     SUBDIR += R-cran-Matching
     SUBDIR += R-cran-MatrixModels
     SUBDIR += R-cran-NMF
-    SUBDIR += R-cran-RSvgDevice
     SUBDIR += R-cran-RcppArmadillo
     SUBDIR += R-cran-RcppEigen
     SUBDIR += R-cran-RcppRoll
@@ -105,6 +104,7 @@
     SUBDIR += R-cran-mitools
     SUBDIR += R-cran-mnormt
     SUBDIR += R-cran-moments
+    SUBDIR += R-cran-mpoly
     SUBDIR += R-cran-mvtnorm
     SUBDIR += R-cran-ncdf4
     SUBDIR += R-cran-nloptr
@@ -112,6 +112,7 @@
     SUBDIR += R-cran-nortest
     SUBDIR += R-cran-numDeriv
     SUBDIR += R-cran-numbers
+    SUBDIR += R-cran-orthopolynom
     SUBDIR += R-cran-outliers
     SUBDIR += R-cran-partitions
     SUBDIR += R-cran-pbkrtest
@@ -393,6 +394,7 @@
     SUBDIR += gsl
     SUBDIR += half
     SUBDIR += hexcalc
+    SUBDIR += hexowl
     SUBDIR += heyoka
     SUBDIR += highs
     SUBDIR += hmat-oss
@@ -461,7 +463,6 @@
     SUBDIR += libformfactor
     SUBDIR += libhomfly
     SUBDIR += libmesh
-    SUBDIR += libmissing
     SUBDIR += libnormaliz
     SUBDIR += libocas
     SUBDIR += liborigin
@@ -471,7 +472,6 @@
     SUBDIR += librdata
     SUBDIR += librsb
     SUBDIR += libsemigroups
-    SUBDIR += libsharp2
     SUBDIR += libtexprintf
     SUBDIR += libtommath
     SUBDIR += libxls
@@ -491,7 +491,6 @@
     SUBDIR += ltl2ba
     SUBDIR += m4ri
     SUBDIR += m4rie
-    SUBDIR += manifold
     SUBDIR += mate-calc
     SUBDIR += math77
     SUBDIR += mathex
@@ -610,6 +609,10 @@
     SUBDIR += octave-forge-ltfat
     SUBDIR += octave-forge-mapping
     SUBDIR += octave-forge-matgeom
+    SUBDIR += octave-forge-mboct-fem-pkg
+    SUBDIR += octave-forge-mboct-mbdyn-pkg
+    SUBDIR += octave-forge-mboct-numerical-pkg
+    SUBDIR += octave-forge-mboct-octave-pkg
     SUBDIR += octave-forge-mccabe-thiele
     SUBDIR += octave-forge-mechanics
     SUBDIR += octave-forge-miscellaneous
@@ -896,6 +899,8 @@
     SUBDIR += php83-gmp
     SUBDIR += php84-bcmath
     SUBDIR += php84-gmp
+    SUBDIR += php85-bcmath
+    SUBDIR += php85-gmp
     SUBDIR += physcalc
     SUBDIR += picosat
     SUBDIR += piranha
@@ -975,7 +980,6 @@
     SUBDIR += py-evalidate
     SUBDIR += py-faiss
     SUBDIR += py-fastcluster
-    SUBDIR += py-fastdtw
     SUBDIR += py-fenics-basix
     SUBDIR += py-fenics-ffcx
     SUBDIR += py-fenics-ufl
@@ -989,6 +993,7 @@
     SUBDIR += py-gau2grid
     SUBDIR += py-gimmik
     SUBDIR += py-gmpy2
+    SUBDIR += py-grandalf
     SUBDIR += py-graphillion
     SUBDIR += py-gym
     SUBDIR += py-gym-notices
@@ -996,6 +1001,7 @@
     SUBDIR += py-hdmedians
     SUBDIR += py-hepstats
     SUBDIR += py-heyoka
+    SUBDIR += py-highspy
     SUBDIR += py-hmmlearn
     SUBDIR += py-hypernetx
     SUBDIR += py-igraph
@@ -1083,6 +1089,7 @@
     SUBDIR += py-pyprobables
     SUBDIR += py-pyreadr
     SUBDIR += py-pyreadstat
+    SUBDIR += py-pyrfr
     SUBDIR += py-pyrr
     SUBDIR += py-pysmt
     SUBDIR += py-pysym
@@ -1220,6 +1227,7 @@
     SUBDIR += stanmath
     SUBDIR += stp
     SUBDIR += suitesparse
+    SUBDIR += suitesparse-Example
     SUBDIR += suitesparse-amd
     SUBDIR += suitesparse-btf
     SUBDIR += suitesparse-camd

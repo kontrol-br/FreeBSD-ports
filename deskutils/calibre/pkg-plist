@@ -665,6 +665,7 @@ lib/calibre/calibre/gui2/actions/browse_annots.py
 lib/calibre/calibre/gui2/actions/browse_notes.py
 lib/calibre/calibre/gui2/actions/catalog.py
 lib/calibre/calibre/gui2/actions/choose_library.py
+lib/calibre/calibre/gui2/actions/column_tooltips.py
 lib/calibre/calibre/gui2/actions/convert.py
 lib/calibre/calibre/gui2/actions/copy_to_library.py
 lib/calibre/calibre/gui2/actions/delete.py
@@ -1437,6 +1438,8 @@ lib/calibre/calibre/utils/test_lock.py
 lib/calibre/calibre/utils/text2int.py
 lib/calibre/calibre/utils/threadpool.py
 lib/calibre/calibre/utils/titlecase.py
+lib/calibre/calibre/utils/tts/__init__.py
+lib/calibre/calibre/utils/tts/piper.py
 lib/calibre/calibre/utils/unicode_names.py
 lib/calibre/calibre/utils/unrar.py
 lib/calibre/calibre/utils/unsmarten.py

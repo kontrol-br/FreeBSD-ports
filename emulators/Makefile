@@ -1,8 +1,10 @@
     COMMENT = Emulators for other operating systems
 
     SUBDIR += 86Box
+    SUBDIR += Ymir
     SUBDIR += adamem
     SUBDIR += almostti
+    SUBDIR += amiberry
     SUBDIR += anese
     SUBDIR += aqemu
     SUBDIR += aranym
@@ -120,7 +122,6 @@
     SUBDIR += qemu-powernv
     SUBDIR += qemu-user-static
     SUBDIR += qemu-user-static-devel
-    SUBDIR += qemu8
     SUBDIR += qmc2
     SUBDIR += quasi88
     SUBDIR += reicast
@@ -158,6 +159,7 @@
     SUBDIR += virtualbox-ose
     SUBDIR += virtualbox-ose-70
     SUBDIR += virtualbox-ose-71
+    SUBDIR += virtualbox-ose-72
     SUBDIR += virtualbox-ose-additions
     SUBDIR += virtualbox-ose-additions-legacy
     SUBDIR += virtualbox-ose-additions-nox11
@@ -165,11 +167,13 @@
     SUBDIR += virtualbox-ose-kmod
     SUBDIR += virtualbox-ose-kmod-70
     SUBDIR += virtualbox-ose-kmod-71
+    SUBDIR += virtualbox-ose-kmod-72
     SUBDIR += virtualbox-ose-kmod-legacy
     SUBDIR += virtualbox-ose-legacy
     SUBDIR += virtualbox-ose-nox11
     SUBDIR += virtualbox-ose-nox11-70
     SUBDIR += virtualbox-ose-nox11-71
+    SUBDIR += virtualbox-ose-nox11-72
     SUBDIR += virtualbox-ose-nox11-legacy
     SUBDIR += visualboyadvance-m
     SUBDIR += vmips

@@ -1,6 +1,6 @@
---- content/public/common/content_switches.cc.orig	2025-05-07 06:48:23 UTC
+--- content/public/common/content_switches.cc.orig	2025-09-11 13:19:19 UTC
 +++ content/public/common/content_switches.cc
-@@ -339,6 +339,10 @@ const char kEnableIsolatedWebAppsInRenderer[] =
+@@ -347,6 +347,10 @@ const char kEnableIsolatedWebAppsInRenderer[] =
  // builds.
  const char kEnableLogging[]                 = "enable-logging";
  

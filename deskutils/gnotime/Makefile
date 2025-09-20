@@ -1,6 +1,6 @@
 PORTNAME=	gnotime
 DISTVERSION=	g20231022
-PORTREVISION=	3
+PORTREVISION=	5
 CATEGORIES=	deskutils gnome
 
 MAINTAINER=	truckman@FreeBSD.org
@@ -9,6 +9,9 @@ WWW=		https://github.com/GnoTime/gnotime
 
 LICENSE=	GPLv2+
 LICENSE_FILE=	${WRKSRC}/COPYING
+
+DEPRECATED=	Depends on expired databases/qof
+EXPIRATION_DATE=2025-11-24
 
 BUILD_DEPENDS=	autoconf-archive>=0:devel/autoconf-archive \
 		scrollkeeper-config:textproc/rarian
@@ -21,7 +24,7 @@ LIB_DEPENDS=	libqof.so:databases/qof \
 		libharfbuzz.so:print/harfbuzz \
 		libwebkit2gtk-4.0.so:www/webkit2-gtk@40
 
-USES=		autoreconf desktop-file-utils gettext gmake gnome libtool pathfix pkgconfig xorg
+USES=		autoreconf desktop-file-utils gettext gmake gnome libtool pkgconfig xorg
 USE_GITHUB=	yes
 GH_ACCOUNT=	GnoTime
 GH_PROJECT=	gnotime

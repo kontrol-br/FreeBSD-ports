@@ -1,6 +1,6 @@
 PORTNAME=	hurl
-DISTVERSION=	6.1.1
-PORTREVISION=	3
+DISTVERSION=	7.0.0
+PORTREVISION=	1
 CATEGORIES=	www
 
 MAINTAINER=	rodrigo@FreeBSD.org
@@ -12,7 +12,7 @@ LICENSE_FILE=	${WRKSRC}/LICENSE
 
 LIB_DEPENDS=	libcurl.so:ftp/curl
 
-USES=		cargo gnome ssl
+USES=		cargo gnome ssl llvm
 USE_GITHUB=	yes
 GH_ACCOUNT=	Orange-OpenSource
 USE_GNOME=	libxml2

@@ -1,6 +1,6 @@
 PORTNAME=	dgl
 DISTVERSION=	1.1.2
-PORTREVISION=	1
+PORTREVISION=	2
 CATEGORIES=	math python # machine-learning
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
 
@@ -56,7 +56,7 @@ post-install:
 		${STAGEDIR}${PREFIX}/dgl/dgl_sparse \
 		${STAGEDIR}${PREFIX}/dgl
 	# strip binaries
-	@${STRIP_CMD} ${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/dgl/_ffi/_cy3/core${PYTHON_EXT_SUFFIX}.so
+	@${STRIP_CMD} ${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/dgl/_ffi/_cy3/core${PYTHON_TAG}.so
 
 fix-plist:
 	# workaround for https://github.com/dmlc/dgl/issues/5665

@@ -1,5 +1,5 @@
 PORTNAME=	newsboat
-DISTVERSION=	2.39
+DISTVERSION=	2.40
 PORTREVISION=	1
 CATEGORIES=	www
 MASTER_SITES=	https://newsboat.org/releases/${DISTVERSION}/
@@ -34,9 +34,9 @@ CARGO_TARGET_DIR=	${WRKSRC}/target
 
 MAKE_ENV=	${CARGO_ENV}
 
-OPTIONS_DEFINE=	DOCS
+TESTING_UNSAFE=	tests fail if run as root
 
-TESTING_UNSAFE=	https://github.com/newsboat/newsboat/issues/2783
+OPTIONS_DEFINE=	DOCS
 
 .include <bsd.port.options.mk>
 

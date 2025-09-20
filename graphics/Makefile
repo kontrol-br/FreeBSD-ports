@@ -114,10 +114,10 @@
     SUBDIR += colmap
     SUBDIR += colord
     SUBDIR += colord-gtk
+    SUBDIR += colord-kde
     SUBDIR += compupic
     SUBDIR += converseen
     SUBDIR += corrupter
-    SUBDIR += cosmoplayer
     SUBDIR += cptutils
     SUBDIR += crw
     SUBDIR += ctl
@@ -155,6 +155,7 @@
     SUBDIR += drm-61-kmod
     SUBDIR += drm-66-kmod
     SUBDIR += drm-kmod
+    SUBDIR += drm-latest-kmod
     SUBDIR += drm_info
     SUBDIR += dspdfviewer
     SUBDIR += dssim
@@ -245,6 +246,7 @@
     SUBDIR += geos
     SUBDIR += geoserver
     SUBDIR += gexiv2
+    SUBDIR += gexiv2_016
     SUBDIR += giflib
     SUBDIR += gifmerge
     SUBDIR += gifsicle
@@ -292,6 +294,7 @@
     SUBDIR += goocanvasmm2
     SUBDIR += goom
     SUBDIR += gource
+    SUBDIR += gowall
     SUBDIR += goxel
     SUBDIR += gpaint
     SUBDIR += gphoto2
@@ -345,7 +348,9 @@
     SUBDIR += hppsmtools
     SUBDIR += hs-tart
     SUBDIR += hugin
+    SUBDIR += hvif-tools
     SUBDIR += hyprgraphics
+    SUBDIR += hyprland-protocols
     SUBDIR += icat
     SUBDIR += icc-profiles-adobe-cs4
     SUBDIR += icc-profiles-basiccolor
@@ -619,10 +624,15 @@
     SUBDIR += nsxiv
     SUBDIR += nurbs++
     SUBDIR += nvidia-drm-510-kmod
+    SUBDIR += nvidia-drm-510-kmod-devel
     SUBDIR += nvidia-drm-515-kmod
+    SUBDIR += nvidia-drm-515-kmod-devel
     SUBDIR += nvidia-drm-61-kmod
+    SUBDIR += nvidia-drm-61-kmod-devel
     SUBDIR += nvidia-drm-66-kmod
+    SUBDIR += nvidia-drm-66-kmod-devel
     SUBDIR += nvidia-drm-kmod
+    SUBDIR += nvidia-drm-kmod-devel
     SUBDIR += nvidia-texture-tools
     SUBDIR += ocaml-cairo
     SUBDIR += ocaml-images
@@ -667,7 +677,6 @@
     SUBDIR += optar
     SUBDIR += optipng
     SUBDIR += osg
-    SUBDIR += osg34
     SUBDIR += osgearth
     SUBDIR += ospray
     SUBDIR += ospray-studio
@@ -781,6 +790,7 @@
     SUBDIR += p5-VCG
     SUBDIR += p5-Visio
     SUBDIR += p5-feedgnuplot
+    SUBDIR += pagedgeometry
     SUBDIR += panoglview
     SUBDIR += panomatic
     SUBDIR += partio
@@ -823,6 +833,8 @@
     SUBDIR += php83-gd
     SUBDIR += php84-exif
     SUBDIR += php84-gd
+    SUBDIR += php85-exif
+    SUBDIR += php85-gd
     SUBDIR += phplot
     SUBDIR += picpuz
     SUBDIR += piddle
@@ -1086,7 +1098,6 @@
     SUBDIR += resvg-capi
     SUBDIR += rgbpaint
     SUBDIR += rigsofrods-caelum
-    SUBDIR += rigsofrods-pagedgeometry
     SUBDIR += ristretto
     SUBDIR += rlottie
     SUBDIR += ruby-gd
@@ -1108,6 +1119,7 @@
     SUBDIR += rubygem-gemojione32
     SUBDIR += rubygem-geokit
     SUBDIR += rubygem-gitlab_emoji
+    SUBDIR += rubygem-graphene1
     SUBDIR += rubygem-gruff
     SUBDIR += rubygem-histogram
     SUBDIR += rubygem-image_processing

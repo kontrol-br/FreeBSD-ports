@@ -1,6 +1,6 @@
 PORTNAME=	postfix
-DISTVERSION=	3.10.2
-PORTREVISION?=	1
+DISTVERSION=	3.10.4
+PORTREVISION?=	0
 PORTEPOCH=	1
 CATEGORIES=	mail
 MASTER_SITES=	https://postfix-mirror.horus-it.com/postfix-release/ \
@@ -164,7 +164,7 @@ MAKEFILEFLAGS+=	DEBUG=
 
 MAKEFILEFLAGS+=	pie=yes CC="${CC}" OPT="${CFLAGS}"
 
-.if ${SSL_DEFAULT} == libressl
+.if defined(TLS) && ${SSL_DEFAULT} == libressl
 BROKEN=		error: OpenSSL-1.1.1 is the minimum supported version. LibreSSL is not supported
 .endif
 

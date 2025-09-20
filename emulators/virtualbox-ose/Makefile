@@ -1,6 +1,6 @@
 PORTNAME=	virtualbox-ose
 DISTVERSION=	6.1.50
-PORTREVISION?=	14
+PORTREVISION?=	16
 CATEGORIES=	emulators
 MASTER_SITES=	https://download.virtualbox.org/virtualbox/${DISTVERSION}/:src \
 		LOCAL/bofh/emulators/virtualbox-ose:docs
@@ -42,7 +42,9 @@ CONFLICTS_INSTALL=	virtualbox-ose-legacy \
 			virtualbox-ose-70 \
 			virtualbox-ose-nox11-70 \
 			virtualbox-ose-71 \
-			virtualbox-ose-nox11-71
+			virtualbox-ose-nox11-71 \
+			virtualbox-ose-72 \
+			virtualbox-ose-nox11-72
 
 PORTSCOUT=	limit:^6\.
 SUB_FILES=	pkg-message

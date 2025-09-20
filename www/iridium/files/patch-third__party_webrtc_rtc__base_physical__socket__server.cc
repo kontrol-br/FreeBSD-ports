@@ -1,23 +1,23 @@
---- third_party/webrtc/rtc_base/physical_socket_server.cc.orig	2025-05-07 06:48:23 UTC
+--- third_party/webrtc/rtc_base/physical_socket_server.cc.orig	2025-09-11 13:19:19 UTC
 +++ third_party/webrtc/rtc_base/physical_socket_server.cc
-@@ -55,7 +55,7 @@
- #include "rtc_base/time_utils.h"
- #include "system_wrappers/include/field_trial.h"
+@@ -61,7 +61,7 @@
+ #undef SetPort
+ #endif
  
 -#if defined(WEBRTC_LINUX)
 +#if defined(WEBRTC_LINUX) && !defined(WEBRTC_BSD)
+ #include <asm-generic/socket.h>
  #include <linux/sockios.h>
- #endif
- 
-@@ -75,7 +75,7 @@ typedef void* SockOptArg;
- 
+ #include <sys/epoll.h>
+@@ -78,7 +78,7 @@
+ typedef void* SockOptArg;
  #endif  // WEBRTC_POSIX
  
--#if defined(WEBRTC_POSIX) && !defined(WEBRTC_MAC) && !defined(__native_client__)
-+#if defined(WEBRTC_POSIX) && !defined(WEBRTC_MAC) && !defined(__native_client__) && !defined(WEBRTC_BSD)
- 
+-#if defined(WEBRTC_POSIX) && !defined(WEBRTC_MAC)
++#if defined(WEBRTC_POSIX) && !defined(WEBRTC_MAC) && !defined(WEBRTC_BSD)
  int64_t GetSocketRecvTimestamp(int socket) {
    struct timeval tv_ioctl;
+   int ret = ioctl(socket, SIOCGSTAMP, &tv_ioctl);
 @@ -331,7 +331,7 @@ int PhysicalSocket::GetOption(Option opt, int* value) 
      return -1;
    }
@@ -58,8 +58,8 @@
        *slevel = IPPROTO_IP;
        *sopt = IP_DONTFRAGMENT;
        break;
--#elif defined(WEBRTC_MAC) || defined(BSD) || defined(__native_client__)
-+#elif defined(WEBRTC_MAC) || defined(WEBRTC_BSD) || defined(__native_client__)
+-#elif defined(WEBRTC_MAC) || defined(BSD)
++#elif defined(WEBRTC_MAC) || defined(WEBRTC_BSD)
        RTC_LOG(LS_WARNING) << "Socket::OPT_DONTFRAGMENT not supported.";
        return -1;
  #elif defined(WEBRTC_POSIX)

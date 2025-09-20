@@ -1,5 +1,6 @@
 PORTNAME=	scikit-bio
 DISTVERSION=	0.6.3
+PORTREVISION=	1
 CATEGORIES=	biology education python
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -49,8 +50,8 @@ CXXFLAGS+=	-msse2
 
 post-install:
 	@${STRIP_CMD} \
-		${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/skbio/*/*${PYTHON_EXT_SUFFIX}.so \
-		${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/skbio/*/*/*${PYTHON_EXT_SUFFIX}.so
+		${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/skbio/*/*${PYTHON_TAG}.so \
+		${STAGEDIR}${PYTHONPREFIX_SITELIBDIR}/skbio/*/*/*${PYTHON_TAG}.so
 
 do-test: # tests fail to run in a regular way, see https://github.com/biocore/scikit-bio/issues/1846
 	@cd ${STAGEDIR}${PYTHON_SITELIBDIR} && \

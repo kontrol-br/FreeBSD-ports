@@ -1,6 +1,6 @@
---- components/device_signals/core/common/signals_features.cc.orig	2025-05-07 06:48:23 UTC
+--- components/device_signals/core/common/signals_features.cc.orig	2025-09-11 13:19:19 UTC
 +++ components/device_signals/core/common/signals_features.cc
-@@ -31,7 +31,7 @@ bool IsBrowserSignalsReportingEnabled() {
+@@ -55,7 +55,7 @@ bool IsDetectedAgentSignalCollectionEnabled() {
  }
  
  #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || \

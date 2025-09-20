@@ -1,5 +1,5 @@
 PORTNAME=	ogmios
-PORTVERSION=	6.12.0
+PORTVERSION=	6.13.0
 DISTVERSIONPREFIX=v
 CATEGORIES=	net-p2p
 MASTER_SITES=	https://input-output-hk.github.io/cardano-haskell-packages/package/:chap
@@ -380,7 +380,7 @@ USE_CABAL=	Cabal-3.12.1.0 \
 		streaming-bytestring-0.3.3 \
 		streaming-commons-0.2.2.6_1 \
 		strict-0.5.1_1 \
-		strict-checked-vars-0.2.0.0_3:chap \
+		strict-checked-vars-0.2.0.0_1:chap \
 		strict-list-0.1.7.5 \
 		strict-mvar-1.5.0.0_1 \
 		strict-sop-core-0.1.2.0:chap \
@@ -428,7 +428,7 @@ USE_CABAL=	Cabal-3.12.1.0 \
 		tree-diff-0.3.1_1 \
 		typed-process-0.2.12.0 \
 		typed-protocols-0.1.1.0_3:chap \
-		typed-protocols-cborg-0.1.0.4_3:chap \
+		typed-protocols-cborg-0.1.0.4_1:chap \
 		typed-protocols-examples-0.2.0.2:chap \
 		unbounded-delays-0.1.1.1 \
 		universe-base-1.1.4_1 \
@@ -460,7 +460,7 @@ USE_CABAL=	Cabal-3.12.1.0 \
 		wai-logger-2.4.1 \
 		wai-websockets-3.0.1.2 \
 		warp-3.4.2 \
-		websockets-0.13.0.0_4 \
+		websockets-0.13.0.0_5 \
 		wherefrom-compat-0.1.1.1_1 \
 		with-utf8-1.1.0.0_2 \
 		witherable-0.5_1 \

@@ -1,5 +1,5 @@
 PORTNAME=	ruby-vips
-PORTVERSION=	2.2.3
+PORTVERSION=	2.2.5
 CATEGORIES=	graphics rubygems
 MASTER_SITES=	RG
 

@@ -1,6 +1,6 @@
---- chrome/browser/ui/views/frame/picture_in_picture_browser_frame_view.cc.orig	2025-05-28 14:55:43 UTC
+--- chrome/browser/ui/views/frame/picture_in_picture_browser_frame_view.cc.orig	2025-09-06 10:01:20 UTC
 +++ chrome/browser/ui/views/frame/picture_in_picture_browser_frame_view.cc
-@@ -67,7 +67,7 @@
+@@ -74,7 +74,7 @@
  
  // Windows, Mac and CrOS do not clip child widgets to their parents, so we
  // don't have to worry about resizing quite as much.

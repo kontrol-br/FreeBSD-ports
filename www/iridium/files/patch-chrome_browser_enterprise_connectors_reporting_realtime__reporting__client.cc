@@ -1,4 +1,4 @@
---- chrome/browser/enterprise/connectors/reporting/realtime_reporting_client.cc.orig	2025-05-07 06:48:23 UTC
+--- chrome/browser/enterprise/connectors/reporting/realtime_reporting_client.cc.orig	2025-09-11 13:19:19 UTC
 +++ chrome/browser/enterprise/connectors/reporting/realtime_reporting_client.cc
 @@ -53,7 +53,7 @@
  #include "base/strings/utf_string_conversions.h"
@@ -27,7 +27,7 @@
    if (username_.empty()) {
      username_ = Profile::FromBrowserContext(context_)->GetPrefs()->GetString(
          enterprise_signin::prefs::kProfileUserEmail);
-@@ -246,7 +246,7 @@ std::string RealtimeReportingClient::GetBrowserClientI
+@@ -251,7 +251,7 @@ std::string RealtimeReportingClient::GetBrowserClientI
    return client_id;
  }
  

@@ -1,8 +1,9 @@
 PORTNAME=	kwin
 DISTVERSION=	${KDE_PLASMA_VERSION}
+PORTREVISION=	1
 CATEGORIES=	x11-wm kde kde-plasma
 
-COMMENT=	Easy to use, but flexible, X Window Manager and Wayland Compositor
+COMMENT=	Easy to use, but flexible, Wayland Compositor
 MAINTAINER=	kde@FreeBSD.org
 
 BUILD_DEPENDS=	${LOCALBASE}/include/linux/input.h:devel/evdev-proto \
@@ -28,23 +29,25 @@ LIB_DEPENDS=	libdisplay-info.so:sysutils/libdisplay-info \
 RUN_DEPENDS=	hwdata>0:misc/hwdata \
 		Xwayland:x11-servers/xwayland
 
-CONFLICTS_INSTALL=	theseus-ship # bin/kwin_wayland
-
 USES=		cmake gettext gl kde:6 pkgconfig python qt:6 shebangfix tar:xz \
 		xorg
 USE_GL=		egl gbm gl opengl
-USE_KDE=	activities attica auth breeze colorscheme config \
+USE_KDE=	activities attica auth colorscheme config \
 		configwidgets coreaddons crash dbusaddons decoration \
 		globalaccel globalacceld guiaddons i18n idletime kcmutils \
 		kdeclarative kpipewire kscreenlocker libplasma newstuff \
 		notifications package runner service svg wayland widgetsaddons \
 		windowsystem xmlgui \
-		ecm:build plasma-wayland-protocols:build
+		ecm:build plasma-wayland-protocols:build \
+		aurorae:run breeze:run
 USE_QT=		base declarative multimedia sensors tools wayland
 USE_XORG=	ice sm x11 xcb xext xi
 
+DATADIR=	${PREFIX}/share/kwin-wayland
 BINARY_ALIAS=	python3=${PYTHON_CMD}
 SHEBANG_FILES=	src/plugins/strip-effect-metadata.py
+
+CONFLICTS_INSTALL=	theseus-ship # bin/kwin_wayland
 
 OPTIONS_DEFINE=		EI
 OPTIONS_DEFAULT=	EI

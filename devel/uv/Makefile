@@ -1,6 +1,5 @@
 PORTNAME=	uv
-DISTVERSION=	0.7.8
-PORTREVISION=	1
+DISTVERSION=	0.8.15
 CATEGORIES=	devel
 
 MAINTAINER=	yuri@FreeBSD.org
@@ -29,6 +28,8 @@ GH_ACCOUNT=	astral-sh
 
 OPENSSLINC=	/usr/include
 OPENSSLLIB=	/usr/lib
+
+RUSTFLAGS+=	-C link-args=-Wl,-rpath=${LOCALBASE}/lib
 
 PROGS=		uv uvx
 

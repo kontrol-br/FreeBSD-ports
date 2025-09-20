@@ -75,11 +75,13 @@
     SUBDIR += autojump
     SUBDIR += automounter
     SUBDIR += autorestic
+    SUBDIR += awslim
     SUBDIR += azure-agent
     SUBDIR += b2sum
     SUBDIR += b3sum
     SUBDIR += b43-fwcutter
     SUBDIR += backdown
+    SUBDIR += backrest
     SUBDIR += backuppc
     SUBDIR += backuppc-devel
     SUBDIR += backuppc4
@@ -265,7 +267,6 @@
     SUBDIR += daemonize
     SUBDIR += daemontools
     SUBDIR += daemontools-encore
-    SUBDIR += daggy
     SUBDIR += damager
     SUBDIR += dar
     SUBDIR += data-prepper
@@ -351,6 +352,7 @@
     SUBDIR += egress-monitor
     SUBDIR += eject
     SUBDIR += eksctl
+    SUBDIR += elephant
     SUBDIR += elfx86exts
     SUBDIR += endian
     SUBDIR += enteruser
@@ -443,6 +445,7 @@
     SUBDIR += gdu
     SUBDIR += genimage
     SUBDIR += genisoimage
+    SUBDIR += geomman
     SUBDIR += getdelta
     SUBDIR += geteltorito
     SUBDIR += getssl
@@ -462,6 +465,7 @@
     SUBDIR += gnome-settings-daemon
     SUBDIR += gnome-system-monitor
     SUBDIR += gnome_subr
+    SUBDIR += go-ntfy
     SUBDIR += go-wtf
     SUBDIR += goaccess
     SUBDIR += goawk
@@ -513,9 +517,11 @@
     SUBDIR += httplog
     SUBDIR += hw-probe
     SUBDIR += hwstat
+    SUBDIR += hyprpolkitagent
     SUBDIR += i2c-tools
     SUBDIR += i7z
     SUBDIR += iat
+    SUBDIR += ictree
     SUBDIR += imgurbash2
     SUBDIR += immortal
     SUBDIR += incron
@@ -573,6 +579,7 @@
     SUBDIR += k8temp
     SUBDIR += k9s
     SUBDIR += kapp
+    SUBDIR += kassiber
     SUBDIR += kbackup
     SUBDIR += kcron
     SUBDIR += kdeadmin
@@ -604,6 +611,7 @@
     SUBDIR += kustomize
     SUBDIR += kvmclock-kmod
     SUBDIR += lava
+    SUBDIR += lazyssh
     SUBDIR += lbl-cf
     SUBDIR += lbl-hf
     SUBDIR += lcdproc
@@ -702,7 +710,6 @@
     SUBDIR += memdump
     SUBDIR += memfetch
     SUBDIR += memtest86
-    SUBDIR += memtest86+
     SUBDIR += memtester
     SUBDIR += metalog
     SUBDIR += mfid
@@ -717,6 +724,7 @@
     SUBDIR += mkfwimage
     SUBDIR += mkjail
     SUBDIR += mkntpwd
+    SUBDIR += mkr
     SUBDIR += mmc-utils
     SUBDIR += mmve
     SUBDIR += modman
@@ -726,6 +734,7 @@
     SUBDIR += monit
     SUBDIR += monitord
     SUBDIR += monitorix
+    SUBDIR += moor
     SUBDIR += moreutils
     SUBDIR += most
     SUBDIR += mountsmb2
@@ -737,6 +746,7 @@
     SUBDIR += mstflint
     SUBDIR += mtm
     SUBDIR += mtxorbd
+    SUBDIR += mult
     SUBDIR += multitail
     SUBDIR += munin-common
     SUBDIR += munin-contrib
@@ -757,6 +767,8 @@
     SUBDIR += netevent
     SUBDIR += nfcutils
     SUBDIR += ngbuddy
+    SUBDIR += nginx-ui
+    SUBDIR += nitro
     SUBDIR += nitrogen
     SUBDIR += nix
     SUBDIR += nmdaemon
@@ -797,6 +809,8 @@
     SUBDIR += openseachest
     SUBDIR += opentofu
     SUBDIR += openupsd
+    SUBDIR += openvox-agent8
+    SUBDIR += openvox-server8
     SUBDIR += osinfo-db-tools
     SUBDIR += p5-App-Regather
     SUBDIR += p5-App-RunCron
@@ -842,6 +856,9 @@
     SUBDIR += p5-MogileFS-Server
     SUBDIR += p5-MogileFS-Utils
     SUBDIR += p5-Monitor-Simple
+    SUBDIR += p5-OpenTelemetry
+    SUBDIR += p5-OpenTelemetry-Exporter-OTLP
+    SUBDIR += p5-OpenTelemetry-SDK
     SUBDIR += p5-POSIX-Run-Capture
     SUBDIR += p5-Plugtools
     SUBDIR += p5-Plugtools-Plugins-HomeOU
@@ -939,15 +956,17 @@
     SUBDIR += php83-posix
     SUBDIR += php84-fileinfo
     SUBDIR += php84-posix
+    SUBDIR += php85-fileinfo
+    SUBDIR += php85-posix
     SUBDIR += phybs
     SUBDIR += pick
     SUBDIR += pidof
     SUBDIR += pies
+    SUBDIR += pipeform
     SUBDIR += pipemeter
     SUBDIR += plasma-pass
     SUBDIR += plasma5-libksysguard
     SUBDIR += plasma6-discover
-    SUBDIR += plasma6-drkonqi
     SUBDIR += plasma6-kde-cli-tools
     SUBDIR += plasma6-kinfocenter
     SUBDIR += plasma6-kmenuedit
@@ -1012,9 +1031,11 @@
     SUBDIR += py-blinkstick
     SUBDIR += py-borgmatic
     SUBDIR += py-concurrent-log-handler
+    SUBDIR += py-container-inspector
     SUBDIR += py-cron-descriptor
     SUBDIR += py-croniter
     SUBDIR += py-croniter2
+    SUBDIR += py-debian-inspector
     SUBDIR += py-dict-toolbox
     SUBDIR += py-diffoscope
     SUBDIR += py-director
@@ -1032,6 +1053,7 @@
     SUBDIR += py-google-compute-engine
     SUBDIR += py-hared
     SUBDIR += py-hcloud
+    SUBDIR += py-healthchecks
     SUBDIR += py-honcho
     SUBDIR += py-howdoi
     SUBDIR += py-hpilo
@@ -1187,10 +1209,13 @@
     SUBDIR += rubygem-license_scout
     SUBDIR += rubygem-log4r
     SUBDIR += rubygem-logify
+    SUBDIR += rubygem-mdless
     SUBDIR += rubygem-mogilefs-client
     SUBDIR += rubygem-mothra
     SUBDIR += rubygem-murder
     SUBDIR += rubygem-ohai
+    SUBDIR += rubygem-openfact
+    SUBDIR += rubygem-openvoxserver-ca
     SUBDIR += rubygem-parallel
     SUBDIR += rubygem-puppet_forge
     SUBDIR += rubygem-puppetfile-resolver
@@ -1218,12 +1243,14 @@
     SUBDIR += rubygem-vagrant-bhyve
     SUBDIR += rubygem-vagrant-mutate
     SUBDIR += rubygem-vagrant_cloud
+    SUBDIR += rubygem-vagrant_cloud-gitlab
     SUBDIR += rubygem-vmstat
     SUBDIR += rubygem-win32-file
     SUBDIR += rubygem-win32-file-security
     SUBDIR += rubygem-win32-file-stat
     SUBDIR += rubygem-winrm
     SUBDIR += rubygem-winrm-elevated
+    SUBDIR += rubygem-winrm-elevated-gitlab
     SUBDIR += rubygem-yell
     SUBDIR += runas
     SUBDIR += rundeck
@@ -1269,6 +1296,7 @@
     SUBDIR += seatd
     SUBDIR += seatools
     SUBDIR += sec
+    SUBDIR += sensors
     SUBDIR += sensu-go
     SUBDIR += serf
     SUBDIR += setcdboot
@@ -1309,6 +1337,7 @@
     SUBDIR += ssd_report
     SUBDIR += sshsudo
     SUBDIR += ssync
+    SUBDIR += stackit
     SUBDIR += stalepid
     SUBDIR += stepsync
     SUBDIR += storcli
@@ -1330,6 +1359,7 @@
     SUBDIR += syngesture
     SUBDIR += sysctlbyname-improved-kmod
     SUBDIR += sysctlinfo-kmod
+    SUBDIR += sysctltui
     SUBDIR += sysgather
     SUBDIR += sysinfo
     SUBDIR += syslinux
@@ -1340,6 +1370,7 @@
     SUBDIR += szyszka
     SUBDIR += tai64nfrac
     SUBDIR += tailspin
+    SUBDIR += tarbsd-builder
     SUBDIR += tarsnap
     SUBDIR += tarsnap-gui
     SUBDIR += tarsnap-periodic
@@ -1367,6 +1398,7 @@
     SUBDIR += tiramisu
     SUBDIR += titlefix
     SUBDIR += tkdvd
+    SUBDIR += tldr
     SUBDIR += tlsdate
     SUBDIR += tm
     SUBDIR += tmate
@@ -1401,6 +1433,7 @@
     SUBDIR += u-boot-a13-olinuxino
     SUBDIR += u-boot-a64-olinuxino
     SUBDIR += u-boot-bananapi
+    SUBDIR += u-boot-bananapi-r2-pro
     SUBDIR += u-boot-bananapim2
     SUBDIR += u-boot-beaglebone
     SUBDIR += u-boot-bhyve-arm64
@@ -1498,6 +1531,7 @@
     SUBDIR += usrinfo
     SUBDIR += utcount
     SUBDIR += vagrant
+    SUBDIR += vagrant-gitlab
     SUBDIR += vbetool
     SUBDIR += vchanger
     SUBDIR += vcp
@@ -1547,7 +1581,6 @@
     SUBDIR += wmupmon
     SUBDIR += worldtools
     SUBDIR += wuzzah
-    SUBDIR += x86info
     SUBDIR += xbatt
     SUBDIR += xbattbar
     SUBDIR += xcdroast

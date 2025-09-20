@@ -1,6 +1,5 @@
 PORTNAME=	apache-arrow
-DISTVERSION=	19.0.1
-PORTREVISION=	1
+DISTVERSION=	20.0.0
 CATEGORIES=	databases python
 MASTER_SITES=	APACHE/arrow/arrow-${DISTVERSION}
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -13,6 +12,8 @@ WWW=		https://arrow.apache.org/
 LICENSE=	APACHE20
 LICENSE_FILE=	${WRKSRC}/../LICENSE.txt
 
+BROKEN_i386=	compilation fails: ran out of registers during register allocation
+
 BUILD_DEPENDS=	cmake:devel/cmake-core \
 		${PYNUMPY} \
 		${PYTHON_PKGNAMEPREFIX}setuptools-scm>0:devel/py-setuptools-scm@${PY_FLAVOR} \
@@ -22,7 +23,7 @@ RUN_DEPENDS=	${PYNUMPY}
 LIB_DEPENDS=	libarrow.so:databases/arrow # assumes that arrow is built with PYTHON=ON (python support is built)
 
 USES=		compiler:c++11-lang pkgconfig python shebangfix
-USE_PYTHON=	distutils cython # autoplist is broken, see https://issues.apache.org/jira/browse/ARROW-16820
+USE_PYTHON=	distutils cython3 # autoplist is broken, see https://issues.apache.org/jira/browse/ARROW-16820
 
 WRKSRC_SUBDIR=	python
 

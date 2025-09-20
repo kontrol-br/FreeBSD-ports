@@ -1,6 +1,7 @@
 PORTNAME=	bt
 DISTVERSIONPREFIX=	v
 DISTVERSION=	1.1.2
+PORTREVISION=	1
 CATEGORIES=	finance python
 #MASTER_SITES=	PYPI # no tests
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -25,7 +26,7 @@ USE_GITHUB=	yes
 GH_ACCOUNT=	pmorissette
 
 post-install:
-	@${STRIP_CMD} ${STAGEDIR}${PYTHON_SITELIBDIR}/bt/core${PYTHON_EXT_SUFFIX}.so
+	@${STRIP_CMD} ${STAGEDIR}${PYTHON_SITELIBDIR}/bt/core${PYTHON_TAG}.so
 
 # tests as of 1.1.2: 157 passed, 1 warning in 24.95s
 

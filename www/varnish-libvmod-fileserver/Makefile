@@ -1,5 +1,6 @@
 PORTNAME=	libvmod-fileserver
 PORTVERSION=	0.0.9
+PORTREVISION=	2
 CATEGORIES=	www
 PKGNAMEPREFIX=	varnish-
 

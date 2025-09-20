@@ -1,5 +1,6 @@
 PORTNAME=	evolution-data-server
 DISTVERSION=	3.56.2
+PORTREVISION=	2
 CATEGORIES=	databases gnome
 MASTER_SITES=	GNOME
 DIST_SUBDIR=	gnome
@@ -23,12 +24,12 @@ LIB_DEPENDS=	libsoup-3.0.so:devel/libsoup3 \
 		libsecret-1.so:security/libsecret \
 		libcanberra-gtk3.so:audio/libcanberra-gtk3 \
 		libcanberra.so:audio/libcanberra \
-		libuuid.so:misc/e2fsprogs-libuuid \
+		libuuid.so:misc/libuuid \
 		libvulkan.so:graphics/vulkan-loader \
 		libgraphene-1.0.so:graphics/graphene
 
 USES=		cmake cpe desktop-file-utils gettext \
-		gnome gperf iconv:wchar_t localbase pathfix pkgconfig \
+		gnome gperf iconv:wchar_t localbase pkgconfig \
 		python:build sqlite tar:xz xorg
 USE_CXXSTD=	gnu++17
 USE_GNOME=	glib20 gtk30 gtk40 introspection:build libxml2
@@ -55,8 +56,19 @@ GLIB_SCHEMAS=	org.gnome.evolution-data-server.addressbook.gschema.xml \
 PLIST_SUB=	EVO_VERSION="1.2" CAL_API_VERSION="2.0"
 
 OPTIONS_SUB=		yes
-OPTIONS_DEFINE=		VAPI WEATHER KERBEROS LDAP
-OPTIONS_DEFAULT=	VAPI WEATHER KERBEROS LDAP
+OPTIONS_DEFINE=		VAPI WEATHER LDAP
+OPTIONS_DEFAULT=	VAPI WEATHER GSSAPI_BASE LDAP
+
+OPTIONS_SINGLE=			KERBEROS
+OPTIONS_SINGLE_KERBEROS=	GSSAPI_BASE GSSAPI_HEIMDAL GSSAPI_MIT \
+				GSSAPI_NONE
+
+GSSAPI_BASE_USES=	gssapi:base ssl
+GSSAPI_HEIMDAL_USES=	gssapi:heimdal
+GSSAPI_MIT_USES=	gssapi:mit
+GSSAPI_NONE_CMAKE_ON=	-DWITH_KRB5=OFF
+GSSAPI_NONE_CMAKE_OFF=	-DWITH_KRB5=${GSSAPIBASEDIR}
+GSSAPI_NONE_CFLAGS_OFF=	${GSSAPICPPFLAGS}
 
 VAPI_USES=		vala:build
 VAPI_CMAKE_BOOL=	ENABLE_VALA_BINDINGS
@@ -64,10 +76,6 @@ VAPI_CMAKE_BOOL=	ENABLE_VALA_BINDINGS
 WEATHER_DESC=	Weather calendar backend
 WEATHER_LIB_DEPENDS=	libgweather-4.so:net/libgweather4
 WEATHER_CMAKE_BOOL=	ENABLE_WEATHER
-
-KERBEROS_CMAKE_ON=	-DWITH_KRB5=/usr
-KERBEROS_CMAKE_OFF=	-DWITH_KRB5=OFF
-KERBEROS_USES=		ssl
 
 LDAP_CMAKE_ON=		-DWITH_OPENLDAP=${LOCALBASE}
 LDAP_CMAKE_OFF=		-DWITH_OPENLDAP=OFF

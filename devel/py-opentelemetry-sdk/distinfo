@@ -1,3 +1,3 @@
-TIMESTAMP = 1747715398
-SHA256 (opentelemetry_sdk-1.33.1.tar.gz) = 85b9fcf7c3d23506fbc9692fd210b8b025a1920535feec50bd54ce203d57a531
-SIZE (opentelemetry_sdk-1.33.1.tar.gz) = 161885
+TIMESTAMP = 1755062538
+SHA256 (opentelemetry_sdk-1.36.0.tar.gz) = 19c8c81599f51b71670661ff7495c905d8fdf6976e41622d5245b791b06fa581
+SIZE (opentelemetry_sdk-1.36.0.tar.gz) = 162557

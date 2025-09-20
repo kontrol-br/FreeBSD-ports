@@ -1,10 +1,10 @@
 PORTNAME=	stig
-DISTVERSION=	0.13.0a0
+DISTVERSION=	0.14.0a0
 CATEGORIES=	net-p2p
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
 
-MAINTAINER=	alster@vinterdalen.se
+MAINTAINER=	alven@FreeBSD.org
 COMMENT=	TUI and CLI client for the BitTorrent Transmission daemon
 WWW=		https://github.com/rndusr/stig/
 
