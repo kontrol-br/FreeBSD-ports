@@ -1,10 +1,14 @@
 PORTNAME=	e2guardian
-PORTVERSION=	5.3.4
+PORTVERSION=	5.3.8
 DISTVERSIONPREFIX=	v
 PORTREVISION=	2
 CATEGORIES=	www
+GH_ACCOUNT=    kontrol-br
+GH_PROJECT=    e2guardian
+GH_TAGNAME=    v5.3.8       
 
-MAINTAINER=	marcellocoutinho@gmail.com
+
+MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Dansguardian fork with many improvements and bug fixes
 WWW=		http://e2guardian.org
 
