@@ -19,7 +19,7 @@ RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
 		e2guardian>=0:www/e2guardian
 
 
-CONFLITS_WITH=	www/e2guardian5
+CONFLICTS_WITH=	www/e2guardian5
 
 NO_BUILD=	yes
 NO_MTREE=	yes
