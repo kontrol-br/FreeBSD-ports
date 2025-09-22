@@ -60,6 +60,7 @@ DEBUG_CONFIGURE_OFF=		--with-dgdebug=off --with-newdebug=off
 DEBUG_CONFIGURE_ON=		--with-dgdebug=on --with-newdebug=on
 SSL_MITM_USES=			ssl
 SSL_MITM_CONFIGURE_ENABLE=	sslmitm
+DEFAULT_VERSIONS+=     ssl=openssl
 SSL_MITM_CONFIGURE_ENV=		OPENSSL_LIBS="${OPENSSLLIB}/libssl.so ${OPENSSLLIB}/libcrypto.so" \
 				OPENSSL_CFLAGS="-I${OPENSSLINC}" \
 				OPENSSL_LDFLAGS="-L${OPENSSLLIB}"
