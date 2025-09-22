@@ -60,7 +60,7 @@ DEBUG_CONFIGURE_OFF=		--with-dgdebug=off --with-newdebug=off
 DEBUG_CONFIGURE_ON=		--with-dgdebug=on --with-newdebug=on
 SSL_MITM_USES=			ssl
 SSL_MITM_CONFIGURE_ENABLE=	sslmitm
-SSL_MITM_CONFIGURE_ENV=		OPENSSL_LIBS="-L${OPENSSLLIB} -lssl -lcrypto" \
+SSL_MITM_CONFIGURE_ENV=		OPENSSL_LIBS="${OPENSSLLIB}/libssl.so ${OPENSSLLIB}/libcrypto.so" \
 				OPENSSL_CFLAGS="-I${OPENSSLINC}"
 
 .include <bsd.port.options.mk>
