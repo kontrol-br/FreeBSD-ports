@@ -5,13 +5,14 @@ PORTREVISION=	2
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
 GH_PROJECT=    e2guardian
-GH_TAGNAME=    v5.3.8       
+GH_TAGNAME=    v5.3.8
 
 
 MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Dansguardian fork with many improvements and bug fixes
 WWW=		http://e2guardian.org
 
+DEFAULT_VERSIONS+=     ssl=openssl111
 LICENSE=	GPLv2
 
 BUILD_DEPENDS=	rst2man:textproc/py-docutils@${PY_FLAVOR}
