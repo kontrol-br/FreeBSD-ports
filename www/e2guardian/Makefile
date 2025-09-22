@@ -12,7 +12,6 @@ MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Dansguardian fork with many improvements and bug fixes
 WWW=		http://e2guardian.org
 
-DEFAULT_VERSIONS+=     ssl=openssl111
 LICENSE=	GPLv2
 
 BUILD_DEPENDS=	rst2man:textproc/py-docutils@${PY_FLAVOR}
