@@ -343,7 +343,7 @@ function e2g_generate_rules($type) {
 			 */
 			if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
 				$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
-				if ($e2g_conf['ssl_proxy'] == "on") {
+                                if ($e2g_conf['enablessl'] == "on") {
 					$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
 				}
 			}
