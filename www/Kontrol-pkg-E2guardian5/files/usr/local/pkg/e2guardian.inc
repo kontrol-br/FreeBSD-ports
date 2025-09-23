@@ -202,6 +202,7 @@ function e2g_generate_rules($type) {
 		return;
 	}
 
+<<<<<<< HEAD
         // Proxy Interface(s)
         $proxy_ifaces = explode(",", $e2g_conf['interface']);
         $proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
@@ -247,6 +248,21 @@ function e2g_generate_rules($type) {
 			}
 		}
 		$transparent_proxy_exempt_destinations = array_values(array_unique(array_filter($transparent_proxy_exempt_destinations)));
+=======
+	// Proxy Interface(s)
+	$proxy_ifaces = explode(",", $e2g_conf['interface']);
+	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
+	// Transparent Proxy Interface(s)
+	if ($e2g_conf['transparent_proxy'] == "on") {
+	    if (! bp_in_array('lo0',$proxy_ifaces)) {
+	        $proxy_ifaces[] = 'lo0';
+	    }
+		$transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
+		$transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+	} else {
+		$transparent_ifaces = array();
+	}
+>>>>>>> parent of 44d60e008ad5 (Handle local addresses in e2guardian NAT rules)
 	// SSL Intercept Interface(s)
 	if ($e2g_conf['enablessl'] == "on") {
 		$ssl_ifaces = $transparent_ifaces;
@@ -330,6 +346,7 @@ function e2g_generate_rules($type) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
 				}
 			}
+<<<<<<< HEAD
 			/* Always bypass redirect for local interface and reporting addresses */
 			if (!empty($transparent_proxy_exempt_destinations)) {
 				$exempt_dest = implode(', ', $transparent_proxy_exempt_destinations);
@@ -380,6 +397,15 @@ function e2g_generate_rules($type) {
                                         $rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
                                 }
                         }
+=======
+			/* Transparent Proxy Interface(s) */
+			foreach ($transparent_ifaces as $t_iface) {
+				$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
+				if (bp_in_array($t_iface, $ssl_ifaces)) {
+					$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
+				}
+			}
+>>>>>>> parent of 44d60e008ad5 (Handle local addresses in e2guardian NAT rules)
 			/*
 			 * Transparent Proxy Interface(s) - handle the PPPOE case
 			 * For PPPoE server, mpd uses a group of different _local_ interfaces
