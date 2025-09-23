@@ -202,52 +202,6 @@ function e2g_generate_rules($type) {
 		return;
 	}
 
-<<<<<<< HEAD
-        // Proxy Interface(s)
-        $proxy_ifaces = explode(",", $e2g_conf['interface']);
-        $proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
-                // Transparent Proxy Interface(s)
-                $transparent_proxy_exempt_destinations = array();
-                $transparent_iface_sources = array();
-                $transparent_ifaces = array();
-                if ($e2g_conf['transparent_proxy'] == "on") {
-                        if (! bp_in_array('lo0',$proxy_ifaces)) {
-                                $proxy_ifaces[] = 'lo0';
-                        }
-                        $transparent_iface_names = array_filter(array_map('trim', explode(",", $e2g_conf['transparent_active_interface'])));
-                        foreach ($transparent_iface_names as $iface_name) {
-                                $iface_real = convert_friendly_interface_to_real_interface_name($iface_name);
-                                if (!empty($iface_real)) {
-                                        $transparent_ifaces[] = $iface_real;
-                                }
-                                $iface_info = dg_get_real_interface_address($iface_name);
-                                if (!empty($iface_info[0]) && filter_var($iface_info[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                                        $transparent_proxy_exempt_destinations[] = $iface_info[0];
-                                        if (!empty($iface_real)) {
-                                                $transparent_iface_sources[$iface_real][] = $iface_info[0];
-                                        }
-                                } else {
-                                        $iface_ip = get_interface_ip($iface_name);
-                                        if (!empty($iface_ip) && filter_var($iface_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                                                $transparent_proxy_exempt_destinations[] = $iface_ip;
-                                                if (!empty($iface_real)) {
-                                                        $transparent_iface_sources[$iface_real][] = $iface_ip;
-                                                }
-                                        }
-                                }
-                        }
-                        foreach ($transparent_iface_sources as $iface_key => $iface_sources) {
-                                $transparent_iface_sources[$iface_key] = array_values(array_unique($iface_sources));
-                        }
-                }
-                if (!empty($config['installedpackages']['e2guardianlog']['config'][0]['reportingcgi'])) {
-                        $reporting_url = trim($config['installedpackages']['e2guardianlog']['config'][0]['reportingcgi']);
-                        $reporting_host = parse_url($reporting_url, PHP_URL_HOST);
-                        if (!empty($reporting_host)) {
-                                $transparent_proxy_exempt_destinations[] = $reporting_host;
-			}
-		}
-		$transparent_proxy_exempt_destinations = array_values(array_unique(array_filter($transparent_proxy_exempt_destinations)));
 =======
 	// Proxy Interface(s)
 	$proxy_ifaces = explode(",", $e2g_conf['interface']);
@@ -262,7 +216,6 @@ function e2g_generate_rules($type) {
 	} else {
 		$transparent_ifaces = array();
 	}
->>>>>>> parent of 44d60e008ad5 (Handle local addresses in e2guardian NAT rules)
 	// SSL Intercept Interface(s)
 	if ($e2g_conf['enablessl'] == "on") {
 		$ssl_ifaces = $transparent_ifaces;
@@ -346,57 +299,6 @@ function e2g_generate_rules($type) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
 				}
 			}
-<<<<<<< HEAD
-			/* Always bypass redirect for local interface and reporting addresses */
-			if (!empty($transparent_proxy_exempt_destinations)) {
-				$exempt_dest = implode(', ', $transparent_proxy_exempt_destinations);
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
-				}
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
-				}
-			}
-                        /* Bypass redirect for proxy host sourced traffic */
-                        foreach ($transparent_ifaces as $t_iface) {
-                                $iface_sources = array('127.0.0.1');
-                                if (!empty($transparent_iface_sources[$t_iface])) {
-                                        $iface_sources = array_merge($iface_sources, $transparent_iface_sources[$t_iface]);
-                                }
-                                $iface_sources = array_values(array_unique(array_filter($iface_sources)));
-                                if (empty($iface_sources)) {
-                                        continue;
-                                }
-                                if (count($iface_sources) > 1) {
-                                        $iface_source_expr = '{ ' . implode(', ', $iface_sources) . ' }';
-                                } else {
-                                        $iface_source_expr = $iface_sources[0];
-                                }
-
-                                $proxy_host_ports = array('80');
-                                if (bp_in_array($t_iface, $ssl_ifaces)) {
-                                        $proxy_host_ports[] = '443';
-                                }
-                                if (!empty($ssl_port)) {
-                                        $proxy_host_ports[] = $ssl_port;
-                                }
-                                $proxy_host_ports = array_values(array_unique(array_filter($proxy_host_ports)));
-                                if (count($proxy_host_ports) > 1) {
-                                        $proxy_host_port_expr = '{' . implode(',', $proxy_host_ports) . '}';
-                                } else {
-                                        $proxy_host_port_expr = $proxy_host_ports[0];
-                                }
-
-                                $rules .= "no rdr on $t_iface proto tcp from $iface_source_expr to any port {$proxy_host_port_expr}\n";
-                        }
-                        /* Transparent Proxy Interface(s) */
-                        foreach ($transparent_ifaces as $t_iface) {
-                                $rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
-                                if (bp_in_array($t_iface, $ssl_ifaces)) {
-                                        $rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
-                                }
-                        }
 =======
 			/* Transparent Proxy Interface(s) */
 			foreach ($transparent_ifaces as $t_iface) {
