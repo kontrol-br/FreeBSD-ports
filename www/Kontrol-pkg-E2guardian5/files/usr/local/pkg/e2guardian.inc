@@ -202,7 +202,6 @@ function e2g_generate_rules($type) {
 		return;
 	}
 
-=======
 	// Proxy Interface(s)
 	$proxy_ifaces = explode(",", $e2g_conf['interface']);
 	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
@@ -299,7 +298,6 @@ function e2g_generate_rules($type) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
 				}
 			}
-=======
 			/* Transparent Proxy Interface(s) */
 			foreach ($transparent_ifaces as $t_iface) {
 				$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
@@ -307,47 +305,17 @@ function e2g_generate_rules($type) {
 					$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
 				}
 			}
->>>>>>> parent of 44d60e008ad5 (Handle local addresses in e2guardian NAT rules)
 			/*
 			 * Transparent Proxy Interface(s) - handle the PPPOE case
 			 * For PPPoE server, mpd uses a group of different _local_ interfaces
 			 * The rules below are needed so that the clients can be transparently proxied
 			 */
-                        if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-                                $pppoe_sources = array('127.0.0.1');
-                                if (!empty($config['pppoe']['localip']) && filter_var($config['pppoe']['localip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                                        $pppoe_sources[] = $config['pppoe']['localip'];
-                                }
-                                foreach ($transparent_iface_sources as $iface_sources) {
-                                        $pppoe_sources = array_merge($pppoe_sources, $iface_sources);
-                                }
-                                $pppoe_sources = array_values(array_unique(array_filter($pppoe_sources)));
-                                if (count($pppoe_sources) > 1) {
-                                        $pppoe_source_expr = '{ ' . implode(', ', $pppoe_sources) . ' }';
-                                } else {
-                                        $pppoe_source_expr = $pppoe_sources[0];
-                                }
-
-                                $pppoe_ports = array('80');
-                                if ($e2g_conf['enablessl'] == "on") {
-                                        $pppoe_ports[] = '443';
-                                }
-                                if (!empty($ssl_port)) {
-                                        $pppoe_ports[] = $ssl_port;
-                                }
-                                $pppoe_ports = array_values(array_unique(array_filter($pppoe_ports)));
-                                if (count($pppoe_ports) > 1) {
-                                        $pppoe_port_expr = '{' . implode(',', $pppoe_ports) . '}';
-                                } else {
-                                        $pppoe_port_expr = $pppoe_ports[0];
-                                }
-
-                                $rules .= "no rdr on \$pppoe proto tcp from $pppoe_source_expr to any port {$pppoe_port_expr}\n";
-                                $rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
-                                if ($e2g_conf['enablessl'] == "on") {
-                                        $rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
-                                }
-                        }
+			if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+				$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
+				if ($e2g_conf['ssl_proxy'] == "on") {
+					$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
+				}
+			}
 			$rules .= "\n";
 			break;
 		case 'filter':
