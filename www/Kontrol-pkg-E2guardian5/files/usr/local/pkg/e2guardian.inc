@@ -205,16 +205,36 @@ function e2g_generate_rules($type) {
 	// Proxy Interface(s)
 	$proxy_ifaces = explode(",", $e2g_conf['interface']);
 	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
-	// Transparent Proxy Interface(s)
-	if ($e2g_conf['transparent_proxy'] == "on") {
-	    if (! bp_in_array('lo0',$proxy_ifaces)) {
-	        $proxy_ifaces[] = 'lo0';
-	    }
-		$transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
-		$transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
-	} else {
-		$transparent_ifaces = array();
-	}
+		// Transparent Proxy Interface(s)
+		$transparent_proxy_exempt_destinations = array();
+		if ($e2g_conf['transparent_proxy'] == "on") {
+			if (! bp_in_array('lo0',$proxy_ifaces)) {
+				$proxy_ifaces[] = 'lo0';
+			}
+			$transparent_iface_names = array_filter(array_map('trim', explode(",", $e2g_conf['transparent_active_interface'])));
+			foreach ($transparent_iface_names as $iface_name) {
+				$iface_info = dg_get_real_interface_address($iface_name);
+				if (!empty($iface_info[0]) && filter_var($iface_info[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+					$transparent_proxy_exempt_destinations[] = $iface_info[0];
+				} else {
+					$iface_ip = get_interface_ip($iface_name);
+					if (!empty($iface_ip) && filter_var($iface_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+						$transparent_proxy_exempt_destinations[] = $iface_ip;
+					}
+				}
+			}
+			$transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_iface_names);
+		} else {
+			$transparent_ifaces = array();
+		}
+		if (!empty($config['installedpackages']['e2guardianlog']['config'][0]['reportingcgi'])) {
+			$reporting_url = trim($config['installedpackages']['e2guardianlog']['config'][0]['reportingcgi']);
+			$reporting_host = parse_url($reporting_url, PHP_URL_HOST);
+			if (!empty($reporting_host)) {
+				$transparent_proxy_exempt_destinations[] = $reporting_host;
+			}
+		}
+		$transparent_proxy_exempt_destinations = array_values(array_unique(array_filter($transparent_proxy_exempt_destinations)));
 	// SSL Intercept Interface(s)
 	if ($e2g_conf['enablessl'] == "on") {
 		$ssl_ifaces = $transparent_ifaces;
@@ -294,6 +314,17 @@ function e2g_generate_rules($type) {
 					$rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
 				}
 				/* Handle PPPOE case */
+				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
+				}
+			}
+			/* Always bypass redirect for local interface and reporting addresses */
+			if (!empty($transparent_proxy_exempt_destinations)) {
+				$exempt_dest = implode(', ', $transparent_proxy_exempt_destinations);
+				foreach ($transparent_ifaces as $iface) {
+					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
+					$rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
+				}
 				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
 				}
