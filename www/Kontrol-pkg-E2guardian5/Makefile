@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-E2guardian5
-PORTVERSION=	0.6.4.14
+PORTVERSION=	0.6.4.15
 PORTREVISION=
 CATEGORIES=	www
 MASTER_SITES=	# empty
@@ -27,7 +27,7 @@ NO_MTREE=	yes
 SUB_FILES=	pkg-install pkg-deinstall
 SUB_LIST=	PORTNAME=${PORTNAME}
 
-DEFAULT_VERSIONS+=ssl=openssl111
+#DEFAULT_VERSIONS+=ssl=openssl111
 
 do-extract:
 	${MKDIR} ${WRKSRC}
