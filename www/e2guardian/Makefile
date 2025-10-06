@@ -15,6 +15,8 @@ WWW=		http://e2guardian.org
 LICENSE=	GPLv2
 
 BUILD_DEPENDS=	rst2man:textproc/py-docutils@${PY_FLAVOR}
+RUN_DEPENDS+=   openssl111>=1.1.1w_2:security/openssl111
+
 LIB_DEPENDS=	libpcre.so:devel/pcre
 
 USES=		autoreconf compiler:c++11-lang libtool localbase pkgconfig \
@@ -58,12 +60,22 @@ DNS_CONFIGURE_ENABLE=		dnsauth
 EMAIL_CONFIGURE_ENABLE=		email
 DEBUG_CONFIGURE_OFF=		--with-dgdebug=off --with-newdebug=off
 DEBUG_CONFIGURE_ON=		--with-dgdebug=on --with-newdebug=on
-SSL_MITM_USES=			ssl
-SSL_MITM_CONFIGURE_ENABLE=	sslmitm
-DEFAULT_VERSIONS+=     ssl=openssl
-SSL_MITM_CONFIGURE_ENV=		OPENSSL_LIBS="${OPENSSLLIB}/libssl.so ${OPENSSLLIB}/libcrypto.so" \
-				OPENSSL_CFLAGS="-I${OPENSSLINC}" \
-				OPENSSL_LDFLAGS="-L${OPENSSLLIB}"
+#SSL_MITM_USES=                 ssl
+SSL_MITM_CONFIGURE_ENABLE=      sslmitm
+#DEFAULT_VERSIONS+=                     ssl=openssl
+BROKEN_SSL=                     openssl30 openssl31 openssl32
+BROKEN_SSL_REASON= required openssl111 semantics for peer certificate
+
+OPENSSLBASE=    /usr/local
+OPENSSLINC=     ${OPENSSLBASE}/include
+OPENSSLLIB=     ${OPENSSLBASE}/lib
+
+SSL_MITM_CONFIGURE_ENV=         OPENSSL_LIBS="${OPENSSLLIB}/libssl.so ${OPENSSLLIB}/libcrypto.so" \
+                                OPENSSL_CFLAGS="-I${OPENSSLINC}" \
+                                OPENSSL_LDFLAGS="-L${OPENSSLLIB}"
+CFLAGS+=        -I${OPENSSLINC}
+CPPFLAGS+=      -I${OPENSSLINC}
+LDFLAGS+=       -L${OPENSSLLIB}
 
 .include <bsd.port.options.mk>
 
