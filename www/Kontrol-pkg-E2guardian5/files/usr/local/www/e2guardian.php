@@ -166,9 +166,15 @@ function read_lists($log_notice=true, $uw="") {
 		}
 	}
 	$files = array("site", "url");
-	foreach ($files as $edit_xml) {
-		$edit_file=file_get_contents("/usr/local/pkg/e2guardian_".$edit_xml."_acl.xml");
-		if (count($config['installedpackages']['e2guardianblacklistsdomains']['config']) > 18) {
+        $blacklist_domains = array();
+        if (isset($config['installedpackages']['e2guardianblacklistsdomains']['config']) &&
+            is_array($config['installedpackages']['e2guardianblacklistsdomains']['config'])) {
+                $blacklist_domains = $config['installedpackages']['e2guardianblacklistsdomains']['config'];
+        }
+
+        foreach ($files as $edit_xml) {
+                $edit_file=file_get_contents("/usr/local/pkg/e2guardian_".$edit_xml."_acl.xml");
+                if (count($blacklist_domains) > 18) {
 			$edit_file=preg_replace('/size.6/', 'size>20', $edit_file);
 			if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] == "both") {
 				$edit_file=preg_replace('/size.5/', 'size>19', $edit_file);
