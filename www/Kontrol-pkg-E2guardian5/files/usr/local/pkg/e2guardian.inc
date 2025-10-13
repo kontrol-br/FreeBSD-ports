@@ -203,8 +203,20 @@ function e2g_generate_rules($type) {
 	}
 
 	// Proxy Interface(s)
-	$proxy_ifaces = explode(",", $e2g_conf['interface']);
-	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
+	$proxy_ifaces_friendly = explode(",", $e2g_conf['interface']);
+	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces_friendly);
+	$proxy_iface_ips = array();
+	foreach ($proxy_ifaces_friendly as $idx => $iface_friendly) {
+		$iface_real = $proxy_ifaces[$idx];
+		if (empty($iface_real)) {
+			continue;
+		}
+		$iface_details = dg_get_real_interface_address($iface_friendly);
+		if (!empty($iface_details[0])) {
+			$proxy_iface_ips[$iface_real] = $iface_details[0];
+		}
+	}
+	$default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
 	// Transparent Proxy Interface(s)
 	if ($e2g_conf['transparent_proxy'] == "on") {
 	    if (! bp_in_array('lo0',$proxy_ifaces)) {
@@ -300,9 +312,10 @@ function e2g_generate_rules($type) {
 			}
 			/* Transparent Proxy Interface(s) */
 			foreach ($transparent_ifaces as $t_iface) {
-				$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 80 -> 127.0.0.1 port {$port}\n";
+				$redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
+				$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
 				if (bp_in_array($t_iface, $ssl_ifaces)) {
-					$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 443 -> 127.0.0.1 port {$ssl_port}\n";
+					$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
 				}
 			}
 			/*
@@ -311,9 +324,9 @@ function e2g_generate_rules($type) {
 			 * The rules below are needed so that the clients can be transparently proxied
 			 */
 			if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-				$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
+				$rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 80 -> {$default_redirect_ip} port {$port}\n";
 				if ($e2g_conf['ssl_proxy'] == "on") {
-					$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
+					$rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 443 -> {$default_redirect_ip} port {$ssl_port}\n";
 				}
 			}
 			$rules .= "\n";
