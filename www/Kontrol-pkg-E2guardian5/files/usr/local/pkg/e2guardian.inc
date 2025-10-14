@@ -477,7 +477,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$recheckreplacedurls = (preg_match('/recheckreplacedurls/', $e2guardian_config['misc_options']) ? "on" : "off");
 	$forwardedfor = (preg_match('/(^|\W)forwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
 	$recheckreplacedurls = (preg_match('/icapscan/', $e2guardian_config['misc_options']) ? "on" : "off");
-	$usexforwardedfor = (preg_match('/usexforwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
+        $usexforwardedfor = (preg_match('/usexforwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
+        $useoriginalip = ($e2guardian_config['useoriginalip'] ? "on" : "off");
 	$authplugin = (preg_match('/usr/', $e2guardian_config['auth_plugin']) ? "authplugin = '" . $e2guardian_config['auth_plugin'] . "'" : "");
 	if ($e2guardian_config['auth_plugin'] != "") {
 		$auth_plugins = explode(",", $e2guardian_config['auth_plugin']);
