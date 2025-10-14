@@ -546,6 +546,10 @@ recheckreplacedurls = {$recheckreplacedurls}
 # source ip. on | off
 forwardedfor = {$forwardedfor}
 
+# If on E2guardian will try to use the original client IP address when connecting
+# to upstream servers. Requires appropriate operating system support. on | off
+useoriginalip = {$useoriginalip}
+
 # if on it uses the X-Forwarded-For: <clientip> to determine the client
 # IP. This is for when you have squid between the clients and e2guardian.
 # Warning - headers are easily spoofed. on | off
