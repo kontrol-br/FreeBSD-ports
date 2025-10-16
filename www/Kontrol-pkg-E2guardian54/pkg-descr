@@ -1,5 +1,6 @@
-E2guardian is an Open Source web content filter, It filters the actual content
-of pages based on many methods including phrase matching, request  header and
-URL filtering, etc. It does not purely filter based on a banned list of sites
+E2guardian 5.4 is an Open Source web content filter. It filters the actual
+content of pages based on many methods including phrase matching, request
+header and URL filtering, etc. It does not purely filter based on a banned list
+of sites
 
 WWW: http://e2guardian.org

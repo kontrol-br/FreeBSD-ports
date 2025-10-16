@@ -95,7 +95,212 @@ function e2g_delTree($dir) {
 }
 
 function e2_text_area_decode($text) {
-	return preg_replace('/\r\n/', "\n", base64_decode($text));
+        return preg_replace('/\r\n/', "\n", base64_decode($text));
+}
+
+function e2g_normalize_category_key(array $parts) {
+        $normalized = array();
+        foreach ($parts as $part) {
+                $part = strtolower(trim((string)$part));
+                $part = preg_replace('/[^a-z0-9]+/i', '_', $part);
+                $part = trim($part, '_');
+                if ($part !== '') {
+                        $normalized[] = $part;
+                }
+        }
+
+        return implode('_', $normalized);
+}
+
+function e2g_title_case($string) {
+        $string = str_replace('_', ' ', strtolower((string)$string));
+
+        return ucwords($string);
+}
+
+function e2g_humanize_type_label($type) {
+        $map = array(
+                'urls' => 'URLs',
+                'url' => 'URL',
+                'domains' => 'Domains',
+                'domain' => 'Domain',
+                'weighted' => 'Weighted',
+                'exception' => 'Exception',
+                'expression' => 'Expression',
+                'banned' => 'Banned'
+        );
+        $type = strtolower($type);
+
+        return $map[$type] ?? ucwords(str_replace('_', ' ', $type));
+}
+
+function e2g_ensure_category_comment($file_path, $category_key) {
+        if ($category_key === '' || !is_file($file_path)) {
+                return;
+        }
+
+        $comment = '#listcategory: "' . $category_key . '"';
+        $lines = file($file_path, FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+                return;
+        }
+        foreach ($lines as $line) {
+                if (trim($line) === $comment) {
+                        return;
+                }
+        }
+
+        file_put_contents($file_path, $comment . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
+function e2g_extract_xml_type($filename) {
+        $name = preg_replace('/\.[^.]+$/', '', (string)$filename);
+        if ($name === '') {
+                return '';
+        }
+
+        $parts = explode('_', $name);
+        if (preg_match('/^[a-z0-9]+$/i', $parts[0])) {
+                return strtolower($parts[0]);
+        }
+
+        return '';
+}
+
+function e2g_parse_blacklist_metadata($blacklist_root) {
+        $metadata = array();
+        $usage_file = $blacklist_root . '/global_usage';
+        if (!is_file($usage_file)) {
+                return $metadata;
+        }
+
+        $lines = file($usage_file, FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+                return $metadata;
+        }
+
+        $current = null;
+        foreach ($lines as $line) {
+                $trimmed = trim($line);
+                if ($trimmed === '') {
+                        $current = null;
+                        continue;
+                }
+
+                if (preg_match('/^NAME\s*:\s*(.+)$/', $line, $matches)) {
+                        $raw = trim($matches[1]);
+                        $parts = array_map('trim', explode('/', $raw));
+                        $key = e2g_normalize_category_key($parts);
+                        if ($key === '') {
+                                $key = e2g_normalize_category_key(array($raw));
+                        }
+                        if ($key === '') {
+                                $current = null;
+                                continue;
+                        }
+
+                        $metadata[$key] = array(
+                                'id' => $key,
+                                'raw' => $raw,
+                                'name_en' => '',
+                                'desc_en' => '',
+                                'names' => array(),
+                                'descriptions' => array(),
+                                'default_type' => ''
+                        );
+                        $current = $key;
+                        continue;
+                }
+
+                if ($current === null || !isset($metadata[$current])) {
+                        continue;
+                }
+
+                if (preg_match('/^DEFAULT_TYPE\s*:\s*(.+)$/', $line, $matches)) {
+                        $metadata[$current]['default_type'] = trim($matches[1]);
+                } elseif (preg_match('/^NAME\s+([A-Z]{2})\s*:\s*(.*)$/', $line, $matches)) {
+                        $lang = strtolower($matches[1]);
+                        $value = trim($matches[2]);
+                        $metadata[$current]['names'][$lang] = $value;
+                        if ($lang === 'en' && $value !== '') {
+                                $metadata[$current]['name_en'] = $value;
+                        }
+                } elseif (preg_match('/^DESC\s+([A-Z]{2})\s*:\s*(.*)$/', $line, $matches)) {
+                        $lang = strtolower($matches[1]);
+                        $value = trim($matches[2]);
+                        $metadata[$current]['descriptions'][$lang] = $value;
+                        if ($lang === 'en' && $value !== '') {
+                                $metadata[$current]['desc_en'] = $value;
+                        }
+                }
+        }
+
+        return $metadata;
+}
+
+function e2g_register_list_file(array &$collection, $group, array $category_parts, $file_path, $file_name, $liston, array $metadata) {
+        $category_key = e2g_normalize_category_key($category_parts);
+        if ($category_key === '') {
+                $category_key = e2g_normalize_category_key(array(preg_replace('/\.[^.]+$/', '', (string)$file_name)));
+        }
+
+        $xml_type = e2g_extract_xml_type($file_name);
+        if ($xml_type === '') {
+                return;
+        }
+
+        e2g_ensure_category_comment($file_path, $category_key);
+
+        $category_display = $category_key;
+        if ($category_key !== '' && isset($metadata[$category_key]) && $metadata[$category_key]['name_en'] !== '') {
+                $category_display = $metadata[$category_key]['name_en'];
+        } else {
+                $category_display = e2g_title_case($category_display);
+        }
+
+        $type_label = e2g_humanize_type_label($xml_type);
+        $entry = array(
+                'descr' => trim($category_display . ' - ' . $type_label),
+                'list'  => $category_key,
+                'file'  => $file_path
+        );
+
+        $collection[$group][$xml_type][] = $entry;
+        if ($group === 'blacklists' && $liston === 'both') {
+                $collection['whitelists'][$xml_type][] = $entry;
+        }
+}
+
+function e2g_collect_category(array &$collection, $group_dir, $group, array $category_parts, $liston, array $metadata) {
+        $relative_path = implode('/', $category_parts);
+        $directory = $group_dir . '/' . $relative_path;
+        if (!is_dir($directory)) {
+                return;
+        }
+
+        $entries = array_diff(scandir($directory), array('.', '..'));
+        foreach ($entries as $entry) {
+                $entry_path = $directory . '/' . $entry;
+                if (is_dir($entry_path)) {
+                        $next_parts = $category_parts;
+                        $next_parts[] = $entry;
+                        e2g_collect_category($collection, $group_dir, $group, $next_parts, $liston, $metadata);
+                } else {
+                        e2g_register_list_file($collection, $group, $category_parts, $entry_path, $entry, $liston, $metadata);
+                }
+        }
+}
+
+function e2g_unique_entries(array $entries) {
+        $unique = array();
+        foreach ($entries as $entry) {
+                if (!isset($entry['file'])) {
+                        continue;
+                }
+                $unique[$entry['file']] = $entry;
+        }
+
+        return array_values($unique);
 }
 
 function e2g_check_sched($iface_sched){
