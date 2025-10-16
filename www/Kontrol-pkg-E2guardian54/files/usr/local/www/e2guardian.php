@@ -81,91 +81,133 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
 	}
 }
 function extract_black_list($log_notice=true) {
-	if (!file_exists("/usr/local/pkg/blacklist.tgz")) {
-		file_notice("E2guardian",$error,"E2guardian" . gettext("Downloaded blacklists not found"), "");
-		return;
-	}
-	chdir ("/usr/local/etc/e2guardian/lists");
-	if (is_dir ("blacklists.old")) {
-        	exec ('rm -rf blacklists.old');
-	}
-	if (is_dir ("blacklists")) {
-		rename("blacklists", "blacklists.old");
-	}
-	exec('/usr/bin/tar -xvzf /usr/local/pkg/blacklist.tgz 2>&1', $output, $return);
-	if (preg_match("/x\W+(\w+)/", $output[1], $matches)) {
-		if ($matches[1] != "blacklists") {
-			rename("./" . $matches[1], "blacklists");
-		}
-		read_lists($log_notice);
-	} else {
-		file_notice("E2guardian",$error,"E2guardian - " .  gettext("Could not determine Blacklist extract dir. Categories not updated"),"");
-	}
+        if (!file_exists("/usr/local/pkg/blacklist.tgz")) {
+                file_notice("E2guardian", $error, "E2guardian" . gettext("Downloaded blacklists not found"), "");
+                return;
+        }
+
+        $lists_dir = "/usr/local/etc/e2guardian/lists";
+        if (!is_dir($lists_dir)) {
+                @mkdir($lists_dir, 0755, true);
+        }
+
+        $cwd = getcwd();
+        chdir($lists_dir);
+
+        if (is_dir('blacklists.old')) {
+                e2g_delTree($lists_dir . '/blacklists.old');
+        }
+        if (is_dir('blacklists')) {
+                @rename('blacklists', 'blacklists.old');
+        }
+
+        exec('/usr/bin/tar -xzf /usr/local/pkg/blacklist.tgz 2>&1', $output, $return);
+        if ($return !== 0) {
+                if (is_dir('blacklists.old')) {
+                        @rename('blacklists.old', 'blacklists');
+                }
+                if (isset($cwd)) {
+                        chdir($cwd);
+                }
+                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not extract blacklist archive."), "");
+                return;
+        }
+
+        $entries = array_diff(scandir('.'), array('.', '..', 'blacklists', 'blacklists.old'));
+        $dirs = array();
+        foreach ($entries as $entry) {
+                if (is_dir($entry)) {
+                        $dirs[] = $entry;
+                }
+        }
+
+        if (!is_dir('blacklists')) {
+                if (count($dirs) === 1) {
+                        @rename($dirs[0], 'blacklists');
+                } else {
+                        @mkdir('blacklists', 0755, true);
+                        foreach ($entries as $entry) {
+                                @rename($entry, 'blacklists/' . $entry);
+                        }
+                }
+        }
+
+        if (!is_dir('blacklists')) {
+                if (is_dir('blacklists.old')) {
+                        @rename('blacklists.old', 'blacklists');
+                }
+                if (isset($cwd)) {
+                        chdir($cwd);
+                }
+                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not determine Blacklist extract dir. Categories not updated"), "");
+                return;
+        }
+
+        read_lists($log_notice);
+        e2g_delTree($lists_dir . '/blacklists.old');
+
+        if (isset($cwd)) {
+                chdir($cwd);
+        }
 }
 
 function read_lists($log_notice=true, $uw="") {
-	global $config, $g;
-	$group_type = array();
-	$dir = "/usr/local/etc/e2guardian/lists";
-	// Read e2guardian lists dirs
-	$groups = array("phraselists", "blacklists", "whitelists");
-	// Assigns know list files
-	$types = array('domains', 'urls', 'banned', 'weighted', 'exception', 'expression');
+        global $config, $g;
 
-	// Clean previous xml config for e2guardian lists
-	foreach ($config['installedpackages'] as $key => $values) {
-		if (preg_match("/e2guardian(phrase|black|white)lists/", $key)) {
-			unset ($config['installedpackages'][$key]);
-		}
-	}
-	//find lists
-	foreach ($groups as $group) {
-		if (is_dir("$dir/$group/")) {
-			//read dir content and find lists
-			$lists = scandir("$dir/$group/");
-			foreach ($lists as $list) {
-				if (!preg_match ("/^\./", $list) && is_dir("$dir/$group/$list/")) {
-					$category = scandir("$dir/$group/$list/");
-					foreach ($category as $file) {
-						if (!preg_match ("/^\./", $file)) {
-							if (is_dir("$dir/$group/$list/$file")) {
-								$subdir = $file;
-								$subcategory = scandir("$dir/$group/$list/$subdir/");
-								foreach ($subcategory as $file) {
-									if (!preg_match ("/^\./", $file)) {
-										//add category to file https://github.com/e2guardian/e2guardian/issues/244
-										system("echo '#listcategory: \"{$list}_{$subdir}\"' >> $dir/$group/$list/$subdir/$file");
-										//assign list to array
-										$type = explode("_", $file);
-										if (preg_match("/(\w+)/", $type[0], $matches)) {
-											$xml_type = $matches[1];
-										}
-										if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] == "both" && $group == "blacklists") {
-											$config['installedpackages']['e2guardianwhitelists'.$xml_type]['config'][] = array("descr" => "{$list}_{$subdir} {$file}", "list" => "{$list}_{$subdir}", "file" => "$dir/$group/$list/$subdir/$file");
-										}
-										$config['installedpackages']['e2guardian' . $group . $xml_type]['config'][] = array("descr" => "{$list}_{$subdir} {$file}", "list" => "{$list}_{$subdir}", "file" => "$dir/$group/$list/$subdir/$file");
-									}
-								}
-							} else {
-								//add category to file https://github.com/e2guardian/e2guardian/issues/244
-								system("echo '#listcategory: \"{$list}\"' >> $dir/$group/$list/$file");
-								//assign list to array
-								$type = explode("_", $file);
-								if (preg_match("/(\w+)/", $type[0], $matches)) {
-									$xml_type=$matches[1];
-								}
-								if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] == "both" && $group == "blacklists") {
-									$config['installedpackages']['e2guardianwhitelists'.$xml_type]['config'][] = array("descr" => "$list $file", "list" => $list, "file" => "$dir/$group/$list/$file");
-								}
-								$config['installedpackages']['e2guardian' . $group . $xml_type]['config'][] = array("descr"=> "$list $file", "list" => $list, "file" => "$dir/$group/$list/$file");
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	$files = array("site", "url");
+        $dir = "/usr/local/etc/e2guardian/lists";
+        $groups = array("phraselists", "blacklists", "whitelists");
+        $liston = $config['installedpackages']['e2guardianblacklist']['config'][0]['liston'] ?? 'banned';
+        $metadata = e2g_parse_blacklist_metadata($dir . '/blacklists');
+
+        foreach ($config['installedpackages'] as $key => $values) {
+                if (preg_match("/e2guardian(phrase|black|white)lists/", $key)) {
+                        unset($config['installedpackages'][$key]);
+                }
+        }
+
+        $collection = array(
+                'phraselists' => array(),
+                'blacklists' => array(),
+                'whitelists' => array()
+        );
+
+        foreach ($groups as $group) {
+                $group_dir = $dir . '/' . $group;
+                if (!is_dir($group_dir)) {
+                        continue;
+                }
+
+                $lists = array_diff(scandir($group_dir), array('.', '..'));
+                foreach ($lists as $list) {
+                        $path = $group_dir . '/' . $list;
+                        if (is_dir($path)) {
+                                e2g_collect_category($collection, $group_dir, $group, array($list), $liston, $metadata);
+                        } else {
+                                e2g_register_list_file($collection, $group, array($list), $path, $list, $liston, $metadata);
+                        }
+                }
+        }
+
+        foreach ($collection as $group => $types) {
+                foreach ($types as $xml_type => $entries) {
+                        if (empty($entries)) {
+                                continue;
+                        }
+                        $entries = e2g_unique_entries($entries);
+                        usort($entries, function ($a, $b) {
+                                return strnatcasecmp($a['descr'], $b['descr']);
+                        });
+                        $config['installedpackages']['e2guardian' . $group . $xml_type]['config'] = $entries;
+                }
+        }
+
+        if (!empty($metadata)) {
+                $config['installedpackages']['e2guardianblacklist']['categories_meta'] = $metadata;
+        } else {
+                unset($config['installedpackages']['e2guardianblacklist']['categories_meta']);
+        }
+
+        $files = array("site", "url");
         $blacklist_domains = array();
         if (isset($config['installedpackages']['e2guardianblacklistsdomains']['config']) &&
             is_array($config['installedpackages']['e2guardianblacklistsdomains']['config'])) {
@@ -173,27 +215,28 @@ function read_lists($log_notice=true, $uw="") {
         }
 
         foreach ($files as $edit_xml) {
-                $edit_file=file_get_contents("/usr/local/pkg/e2guardian_".$edit_xml."_acl.xml");
+                $edit_file = file_get_contents("/usr/local/pkg/e2guardian_" . $edit_xml . "_acl.xml");
                 if (count($blacklist_domains) > 18) {
-			$edit_file=preg_replace('/size.6/', 'size>20', $edit_file);
-			if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] == "both") {
-				$edit_file=preg_replace('/size.5/', 'size>19', $edit_file);
-			}
-		} else {
-			$edit_file=preg_replace('/size.20/', 'size>6', $edit_file);
-		}
-		if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] != "both") {
-			$edit_file=preg_replace('/size.19/', 'size>5', $edit_file);
-		}
-		file_put_contents("/usr/local/pkg/e2guardian_" . $edit_xml . "_acl.xml", $edit_file, LOCK_EX);
-	}
-	write_config("Saving...");
-	if ($log_notice == true && $uw == "") {
-		file_notice("E2guardian", "E2Guardian Blacklist applied, check site and URL access lists for categories", "E2guardian BlackList Updated.");
-	} else {
-		$uw .= "done\n";
-		update_output_window($uw);
-	}
+                        $edit_file = preg_replace('/size.6/', 'size>20', $edit_file);
+                        if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] == "both") {
+                                $edit_file = preg_replace('/size.5/', 'size>19', $edit_file);
+                        }
+                } else {
+                        $edit_file = preg_replace('/size.20/', 'size>6', $edit_file);
+                }
+                if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] != "both") {
+                        $edit_file = preg_replace('/size.19/', 'size>5', $edit_file);
+                }
+                file_put_contents("/usr/local/pkg/e2guardian_" . $edit_xml . "_acl.xml", $edit_file, LOCK_EX);
+        }
+
+        write_config("Saving...");
+        if ($log_notice == true && $uw == "") {
+                file_notice("E2guardian", "E2Guardian Blacklist applied, check site and URL access lists for categories", "E2guardian BlackList Updated.");
+        } else {
+                $uw .= "done\n";
+                update_output_window($uw);
+        }
 }
 
 if ($argv[1] == "update_lists") {
