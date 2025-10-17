@@ -2455,11 +2455,17 @@ function e2guardian_php_deinstall_command() {
 	//prevent e2guardian binary from starting from watchdog during package uninstall
 	chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0444);
 
-	echo "Removing conf files...\n";
-	$rconfs = array('*sample', '*conf', 'lists/*.*', 'authplugins/*sample', 'contentscanners/*sample', 'downloadmanagers/*sample');
-	foreach ($rconfs as $rm) {
-          system("/bin/rm -f " . E2GUARDIAN_ETCDIR . "/$rm");
-	}
+        echo "Removing conf files...\n";
+        $rconfs = array('*sample', '*.conf', 'lists/*', 'authplugins/*sample', 'contentscanners/*sample', 'downloadmanagers/*sample');
+        foreach ($rconfs as $rm) {
+                foreach (glob(E2GUARDIAN_ETCDIR . '/' . $rm) as $path) {
+                        if (is_dir($path)) {
+                                e2g_delTree($path);
+                        } elseif (file_exists($path)) {
+                                @unlink($path);
+                        }
+                }
+        }
 
 	clear_subsystem_dirty('e2guardian');
 }
