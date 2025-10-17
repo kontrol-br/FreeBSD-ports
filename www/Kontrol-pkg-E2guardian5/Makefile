@@ -13,10 +13,9 @@ COMMENT=	Kontrol E2guardian Package
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
+RUN_DEPENDS=	e2guardian>=5.3,<5.4:www/e2guardian \
 		/usr/local/sbin/clamd:security/clamav \
-		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss \
-		e2guardian>=0:www/e2guardian
+		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss
 
 
 CONFLICTS_WITH=	www/e2guardian5
