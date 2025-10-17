@@ -13,9 +13,9 @@ COMMENT=	Kontrol E2guardian 5.4 management package
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
-		/usr/local/sbin/clamd:security/clamav \
-		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss
+RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian54 \
+		${LOCALBASE}/sbin/clamd:security/clamav \
+		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss
 
 
 CONFLICTS_INSTALL=	www/Kontrol-pkg-E2guardian5

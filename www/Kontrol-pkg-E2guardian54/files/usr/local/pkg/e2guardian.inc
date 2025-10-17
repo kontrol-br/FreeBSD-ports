@@ -64,14 +64,49 @@ $shortcut_section = "e2guardian";
 
 $pf_version = substr(trim(file_get_contents("/etc/version")), 0, 3);
 
-define('E2GUARDIAN_DIR', '/usr/local');
+if (!defined('E2GUARDIAN_DIR')) {
+    define('E2GUARDIAN_DIR', '/usr/local');
+}
+if (!defined('E2GUARDIAN_ETCDIR')) {
+    define('E2GUARDIAN_ETCDIR', E2GUARDIAN_DIR . '/etc/e2guardian');
+}
+if (!defined('E2GUARDIAN_PKGDIR')) {
+    define('E2GUARDIAN_PKGDIR', E2GUARDIAN_DIR . '/pkg');
+}
+if (!defined('E2GUARDIAN_WWWDIR')) {
+    define('E2GUARDIAN_WWWDIR', E2GUARDIAN_DIR . '/www');
+}
+if (!defined('E2GUARDIAN_SBINDIR')) {
+    define('E2GUARDIAN_SBINDIR', E2GUARDIAN_DIR . '/sbin');
+}
+if (!defined('E2GUARDIAN_BINDIR')) {
+    define('E2GUARDIAN_BINDIR', E2GUARDIAN_DIR . '/bin');
+}
+if (!defined('E2GUARDIAN_RCDIR')) {
+    define('E2GUARDIAN_RCDIR', E2GUARDIAN_DIR . '/etc/rc.d');
+}
+if (!defined('E2GUARDIAN_SHAREDIR')) {
+    define('E2GUARDIAN_SHAREDIR', E2GUARDIAN_DIR . '/share/e2guardian');
+}
+if (!defined('E2GUARDIAN_CERTSDIR')) {
+    define('E2GUARDIAN_CERTSDIR', E2GUARDIAN_DIR . '/share/certs');
+}
+if (!defined('E2GUARDIAN_LIBEXECDIR')) {
+    define('E2GUARDIAN_LIBEXECDIR', E2GUARDIAN_DIR . '/libexec');
+}
+if (!defined('E2GUARDIAN_SQUIDCONFDIR')) {
+    define('E2GUARDIAN_SQUIDCONFDIR', E2GUARDIAN_DIR . '/etc/squid');
+}
+if (!defined('E2GUARDIAN_SQUIDLIBEXECDIR')) {
+    define('E2GUARDIAN_SQUIDLIBEXECDIR', E2GUARDIAN_LIBEXECDIR . '/squid');
+}
 
 if ($_POST['clear_cert_cache'] == 'clear_cert_cache') {
     //clear MITM cert cache data
-    $tc_dir = "/usr/local/etc/e2guardian/ssl/generatedcerts";
+    $tc_dir = E2GUARDIAN_ETCDIR . "/ssl/generatedcerts";
     if (e2g_delTree($tc_dir)) {
         mkdir ($tc_dir, "0755", true);
-        mwexec_bg("/usr/local/sbin/e2guardian -Q");
+        mwexec_bg(E2GUARDIAN_SBINDIR . "/e2guardian -Q");
         clear_subsystem_dirty('e2guardian');
     }
 }
@@ -316,14 +351,14 @@ function e2g_check_sched($iface_sched){
 }
 
 function e2g_check_logdeniedcgi($logdeniedcgi) {
-	$e2g_file = "/usr/local/www/e2gerror.php";
+	$e2g_file = E2GUARDIAN_WWWDIR . "/e2gerror.php";
 	if ($logdeniedcgi == 'on') {
 		$e2g_log = "/var/log/e2guardian/denied.log";
 	} else {
 		 $e2g_log = "none";
 	}
 	exec("/usr/bin/sed -i 'bak' \"s@LOG_DENIED', '.*'@LOG_DENIED', '$e2g_log'@\" $e2g_file",$out);
-	foreach (glob("/usr/local/www/wpad*/e2gerror.php") as $e2g_wpad) {
+	foreach (glob(E2GUARDIAN_WWWDIR . "/wpad*/e2gerror.php") as $e2g_wpad) {
 		copy ($e2g_file, $e2g_wpad);
 	}
 }
@@ -359,8 +394,8 @@ function check_ca_hashes() {
 
 	//check certificates
 	$cert_count = 0;
-	if (is_dir('/usr/local/share/certs')) {
-		if ($handle = opendir('/usr/local/share/certs')) {
+    if (is_dir(E2GUARDIAN_CERTSDIR)) {
+                if ($handle = opendir(E2GUARDIAN_CERTSDIR)) {
 			while (false !== ($file = readdir($handle))) {
 				if (preg_match ("/\d+.0/", $file)) {
 					$cert_count++;
@@ -372,7 +407,7 @@ function check_ca_hashes() {
 	if ($cert_count < 10) {
 		//create ca-root hashes from ca-root-nss package
 		log_error("Creating root certificate bundle hashes from the Mozilla Project");
-		$cas = file('/usr/local/share/certs/ca-root-nss.crt');
+		$cas = file(E2GUARDIAN_CERTSDIR . '/ca-root-nss.crt');
 		$cert = 0;
 		foreach ($cas as $ca) {
 			if (preg_match("/--BEGIN CERTIFICATE--/", $ca)) {
@@ -385,7 +420,7 @@ function check_ca_hashes() {
 				file_put_contents("/tmp/cert.pem", $crt, LOCK_EX);
 				$cert_hash = array();
 				exec("/usr/bin/openssl x509 -hash -noout -in /tmp/cert.pem", $cert_hash);
-				file_put_contents("/usr/local/share/certs/". $cert_hash[0] . ".0", $crt, LOCK_EX);
+				file_put_contents(E2GUARDIAN_CERTSDIR . "/". $cert_hash[0] . ".0", $crt, LOCK_EX);
 				$crt = "";
 				$cert = 0;
 			}
@@ -717,7 +752,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	}
 
 	if ($e2guardian_config['contentscannericapurl'] != "") {
-		include("/usr/local/pkg/icapscan.conf.template");
+		include(E2GUARDIAN_PKGDIR . "/icapscan.conf.template");
 		file_put_contents(E2GUARDIAN_DIR . "/etc/e2guardian/contentscanners/icapscan.conf", $icap_conf_file , LOCK_EX);
 	}
 	// limits
@@ -850,7 +885,7 @@ $files = array(
 			$cert_hash = array();
 			file_put_contents("/etc/ssl/demoCA/cacert.pem", base64_decode($ca_cert['crt']));
 			exec("/usr/bin/openssl x509 -hash -noout -in /etc/ssl/demoCA/cacert.pem", $cert_hash);
-			file_put_contents("/usr/local/share/certs/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
+			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
 			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
 			$generatedcertpath= "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
 		}
@@ -1402,7 +1437,7 @@ $files = array(
 	file_put_contents($e2guardian_dir . "/lists/contentscanners/exceptionvirusextensionlist", ($e2guardian_antivirus['extension_enabled'] ? e2_text_area_decode($config['installedpackages']['e2guardianantivirusacl']['config'][0]['extension_list']):""), LOCK_EX);
 	*/
 	//log report
-	$rf = "/usr/local/share/e2guardian/languages/{$reportlanguage}/template.html";
+	$rf = E2GUARDIAN_SHAREDIR . "/languages/{$reportlanguage}/template.html";
 	if(file_exists($rf) && !file_exists("$rf.sample")) {
 		copy($rf, "$rf.sample");
 	}
@@ -1682,7 +1717,7 @@ break;
 		$e2_dir = E2GUARDIAN_DIR;
 
 		//remove localchecks from common.story
-		$c_story_file = "/usr/local/etc/e2guardian/common.story";
+		$c_story_file = E2GUARDIAN_ETCDIR . "/common.story";
 		if (file_exists($c_story_file)) {
 		  $c_story = file($c_story_file);
 		  $c_story_count = 0;
@@ -1699,10 +1734,10 @@ break;
 		      file_put_contents($c_story_file, $nc_story_file, LOCK_EX);
 		  }
 		}
-		include("/usr/local/pkg/e2guardian_story.template");
+		include(E2GUARDIAN_PKGDIR . "/e2guardian_story.template");
 		file_put_contents($e2guardian_dir . "/g_" . $e2guardian_groups['name'] . ".story", $dg_story, LOCK_EX);
 
-		include("/usr/local/pkg/e2guardianfx.conf.template");
+		include(E2GUARDIAN_PKGDIR . "/e2guardianfx.conf.template");
 		file_put_contents($e2guardian_dir . "/e2guardianf" . $count . ".conf", $dgf, LOCK_EX);
 
 		if (is_array($config['installedpackages']['e2guardianusers']) &&
@@ -1789,15 +1824,15 @@ EOF;
 	//Create/update filtergroupsiplist
 	file_put_contents($e2guardian_dir . "/lists/authplugins/ipgroups", $filtergroupsiplist, LOCK_EX);
 	//Create/update userlist xml file
-	$ips_xml_header = file_get_contents("/usr/local/pkg/e2guardian_ips_header.template");
-	$user_xml_header = file_get_contents("/usr/local/pkg/e2guardian_users_header.template");
-	$user_xml_footer = file_get_contents("/usr/local/pkg/e2guardian_users_footer.template");
-	file_put_contents("/usr/local/pkg/e2guardian_users.xml", $user_xml_header . $user_xml . $user_xml_footer, LOCK_EX);
-	file_put_contents("/usr/local/pkg/e2guardian_ips.xml", $ips_xml_header . $ips_xml . $user_xml_footer, LOCK_EX);
+	$ips_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_ips_header.template");
+	$user_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users_header.template");
+	$user_xml_footer = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users_footer.template");
+	file_put_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users.xml", $user_xml_header . $user_xml . $user_xml_footer, LOCK_EX);
+	file_put_contents(E2GUARDIAN_PKGDIR . "/e2guardian_ips.xml", $ips_xml_header . $ips_xml . $user_xml_footer, LOCK_EX);
 
 	//Create report template
-	if (is_dir("/usr/local/share/e2guardian/languages/{$reportlanguage}")) {
-		file_put_contents("/usr/local/share/e2guardian/languages/{$reportlanguage}/template.html", e2_text_area_decode($e2guardian_log['report_file']), LOCK_EX);
+	if (is_dir(E2GUARDIAN_SHAREDIR . "/languages/{$reportlanguage}")) {
+		file_put_contents(E2GUARDIAN_SHAREDIR . "/languages/{$reportlanguage}/template.html", e2_text_area_decode($e2guardian_log['report_file']), LOCK_EX);
 	}
 	//check blacklist download files
 	file_put_contents("/root/e2guardian_custom.script", base64_decode($e2guardian_blacklist['custom_script']), LOCK_EX);
@@ -1806,14 +1841,14 @@ EOF;
 		file_notice("E2guardian",$error,"E2guardian - " . gettext("Blacklist update process started"), "");
 		if ($e2guardian_blacklist['enable_custom_script']) {
 			mwexec_bg("/root/e2guardian_custom.script");
-		} else {
-			mwexec_bg("/usr/local/bin/php /usr/local/www/e2guardian.php fetch_blacklist");
-		}
+                } else {
+                        mwexec_bg(E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist");
+                }
 	}
 
 	//Update blacklist categories on Acls
 	if ($_POST["force_update"] || $_POST["liston"]) {
-		require_once("/usr/local/www/e2guardian.php");
+		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		extract_black_list();
 	}
 	//get clamav user
@@ -1840,13 +1875,13 @@ EOF;
 	$filterip = ($filterip == "" ? "filterip = " : $filterip);
 	$filterports = ($filterports == "" ? "filterports = $filterport" : $filterports);
 	$ssl_proxy_port = $e2guardian['ssl_proxy_port'] ? $e2guardian['ssl_proxy_port'] : "8081";
-	include("/usr/local/pkg/e2guardian.conf.template");
+	include(E2GUARDIAN_PKGDIR . "/e2guardian.conf.template");
 
 
 	//log rotation script
     	log_error("Checking log rotation");
-	$lrt_file = "/usr/local/www/e2guardian_logrotate.php";
-	$cron_cmd = "/usr/local/bin/php -q {$lrt_file}";
+	$lrt_file = E2GUARDIAN_WWWDIR . "/e2guardian_logrotate.php";
+	$cron_cmd = E2GUARDIAN_BINDIR . "/php -q {$lrt_file}";
 	if ($logrotate == "on") {
         log_error("Log rotate on");
 		e2g_check_cron($cron_cmd, "create", $cronminute, $cronhour);
@@ -1856,25 +1891,25 @@ EOF;
 	}
 
 	//watchdog script;
-	$cron_cmd = "/usr/local/bin/e2g_watchdog.sh";
+	$cron_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
 	if ($e2guardian['watchdog'] == "on") {
 		e2g_check_cron("/bin/sh $cron_cmd", "create");
 		if ($e2guardian['parentmode'] == 'local') {
 			//e2g parent
 			$parent_pid = "/var/run/squid/e2gsquid.pid";
-			$parent_cmd = "/usr/local/etc/rc.d/e2parent.sh start";
+			$parent_cmd = E2GUARDIAN_RCDIR . "/e2parent.sh start";
 			$watchdog_parent = e2g_watchdog_script($parent_pid, $parent_cmd, "parent");
 		}
 		//e2g watchdog
 		$we2g_pid = "/var/run/e2guardian.pid";
-		$we2g_cmd = "/usr/local/etc/rc.d/e2guardian.sh start";
+		$we2g_cmd = E2GUARDIAN_RCDIR . "/e2guardian.sh start";
 		$watchdog_e2g = e2g_watchdog_script($we2g_pid,$we2g_cmd,"e2guardian");
 		//e2g main squid process
 		if (is_array($config['installedpackages']['squid'])) {
 			$squid_cfg = $config['installedpackages']['squid']['config'][0];
-			if ($squid_cfg['enable_squid'] == "on") {
-				$msqd_pid = "/var/run/squid/squid.pid";
-				$msqd_cmd = "/usr/local/sbin/squid -f /usr/local/etc/squid/squid.conf";
+                        if ($squid_cfg['enable_squid'] == "on") {
+                                $msqd_pid = "/var/run/squid/squid.pid";
+                                $msqd_cmd = E2GUARDIAN_SBINDIR . "/squid -f " . E2GUARDIAN_SQUIDCONFDIR . "/squid.conf";
 				$watchdog_squid = e2g_watchdog_script($msqd_pid, $msqd_cmd, "squid");
 			}
 		}
@@ -1889,27 +1924,27 @@ EOF;
 	}
 
 	// Check acl schedules
-	$cron_cmd = "/usr/local/bin/php -q /usr/local/www/e2guardian_scheds.php";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/php -q " . E2GUARDIAN_WWWDIR . "/e2guardian_scheds.php";
 	if (sizeof($e2g_sched_in_use) > 1) {
 		e2g_check_cron($cron_cmd, "create");
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}
 
-	$cron_cmd = E2GUARDIAN_DIR . "/bin/freshclam";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/freshclam";
 	$cron_field= array('day' => '*' , '02days' => '*/2', 'week' => '*/7');
 	if ($e2guardian_config['cron'] && preg_match("/clamd/", $e2guardian_config['content_scanners'])) {
 		e2g_check_cron($cron_cmd, "create", "0", "0", $cron_field[$e2guardian_config['cron']]);
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}
-	$cron_cmd = "/usr/local/bin/php /usr/local/www/e2guardian.php fetch_blacklist";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist";
 	if ($e2guardian_blacklist['cron']) {
 		e2g_check_cron($cron_cmd, "create", "0", "0", $cron_field[$e2guardian_blacklist['cron']]);
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}
-	$cron_cmd = "/usr/local/bin/php /usr/local/www/e2guardian_ldap.php";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian_ldap.php";
 	if (is_array($config['installedpackages']['e2guardiangroups']['config'])) {
 		foreach ($config['installedpackages']['e2guardiangroups']['config'] as $e2guardian_groups) {
 			$e2_group_source = ($e2guardian_groups['groupnamesource'] != "" ? $e2guardian_groups['groupnamesource'] : "name");
@@ -1930,9 +1965,9 @@ EOF;
 
 	write_config('e2guardian - updating package crontab tasks.');
 
-	$dirs = array(
-		E2GUARDIAN_DIR . '/etc/e2guardian/lists/bannedrooms/',
-		'/var/log/e2guardian');
+        $dirs = array(
+                E2GUARDIAN_ETCDIR . '/lists/bannedrooms/',
+                '/var/log/e2guardian');
 
 	foreach ($dirs as $dir) {
 		if (!is_dir($dir)) {
@@ -1941,14 +1976,14 @@ EOF;
 	}
 
 	//update file owner
-	mwexec("chown -R $daemonuser:$daemongroup " . E2GUARDIAN_DIR . "/etc/e2guardian");
+        mwexec("chown -R $daemonuser:$daemongroup " . E2GUARDIAN_ETCDIR);
 	mwexec("chown -R $daemonuser:$daemongroup /var/log/e2guardian");
 
 	//create config files
 	file_put_contents($e2guardian_dir . "/e2guardian.conf", $dg, LOCK_EX);
 
 	//check virus_scanner options
-	$libexec_dir = E2GUARDIAN_DIR . "/libexec/e2guardian/";
+        $libexec_dir = E2GUARDIAN_LIBEXECDIR . "/e2guardian/";
 	if ($install_process == true) {
 		update_output_window("Skipping clamav check during package install.");
 	}
@@ -1956,10 +1991,10 @@ EOF;
 		if (!(file_exists('/var/db/clamav/main.cvd') || file_exists('/var/db/clamav/main.cld'))) {
 			file_notice("E2guardian",$error,"E2guardian - " . gettext("No antivirus database found for clamav, running freshclam in background."), "");
 			log_error('No antivirus database found for clamav, running freshclam in background. Content-scanner may not work until freshclam finishes.');
-			mwexec_bg(E2GUARDIAN_DIR . '/bin/freshclam && /usr/local/etc/rc.d/clamav-clamd');
+                   mwexec_bg(E2GUARDIAN_BINDIR . '/freshclam && ' . E2GUARDIAN_RCDIR . '/clamav-clamd');
 		}
 		//clamdscan.conf e2guardian file
-		$cconf = E2GUARDIAN_DIR . "/etc/e2guardian/contentscanners/clamdscan.conf";
+                $cconf = E2GUARDIAN_ETCDIR . "/contentscanners/clamdscan.conf";
 		$cconf_file = file_get_contents($cconf);
 		if (preg_match('/#clamdudsfile/', $cconf_file)) {
 			$cconf_file = preg_replace('/#clamdudsfile/', 'clamdudsfile', $cconf_file);
@@ -1970,11 +2005,11 @@ EOF;
 		$cconf_file = file_get_contents($cconf);
 		if (preg_match("/User (\w+)/", $cconf_file, $matches)) {
 			#clamd script file
-			$script = '/usr/local/etc/rc.d/clamav-clamd';
+			$script = E2GUARDIAN_RCDIR . '/clamav-clamd';
 			$script_file = file($script);
 			$new_clamav_startup = "";
 			$cpreg_m[0] = "@NO@";
-			$cpreg_m[1] = "@/usr/local@";
+                        $cpreg_m[1] = "@" . E2GUARDIAN_DIR . "@";
 			$cpreg_r[0] = "YES";
 			$cpreg_r[1] = E2GUARDIAN_DIR;
 			foreach ($script_file as $script_line) {
@@ -2061,18 +2096,18 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
         }
 
 	//as main squid daemon looks for any squid copy running, lets create an alias for us
-	$our_squid = "/usr/local/sbin/e2guid";
+	$our_squid = E2GUARDIAN_SBINDIR . "/e2guid";
 	if (!file_exists($our_squid) && $e2g_cfg['parentmode'] == 'local') {
-		system("/usr/local/etc/rc.d/e2parent.sh stop");
-		symlink("/usr/local/sbin/squid", $our_squid);
+		system(E2GUARDIAN_RCDIR . "/e2parent.sh stop");
+		symlink(E2GUARDIAN_SBINDIR . "/squid", $our_squid);
 	}
 
 	//squid parent start stop script
 	$parent_pid = "/var/run/squid/e2gsquid.pid";
-	$parent_cmd = "$our_squid -f /usr/local/etc/e2guardian/squidparent.conf";
+        $parent_cmd = $our_squid . ' -f ' . E2GUARDIAN_ETCDIR . '/squidparent.conf';
 	$start  = "\nif [ ! -d /var/squid/lib/ssl_db2/certs ];then\n\t";
 	$start .= "mkdir -p /var/squid/lib\n\t";
-	$start .= "/usr/local/libexec/squid/ssl_crtd -c -s /var/squid/lib/ssl_db2\nfi\n";
+	$start .= E2GUARDIAN_SQUIDLIBEXECDIR . "/ssl_crtd -c -s /var/squid/lib/ssl_db2\nfi\n";
 	$start .= "if [ -f {$parent_pid} ];then\n\t";
 	$start .= "cat {$parent_pid} | xargs ps ||\n\t";
 	$start .= "{$parent_cmd}\nelse\n\t";
@@ -2081,14 +2116,14 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 	$stop .= "kill `cat {$parent_pid}`\nfi";
 	write_rcfile(array("file" => "e2parent.sh", "start" => $start, "stop" => $stop));
 
-	$script = '/usr/local/etc/rc.d/e2guardian.sh';
-	$script_parent = '/usr/local/etc/rc.d/e2parent.sh';
-	unlink_if_exists('/usr/local/etc/rc.d/e2guardian');
+        $script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+        $script_parent = E2GUARDIAN_RCDIR . '/e2parent.sh';
+        unlink_if_exists(E2GUARDIAN_RCDIR . '/e2guardian');
 	$squid_parent_pid = "/var/run/squid/e2gsquid.pid";
 
 	if ($e2g_cfg['enable'] == "on") {
-		chmod("/usr/local/sbin/e2guardian",0755);
-		copy('/usr/local/pkg/e2guardian_rc.template', $script);
+                chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0755);
+                copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $script);
 		chmod ($script, 0755);
 		$max_threads = "sysctl kern.threads.max_threads_per_proc=20480";
 		if (is_process_running('e2guardian')) {
@@ -2101,11 +2136,11 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 					break;
 				case "-r":
 					log_error("Sending USR1 to e2g processes");
-					mwexec_bg("$max_threads;/usr/local/sbin/e2guardian -g");
+                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
 					break;
 				default:
 					log_error("Restarting e2g by sending -Q action to e2g binaries");
-					mwexec_bg("$max_threads;/usr/local/sbin/e2guardian -Q");
+                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
 					break;
 			}
 		} else {
@@ -2266,7 +2301,7 @@ function e2guardian_validate_input($post, &$input_errors) {
 	if ($post['report_language'] != "") {
 	    $e2glog = $config['installedpackages']['e2guardianlog']['config'][0];
     	if ($_POST['report_file'] == "" || $post['report_language'] != $e2glog['report_language']) {
-    	    $rf = "/usr/local/share/e2guardian/languages/{$post['report_language']}/template.html";
+    	    $rf = E2GUARDIAN_SHAREDIR . "/languages/{$post['report_language']}/template.html";
     	    if (file_exists($rf) && ! file_exists("{$rf}.sample")) {
     	        copy ($rf, "{$rf}.sample");
     	    }
@@ -2366,9 +2401,9 @@ function isValidXmlElementName($elementName)
 function e2guardian_php_install_command() {
 	sync_package_e2guardian("no", true);
 	echo "Checking Blacklist...\n";
-	require_once("/usr/local/www/e2guardian.php");
+	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 
-	if (file_exists("/usr/local/pkg/blacklist.tgz")) {
+	if (file_exists(E2GUARDIAN_PKGDIR . "/blacklist.tgz")) {
 		extract_black_list();
 	} else {
         	fetch_blacklist(false, true);
@@ -2383,22 +2418,22 @@ function e2guardian_php_deinstall_command() {
 	echo "Remove modified xml files...\n";
 	$e2gxmls = array("users", "ips");
 	foreach ($e2gxmls as $e2gxml) {
-		unlink_if_exists("/usr/local/pkg/e2guardian_{$e2gxml}.xml");
+		unlink_if_exists(E2GUARDIAN_PKGDIR . "/e2guardian_{$e2gxml}.xml");
 	}
 	echo "Removing package crons...\n";
-	$crons = array("/bin/sh /usr/local/bin/e2g_watchdog.sh", //robotman3000 - Leave this until the branch to the v5 gui
-			"/usr/local/bin/php -q /usr/local/www/e2guardian_scheds.php",
-			E2GUARDIAN_DIR . "/bin/freshclam",
-			"/usr/local/bin/php /usr/local/www/e2guardian.php fetch_blacklist",
-			"/usr/local/bin/php /usr/local/www/e2guardian_ldap.php",
-			"/usr/local/bin/php -q /usr/local/www/e2guardian_logrotate.php");
+        $crons = array("/bin/sh " . E2GUARDIAN_BINDIR . "/e2g_watchdog.sh", //robotman3000 - Leave this until the branch to the v5 gui
+                        E2GUARDIAN_BINDIR . "/php -q " . E2GUARDIAN_WWWDIR . "/e2guardian_scheds.php",
+                        E2GUARDIAN_BINDIR . "/freshclam",
+                        E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist",
+                        E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian_ldap.php",
+                        E2GUARDIAN_BINDIR . "/php -q " . E2GUARDIAN_WWWDIR . "/e2guardian_logrotate.php");
 	foreach ($crons as $cron_cmd) {
 		e2g_check_cron($cron_cmd, "remove");
 	}
 
 	echo "Disabling automtic parent squid script...\n";
-	$ecmds = array("e2guardian squid parent" => "/usr/local/etc/rc.d/e2parent.sh",
-		       "e2guradian" => "/usr/local/etc/rc.d/e2guardian.sh");
+	$ecmds = array("e2guardian squid parent" => E2GUARDIAN_RCDIR . "/e2parent.sh",
+		       "e2guradian" => E2GUARDIAN_RCDIR . "/e2guardian.sh");
 	foreach ($ecmds as $einfo => $ecmd) {
 		if (file_exists($ecmd)) {
 			log_error("stopping $einfo..");
@@ -2408,12 +2443,12 @@ function e2guardian_php_deinstall_command() {
 	}
 
 	//prevent e2guardian binary from starting from watchdog during package uninstall
-	chmod("/usr/local/sbin/e2guardian",0444);
+	chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0444);
 
 	echo "Removing conf files...\n";
 	$rconfs = array('*sample', '*conf', 'lists/*.*', 'authplugins/*sample', 'contentscanners/*sample', 'downloadmanagers/*sample');
 	foreach ($rconfs as $rm) {
-		system("/bin/rm -f /usr/local/etc/e2guardian/$rm");
+          system("/bin/rm -f " . E2GUARDIAN_ETCDIR . "/$rm");
 	}
 
 	clear_subsystem_dirty('e2guardian');
@@ -2451,7 +2486,7 @@ function e2guardian_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $pa
         $synchronizetoip .= $sync_to_ip;
 
 	/* Commands to reload Squid settings on the destination sync host. */
-	$execcmd  = "require_once('/usr/local/pkg/e2guardian.inc');\n";
+   $execcmd  = "require_once('" . E2GUARDIAN_PKGDIR . "/e2guardian.inc');\n";
 	$execcmd .= "sync_package_e2guardian('yes');\n";
 	$execcmd .= "e2guardian_start('yes');";
 

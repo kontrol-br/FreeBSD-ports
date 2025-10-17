@@ -38,7 +38,10 @@ require_once("/etc/inc/functions.inc");
 require_once("/etc/inc/pkg-utils.inc");
 require_once("/etc/inc/globals.inc");
 
-include('/usr/local/pkg/e2guardian.inc');
+if (!defined('E2GUARDIAN_DIR')) {
+        define('E2GUARDIAN_DIR', '/usr/local');
+}
+include(E2GUARDIAN_DIR . '/pkg/e2guardian.inc');
 
 function explode_dn ($dn, $with_attributes=0) {
 	$result = ldap_explode_dn($dn, $with_attributes);
@@ -173,7 +176,7 @@ if (is_array($config['installedpackages']['e2guardiangroups']['config'])) {
 if ($apply_config > 0) {
 	print "User list from LDAP is different from current group, applying new configuration...";
 	write_config('e2guardian - update ldap config');
-	include("/usr/local/pkg/e2guardian.inc");
+    include(E2GUARDIAN_DIR . '/pkg/e2guardian.inc');
 	sync_package_e2guardian();
 	e2guardian_start();
 	print "done\n";
