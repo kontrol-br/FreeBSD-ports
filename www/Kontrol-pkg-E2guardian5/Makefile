@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-E2guardian5
-PORTVERSION=	0.6.4.21
+PORTVERSION=	0.6.4.22
 PORTREVISION=
 CATEGORIES=	www
 MASTER_SITES=	# empty
@@ -13,7 +13,7 @@ COMMENT=	Kontrol E2guardian Package
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	e2guardian>=5.3<5.4:www/e2guardian \
+RUN_DEPENDS=	e2guardian>=5.3.8,<5.3.9:www/e2guardian \
 		/usr/local/sbin/clamd:security/clamav \
 		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss
 
