@@ -22,6 +22,10 @@
  */
 
 require_once("functions.inc");
+if (!defined('E2GUARDIAN_DIR')) {
+        define('E2GUARDIAN_DIR', '/usr/local');
+}
+require_once(E2GUARDIAN_DIR . "/pkg/e2guardian.inc");
 
 global $config;
 if (is_array($config['installedpackages']['e2guardianlog'])) {
@@ -238,7 +242,7 @@ function fetch_log($log) {
 
 	// Check program to execute or no the parser
 	if ($program == "access" && $e2glog['logfileformat'] == 3) {
-		$parser = "| /usr/local/bin/php-cgi -q e2guardian_log_parser.php";
+               $parser = "| " . E2GUARDIAN_BINDIR . "/php-cgi -q e2guardian_log_parser.php";
 	} else {
 		$parser = "";
 	}

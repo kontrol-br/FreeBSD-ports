@@ -36,15 +36,19 @@ require_once("/etc/inc/util.inc");
 require_once("/etc/inc/functions.inc");
 require_once("/etc/inc/pkg-utils.inc");
 require_once("/etc/inc/globals.inc");
-require_once("/usr/local/pkg/e2guardian.inc");
+if (!defined('E2GUARDIAN_DIR')) {
+        define('E2GUARDIAN_DIR', '/usr/local');
+}
+require_once(E2GUARDIAN_DIR . "/pkg/e2guardian.inc");
 
 function fetch_blacklist($log_notice = true, $install_process = false) {
-	global $config, $g;
-	if (is_array($config['installedpackages']['e2guardianblacklist']) && is_array($config['installedpackages']['e2guardianblacklist']['config'])) {
-		$url = $config['installedpackages']['e2guardianblacklist']['config'][0]['url'];
-		$uw = "Found a previous install, checking Blacklist config...";
-	} else {
-		$uw = "Found a clean install, reading default access lists...";
+        global $config, $g;
+        $blacklist_file = E2GUARDIAN_PKGDIR . "/blacklist.tgz";
+        if (is_array($config['installedpackages']['e2guardianblacklist']) && is_array($config['installedpackages']['e2guardianblacklist']['config'])) {
+                $url = $config['installedpackages']['e2guardianblacklist']['config'][0]['url'];
+                $uw = "Found a previous install, checking Blacklist config...";
+        } else {
+                $uw = "Found a clean install, reading default access lists...";
 	}
 	if ($install_process == true) {
 		update_output_window($uw);
@@ -52,22 +56,26 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
 	if (isset($url) && is_url($url)) {
 		if ($log_notice == true) {
 			print "file download start..";
-			unlink_if_exists("/usr/local/pkg/blacklist.tgz");
-			exec("/usr/bin/fetch -o /usr/local/pkg/blacklist.tgz " . escapeshellarg($url), $output, $return);
-		} else {
-			//install process
-			if (file_exists("/usr/local/pkg/blacklist.tgz")) {
-				update_output_window("Found previous blacklist database, skipping download...");
-				$return = 0;
-			} else {
-				update_output_window("Fetching blacklist");
-				download_file_with_progress_bar($url, "/usr/local/pkg/blacklist.tgz");
-				if (file_exists("/usr/local/pkg/blacklist.tgz")) {
-					$return = 0;
-				}
-			}
-		}
-		if ($return == 0) {
+                        unlink_if_exists($blacklist_file);
+                        exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
+                } else {
+                        //install process
+                        if (file_exists($blacklist_file)) {
+                                update_output_window("Found previous blacklist database, skipping download...");
+                                $return = 0;
+                        } else {
+                                update_output_window("Fetching blacklist");
+                                if (function_exists('download_file_with_progress_bar')) {
+                                        download_file_with_progress_bar($url, $blacklist_file);
+                                } else {
+                                        exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
+                                }
+                                if (file_exists($blacklist_file)) {
+                                        $return = 0;
+                                }
+                        }
+                }
+                if ($return == 0) {
 			extract_black_list($log_notice);
 		} else {
 			file_notice("E2guardian",$error,"E2guardian" . gettext("Could not fetch blacklists from url"), "");
@@ -81,12 +89,13 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
 	}
 }
 function extract_black_list($log_notice=true) {
-        if (!file_exists("/usr/local/pkg/blacklist.tgz")) {
+        $blacklist_file = E2GUARDIAN_PKGDIR . "/blacklist.tgz";
+        if (!file_exists($blacklist_file)) {
                 file_notice("E2guardian", $error, "E2guardian" . gettext("Downloaded blacklists not found"), "");
                 return;
         }
 
-        $lists_dir = "/usr/local/etc/e2guardian/lists";
+        $lists_dir = E2GUARDIAN_ETCDIR . "/lists";
         if (!is_dir($lists_dir)) {
                 @mkdir($lists_dir, 0755, true);
         }
@@ -101,7 +110,7 @@ function extract_black_list($log_notice=true) {
                 @rename('blacklists', 'blacklists.old');
         }
 
-        exec('/usr/bin/tar -xzf /usr/local/pkg/blacklist.tgz 2>&1', $output, $return);
+        exec('/usr/bin/tar -xzf ' . escapeshellarg($blacklist_file) . ' 2>&1', $output, $return);
         if ($return !== 0) {
                 if (is_dir('blacklists.old')) {
                         @rename('blacklists.old', 'blacklists');
@@ -154,7 +163,7 @@ function extract_black_list($log_notice=true) {
 function read_lists($log_notice=true, $uw="") {
         global $config, $g;
 
-        $dir = "/usr/local/etc/e2guardian/lists";
+        $dir = E2GUARDIAN_ETCDIR . "/lists";
         $groups = array("phraselists", "blacklists", "whitelists");
         $liston = $config['installedpackages']['e2guardianblacklist']['config'][0]['liston'] ?? 'banned';
         $metadata = e2g_parse_blacklist_metadata($dir . '/blacklists');
@@ -215,7 +224,7 @@ function read_lists($log_notice=true, $uw="") {
         }
 
         foreach ($files as $edit_xml) {
-                $edit_file = file_get_contents("/usr/local/pkg/e2guardian_" . $edit_xml . "_acl.xml");
+                $edit_file = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_" . $edit_xml . "_acl.xml");
                 if (count($blacklist_domains) > 18) {
                         $edit_file = preg_replace('/size.6/', 'size>20', $edit_file);
                         if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] == "both") {
@@ -227,7 +236,7 @@ function read_lists($log_notice=true, $uw="") {
                 if ($config['installedpackages']['e2guardianblacklist']['config'][0]["liston"] != "both") {
                         $edit_file = preg_replace('/size.19/', 'size>5', $edit_file);
                 }
-                file_put_contents("/usr/local/pkg/e2guardian_" . $edit_xml . "_acl.xml", $edit_file, LOCK_EX);
+                file_put_contents(E2GUARDIAN_PKGDIR . "/e2guardian_" . $edit_xml . "_acl.xml", $edit_file, LOCK_EX);
         }
 
         write_config("Saving...");

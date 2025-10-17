@@ -32,7 +32,10 @@ if ($pfs_version == "2.3" ) {
         require_once("xmlrpc.inc");
 }
 require_once("xmlrpc_client.inc");
-require_once("e2guardian.inc");
+if (!defined('E2GUARDIAN_DIR')) {
+        define('E2GUARDIAN_DIR', '/usr/local');
+}
+require_once(E2GUARDIAN_DIR . "/pkg/e2guardian.inc");
 require_once("service-utils.inc");
 
 $file = "/tmp/e2g_scheds.txt";
@@ -53,7 +56,7 @@ if ($last_scheds !== $e2g_sched_in_use) {
 	clear_subsystem_dirty('e2guardian');
 	$max_threads = "sysctl kern.threads.max_threads_per_proc=20480";		
 	//reload e2guardian
-	system("$max_threads;/usr/local/sbin/e2guardian -g");
+        system("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
         //service_control_restart('e2guardian');
 } else {
 	print "No changes on schedule\n";
