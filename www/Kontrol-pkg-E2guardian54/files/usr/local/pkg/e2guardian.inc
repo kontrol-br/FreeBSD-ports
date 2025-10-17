@@ -175,17 +175,21 @@ function e2g_ensure_category_comment($file_path, $category_key) {
         }
 
         $comment = '#listcategory: "' . $category_key . '"';
-        $lines = file($file_path, FILE_IGNORE_NEW_LINES);
-        if ($lines === false) {
-                return;
-        }
-        foreach ($lines as $line) {
-                if (trim($line) === $comment) {
-                        return;
-                }
-        }
+    $handle = fopen($file_path, 'rb');
+    if ($handle === false) {
+            return;
+    }
 
-        file_put_contents($file_path, $comment . PHP_EOL, FILE_APPEND | LOCK_EX);
+    while (($line = fgets($handle)) !== false) {
+            if (trim($line) === $comment) {
+                    fclose($handle);
+                    return;
+            }
+    }
+
+    fclose($handle);
+
+    file_put_contents($file_path, $comment . PHP_EOL, FILE_APPEND | LOCK_EX);
 }
 
 function e2g_extract_xml_type($filename) {
