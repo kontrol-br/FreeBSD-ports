@@ -13,7 +13,7 @@ COMMENT=	Kontrol E2guardian 5.4 management package
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian54 \
+RUN_DEPENDS=	e2guardian>=5.4.0:www/e2guardian54 \
 		${LOCALBASE}/sbin/clamd:security/clamav \
 		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss
 
