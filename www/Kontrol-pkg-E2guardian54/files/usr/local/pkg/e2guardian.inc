@@ -205,17 +205,21 @@ function e2g_extract_xml_type($filename) {
 function e2g_parse_blacklist_metadata($blacklist_root) {
         $metadata = array();
         $usage_file = $blacklist_root . '/global_usage';
-        if (!is_file($usage_file)) {
+        if (!is_file($usage_file) || !is_readable($usage_file)) {
                 return $metadata;
         }
 
-        $lines = file($usage_file, FILE_IGNORE_NEW_LINES);
-        if ($lines === false) {
+        $handle = fopen($usage_file, 'rb');
+        if ($handle === false) {
                 return $metadata;
         }
 
         $current = null;
-        foreach ($lines as $line) {
+        while (!feof($handle)) {
+                $line = fgets($handle);
+                if ($line === false) {
+                        break;
+                }
                 $trimmed = trim($line);
                 if ($trimmed === '') {
                         $current = null;
@@ -269,6 +273,8 @@ function e2g_parse_blacklist_metadata($blacklist_root) {
                         }
                 }
         }
+
+        fclose($handle);
 
         return $metadata;
 }
