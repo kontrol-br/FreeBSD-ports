@@ -1903,10 +1903,11 @@ break;
 			asort($import_ips);
 			$config['installedpackages']['e2guardianips']['config'][0][$e2guardian_group_name] = base64_encode(implode("\n", $import_ips));
 			foreach ($import_ips as $new_ip) {
-				if (preg_match("/(\S+)\s+(.*)/", $new_ip, $matches)) {
-					$filtergroupsiplist .= $matches[1] . " = filter" . $count . " #" . $matches[2] . "\n";
-				} elseif (preg_match("/(\S+)/", $new_ip, $matches)) {
-					$filtergroupsiplist .= $matches[1] . " = filter" . $count . "\n";
+                                if (preg_match("/(\S+)\s+(.*)/", $new_ip, $matches)) {
+                                        $comment = ltrim($matches[2]);
+                                        $filtergroupsiplist .= $matches[1] . "=filter" . $count . ($comment !== '' ? " #{$comment}" : "") . "\n";
+                                } elseif (preg_match("/(\S+)/", $new_ip, $matches)) {
+                                        $filtergroupsiplist .= $matches[1] . "=filter" . $count . "\n";
 				}
 			}
 		}
@@ -1985,7 +1986,7 @@ EOF;
         file_put_contents($e2guardian_dir . "/lists/ipmap", $map_header . $ip_map_body . "\n", LOCK_EX);
 
         //Ensure ancillary storyboard lists exist
-        $port_map_body = ($filterport ? $filterport . " = filter1" : "#No port based filter overrides defined");
+        $port_map_body = ($filterport ? $filterport . "=filter1" : "#No port based filter overrides defined");
         file_put_contents($e2guardian_dir . "/lists/portmap", $map_header . $port_map_body . "\n", LOCK_EX);
         file_put_contents($e2guardian_dir . "/lists/browser", $map_header . "#Populate this list with User-Agent rules when needed\n", LOCK_EX);
         file_put_contents($e2guardian_dir . "/lists/nomitm", $map_header . "#Populate this list with hosts that must bypass MITM inspection\n", LOCK_EX);
