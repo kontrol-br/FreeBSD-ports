@@ -1905,9 +1905,9 @@ break;
 			foreach ($import_ips as $new_ip) {
                                 if (preg_match("/(\S+)\s+(.*)/", $new_ip, $matches)) {
                                         $comment = ltrim($matches[2]);
-                                        $filtergroupsiplist .= $matches[1] . "=filter" . $count . ($comment !== '' ? " #{$comment}" : "") . "\n";
+                                        $filtergroupsiplist .= $matches[1] . " = filter" . $count . ($comment !== '' ? " #{$comment}" : "") . "\n";
                                 } elseif (preg_match("/(\S+)/", $new_ip, $matches)) {
-                                        $filtergroupsiplist .= $matches[1] . "=filter" . $count . "\n";
+                                        $filtergroupsiplist .= $matches[1] . " = filter" . $count . "\n";
 				}
 			}
 		}
@@ -1979,7 +1979,7 @@ EOF;
         file_put_contents($e2guardian_dir . "/lists/defaultusermap", $map_header . $default_map_body . "\n", LOCK_EX);
 
         //Create/update IP map list used by the pre-auth storyboard
-        $ip_map_body = trim($filtergroupsiplist);
+        $ip_map_body = trim(preg_replace('/\s*=\s*/', '=', $filtergroupsiplist));
         if ($ip_map_body === '') {
                 $ip_map_body = "#No IP based filter overrides defined";
         }
