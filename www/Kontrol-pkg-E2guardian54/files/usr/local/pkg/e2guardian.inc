@@ -895,47 +895,57 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 
 	// check files
 	#create sample files
-$files = array(
-		"/e2guardianf1.conf",
-		"/lists/filtergroupslist",
-		"/lists/bannedphraselist",
-		"/lists/exceptionphraselist",
-		"/lists/weightedphraselist",
-		"/lists/exceptionsitelist",
-		"/lists/bannedsitelist",
-		"/lists/bannedsitewithbypasslist",
-		"/lists/greysitelist",
-		"/lists/logsitelist",
-		"/lists/bannedregexpurllist",
-		"/lists/sslsiteregexplist",
-		"/lists/bannedurllist",
-		"/lists/exceptionregexpurllist",
-		"/lists/exceptionurllist",
-		"/lists/greyurllist",
-		"/lists/logregexpurllist",
-		"/lists/logurllist",
-		"/lists/urlregexplist",
-		"/lists/exceptionfilesitelist",
-		"/lists/exceptionfileurllist",
-		"/lists/searchregexplist",
-		"/lists/bannedsearchlist",
-		"/lists/contentregexplist",
-		"/lists/exceptionextensionlist",
-		"/lists/bannedextensionlist",
-		"/lists/exceptionmimetypelist",
-		"/lists/bannedmimetypelist",
-		"/lists/headerregexplist",
+        $files = array(
+                "/e2guardianf1.conf",
+                "/lists/filtergroupslist",
+                "/lists/bannedphraselist",
+                "/lists/exceptionphraselist",
+                "/lists/weightedphraselist",
+                "/lists/exceptionsitelist",
+                "/lists/bannedsitelist",
+                "/lists/bannedsitewithbypasslist",
+                "/lists/greysitelist",
+                "/lists/logsitelist",
+                "/lists/bannedregexpurllist",
+                "/lists/sslsiteregexplist",
+                "/lists/bannedurllist",
+                "/lists/exceptionregexpurllist",
+                "/lists/exceptionurllist",
+                "/lists/greyurllist",
+                "/lists/logregexpurllist",
+                "/lists/logurllist",
+                "/lists/urlregexplist",
+                "/lists/exceptionfilesitelist",
+                "/lists/exceptionfileurllist",
+                "/lists/searchregexplist",
+                "/lists/bannedsearchlist",
+                "/lists/contentregexplist",
+                "/lists/exceptionextensionlist",
+                "/lists/bannedextensionlist",
+                "/lists/exceptionmimetypelist",
+                "/lists/bannedmimetypelist",
+                "/lists/headerregexplist",
         "/lists/addheaderregexplist",
-		"/lists/bannedregexpheaderlist",
+                "/lists/bannedregexpheaderlist",
         "/lists/exceptionregexpheaderlist",
         "/lists/exceptionregexpuseragentlist",
-		"/lists/authplugins/ipgroups",
-		"/lists/contentscanners/exceptionvirusextensionlist",
-		"/lists/contentscanners/exceptionvirusmimetypelist",
-		"/lists/contentscanners/exceptionvirussitelist",
-		"/lists/contentscanners/exceptionvirusurllist",
-		"/lists/exceptioniplist",
-		"/lists/pics");
+                "/lists/authexceptionsitelist",
+                "/lists/authexceptionurllist",
+                "/lists/authexceptioniplist",
+                "/lists/authexceptionsiteiplist",
+                "/lists/authplugins/ipgroups",
+                "/lists/authplugins/portgroups",
+                "/lists/browser",
+                "/lists/defaultusermap",
+                "/lists/ipmap",
+                "/lists/nomitm",
+                "/lists/portmap",
+                "/lists/contentscanners/exceptionvirusextensionlist",
+                "/lists/contentscanners/exceptionvirusmimetypelist",
+                "/lists/contentscanners/exceptionvirussitelist",
+                "/lists/contentscanners/exceptionvirusurllist",
+                "/lists/exceptioniplist",
+                "/lists/pics");
 
 	$e2guardian_dir = E2GUARDIAN_DIR . "/etc/e2guardian";
 
@@ -944,20 +954,37 @@ $files = array(
 		unlink_if_exists("{$e2guardian_dir}/lists/bannedsitewithbypasslist.sample");
         }
 
-	foreach ($files as $file) {
-		if (!file_exists($e2guardian_dir . $file.'.sample')) {
-			$new_file = "";
-			$install_file = file($e2guardian_dir . $file);
-			foreach ($install_file as $line) {
+        foreach ($files as $file) {
+                if (!file_exists($e2guardian_dir . $file.'.sample')) {
+                        $new_file = "";
+                        $install_file = file($e2guardian_dir . $file);
+                        foreach ($install_file as $line) {
 				if (!preg_match("/Include/", $line)) {
 					$new_file .= $line;
 				}
 			}
 			file_put_contents($e2guardian_dir . $file.'.sample', $new_file, LOCK_EX);
-		}
-	}
+                }
+        }
 
-	$load_samples = 0;
+        $list_samples = array(
+                '/lists/authexceptionsitelist',
+                '/lists/authexceptionurllist',
+                '/lists/authexceptioniplist',
+                '/lists/authexceptionsiteiplist',
+                '/lists/authplugins/portgroups'
+        );
+        foreach ($list_samples as $list_sample) {
+                $sample_path = $e2guardian_dir . $list_sample . '.sample';
+                $target_path = $e2guardian_dir . $list_sample;
+                e2g_copy_sample_if_needed(
+                        $sample_path,
+                        $target_path,
+                        array('compare_hash' => true)
+                );
+        }
+
+        $load_samples = 0;
 
 	#ssl men-in-the-middle feature
 	$dirs = array("/var/log/e2guardian", "/var/log/e2guardian/stats", "/etc/ssl/demoCA", "/etc/ssl/demoCA/private", "/etc/ssl/demoCA/crl", "/etc/ssl/demoCA/certs", $e2guardian_dir . "/ssl/generatedcerts", $e2guardian_dir . "/ssl/generatedlinks");
@@ -1936,10 +1963,32 @@ EOF;
 		</field>
 EOF;
 	}
-	//Create/update filtergroupslist
-	file_put_contents($e2guardian_dir . "/lists/filtergroupslist", $filtergroupslist, LOCK_EX);
-	//Create/update filtergroupsiplist
-	file_put_contents($e2guardian_dir . "/lists/authplugins/ipgroups", $filtergroupsiplist, LOCK_EX);
+        //Create/update filtergroupslist
+        file_put_contents($e2guardian_dir . "/lists/filtergroupslist", $filtergroupslist, LOCK_EX);
+        //Create/update filtergroupsiplist
+        file_put_contents($e2guardian_dir . "/lists/authplugins/ipgroups", $filtergroupsiplist, LOCK_EX);
+
+        $map_header = "#Do not edit this file.\n#It's created by e2guardian package and overwritten every config save.\n";
+
+        //Create/update default user mapping list used by the pre-auth storyboard
+        $default_map_body = trim($filtergroupslist);
+        if ($default_map_body === '') {
+                $default_map_body = "#No explicit user mappings defined";
+        }
+        file_put_contents($e2guardian_dir . "/lists/defaultusermap", $map_header . $default_map_body . "\n", LOCK_EX);
+
+        //Create/update IP map list used by the pre-auth storyboard
+        $ip_map_body = trim($filtergroupsiplist);
+        if ($ip_map_body === '') {
+                $ip_map_body = "#No IP based filter overrides defined";
+        }
+        file_put_contents($e2guardian_dir . "/lists/ipmap", $map_header . $ip_map_body . "\n", LOCK_EX);
+
+        //Ensure ancillary storyboard lists exist
+        $port_map_body = ($filterport ? $filterport . " = filter1" : "#No port based filter overrides defined");
+        file_put_contents($e2guardian_dir . "/lists/portmap", $map_header . $port_map_body . "\n", LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/browser", $map_header . "#Populate this list with User-Agent rules when needed\n", LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/nomitm", $map_header . "#Populate this list with hosts that must bypass MITM inspection\n", LOCK_EX);
 	//Create/update userlist xml file
 	$ips_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_ips_header.template");
 	$user_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users_header.template");
