@@ -175,21 +175,41 @@ function e2g_ensure_category_comment($file_path, $category_key) {
         }
 
         $comment = '#listcategory: "' . $category_key . '"';
-    $handle = fopen($file_path, 'rb');
-    if ($handle === false) {
-            return;
-    }
+        $handle = fopen($file_path, 'c+b');
+        if ($handle === false) {
+                return;
+        }
 
-    while (($line = fgets($handle)) !== false) {
-            if (trim($line) === $comment) {
-                    fclose($handle);
-                    return;
-            }
-    }
+        if (!flock($handle, LOCK_EX)) {
+                fclose($handle);
+                return;
+        }
 
-    fclose($handle);
+        fseek($handle, 0, SEEK_END);
+        $size = ftell($handle);
+        $tail_length = ($size !== false) ? min(8192, $size) : 0;
+        $tail = '';
 
-    file_put_contents($file_path, $comment . PHP_EOL, FILE_APPEND | LOCK_EX);
+        if ($tail_length > 0) {
+                fseek($handle, -$tail_length, SEEK_END);
+                $tail = fread($handle, $tail_length);
+                if ($tail !== false && strpos($tail, $comment) !== false) {
+                        flock($handle, LOCK_UN);
+                        fclose($handle);
+                        return;
+                }
+
+                if ($tail !== false && $tail !== '' && substr($tail, -1) !== "\n") {
+                        fseek($handle, 0, SEEK_END);
+                        fwrite($handle, PHP_EOL);
+                } else {
+                        fseek($handle, 0, SEEK_END);
+                }
+        }
+
+        fwrite($handle, $comment . PHP_EOL);
+        flock($handle, LOCK_UN);
+        fclose($handle);
 }
 
 function e2g_extract_xml_type($filename) {
