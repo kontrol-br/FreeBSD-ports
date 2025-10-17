@@ -54,6 +54,69 @@ if (! function_exists("bp_array_key_exists")) {
  }
 }
 
+function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = array())
+{
+    $defaults = array(
+        'require_strings' => array(),
+        'force' => false,
+        'compare_hash' => false,
+        'backup_suffix' => '.pre54',
+        'log_prefix' => '[E2guardian]'
+    );
+    $options += $defaults;
+
+    if (!is_file($sample_path)) {
+        return false;
+    }
+
+    $needs_update = $options['force'] || !is_file($target_path);
+
+    $target_contents = '';
+    if (!$needs_update) {
+        $target_contents = @file_get_contents($target_path);
+        if ($target_contents === false) {
+            $needs_update = true;
+        }
+    }
+
+    if (!$needs_update && !empty($options['require_strings'])) {
+        foreach ((array)$options['require_strings'] as $needle) {
+            if (strpos((string)$target_contents, (string)$needle) === false) {
+                $needs_update = true;
+                break;
+            }
+        }
+    }
+
+    if (!$needs_update && $options['compare_hash'] === true) {
+        $needs_update = (hash_file('sha256', $target_path) !== hash_file('sha256', $sample_path));
+    }
+
+    if (!$needs_update) {
+        return false;
+    }
+
+    $target_dir = dirname($target_path);
+    if (!is_dir($target_dir) && !@mkdir($target_dir, 0755, true) && !is_dir($target_dir)) {
+        log_error("{$options['log_prefix']} Unable to create directory {$target_dir} while updating " . basename($target_path));
+        return false;
+    }
+
+    if (is_file($target_path) && !empty($options['backup_suffix'])) {
+        @copy($target_path, $target_path . $options['backup_suffix']);
+    }
+
+    if (@copy($sample_path, $target_path) !== true) {
+        log_error("{$options['log_prefix']} Failed to update {$target_path} from sample " . basename($sample_path));
+        return false;
+    }
+
+    @chmod($target_path, 0640);
+    log_error("{$options['log_prefix']} Updated {$target_path} from sample " . basename($sample_path));
+
+    return true;
+}
+
 if (version_compare(PHP_VERSION, "7.3") < 0 && !function_exists("is_countable")) {
     function is_countable($var): bool{
         return (is_array($var) || is_object($var) || is_iterable($var) || $var instanceof Countable);
@@ -1114,18 +1177,42 @@ $files = array(
 		$count++;
 	}
 
-	$files_5 = array("/downloadmanagers/default.conf",
-			"/authplugins/ident.conf",
-			"/authplugins/ip.conf",
-			"/authplugins/port.conf",
-			"/authplugins/proxy-basic.conf",
-			"/authplugins/proxy-digest.conf");
-
-        foreach ($files_5 as $f_5) {
-                if (! file_exists($e2guardian_dir . $f_5) && file_exists($e2guardian_dir . "{$f_5}.sample")) {
-                        copy ($e2guardian_dir . "{$f_5}.sample",$e2guardian_dir . $f_5);
+        $authplugin_samples = glob($e2guardian_dir . '/authplugins/*.conf.sample');
+        if ($authplugin_samples !== false) {
+                foreach ($authplugin_samples as $sample_path) {
+                        $target_path = substr($sample_path, 0, -7);
+                        e2g_copy_sample_if_needed(
+                                $sample_path,
+                                $target_path,
+                                array(
+                                        'require_strings' => array('story_function'),
+                                        'log_prefix' => '[E2guardian auth plugin]'
+                                )
+                        );
                 }
         }
+
+        $story_samples = array('common.story', 'preauth.story', 'site.story');
+        foreach ($story_samples as $story_file) {
+                $sample_path = $e2guardian_dir . '/' . $story_file . '.sample';
+                $target_path = $e2guardian_dir . '/' . $story_file;
+                e2g_copy_sample_if_needed(
+                        $sample_path,
+                        $target_path,
+                        array(
+                                'compare_hash' => true,
+                                'log_prefix' => '[E2guardian story]'
+                        )
+                );
+        }
+
+        $download_manager_sample = $e2guardian_dir . '/downloadmanagers/default.conf.sample';
+        $download_manager_target = $e2guardian_dir . '/downloadmanagers/default.conf';
+        e2g_copy_sample_if_needed(
+                $download_manager_sample,
+                $download_manager_target,
+                array('log_prefix' => '[E2guardian download manager]')
+        );
 
 	//URL ACL
 	//create a default setup if not exists
@@ -2476,7 +2563,7 @@ function e2guardian_php_deinstall_command() {
 	chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0444);
 
         echo "Removing conf files...\n";
-        $rconfs = array('*sample', '*.conf', 'lists/*', 'authplugins/*sample', 'contentscanners/*sample', 'downloadmanagers/*sample');
+        $rconfs = array('*sample', '*.conf', '*.story', 'lists/*', 'authplugins/*sample', 'authplugins/*.conf', 'contentscanners/*sample', 'downloadmanagers/*sample', 'downloadmanagers/*.conf');
         foreach ($rconfs as $rm) {
                 foreach (glob(E2GUARDIAN_ETCDIR . '/' . $rm) as $path) {
                         if (is_dir($path)) {
