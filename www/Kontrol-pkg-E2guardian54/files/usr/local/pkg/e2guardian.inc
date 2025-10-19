@@ -1915,9 +1915,9 @@ break;
 		is_countable($import_ips) ? $filtergroupip_count = count($import_ips) : $filtergroupip_count=0;
 // 		$filtergroup_count = count($import_users);
 // 		$filtergroupip_count = count($import_ips);
-		//Default group catch all unauth groups as well non listed users
-		if ($count > 1)
-		$user_xml .=<<<EOF
+               //Default group catch all unauth groups as well non listed users.
+               //Always expose the first group in the Users tab so every group can be edited.
+               $user_xml .=<<<EOF
 		<field>
 			<name>{$e2guardian_groups['description']} ({$filtergroup_count})</name>
 			<type>listtopic</type>
