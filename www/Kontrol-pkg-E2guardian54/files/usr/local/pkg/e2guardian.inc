@@ -811,7 +811,11 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$forwardedfor = (preg_match('/(^|\W)forwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
 	$recheckreplacedurls = (preg_match('/icapscan/', $e2guardian_config['misc_options']) ? "on" : "off");
         $usexforwardedfor = (preg_match('/usexforwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
-        $useoriginalip = ($e2guardian_config['useoriginalip'] ? "on" : "off");
+        if (isset($e2guardian_config['dstatinterval']) && is_numeric($e2guardian_config['dstatinterval'])) {
+                $dstatinterval = (string)$e2guardian_config['dstatinterval'];
+        } else {
+                $dstatinterval = "300";
+        }
 	$authplugin = (preg_match('/usr/', $e2guardian_config['auth_plugin']) ? "authplugin = '" . $e2guardian_config['auth_plugin'] . "'" : "");
 	if ($e2guardian_config['auth_plugin'] != "") {
 		$auth_plugins = explode(",", $e2guardian_config['auth_plugin']);
@@ -2494,17 +2498,23 @@ function e2guardian_validate_input($post, &$input_errors) {
 	if ($post['parentmode'] == "local" && $post['dca'] == "") {
 		 $input_errors[] = "E2guardian needs a configured CA while using automatic parent proxy mode.";
 	}
-	if ($post['parentmode'] == "remote") {
-		if ($post['proxyip'] == "") {
-			$input_errors[] = "E2guardian proxy ip cannot be empty in manual parent mode.";
-		}
-		 if ($post['proxyport'] == "" || !is_numeric($post['proxyport'])) {
+        if ($post['parentmode'] == "remote") {
+                if ($post['proxyip'] == "") {
+                        $input_errors[] = "E2guardian proxy ip cannot be empty in manual parent mode.";
+                }
+                 if ($post['proxyport'] == "" || !is_numeric($post['proxyport'])) {
                         $input_errors[] = "E2guardian proxy port cannot be empty or invalid in manual parent mode.";
                 }
-	}
+        }
 
-	// check that the proxy port does not clash with WebGUI
-	$port = ($settings['filterports'] ? $settings['filterports'] : 8080);
+        if ($post['dstatinterval'] != "") {
+                if (!is_numeric($post['dstatinterval']) || $post['dstatinterval'] < 10 || $post['dstatinterval'] > 3600) {
+                        $input_errors[] = "DSTATS timing must be a numeric value between 10 and 3600 seconds.";
+                }
+        }
+
+        // check that the proxy port does not clash with WebGUI
+        $port = ($settings['filterports'] ? $settings['filterports'] : 8080);
 	$port = $post['filterports'] ? $post['filterports'] : $port;
 	$webgui_port = $config['system']['webgui']['port'];
 	if (($config['system']['webgui']['port'] == "") && ($config['system']['webgui']['protocol'] == "http")) {
