@@ -272,8 +272,8 @@
 			<fieldname>dstatinterval</fieldname>
 			<type>input</type>
 			<size>10</size>
-			<description><![CDATA[Interval, em segundos, para atualização do log dstats.<br>
-				Valor padrão: 300 (5 minutos).]]></description>
+			<description><![CDATA[Interval in seconds to refresh the dstats LOG.<br>
+				Default value: 300 (5 mins).]]></description>
 		</field>
 		<field>
 			<fielddescr>Misc Options</fielddescr>
