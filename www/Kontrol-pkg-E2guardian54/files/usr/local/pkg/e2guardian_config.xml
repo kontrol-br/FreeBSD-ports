@@ -268,11 +268,12 @@
 			<type>listtopic</type>
 		</field>
 		<field>
-			<fielddescr>Use Original IP</fielddescr>
-			<fieldname>useoriginalip</fieldname>
-			<type>checkbox</type>
-			<description><![CDATA[When enabled E2guardian will try to keep the client original IP address when connecting upstream.<br>
-				Requires the operating system and network stack to support transparent proxying of the original address.]]></description>
+			<fielddescr>DSTATS timing</fielddescr>
+			<fieldname>dstatinterval</fieldname>
+			<type>input</type>
+			<size>10</size>
+			<description><![CDATA[Interval, em segundos, para atualização do log dstats.<br>
+				Valor padrão: 300 (5 minutos).]]></description>
 		</field>
 		<field>
 			<fielddescr>Misc Options</fielddescr>

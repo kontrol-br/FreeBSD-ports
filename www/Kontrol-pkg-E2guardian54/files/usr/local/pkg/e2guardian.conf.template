@@ -145,7 +145,7 @@ dstatlocation = '/var/log/e2guardian/dstats.log'
 # Default 300 (= 5 mins)
 # Minimum 10
 # Maximum 3600 (= 1 hour)
-dstatinterval = 300  # = 5 minutes
+dstatinterval = {$dstatinterval}
 
 # Time format is epoch GMT+0 by default | statshumanreadable change to local zone
 #statshumanreadable = off
@@ -545,10 +545,6 @@ recheckreplacedurls = {$recheckreplacedurls}
 # header.  This may help solve some problem sites that need to know the
 # source ip. on | off
 forwardedfor = {$forwardedfor}
-
-# If on E2guardian will try to use the original client IP address when connecting
-# to upstream servers. Requires appropriate operating system support. on | off
-useoriginalip = {$useoriginalip}
 
 # if on it uses the X-Forwarded-For: <clientip> to determine the client
 # IP. This is for when you have squid between the clients and e2guardian.
