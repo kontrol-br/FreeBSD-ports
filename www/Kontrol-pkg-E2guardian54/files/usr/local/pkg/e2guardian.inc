@@ -54,6 +54,33 @@ if (! function_exists("bp_array_key_exists")) {
  }
 }
 
+if (!function_exists('e2g_flag_is_enabled')) {
+    function e2g_flag_is_enabled($value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        $normalized = strtolower(trim((string)$value));
+        return in_array($normalized, array('on', 'yes', 'true', '1'), true);
+    }
+}
+
+if (!function_exists('e2g_ssl_intercept_is_enabled')) {
+    function e2g_ssl_intercept_is_enabled(array $config): bool
+    {
+        if (isset($config['enablessl']) && e2g_flag_is_enabled($config['enablessl'])) {
+            return true;
+        }
+
+        if (isset($config['ssl_proxy']) && e2g_flag_is_enabled($config['ssl_proxy'])) {
+            return true;
+        }
+
+        return false;
+    }
+}
+
 function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = array())
 {
     $defaults = array(
@@ -560,12 +587,13 @@ function e2g_generate_rules($type) {
 	} else {
 		$transparent_ifaces = array();
 	}
-	// SSL Intercept Interface(s)
-	if ($e2g_conf['enablessl'] == "on") {
-		$ssl_ifaces = $transparent_ifaces;
-	} else {
-		$ssl_ifaces = array();
-	}
+        // SSL Intercept Interface(s)
+        $ssl_intercept_enabled = e2g_ssl_intercept_is_enabled($e2g_conf);
+        if ($ssl_intercept_enabled) {
+                $ssl_ifaces = $transparent_ifaces;
+        } else {
+                $ssl_ifaces = array();
+        }
 
 	// Define proxy ports
 	$port = ($e2g_conf['filterports'] ? $e2g_conf['filterports'] : 8080);
@@ -573,7 +601,7 @@ function e2g_generate_rules($type) {
 	$pf_rule_ports = "{{$port},{$ssl_port}}";
 
 	// Define NAT ports - 80 and 443 if SSL filtering is enabled
-	$pf_nat_ports = ($e2g_conf['enablessl'] == "on" ? "{80,443}" : "80");
+        $pf_nat_ports = ($ssl_intercept_enabled ? "{80,443}" : "80");
 
 	/*
 	 * When transparent proxy is enabled and we are doing NAT, use rdr pass to pass traffic
@@ -658,9 +686,9 @@ function e2g_generate_rules($type) {
 			 */
 			if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
 				$rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 80 -> {$default_redirect_ip} port {$port}\n";
-				if ($e2g_conf['ssl_proxy'] == "on") {
-					$rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 443 -> {$default_redirect_ip} port {$ssl_port}\n";
-				}
+                                if ($ssl_intercept_enabled) {
+                                        $rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 443 -> {$default_redirect_ip} port {$ssl_port}\n";
+                                }
 			}
 			$rules .= "\n";
 			break;
@@ -1025,7 +1053,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		}
 	}
 
-	$enablessl=($e2guardian["enablessl"] == "on" ? "on" : "off");
+        $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
 	$ca_cert = lookup_ca($e2guardian["dca"]);
 	if ($ca_cert != false) {
 		if (base64_decode($ca_cert['prv'])) {
