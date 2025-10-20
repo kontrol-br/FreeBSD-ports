@@ -265,7 +265,7 @@ usecustombannedflash = {$usecustombannedflash}
 # to filter group 1.  You must have some sort of authentication to be able to map users
 # to a group.
 filtergroups = {$filtergroups}
-filtergroupslist = '{$e2guardian_dir}/lists/filtergroupslist'
+filtergroupslist = '{$e2guardian_dir}/lists/authplugins/filtergroupslist'
 
 # default filtergroup for standard (explicit) mode
 # optional defaults to 1
