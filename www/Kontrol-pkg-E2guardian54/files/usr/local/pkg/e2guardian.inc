@@ -901,7 +901,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	#create sample files
         $files = array(
                 "/e2guardianf1.conf",
-                "/lists/filtergroupslist",
+                "/lists/authplugins/filtergroupslist",
                 "/lists/bannedphraselist",
                 "/lists/exceptionphraselist",
                 "/lists/weightedphraselist",
@@ -940,10 +940,10 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
                 "/lists/authplugins/ipgroups",
                 "/lists/authplugins/portgroups",
                 "/lists/browser",
-                "/lists/defaultusermap",
-                "/lists/ipmap",
+                "/lists/authplugins/defaultusermap",
+                "/lists/authplugins/ipmap",
                 "/lists/nomitm",
-                "/lists/portmap",
+                "/lists/authplugins/portmap",
                 "/lists/contentscanners/exceptionvirusextensionlist",
                 "/lists/contentscanners/exceptionvirusmimetypelist",
                 "/lists/contentscanners/exceptionvirussitelist",
@@ -951,7 +951,34 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
                 "/lists/exceptioniplist",
                 "/lists/pics");
 
-	$e2guardian_dir = E2GUARDIAN_DIR . "/etc/e2guardian";
+        $e2guardian_dir = E2GUARDIAN_DIR . "/etc/e2guardian";
+
+        $authplugins_dir = $e2guardian_dir . '/lists/authplugins';
+        if (!is_dir($authplugins_dir)) {
+                @mkdir($authplugins_dir, 0755, true);
+        }
+
+        $legacy_auth_maps = array(
+                '/lists/filtergroupslist' => '/lists/authplugins/filtergroupslist',
+                '/lists/defaultusermap' => '/lists/authplugins/defaultusermap',
+                '/lists/ipmap' => '/lists/authplugins/ipmap',
+                '/lists/portmap' => '/lists/authplugins/portmap'
+        );
+        foreach ($legacy_auth_maps as $legacy_path => $modern_path) {
+                $legacy_file = $e2guardian_dir . $legacy_path;
+                $modern_file = $e2guardian_dir . $modern_path;
+                if (file_exists($legacy_file) && !file_exists($modern_file)) {
+                        @mkdir(dirname($modern_file), 0755, true);
+                        @rename($legacy_file, $modern_file);
+                }
+
+                $legacy_sample = $legacy_file . '.sample';
+                $modern_sample = $modern_file . '.sample';
+                if (file_exists($legacy_sample) && !file_exists($modern_sample)) {
+                        @mkdir(dirname($modern_sample), 0755, true);
+                        @rename($legacy_sample, $modern_sample);
+                }
+        }
 
 	if (file_exists("{$e2guardian_dir}/lists/bannedsitelistwithbypass")) {
 		rename("{$e2guardian_dir}/lists/bannedsitelistwithbypass", "{$e2guardian_dir}/lists/bannedsitewithbypasslist");
@@ -1969,7 +1996,7 @@ EOF;
 EOF;
 	}
         //Create/update filtergroupslist
-        file_put_contents($e2guardian_dir . "/lists/filtergroupslist", $filtergroupslist, LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/authplugins/filtergroupslist", $filtergroupslist, LOCK_EX);
         //Create/update filtergroupsiplist
         $ip_group_body = trim(preg_replace('/\s*=\s*/', '=', $filtergroupsiplist));
         file_put_contents(
@@ -1985,18 +2012,18 @@ EOF;
         if ($default_map_body === '') {
                 $default_map_body = "#No explicit user mappings defined";
         }
-        file_put_contents($e2guardian_dir . "/lists/defaultusermap", $map_header . $default_map_body . "\n", LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/authplugins/defaultusermap", $map_header . $default_map_body . "\n", LOCK_EX);
 
         //Create/update IP map list used by the pre-auth storyboard
         $ip_map_body = $ip_group_body;
         if ($ip_map_body === '') {
                 $ip_map_body = "#No IP based filter overrides defined";
         }
-        file_put_contents($e2guardian_dir . "/lists/ipmap", $map_header . $ip_map_body . "\n", LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/authplugins/ipmap", $map_header . $ip_map_body . "\n", LOCK_EX);
 
         //Ensure ancillary storyboard lists exist
         $port_map_body = ($filterport ? $filterport . "=filter1" : "#No port based filter overrides defined");
-        file_put_contents($e2guardian_dir . "/lists/portmap", $map_header . $port_map_body . "\n", LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/authplugins/portmap", $map_header . $port_map_body . "\n", LOCK_EX);
         file_put_contents($e2guardian_dir . "/lists/browser", $map_header . "#Populate this list with User-Agent rules when needed\n", LOCK_EX);
         file_put_contents($e2guardian_dir . "/lists/nomitm", $map_header . "#Populate this list with hosts that must bypass MITM inspection\n", LOCK_EX);
 	//Create/update userlist xml file

@@ -66,10 +66,14 @@ display_top_tabs($tab_array);
                                                         <td width="22%" valign="top" class="vncell"><?=gettext("Configuration");?></td>
                                                         <td width="78%" class="vtable"><a target=_new href='https://github.com/e2guardian/e2guardian/wiki/Configuration'><?=gettext("How to configure")?></a><br><br>
                                                 </tr>
-                                                <tr>
-                                                        <td width="22%" valign="top" class="vncell"><?=gettext("Wiki");?></td>
-                                                        <td width="78%" class="vtable"><a target=_new href='https://github.com/e2guardian/e2guardian/wiki/Configuration'><?=gettext("Configuration Wiki");?></a><br><br>
-                                                </tr>
+                                               <tr>
+                                                       <td width="22%" valign="top" class="vncell"><?=gettext("Wiki");?></td>
+                                                       <td width="78%" class="vtable"><a target=_new href='https://github.com/e2guardian/e2guardian/wiki/Configuration'><?=gettext("Configuration Wiki");?></a><br><br>
+                                               </tr>
+                                               <tr>
+                                                       <td width="22%" valign="top" class="vncell"><?=gettext("Auth maps");?></td>
+                                                       <td width="78%" class="vtable"><?=gettext("Group, user and port mapping files are located in /usr/local/etc/e2guardian/lists/authplugins/ when using E2guardian 5.4.");?><br><br>
+                                               </tr>
 
 						</table>
 				</div>
