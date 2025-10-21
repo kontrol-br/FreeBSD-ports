@@ -2293,7 +2293,19 @@ function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*"
 function e2guardian_handle_clone_action($config_key, $label, $name_field = 'name') {
         global $config, $savemsg;
 
+        if (function_exists('session_status')) {
+                if (session_status() === PHP_SESSION_NONE) {
+                        session_start();
+                }
+        } elseif (!session_id()) {
+                session_start();
+        }
+
         if (empty($_REQUEST['act']) || $_REQUEST['act'] !== 'dup') {
+                if (!empty($_SESSION['e2guardian_clone_message'])) {
+                        $savemsg = $_SESSION['e2guardian_clone_message'];
+                        unset($_SESSION['e2guardian_clone_message']);
+                }
                 return;
         }
 
@@ -2317,12 +2329,13 @@ function e2guardian_handle_clone_action($config_key, $label, $name_field = 'name
         $clone = $source;
         $clone[$name_field] = e2guardian_build_clone_name($items, $name_field, $original_name);
 
-        $items[] = $clone;
+        $insert_position = $id + 1;
+        array_splice($items, $insert_position, 0, array($clone));
 
         write_config(sprintf(gettext('E2Guardian: Cloned %1$s "%2$s".'), $label, $original_name));
         mark_subsystem_dirty('e2guardian');
 
-        $savemsg = sprintf(gettext('%1$s "%2$s" clonado com sucesso.'), $label, $clone[$name_field]);
+        $_SESSION['e2guardian_clone_message'] = sprintf(gettext('%1$s "%2$s" clonado com sucesso.'), $label, $clone[$name_field]);
 
         e2guardian_redirect_after_clone();
 }
@@ -2390,56 +2403,120 @@ function e2guardian_print_clone_actions_script() {
 <script type="text/javascript">
 events.push(function() {
 var cloneTitle = '<?php echo $clone_title; ?>';
-document.querySelectorAll('table tbody tr').forEach(function(row) {
-var deleteLink = row.querySelector('a[href*="act=del"]');
-if (!deleteLink) {
-return;
+
+function forEachNode(list, callback) {
+        Array.prototype.forEach.call(list, callback);
 }
 
-if (row.querySelector('a[href*="act=dup"]')) {
-return;
+function findActionCell(row) {
+        var trashIcon = row.querySelector('i.fa-trash, i.fa-trash-o');
+        if (!trashIcon) {
+                return null;
+        }
+
+        var element = trashIcon;
+        while (element && element.tagName !== 'A') {
+                element = element.parentNode;
+        }
+
+        return element ? element.parentNode : null;
 }
 
-var cloneLink = deleteLink.cloneNode(true);
-var href = cloneLink.getAttribute('href');
-var url;
-try {
-url = new URL(href, window.location.origin);
-} catch (e) {
-return;
+function findDeleteLink(cell) {
+        if (!cell) {
+                return null;
+        }
+
+        var candidates = cell.querySelectorAll('a');
+        for (var i = 0; i < candidates.length; i++) {
+                var link = candidates[i];
+                var href = link.getAttribute('href') || '';
+                if (href.indexOf('act=del') !== -1 || href.indexOf('act%3Ddel') !== -1) {
+                        return link;
+                }
+        }
+
+        return null;
 }
 
-url.searchParams.set('act', 'dup');
-cloneLink.setAttribute('href', url.pathname + url.search);
+function buildCloneHref(deleteHref) {
+        if (!deleteHref) {
+                return '';
+        }
 
-var classes = cloneLink.getAttribute('class') || '';
-if (classes.indexOf('fa-trash') !== -1) {
-classes = classes.replace(/fa-trash(-o)?/g, 'fa-clone');
-} else if (classes.indexOf('fa-clone') === -1) {
-classes += ' fa fa-clone';
+        var cloneHref = deleteHref;
+        if (cloneHref.indexOf('act=del') !== -1) {
+                cloneHref = cloneHref.replace('act=del', 'act=dup');
+        } else if (cloneHref.indexOf('act%3Ddel') !== -1) {
+                cloneHref = cloneHref.replace('act%3Ddel', 'act%3Ddup');
+        } else {
+                cloneHref += (cloneHref.indexOf('?') === -1 ? '?' : '&') + 'act=dup';
+        }
+
+        return cloneHref;
 }
-cloneLink.setAttribute('class', classes.trim());
 
-if (cloneLink.dataset && cloneLink.dataset.toggle === 'confirmation') {
-cloneLink.dataset.toggle = 'tooltip';
-}
+forEachNode(document.querySelectorAll('table'), function(table) {
+        forEachNode(table.querySelectorAll('tbody tr'), function(row) {
+                if (row.querySelector('a[data-e2g-clone="1"]')) {
+                        return;
+                }
 
-cloneLink.setAttribute('title', cloneTitle);
-cloneLink.setAttribute('data-original-title', cloneTitle);
-cloneLink.removeAttribute('data-confirm');
-cloneLink.removeAttribute('onclick');
+                var actionCell = findActionCell(row);
+                if (!actionCell) {
+                        return;
+                }
 
-cloneLink.querySelectorAll('i').forEach(function(icon) {
-var iconClasses = icon.getAttribute('class') || '';
-if (iconClasses.indexOf('fa-trash') !== -1) {
-iconClasses = iconClasses.replace(/fa-trash(-o)?/g, 'fa-clone');
-icon.setAttribute('class', iconClasses);
-} else if (iconClasses.indexOf('fa-clone') === -1) {
-icon.setAttribute('class', (iconClasses + ' fa fa-clone').trim());
-}
-});
+                var deleteLink = findDeleteLink(actionCell);
+                if (!deleteLink) {
+                        return;
+                }
 
-deleteLink.parentNode.insertBefore(cloneLink, deleteLink);
+                var cloneHref = buildCloneHref(deleteLink.getAttribute('href') || deleteLink.href);
+                if (!cloneHref) {
+                        return;
+                }
+
+                var cloneLink = deleteLink.cloneNode(true);
+                cloneLink.setAttribute('href', cloneHref);
+                cloneLink.setAttribute('title', cloneTitle);
+                cloneLink.setAttribute('data-original-title', cloneTitle);
+                cloneLink.setAttribute('data-toggle', 'tooltip');
+                cloneLink.setAttribute('data-e2g-clone', '1');
+
+                if (cloneLink.dataset && cloneLink.dataset.toggle === 'confirmation') {
+                        cloneLink.dataset.toggle = 'tooltip';
+                }
+
+                cloneLink.removeAttribute('data-confirm');
+                cloneLink.removeAttribute('onclick');
+
+                var classes = cloneLink.getAttribute('class') || '';
+                classes = classes.replace(/fa-trash(-o)?/g, 'fa-clone');
+                if (classes.indexOf('fa-clone') === -1) {
+                        classes += ' fa fa-clone';
+                }
+                classes = classes.replace(/btn-(danger|warning)/g, 'btn-primary');
+                cloneLink.setAttribute('class', classes.trim());
+
+                var icons = cloneLink.querySelectorAll('i');
+                if (icons.length === 0) {
+                        var icon = document.createElement('i');
+                        icon.className = 'fa fa-clone';
+                        cloneLink.appendChild(icon);
+                } else {
+                        forEachNode(icons, function(icon) {
+                                var iconClass = icon.getAttribute('class') || '';
+                                iconClass = iconClass.replace(/fa-trash(-o)?/g, 'fa-clone');
+                                if (iconClass.indexOf('fa-clone') === -1) {
+                                        iconClass = (iconClass + ' fa fa-clone').trim();
+                                }
+                                icon.setAttribute('class', iconClass);
+                        });
+                }
+
+                actionCell.insertBefore(cloneLink, deleteLink);
+        });
 });
 });
 </script>
