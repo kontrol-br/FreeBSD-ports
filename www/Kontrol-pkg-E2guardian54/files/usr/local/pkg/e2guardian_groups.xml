@@ -453,9 +453,13 @@
 			<size>05</size>
 		</field>
 	</fields>
-	<custom_php_command_before_form>
-		e2guardian_check_config();
-	</custom_php_command_before_form>
+        <custom_php_command_before_form>
+                e2guardian_handle_clone_action('e2guardiangroups', gettext('Group'));
+                e2guardian_check_config();
+        </custom_php_command_before_form>
+        <custom_php_after_form_command>
+                e2guardian_print_clone_actions_script();
+        </custom_php_after_form_command>
 	<custom_php_install_command>
 		e2guardian_php_install_command();
 	</custom_php_install_command>

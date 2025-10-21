@@ -2282,12 +2282,168 @@ EOF;
 
 function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*", $month = "*", $wday = "*"){
 
-	//Remove current job
-	install_cron_job ($cron_cmd, false);
-	if ($action == "create") {
-		//Install a new job
-		install_cron_job ($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday , "root");
-	}
+        //Remove current job
+        install_cron_job ($cron_cmd, false);
+        if ($action == "create") {
+                //Install a new job
+                install_cron_job ($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday , "root");
+        }
+}
+
+function e2guardian_handle_clone_action($config_key, $label, $name_field = 'name') {
+        global $config, $savemsg;
+
+        if (empty($_REQUEST['act']) || $_REQUEST['act'] !== 'dup') {
+                return;
+        }
+
+        $id = $_REQUEST['id'];
+        if ($id === '' && $id !== 0) {
+                return;
+        }
+        if (!is_numeric($id)) {
+                return;
+        }
+        $id = (int)$id;
+
+        if (!is_array($config['installedpackages'][$config_key]['config']) ||
+            !isset($config['installedpackages'][$config_key]['config'][$id])) {
+                return;
+        }
+
+        $items = &$config['installedpackages'][$config_key]['config'];
+        $source = $items[$id];
+        $original_name = isset($source[$name_field]) ? $source[$name_field] : '';
+        $clone = $source;
+        $clone[$name_field] = e2guardian_build_clone_name($items, $name_field, $original_name);
+
+        $items[] = $clone;
+
+        write_config(sprintf(gettext('E2Guardian: Cloned %1$s "%2$s".'), $label, $original_name));
+        mark_subsystem_dirty('e2guardian');
+
+        $savemsg = sprintf(gettext('%1$s "%2$s" clonado com sucesso.'), $label, $clone[$name_field]);
+
+        e2guardian_redirect_after_clone();
+}
+
+function e2guardian_build_clone_name($items, $name_field, $original_name) {
+        $existing = array();
+        if (is_array($items)) {
+                foreach ($items as $item) {
+                        if (is_array($item) && array_key_exists($name_field, $item)) {
+                                $existing[] = $item[$name_field];
+                        }
+                }
+        }
+
+        $base_name = trim($original_name);
+        if ($base_name === '') {
+                $base_name = 'clone';
+        }
+
+        $suffix = 2;
+        if (preg_match('/^(.*?)(\d+)$/', $base_name, $matches)) {
+                $base_name = $matches[1];
+                $suffix = max(2, (int)$matches[2] + 1);
+        }
+
+        $candidate = $base_name . $suffix;
+        while (in_array($candidate, $existing, true)) {
+                $suffix++;
+                $candidate = $base_name . $suffix;
+        }
+
+        return $candidate;
+}
+
+function e2guardian_redirect_after_clone() {
+        $uri = parse_url($_SERVER['REQUEST_URI']);
+        $path = isset($uri['path']) ? $uri['path'] : '/pkg.php';
+        $params = array();
+
+        if (!empty($uri['query'])) {
+                parse_str($uri['query'], $params);
+        }
+
+        unset($params['act'], $params['id']);
+
+        $destination = $path;
+        if (!empty($params)) {
+                $destination .= '?' . http_build_query($params);
+        }
+
+        header("Location: {$destination}");
+        exit;
+}
+
+function e2guardian_print_clone_actions_script() {
+        static $printed = false;
+
+        if ($printed) {
+                return;
+        }
+        $printed = true;
+
+        $clone_title = htmlspecialchars(gettext('Clone'), ENT_QUOTES);
+?>
+<script type="text/javascript">
+events.push(function() {
+var cloneTitle = '<?php echo $clone_title; ?>';
+document.querySelectorAll('table tbody tr').forEach(function(row) {
+var deleteLink = row.querySelector('a[href*="act=del"]');
+if (!deleteLink) {
+return;
+}
+
+if (row.querySelector('a[href*="act=dup"]')) {
+return;
+}
+
+var cloneLink = deleteLink.cloneNode(true);
+var href = cloneLink.getAttribute('href');
+var url;
+try {
+url = new URL(href, window.location.origin);
+} catch (e) {
+return;
+}
+
+url.searchParams.set('act', 'dup');
+cloneLink.setAttribute('href', url.pathname + url.search);
+
+var classes = cloneLink.getAttribute('class') || '';
+if (classes.indexOf('fa-trash') !== -1) {
+classes = classes.replace(/fa-trash(-o)?/g, 'fa-clone');
+} else if (classes.indexOf('fa-clone') === -1) {
+classes += ' fa fa-clone';
+}
+cloneLink.setAttribute('class', classes.trim());
+
+if (cloneLink.dataset && cloneLink.dataset.toggle === 'confirmation') {
+cloneLink.dataset.toggle = 'tooltip';
+}
+
+cloneLink.setAttribute('title', cloneTitle);
+cloneLink.setAttribute('data-original-title', cloneTitle);
+cloneLink.removeAttribute('data-confirm');
+cloneLink.removeAttribute('onclick');
+
+cloneLink.querySelectorAll('i').forEach(function(icon) {
+var iconClasses = icon.getAttribute('class') || '';
+if (iconClasses.indexOf('fa-trash') !== -1) {
+iconClasses = iconClasses.replace(/fa-trash(-o)?/g, 'fa-clone');
+icon.setAttribute('class', iconClasses);
+} else if (iconClasses.indexOf('fa-clone') === -1) {
+icon.setAttribute('class', (iconClasses + ' fa fa-clone').trim());
+}
+});
+
+deleteLink.parentNode.insertBefore(cloneLink, deleteLink);
+});
+});
+</script>
+<?php
 }
 
 function e2guardian_check_config() {
