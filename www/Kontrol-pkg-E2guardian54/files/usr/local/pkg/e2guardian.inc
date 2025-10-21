@@ -2408,30 +2408,40 @@ function forEachNode(list, callback) {
         Array.prototype.forEach.call(list, callback);
 }
 
-function findActionCell(row) {
-        var trashIcon = row.querySelector('i.fa-trash, i.fa-trash-o');
-        if (!trashIcon) {
-                return null;
-        }
-
-        var element = trashIcon;
-        while (element && element.tagName !== 'A') {
-                element = element.parentNode;
-        }
-
-        return element ? element.parentNode : null;
+function valueContainsActDel(value) {
+        return value && (value.indexOf('act=del') !== -1 || value.indexOf('act%3Ddel') !== -1);
 }
 
-function findDeleteLink(cell) {
-        if (!cell) {
-                return null;
+function normalizeActionValue(value) {
+        if (!value) {
+                return '';
         }
 
-        var candidates = cell.querySelectorAll('a');
+        var trimmed = value.trim();
+        if (trimmed.charAt(0) === '{') {
+                try {
+                        var parsed = JSON.parse(trimmed);
+                        if (parsed && typeof parsed.url === 'string') {
+                                return parsed.url;
+                        }
+                } catch (e) {
+                        // ignore json parse errors
+                }
+        }
+
+        return trimmed;
+}
+
+function findDeleteLink(row) {
+        var candidates = row.querySelectorAll('a');
         for (var i = 0; i < candidates.length; i++) {
                 var link = candidates[i];
                 var href = link.getAttribute('href') || '';
-                if (href.indexOf('act=del') !== -1 || href.indexOf('act%3Ddel') !== -1) {
+                var dataPost = normalizeActionValue(link.getAttribute('data-post') || '');
+                var dataHref = normalizeActionValue(link.getAttribute('data-href') || '');
+                var dataAction = (link.getAttribute('data-action') || '').toLowerCase();
+
+                if (valueContainsActDel(href) || valueContainsActDel(dataPost) || valueContainsActDel(dataHref) || dataAction === 'delete') {
                         return link;
                 }
         }
@@ -2439,12 +2449,56 @@ function findDeleteLink(cell) {
         return null;
 }
 
-function buildCloneHref(deleteHref) {
-        if (!deleteHref) {
+function findActionContainer(deleteLink) {
+        var element = deleteLink.parentNode;
+        while (element && element !== document && element.tagName && element.tagName.toLowerCase() !== 'td') {
+                if (element.classList && element.classList.contains('btn-group')) {
+                        break;
+                }
+                element = element.parentNode;
+        }
+
+        if (!element || element === document) {
+                element = deleteLink.parentNode;
+        }
+
+        return element;
+}
+
+function buildCloneHref(deleteLink) {
+        if (!deleteLink) {
                 return '';
         }
 
-        var cloneHref = deleteHref;
+        var candidates = [
+                deleteLink.getAttribute('href') || '',
+                normalizeActionValue(deleteLink.getAttribute('data-post') || ''),
+                normalizeActionValue(deleteLink.getAttribute('data-href') || ''),
+                deleteLink.href || ''
+        ];
+
+        var target = '';
+        for (var i = 0; i < candidates.length; i++) {
+                if (valueContainsActDel(candidates[i])) {
+                        target = candidates[i];
+                        break;
+                }
+        }
+
+        if (!target) {
+                for (var j = 0; j < candidates.length; j++) {
+                        if (candidates[j] && candidates[j] !== '#') {
+                                target = candidates[j];
+                                break;
+                        }
+                }
+        }
+
+        if (!target || target === '#') {
+                return '';
+        }
+
+        var cloneHref = target;
         if (cloneHref.indexOf('act=del') !== -1) {
                 cloneHref = cloneHref.replace('act=del', 'act=dup');
         } else if (cloneHref.indexOf('act%3Ddel') !== -1) {
@@ -2462,17 +2516,12 @@ forEachNode(document.querySelectorAll('table'), function(table) {
                         return;
                 }
 
-                var actionCell = findActionCell(row);
-                if (!actionCell) {
-                        return;
-                }
-
-                var deleteLink = findDeleteLink(actionCell);
+                var deleteLink = findDeleteLink(row);
                 if (!deleteLink) {
                         return;
                 }
 
-                var cloneHref = buildCloneHref(deleteLink.getAttribute('href') || deleteLink.href);
+                var cloneHref = buildCloneHref(deleteLink);
                 if (!cloneHref) {
                         return;
                 }
@@ -2489,6 +2538,9 @@ forEachNode(document.querySelectorAll('table'), function(table) {
                 }
 
                 cloneLink.removeAttribute('data-confirm');
+                cloneLink.removeAttribute('data-confirmation-msg');
+                cloneLink.removeAttribute('data-post');
+                cloneLink.removeAttribute('data-action');
                 cloneLink.removeAttribute('onclick');
 
                 var classes = cloneLink.getAttribute('class') || '';
@@ -2515,7 +2567,12 @@ forEachNode(document.querySelectorAll('table'), function(table) {
                         });
                 }
 
-                actionCell.insertBefore(cloneLink, deleteLink);
+                var container = findActionContainer(deleteLink);
+                if (!container || !container.insertBefore) {
+                        return;
+                }
+
+                container.insertBefore(cloneLink, deleteLink);
         });
 });
 });
