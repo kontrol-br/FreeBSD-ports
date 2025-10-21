@@ -2282,12 +2282,245 @@ EOF;
 
 function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*", $month = "*", $wday = "*"){
 
-	//Remove current job
-	install_cron_job ($cron_cmd, false);
-	if ($action == "create") {
-		//Install a new job
-		install_cron_job ($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday , "root");
-	}
+        //Remove current job
+        install_cron_job ($cron_cmd, false);
+        if ($action == "create") {
+                //Install a new job
+                install_cron_job ($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday , "root");
+        }
+}
+
+function e2guardian_handle_clone_action($config_key, $label, $name_field = 'name') {
+        global $config, $savemsg;
+
+        if (function_exists('session_status')) {
+                if (session_status() === PHP_SESSION_NONE) {
+                        session_start();
+                }
+        } elseif (!session_id()) {
+                session_start();
+        }
+
+        if (empty($_REQUEST['act']) || $_REQUEST['act'] !== 'dup') {
+                if (!empty($_SESSION['e2guardian_clone_message'])) {
+                        $savemsg = $_SESSION['e2guardian_clone_message'];
+                        unset($_SESSION['e2guardian_clone_message']);
+                }
+                return;
+        }
+
+        $id = $_REQUEST['id'];
+        if ($id === '' && $id !== 0) {
+                return;
+        }
+        if (!is_numeric($id)) {
+                return;
+        }
+        $id = (int)$id;
+
+        if (!is_array($config['installedpackages'][$config_key]['config']) ||
+            !isset($config['installedpackages'][$config_key]['config'][$id])) {
+                return;
+        }
+
+        $items = &$config['installedpackages'][$config_key]['config'];
+        $source = $items[$id];
+        $original_name = isset($source[$name_field]) ? $source[$name_field] : '';
+        $clone = $source;
+        $clone[$name_field] = e2guardian_build_clone_name($items, $name_field, $original_name);
+
+        $insert_position = $id + 1;
+        array_splice($items, $insert_position, 0, array($clone));
+
+        write_config(sprintf(gettext('E2Guardian: Cloned %1$s "%2$s".'), $label, $original_name));
+        mark_subsystem_dirty('e2guardian');
+
+        $_SESSION['e2guardian_clone_message'] = sprintf(gettext('%1$s "%2$s" clonado com sucesso.'), $label, $clone[$name_field]);
+
+        e2guardian_redirect_after_clone();
+}
+
+function e2guardian_build_clone_name($items, $name_field, $original_name) {
+        $existing = array();
+        if (is_array($items)) {
+                foreach ($items as $item) {
+                        if (is_array($item) && array_key_exists($name_field, $item)) {
+                                $existing[] = $item[$name_field];
+                        }
+                }
+        }
+
+        $base_name = trim($original_name);
+        if ($base_name === '') {
+                $base_name = 'clone';
+        }
+
+        $suffix = 2;
+        if (preg_match('/^(.*?)(\d+)$/', $base_name, $matches)) {
+                $base_name = $matches[1];
+                $suffix = max(2, (int)$matches[2] + 1);
+        }
+
+        $candidate = $base_name . $suffix;
+        while (in_array($candidate, $existing, true)) {
+                $suffix++;
+                $candidate = $base_name . $suffix;
+        }
+
+        return $candidate;
+}
+
+function e2guardian_redirect_after_clone() {
+        $uri = parse_url($_SERVER['REQUEST_URI']);
+        $path = isset($uri['path']) ? $uri['path'] : '/pkg.php';
+        $params = array();
+
+        if (!empty($uri['query'])) {
+                parse_str($uri['query'], $params);
+        }
+
+        unset($params['act'], $params['id']);
+
+        $destination = $path;
+        if (!empty($params)) {
+                $destination .= '?' . http_build_query($params);
+        }
+
+        header("Location: {$destination}");
+        exit;
+}
+
+function e2guardian_print_clone_actions_script() {
+        static $printed = false;
+
+        if ($printed) {
+                return;
+        }
+        $printed = true;
+
+        $clone_title = htmlspecialchars(gettext('Clone'), ENT_QUOTES);
+?>
+<script type="text/javascript">
+events.push(function() {
+var cloneTitle = '<?php echo $clone_title; ?>';
+
+function forEachNode(list, callback) {
+        Array.prototype.forEach.call(list, callback);
+}
+
+function findActionCell(row) {
+        var trashIcon = row.querySelector('i.fa-trash, i.fa-trash-o');
+        if (!trashIcon) {
+                return null;
+        }
+
+        var element = trashIcon;
+        while (element && element.tagName !== 'A') {
+                element = element.parentNode;
+        }
+
+        return element ? element.parentNode : null;
+}
+
+function findDeleteLink(cell) {
+        if (!cell) {
+                return null;
+        }
+
+        var candidates = cell.querySelectorAll('a');
+        for (var i = 0; i < candidates.length; i++) {
+                var link = candidates[i];
+                var href = link.getAttribute('href') || '';
+                if (href.indexOf('act=del') !== -1 || href.indexOf('act%3Ddel') !== -1) {
+                        return link;
+                }
+        }
+
+        return null;
+}
+
+function buildCloneHref(deleteHref) {
+        if (!deleteHref) {
+                return '';
+        }
+
+        var cloneHref = deleteHref;
+        if (cloneHref.indexOf('act=del') !== -1) {
+                cloneHref = cloneHref.replace('act=del', 'act=dup');
+        } else if (cloneHref.indexOf('act%3Ddel') !== -1) {
+                cloneHref = cloneHref.replace('act%3Ddel', 'act%3Ddup');
+        } else {
+                cloneHref += (cloneHref.indexOf('?') === -1 ? '?' : '&') + 'act=dup';
+        }
+
+        return cloneHref;
+}
+
+forEachNode(document.querySelectorAll('table'), function(table) {
+        forEachNode(table.querySelectorAll('tbody tr'), function(row) {
+                if (row.querySelector('a[data-e2g-clone="1"]')) {
+                        return;
+                }
+
+                var actionCell = findActionCell(row);
+                if (!actionCell) {
+                        return;
+                }
+
+                var deleteLink = findDeleteLink(actionCell);
+                if (!deleteLink) {
+                        return;
+                }
+
+                var cloneHref = buildCloneHref(deleteLink.getAttribute('href') || deleteLink.href);
+                if (!cloneHref) {
+                        return;
+                }
+
+                var cloneLink = deleteLink.cloneNode(true);
+                cloneLink.setAttribute('href', cloneHref);
+                cloneLink.setAttribute('title', cloneTitle);
+                cloneLink.setAttribute('data-original-title', cloneTitle);
+                cloneLink.setAttribute('data-toggle', 'tooltip');
+                cloneLink.setAttribute('data-e2g-clone', '1');
+
+                if (cloneLink.dataset && cloneLink.dataset.toggle === 'confirmation') {
+                        cloneLink.dataset.toggle = 'tooltip';
+                }
+
+                cloneLink.removeAttribute('data-confirm');
+                cloneLink.removeAttribute('onclick');
+
+                var classes = cloneLink.getAttribute('class') || '';
+                classes = classes.replace(/fa-trash(-o)?/g, 'fa-clone');
+                if (classes.indexOf('fa-clone') === -1) {
+                        classes += ' fa fa-clone';
+                }
+                classes = classes.replace(/btn-(danger|warning)/g, 'btn-primary');
+                cloneLink.setAttribute('class', classes.trim());
+
+                var icons = cloneLink.querySelectorAll('i');
+                if (icons.length === 0) {
+                        var icon = document.createElement('i');
+                        icon.className = 'fa fa-clone';
+                        cloneLink.appendChild(icon);
+                } else {
+                        forEachNode(icons, function(icon) {
+                                var iconClass = icon.getAttribute('class') || '';
+                                iconClass = iconClass.replace(/fa-trash(-o)?/g, 'fa-clone');
+                                if (iconClass.indexOf('fa-clone') === -1) {
+                                        iconClass = (iconClass + ' fa fa-clone').trim();
+                                }
+                                icon.setAttribute('class', iconClass);
+                        });
+                }
+
+                actionCell.insertBefore(cloneLink, deleteLink);
+        });
+});
+});
+</script>
+<?php
 }
 
 function e2guardian_check_config() {
