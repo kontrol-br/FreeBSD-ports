@@ -1,16 +1,22 @@
 PORTNAME=	e2guardian
-PORTVERSION=	5.3.4
+PORTVERSION=	5.3.8
 DISTVERSIONPREFIX=	v
-PORTREVISION=	3
+PORTREVISION=	15
 CATEGORIES=	www
+GH_ACCOUNT=    kontrol-br
+GH_PROJECT=    e2guardian
+GH_TAGNAME=    v5.3.8
 
-MAINTAINER=	marcellocoutinho@gmail.com
+
+MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Dansguardian fork with many improvements and bug fixes
 WWW=		http://e2guardian.org
 
 LICENSE=	GPLv2
 
 BUILD_DEPENDS=	rst2man:textproc/py-docutils@${PY_FLAVOR}
+RUN_DEPENDS+=   openssl111>=1.1.1w_2:security/openssl111
+
 LIB_DEPENDS=	libpcre.so:devel/pcre
 
 USES=		autoreconf compiler:c++11-lang libtool localbase pkgconfig \
@@ -20,14 +26,13 @@ USE_GITHUB=	yes
 USE_CXXSTD=	c++11
 USE_RC_SUBR=	e2guardian
 GNU_CONFIGURE=	yes
-GNU_CONFIGURE_MANPREFIX=${PREFIX}/share
 CONFIGURE_ARGS=	--with-logdir=/var/log \
 		--with-piddir=/var/run
 
 OPTIONS_RADIO=	AV
 OPTIONS_RADIO_AV=AVAST CLAMD KAV
 OPTIONS_DEFINE=	CLISCAN ICAP NTLM DNS EMAIL DEBUG DOCS SSL_MITM
-OPTIONS_DEFAULT=CLAMD DNS
+OPTIONS_DEFAULT=CLAMD DNS ICAP NTLM SSL_MITM
 OPTIONS_SUB=	yes
 
 CLISCAN_DESC=	Enable support for CLI content scanners
@@ -55,10 +60,22 @@ DNS_CONFIGURE_ENABLE=		dnsauth
 EMAIL_CONFIGURE_ENABLE=		email
 DEBUG_CONFIGURE_OFF=		--with-dgdebug=off --with-newdebug=off
 DEBUG_CONFIGURE_ON=		--with-dgdebug=on --with-newdebug=on
-SSL_MITM_USES=			ssl
-SSL_MITM_CONFIGURE_ENABLE=	sslmitm
-SSL_MITM_CONFIGURE_ENV=		OPENSSL_LIBS="-lssl -lcrypto" \
-				OPENSSL_CFLAGS="-I${OPENSSLINC} -L${OPENSSLLIB}"
+#SSL_MITM_USES=                 ssl
+SSL_MITM_CONFIGURE_ENABLE=      sslmitm
+#DEFAULT_VERSIONS+=                     ssl=openssl
+BROKEN_SSL=                     openssl30 openssl31 openssl32
+BROKEN_SSL_REASON= required openssl111 semantics for peer certificate
+
+OPENSSLBASE=    /usr/local
+OPENSSLINC=     ${OPENSSLBASE}/include
+OPENSSLLIB=     ${OPENSSLBASE}/lib
+
+SSL_MITM_CONFIGURE_ENV=         OPENSSL_LIBS="${OPENSSLLIB}/libssl.so ${OPENSSLLIB}/libcrypto.so" \
+                                OPENSSL_CFLAGS="-I${OPENSSLINC}" \
+                                OPENSSL_LDFLAGS="-L${OPENSSLLIB}"
+CFLAGS+=        -I${OPENSSLINC}
+CPPFLAGS+=      -I${OPENSSLINC}
+LDFLAGS+=       -L${OPENSSLLIB}
 
 .include <bsd.port.options.mk>
 

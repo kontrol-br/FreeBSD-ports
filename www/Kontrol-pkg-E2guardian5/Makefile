@@ -1,23 +1,24 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-E2guardian5
-PORTVERSION=	0.6.5.1
+PORTVERSION=	0.6.4.22
 PORTREVISION=
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
 
-MAINTAINER=	contato@konntrol.com.br
+MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Kontrol E2guardian Package
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
+RUN_DEPENDS=	e2guardian>=5.3.8,<5.3.9:www/e2guardian \
 		/usr/local/sbin/clamd:security/clamav \
 		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss
 
-CONFLITS_WITH=	www/e2guardian5
+
+CONFLICTS_WITH=	www/e2guardian5
 
 NO_BUILD=	yes
 NO_MTREE=	yes
@@ -25,11 +26,14 @@ NO_MTREE=	yes
 SUB_FILES=	pkg-install pkg-deinstall
 SUB_LIST=	PORTNAME=${PORTNAME}
 
+#DEFAULT_VERSIONS+=ssl=openssl111
+
 do-extract:
 	${MKDIR} ${WRKSRC}
 
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/pkg
+	${MKDIR} ${STAGEDIR}${PREFIX}/lib
 	${MKDIR} ${STAGEDIR}${PREFIX}/www
 	${MKDIR} ${STAGEDIR}${PREFIX}/etc/e2guardian
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/widgets/widgets

@@ -1,3 +1,4 @@
+
 <?php
 /*
  * e2guardian.inc
@@ -202,8 +203,20 @@ function e2g_generate_rules($type) {
 	}
 
 	// Proxy Interface(s)
-	$proxy_ifaces = explode(",", $e2g_conf['interface']);
-	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
+	$proxy_ifaces_friendly = explode(",", $e2g_conf['interface']);
+	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces_friendly);
+	$proxy_iface_ips = array();
+	foreach ($proxy_ifaces_friendly as $idx => $iface_friendly) {
+		$iface_real = $proxy_ifaces[$idx];
+		if (empty($iface_real)) {
+			continue;
+		}
+		$iface_details = dg_get_real_interface_address($iface_friendly);
+		if (!empty($iface_details[0])) {
+			$proxy_iface_ips[$iface_real] = $iface_details[0];
+		}
+	}
+	$default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
 	// Transparent Proxy Interface(s)
 	if ($e2g_conf['transparent_proxy'] == "on") {
 	    if (! bp_in_array('lo0',$proxy_ifaces)) {
@@ -299,9 +312,10 @@ function e2g_generate_rules($type) {
 			}
 			/* Transparent Proxy Interface(s) */
 			foreach ($transparent_ifaces as $t_iface) {
-				$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
+				$redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
+				$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
 				if (bp_in_array($t_iface, $ssl_ifaces)) {
-					$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
+					$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
 				}
 			}
 			/*
@@ -310,9 +324,9 @@ function e2g_generate_rules($type) {
 			 * The rules below are needed so that the clients can be transparently proxied
 			 */
 			if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-				$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
+				$rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 80 -> {$default_redirect_ip} port {$port}\n";
 				if ($e2g_conf['ssl_proxy'] == "on") {
-					$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
+					$rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 443 -> {$default_redirect_ip} port {$ssl_port}\n";
 				}
 			}
 			$rules .= "\n";
@@ -463,7 +477,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$recheckreplacedurls = (preg_match('/recheckreplacedurls/', $e2guardian_config['misc_options']) ? "on" : "off");
 	$forwardedfor = (preg_match('/(^|\W)forwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
 	$recheckreplacedurls = (preg_match('/icapscan/', $e2guardian_config['misc_options']) ? "on" : "off");
-	$usexforwardedfor = (preg_match('/usexforwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
+        $usexforwardedfor = (preg_match('/usexforwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
+        $useoriginalip = ($e2guardian_config['useoriginalip'] ? "on" : "off");
 	$authplugin = (preg_match('/usr/', $e2guardian_config['auth_plugin']) ? "authplugin = '" . $e2guardian_config['auth_plugin'] . "'" : "");
 	if ($e2guardian_config['auth_plugin'] != "") {
 		$auth_plugins = explode(",", $e2guardian_config['auth_plugin']);
@@ -753,7 +768,7 @@ $files = array(
 		$config['installedpackages']['e2guardianblacklist']['config'][0] = array(
 			'liston' => 'both',
 			'cron' => '02days',
-			'url' => "https://web.archive.org/web/20210502020725/http://www.shallalist.de/Downloads/shallalist.tar.gz", //"http://www.shallalist.de/Downloads/shallalist.tar.gz",
+			'url' => "http://pkg.kontrol.com.br:8081/blacklist/blacklist.tar.gz",
  			'enable_custom_script' => "",
 			'update_script' => "");
 	}
@@ -1485,7 +1500,8 @@ break;
 		include("/usr/local/pkg/e2guardianfx.conf.template");
 		file_put_contents($e2guardian_dir . "/e2guardianf" . $count . ".conf", $dgf, LOCK_EX);
 
-		if ($config['installedpackages']['e2guardianusers']['config'][0][$e2guardian_group_name] != "") {
+		if (is_array($config['installedpackages']['e2guardianusers']) &&
+		    $config['installedpackages']['e2guardianusers']['config'][0][$e2guardian_group_name] != "") {
 			$import_users = explode("\n", base64_decode($config['installedpackages']['e2guardianusers']['config'][0][$e2guardian_group_name]));
 			asort($import_users);
 			$config['installedpackages']['e2guardianusers']['config'][0][$e2guardian_group_name] = base64_encode(implode("\n", $import_users));
@@ -1497,7 +1513,8 @@ break;
 				}
 			}
 		}
-		if ($config['installedpackages']['e2guardianips']['config'][0][$e2guardian_group_name] != "") {
+		if (is_array($config['installedpackages']['e2guardianips']) &&
+		    $config['installedpackages']['e2guardianips']['config'][0][$e2guardian_group_name] != "") {
 			$import_ips = explode("\n", base64_decode($config['installedpackages']['e2guardianips']['config'][0][$e2guardian_group_name]));
 			asort($import_ips);
 			$config['installedpackages']['e2guardianips']['config'][0][$e2guardian_group_name] = base64_encode(implode("\n", $import_ips));
@@ -1523,7 +1540,7 @@ break;
 		<field>
 			<fieldname>{$e2guardian_group_name}</fieldname>
 			<fielddescr>{$e2guardian_groups['name']}</fielddescr>
-			<description><![CDATA[Include users for this group one per line<br>Hint:KONTROL\john #john smith]]></description>
+			<description><![CDATA[Include users for this group one per line<br>Hint:KONTROL\smith #John Smith]]></description>
 			<type>textarea</type>
 
 			<cols>80</cols><rows>12</rows>
@@ -1919,8 +1936,8 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 			$synctimeout = $e2_sync['synctimeout'];
 			switch ($synconchanges) {
 				case "manual":
-					if (is_array($e2_sync[row])) {
-						$rs = $e2_sync[row];
+					if (is_array($e2_sync['row'])) {
+						$rs = $e2_sync['row'];
 					} else {
 						log_error("[E2guardian] xmlrpc sync is enabled but there is no hosts to push on e2guardian config.");
 						return;
