@@ -389,9 +389,10 @@ if (file_exists('/var/db/pfblockerng/dnsbl_info') &&
 	$db_handle = pfb_open_sqlite(1, 'Convert dnsbl_info');
 	if ($db_handle) {
 
-		$dnsbl_info = array_map('str_getcsv', @file('/var/db/pfblockerng/dnsbl_info'));
+		$dnsbl_info = @file('/var/db/pfblockerng/dnsbl_info');
 		if (!empty($dnsbl_info)) {
 			foreach ($dnsbl_info as $group) {
+				$group = str_getcsv($group, ',', '"', "\\");
 				if (substr($group[0], 0, 1) != '#') {
 					$db_update = "INSERT INTO dnsbl ( groupname, timestamp, entries, counter )"
 							. " VALUES ( :group0, :group1, :group2, :group3 );\n";
@@ -583,7 +584,7 @@ foreach (array('clearip', 'cleardnsbl') as $type) {
 			$pfb_cmd = "/usr/local/bin/php /usr/local/www/pfblockerng/pfblockerng.php {$type} >/dev/null 2>&1";
 			if (!pfblockerng_cron_exists($pfb_cmd, '0', '0', '*', $pfb_day)) {
 				$ufound = TRUE;
-				install_cron_job($pfb_cmd, true, '0', '0', '*', '*', $pfb_day, 'root');
+				install_cron_job($pfb_cmd, true, '0', '0', '*', '*', $pfb_day, 'root', false);
 			}
 		}
 	}

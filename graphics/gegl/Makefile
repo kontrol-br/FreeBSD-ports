@@ -1,6 +1,5 @@
 PORTNAME=	gegl
-DISTVERSION=	0.4.62
-PORTREVISION=	2
+DISTVERSION=	0.4.64
 CATEGORIES=	graphics
 MASTER_SITES=	GIMP
 
@@ -31,8 +30,6 @@ MESON_ARGS=	-Ddocs=false \
 		-Dworkshop=false \
 		-Dintrospection=true \
 		-Dlensfun=disabled \
-		-Dlibjpeg=enabled \
-		-Dlibpng=enabled \
 		-Dmaxflow=disabled \
 		-Dmrg=disabled \
 		-Dpygobject=disabled \
@@ -41,7 +38,7 @@ MESON_ARGS=	-Ddocs=false \
 MESON_ARGS+=	-Dopenmp=disabled
 .endif
 
-GEGL_SHLIB=	0.461.1
+GEGL_SHLIB=	0.463.1
 GEGL_VER=	0.4
 PLIST_SUB+=	GEGL_SHLIB=${GEGL_SHLIB} GEGL_VER=${GEGL_VER}
 

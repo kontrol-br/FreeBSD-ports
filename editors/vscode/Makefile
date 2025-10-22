@@ -1,6 +1,5 @@
 PORTNAME=	vscode
-DISTVERSION=	1.103.0
-PORTREVISION=	1
+DISTVERSION=	1.105.0
 CATEGORIES=	editors
 MASTER_SITES=	https://github.com/tagattie/FreeBSD-VSCode/releases/download/${DISTVERSION}/:node_modules
 DISTFILES=	vscode-node-modules-${DISTVERSION}${EXTRACT_SUFX}:node_modules \
@@ -30,7 +29,6 @@ LIB_DEPENDS=	libatk-bridge-2.0.so:accessibility/at-spi2-core \
 		libopus.so:audio/opus \
 		libsndio.so:audio/sndio \
 		libdbus-1.so:devel/dbus \
-		libicuuc.so:devel/icu \
 		libepoll-shim.so:devel/libepoll-shim \
 		libevent.so:devel/libevent \
 		libffi.so:devel/libffi \
@@ -62,14 +60,14 @@ RUN_DEPENDS=	xdg-open:devel/xdg-utils \
 TEST_DEPENDS=	electron${ELECTRON_VER_MAJOR}:devel/electron${ELECTRON_VER_MAJOR} \
 		bash:shells/bash
 
-USES=		desktop-file-utils gl gmake gnome gssapi:mit iconv:wchar_t \
-		jpeg localbase:ldflags nodejs:22,build pkgconfig python:build \
-		shebangfix xorg
+USES=		desktop-file-utils display:test gl gmake gnome gssapi:mit \
+		iconv:wchar_t jpeg localbase:ldflags nodejs:22,build pkgconfig \
+		python:build shebangfix xorg
 
 USE_GITHUB=	yes
 GH_ACCOUNT=	microsoft
 
-SOURCE_COMMIT_HASH=	e3550cfac4b63ca4eafca7b601f0d2885817fd1f
+SOURCE_COMMIT_HASH=	03c265b1adee71ac88f833e065f7bb956b60550a
 
 BINARY_ALIAS=	python=${PYTHON_CMD}
 
@@ -262,7 +260,6 @@ pre-test:
 	@cd ${WRKSRC}/.build/electron && ${MV} -f electron code-oss
 
 do-test:
-# Note: Xvfb or something similar is necessary for headless testing
 # unit tests
 	cd ${WRKSRC} && ${SETENV} ${TEST_ENV} ./scripts/test.sh --build || ${TRUE}
 # UI smoke tests
@@ -287,15 +284,21 @@ build-remote-extension-host: configure pre-build
 	# cd ${WRKSRC} && ${SETENV} ${MAKE_ENV} npm run gulp vscode-reh-web-linux-${ELECTRON_ARCH}-min
 
 ### targets for port maintainer(s)
-make-node-modules-archive: extract
+patch-package-json: extract
+# add node module for signature verification of extensions from Open VSX Registry
+	@${PATCH} -s -p0 -d ${WRKSRC} < ${FILESDIR}/patch-package.json
+
+make-node-modules-archive: extract patch-package-json
 	@${ECHO_MSG} "===>  Fetching and installing node modules in ${WRKSRC}"
 	@cd ${WRKSRC} && \
-	${SETENV} ${MAKE_ENV} npm install --ignore-scripts --no-progress --no-audit --no-fund && \
+	${SETENV} ${MAKE_ENV} npm install \
+		--ignore-scripts --no-progress --no-audit --no-fund --no-update-notifier && \
 	${TAR} -czf ${WRKDIR}/vscode-.-node-modules${EXTRACT_SUFX} node_modules
 	@for dir in `node -p "JSON.stringify(require('${WRKSRC}/build/npm/dirs').dirs)" | jq -r '.[]'`; do \
 		cd ${WRKSRC}/$${dir} && \
 		${ECHO_MSG} "===>  Fetching and installing node modules in ${WRKSRC}/$${dir}" && \
-		${SETENV} ${MAKE_ENV} npm install --ignore-scripts --no-progress --no-audit --no-fund && \
+		${SETENV} ${MAKE_ENV} npm install \
+			--ignore-scripts --no-progress --no-audit --no-fund --no-update-notifier && \
 		if [ -d node_modules ]; then \
 			${TAR} -czf ${WRKDIR}/vscode-`echo $${dir} | tr _ __ | tr / _`-node-modules${EXTRACT_SUFX} node_modules; \
 		fi; \

@@ -1,12 +1,14 @@
 PORTNAME?=	nginx
-PORTVERSION=	1.29.1
+PORTVERSION=	${NGINX_VERSION}
+.include "version.mk"
+PORTREVISION=	2
 CATEGORIES=	www
 MASTER_SITES=	https://nginx.org/download/ \
 		LOCAL/osa
 PKGNAMESUFFIX?=	-devel
 DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
 
-MAINTAINER?=	osa@FreeBSD.org
+MAINTAINER?=	ports@FreeBSD.org
 COMMENT?=	Robust and small WWW server
 WWW=		https://nginx.com/
 

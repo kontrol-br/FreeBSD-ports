@@ -164,6 +164,7 @@
     SUBDIR += docbookrx
     SUBDIR += docproj
     SUBDIR += docproj-fonts-cjk
+    SUBDIR += doxx
     SUBDIR += dsssl-docbook-modular
     SUBDIR += dtd-catalogs
     SUBDIR += dtd2relax
@@ -493,6 +494,7 @@
     SUBDIR += mn-aspell
     SUBDIR += moar
     SUBDIR += modlogan
+    SUBDIR += moor
     SUBDIR += mp_doccer
     SUBDIR += mr-aspell
     SUBDIR += ms-aspell
@@ -524,9 +526,6 @@
     SUBDIR += openjade
     SUBDIR += opensearch
     SUBDIR += opensearch-dashboards
-    SUBDIR += opensearch-dashboards210
-    SUBDIR += opensearch-dashboards213
-    SUBDIR += opensearch-dashboards216
     SUBDIR += opensearch-dashboards219
     SUBDIR += opensearch13
     SUBDIR += opensearch210
@@ -1227,6 +1226,7 @@
     SUBDIR += pdfresurrect
     SUBDIR += pdfsandwich
     SUBDIR += pdftohtml
+    SUBDIR += pdjson
     SUBDIR += pear-File_Fortune
     SUBDIR += pear-File_MARC
     SUBDIR += pear-Horde_CssMinify
@@ -1373,6 +1373,7 @@
     SUBDIR += py-dparse
     SUBDIR += py-duecredit
     SUBDIR += py-ebcdic
+    SUBDIR += py-elastic-transport
     SUBDIR += py-elasticsearch
     SUBDIR += py-elasticsearch-async
     SUBDIR += py-elasticsearch-curator
@@ -1380,6 +1381,7 @@
     SUBDIR += py-elasticsearch-dsl6
     SUBDIR += py-elasticsearch5
     SUBDIR += py-elasticsearch6
+    SUBDIR += py-elasticsearch7
     SUBDIR += py-elementpath
     SUBDIR += py-emeraldtree
     SUBDIR += py-empy
@@ -1416,6 +1418,7 @@
     SUBDIR += py-html2text
     SUBDIR += py-htmlmin2
     SUBDIR += py-humanfriendly
+    SUBDIR += py-humps
     SUBDIR += py-hunspell
     SUBDIR += py-ini2toml
     SUBDIR += py-interegular
@@ -1431,6 +1434,7 @@
     SUBDIR += py-jinjanator-plugins
     SUBDIR += py-jiter
     SUBDIR += py-jq
+    SUBDIR += py-json-repair
     SUBDIR += py-json2html
     SUBDIR += py-jsonslicer
     SUBDIR += py-jsx-lexer
@@ -1442,6 +1446,7 @@
     SUBDIR += py-langdetect
     SUBDIR += py-langid
     SUBDIR += py-language-data
+    SUBDIR += py-language-tags
     SUBDIR += py-laserhammer
     SUBDIR += py-latexcodec
     SUBDIR += py-license-expression
@@ -1548,6 +1553,7 @@
     SUBDIR += py-pygtail
     SUBDIR += py-pyhamcrest
     SUBDIR += py-pykwalify
+    SUBDIR += py-pylatexenc
     SUBDIR += py-pylons-sphinx-themes
     SUBDIR += py-pyls-spyder
     SUBDIR += py-pymdown-extensions
@@ -1563,7 +1569,9 @@
     SUBDIR += py-python-bidi
     SUBDIR += py-python-docs-theme
     SUBDIR += py-python-docx
+    SUBDIR += py-python-frontmatter
     SUBDIR += py-python-gettext
+    SUBDIR += py-python-iso639
     SUBDIR += py-python-lsp-black
     SUBDIR += py-python-lsp-jsonrpc
     SUBDIR += py-python-lsp-server
@@ -1600,11 +1608,13 @@
     SUBDIR += py-rst2html5
     SUBDIR += py-sacremoses
     SUBDIR += py-scour
+    SUBDIR += py-segments
     SUBDIR += py-segno
     SUBDIR += py-sense2vec
     SUBDIR += py-sentencepiece
     SUBDIR += py-simplebayes
     SUBDIR += py-smartypants
+    SUBDIR += py-smile
     SUBDIR += py-snowballstemmer
     SUBDIR += py-spacy
     SUBDIR += py-spacy-legacy
@@ -1681,12 +1691,16 @@
     SUBDIR += py-texttable
     SUBDIR += py-textual
     SUBDIR += py-textual-autocomplete
+    SUBDIR += py-textual-image
+    SUBDIR += py-textual-speedups
+    SUBDIR += py-textual0
     SUBDIR += py-textwrap3
     SUBDIR += py-three-merge
     SUBDIR += py-tika-client
     SUBDIR += py-tiktoken
     SUBDIR += py-tinycss
     SUBDIR += py-tinycss2
+    SUBDIR += py-tokenizer
     SUBDIR += py-tokenizers
     SUBDIR += py-toml
     SUBDIR += py-tomli
@@ -1696,6 +1710,7 @@
     SUBDIR += py-towncrier
     SUBDIR += py-translationstring
     SUBDIR += py-transpopy
+    SUBDIR += py-tree-sitter-language-pack
     SUBDIR += py-ttp
     SUBDIR += py-ttp-templates
     SUBDIR += py-typogrify
@@ -1740,7 +1755,6 @@
     SUBDIR += quarto
     SUBDIR += quickwit
     SUBDIR += rand
-    SUBDIR += randlm
     SUBDIR += rapidxml
     SUBDIR += raptor2
     SUBDIR += rarian
@@ -1822,6 +1836,7 @@
     SUBDIR += rubygem-cucumber-gherkin
     SUBDIR += rubygem-cucumber-gherkin27
     SUBDIR += rubygem-cucumber-gherkin30
+    SUBDIR += rubygem-cucumber-gherkin32
     SUBDIR += rubygem-cucumber-html-formatter
     SUBDIR += rubygem-dartsass
     SUBDIR += rubygem-diff-lcs
@@ -2117,6 +2132,7 @@
     SUBDIR += translate-shell
     SUBDIR += translate-toolkit
     SUBDIR += trdsql
+    SUBDIR += tree-sitter-grammars
     SUBDIR += ts-hunspell
     SUBDIR += tth
     SUBDIR += tttcmds

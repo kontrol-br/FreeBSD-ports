@@ -1,5 +1,5 @@
 PORTNAME=	google-cloud-storage
-PORTVERSION=	3.2.0
+PORTVERSION=	3.4.0
 CATEGORIES=	www python
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -7,7 +7,8 @@ DISTNAME=	google_cloud_storage-${PORTVERSION}
 
 MAINTAINER=	sunpoet@FreeBSD.org
 COMMENT=	Python Client for Google Cloud Storage
-WWW=		https://github.com/googleapis/python-storage
+WWW=		https://cloud.google.com/python/docs/reference/storage/latest \
+		https://github.com/googleapis/python-storage
 
 LICENSE=	APACHE20
 LICENSE_FILE=	${WRKSRC}/LICENSE
@@ -26,10 +27,12 @@ USE_PYTHON=	autoplist concurrent pep517
 
 NO_ARCH=	yes
 
-OPTIONS_DEFINE=	PROTOBUF
+OPTIONS_DEFINE=	PROTOBUF TRACING
 OPTIONS_DEFINE=	PROTOBUF
 PROTOBUF_DESC=	Protocol buffers support
+TRACING_DESC=	Generate traces using OpenTelemetry
 
 PROTOBUF_RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}protobuf>=3.20.2,1<7.0.0,1:devel/py-protobuf@${PY_FLAVOR}
+TRACING_RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}opentelemetry-api>=1.1.0<2.0.0:devel/py-opentelemetry-api@${PY_FLAVOR}
 
 .include <bsd.port.mk>

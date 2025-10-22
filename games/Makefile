@@ -309,7 +309,6 @@
     SUBDIR += fs2open
     SUBDIR += funnyboat
     SUBDIR += galaxis
-    SUBDIR += galaxyhack
     SUBDIR += garden-of-coloured-lights
     SUBDIR += gargoyle
     SUBDIR += gbrainy
@@ -631,6 +630,7 @@
     SUBDIR += minerbold
     SUBDIR += minetest_game
     SUBDIR += minetestmapper
+    SUBDIR += minigalaxy
     SUBDIR += mirrormagic
     SUBDIR += miscom
     SUBDIR += mizuma
@@ -643,7 +643,6 @@
     SUBDIR += moonlight-embedded-devel
     SUBDIR += moonlight-qt
     SUBDIR += moria
-    SUBDIR += motogt
     SUBDIR += mrboom
     SUBDIR += mt_dolphin_ia
     SUBDIR += mt_gtk_client
@@ -754,7 +753,6 @@
     SUBDIR += pachi
     SUBDIR += pacmanarena
     SUBDIR += palapeli
-    SUBDIR += palomino
     SUBDIR += pangzero
     SUBDIR += passage
     SUBDIR += patapizza-tetris
@@ -1138,7 +1136,6 @@
     SUBDIR += xpired
     SUBDIR += xpuzzletama
     SUBDIR += xpyraminx
-    SUBDIR += xqf
     SUBDIR += xrally
     SUBDIR += xray-16
     SUBDIR += xray_re-tools

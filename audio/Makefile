@@ -104,6 +104,7 @@
     SUBDIR += deadbeef-spectrogram-plugin
     SUBDIR += deadbeef-vu-meter-plugin
     SUBDIR += deadbeef-waveform-seekbar-plugin
+    SUBDIR += decibels
     SUBDIR += denemo
     SUBDIR += dexed
     SUBDIR += dgedit
@@ -198,6 +199,7 @@
     SUBDIR += ft2-clone
     SUBDIR += ft2play
     SUBDIR += furnace
+    SUBDIR += g4music
     SUBDIR += ganv
     SUBDIR += gbsplay
     SUBDIR += geonkick-lv2
@@ -214,6 +216,7 @@
     SUBDIR += gnupod
     SUBDIR += gnuspeechsa
     SUBDIR += gnustep-cdplayer
+    SUBDIR += go-librespot
     SUBDIR += goattracker
     SUBDIR += gogglesmm
     SUBDIR += gonic
@@ -376,7 +379,6 @@
     SUBDIR += liboggz
     SUBDIR += libopenmpt
     SUBDIR += libopenshot-audio
-    SUBDIR += libopenspc
     SUBDIR += libopusenc
     SUBDIR += libremidi
     SUBDIR += libsamplerate
@@ -766,7 +768,6 @@
     SUBDIR += spiralsynthmodular
     SUBDIR += spotify-player
     SUBDIR += spotify-qt
-    SUBDIR += spotify-tui
     SUBDIR += spotifyd
     SUBDIR += squash
     SUBDIR += squeezelite
@@ -830,7 +831,10 @@
     SUBDIR += vgmtools
     SUBDIR += vimpc
     SUBDIR += virtual_oss
+    SUBDIR += virtual_oss_bluetooth
     SUBDIR += virtual_oss_ctl
+    SUBDIR += virtual_oss_equalizer
+    SUBDIR += virtual_oss_sndio
     SUBDIR += visp-go
     SUBDIR += vitunes
     SUBDIR += vm-lv2
@@ -854,6 +858,7 @@
     SUBDIR += webrtc-audio-processing0
     SUBDIR += webrtc-audio-processing2
     SUBDIR += welle.io
+    SUBDIR += whisper.cpp
     SUBDIR += whysynth
     SUBDIR += wildmidi
     SUBDIR += wmix

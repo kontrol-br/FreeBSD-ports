@@ -1,7 +1,6 @@
 PORTNAME=	votca
 DISTVERSIONPREFIX=	v
-DISTVERSION=	2025
-PORTREVISION=	2
+DISTVERSION=	2025.1
 CATEGORIES=	science
 
 MAINTAINER=	yuri@FreeBSD.org
@@ -16,7 +15,7 @@ BROKEN_i386=		undefined reference to `__atomic_load' # '
 PY_DEPENDS=	\
 		${PYTHON_PKGNAMEPREFIX}ase>0:science/py-ase@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}h5py>0:science/py-h5py@${PY_FLAVOR} \
-		${PYTHON_PKGNAMEPREFIX}lxml5>0:devel/py-lxml5@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}lxml>0:devel/py-lxml@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}xmltodict>0:devel/py-xmltodict@${PY_FLAVOR} \
 		rdkit>0:science/rdkit
 BUILD_DEPENDS=	bash:shells/bash \
@@ -73,6 +72,6 @@ do-test: # several tests fail, see https://github.com/votca/votca/issues/1098
 		${SETENV} ${MAKE_ENV} ${MAKE_CMD} ${MAKE_ARGS} ${ALL_TARGET} && \
 		${SETENV} ${MAKE_ENV} ${MAKE_CMD} ${MAKE_ARGS} test
 
-# tests as of 2025: 100% tests passed, 0 tests failed out of 250
+# tests as of 2025.1: 100% tests passed, 0 tests failed out of 249
 
 .include <bsd.port.mk>
