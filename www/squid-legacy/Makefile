@@ -1,6 +1,6 @@
 PORTNAME=	squid
 DISTVERSION=	4.15
-PORTREVISION=	1
+PORTREVISION=	2
 CATEGORIES=	www
 MASTER_SITES=	http://www2.pl.squid-cache.org/Versions/v4/ \
 		http://ca.squid-cache.org/Versions/v4/ \
