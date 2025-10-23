@@ -1,5 +1,6 @@
 PORTNAME=	squid
 DISTVERSION=	4.15
+PORTREVISION=	2
 CATEGORIES=	www
 MASTER_SITES=	http://www2.pl.squid-cache.org/Versions/v4/ \
 		http://ca.squid-cache.org/Versions/v4/ \
@@ -25,6 +26,7 @@ LICENSE=	GPLv2
 LICENSE_FILE=	${WRKSRC}/COPYING
 
 USES=		compiler:c++11-lib cpe perl5 shebangfix tar:xz
+USE_CXXSTD=	c++14
 
 CONFLICTS=	squid3 squid-devel
 CPE_VENDOR=	squid-cache
