@@ -24,6 +24,7 @@ COMMENT=	HTTP Caching Proxy
 
 LICENSE=	GPLv2
 LICENSE_FILE=	${WRKSRC}/COPYING
+SSL_DEFAULT=	openssl111
 
 USES=		compiler:c++11-lib cpe perl5 shebangfix tar:xz
 USE_CXXSTD=	c++14

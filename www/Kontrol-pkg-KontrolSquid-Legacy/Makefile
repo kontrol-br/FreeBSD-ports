@@ -13,7 +13,7 @@ COMMENT=	Kontrol Custom Squid Package
 LICENSE=	APACHE20
 
 BUILD_DEPENDS=	www/squid-legacy
-RUN_DEPENDS=	squid=4.15:www/squid \
+RUN_DEPENDS=	www/squid-legacy \
 		squid_radius_auth>=0:www/squid_radius_auth \
 		c-icap-modules>=0:www/c-icap-modules \
 		squidclamav>=0:www/squidclamav \
