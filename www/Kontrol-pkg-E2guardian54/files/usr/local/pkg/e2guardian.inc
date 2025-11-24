@@ -671,14 +671,14 @@ function e2g_generate_rules($type) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
 				}
 			}
-			/* Transparent Proxy Interface(s) */
-			foreach ($transparent_ifaces as $t_iface) {
-				$redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
-				$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
-				if (bp_in_array($t_iface, $ssl_ifaces)) {
-					$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
-				}
-			}
+                        /* Transparent Proxy Interface(s) */
+                        foreach ($transparent_ifaces as $t_iface) {
+                                $redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
+                                $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
+                                if (bp_in_array($t_iface, $ssl_ifaces)) {
+                                        $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
+                                }
+                        }
 			/*
 			 * Transparent Proxy Interface(s) - handle the PPPOE case
 			 * For PPPoE server, mpd uses a group of different _local_ interfaces
