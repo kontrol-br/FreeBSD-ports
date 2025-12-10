@@ -599,7 +599,7 @@ function e2g_generate_rules($type) {
 	$ssl_port = ($e2g_conf['ssl_proxy_port'] ? $e2g_conf['ssl_proxy_port'] : 8081);
 	$pf_rule_ports = "{{$port},{$ssl_port}}";
 
-	// Define NAT ports - 80 and 443 if SSL filtering is enabled
+        // Define NAT ports - 80 and 443 if SSL filtering is enabled
         $pf_nat_ports = ($ssl_intercept_enabled ? "{80,443}" : "80");
         $pf_transparent_rule_port = $pf_nat_ports;
 
