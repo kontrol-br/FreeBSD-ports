@@ -577,30 +577,30 @@ function e2g_generate_rules($type) {
 		}
 	}
 	$default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
-	// Transparent Proxy Interface(s)
-	if ($e2g_conf['transparent_proxy'] == "on") {
-	    if (! bp_in_array('lo0',$proxy_ifaces)) {
-	        $proxy_ifaces[] = 'lo0';
-	    }
-		$transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
-		$transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
-	} else {
-		$transparent_ifaces = array();
-	}
+        // Transparent Proxy Interface(s)
+        if ($e2g_conf['transparent_proxy'] == "on") {
+                if (! bp_in_array('lo0',$proxy_ifaces)) {
+                        $proxy_ifaces[] = 'lo0';
+                }
+                $transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
+                $transparent_ifaces = array_map('trim', $transparent_ifaces);
+                $transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+                // Trailing commas or empty interface slots break pf rule generation ("no rdr on  proto ...")
+                // which disables the transparent NAT rules entirely.
+                $transparent_ifaces = array_filter($transparent_ifaces);
+        } else {
+                $transparent_ifaces = array();
+        }
         // SSL Intercept Interface(s)
         $ssl_intercept_enabled = e2g_ssl_intercept_is_enabled($e2g_conf);
-        if ($ssl_intercept_enabled) {
-                $ssl_ifaces = $transparent_ifaces;
-        } else {
-                $ssl_ifaces = array();
-        }
+        $ssl_ifaces = ($ssl_intercept_enabled ? $transparent_ifaces : array());
 
 	// Define proxy ports
 	$port = ($e2g_conf['filterports'] ? $e2g_conf['filterports'] : 8080);
 	$ssl_port = ($e2g_conf['ssl_proxy_port'] ? $e2g_conf['ssl_proxy_port'] : 8081);
 	$pf_rule_ports = "{{$port},{$ssl_port}}";
 
-	// Define NAT ports - 80 and 443 if SSL filtering is enabled
+        // Define NAT ports - 80 and 443 if SSL filtering is enabled
         $pf_nat_ports = ($ssl_intercept_enabled ? "{80,443}" : "80");
 
 	/*
@@ -615,16 +615,16 @@ function e2g_generate_rules($type) {
 			}
 			$rules .= "\n# Setup E2guardian proxy redirect\n";
 			/* Bypass Proxy for Private Address Destination - RFC1918 */
-			if ($e2g_conf['private_subnet_proxy_off'] == 'on') {
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_transparent_rule_port}\n";
-				}
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_nat_ports}\n";
-				}
-			}
+                        if ($e2g_conf['private_subnet_proxy_off'] == 'on') {
+                                foreach ($transparent_ifaces as $iface) {
+                                        $pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
+                                        $rules .= "no rdr on $iface proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_transparent_rule_port}\n";
+                                }
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_nat_ports}\n";
+                                }
+                        }
 			/* Bypass Proxy for These Source IPs */
 			if (!empty($e2g_conf['defined_ip_proxy_off'])) {
 				$defined_ip_proxy_off = explode(";", $e2g_conf['defined_ip_proxy_off']);
@@ -639,15 +639,15 @@ function e2g_generate_rules($type) {
 					}
 				}
 				$exempt_ip = substr($exempt_ip, 2);
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from { $exempt_ip } to any port {$pf_transparent_rule_port}\n";
-				}
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
-				}
-			}
+                                foreach ($transparent_ifaces as $iface) {
+                                        $pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
+                                        $rules .= "no rdr on $iface proto tcp from { $exempt_ip } to any port {$pf_transparent_rule_port}\n";
+                                }
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
+                                }
+                        }
 			/* Bypass Proxy for These Destination IPs */
 			if (!empty($e2g_conf['defined_ip_proxy_off_dest'])) {
 				$defined_ip_proxy_off_dest = explode(";", $e2g_conf['defined_ip_proxy_off_dest']);
@@ -662,21 +662,21 @@ function e2g_generate_rules($type) {
 					}
 				}
 				$exempt_dest = substr($exempt_dest, 2);
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
-				}
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
-				}
-			}
+                                foreach ($transparent_ifaces as $iface) {
+                                        $pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
+                                        $rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
+                                }
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
+                                }
+                        }
                         /* Transparent Proxy Interface(s) */
                         foreach ($transparent_ifaces as $t_iface) {
                                 $redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
-                                $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
-                                if (bp_in_array($t_iface, $ssl_ifaces)) {
-                                        $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
+                                $rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
+                                if ($ssl_intercept_enabled) {
+                                        $rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
                                 }
                         }
 			/*
