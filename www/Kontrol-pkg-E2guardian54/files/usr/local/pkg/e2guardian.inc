@@ -579,11 +579,15 @@ function e2g_generate_rules($type) {
 	$default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
 	// Transparent Proxy Interface(s)
 	if ($e2g_conf['transparent_proxy'] == "on") {
-	    if (! bp_in_array('lo0',$proxy_ifaces)) {
-	        $proxy_ifaces[] = 'lo0';
-	    }
-		$transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
-		$transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+		if (! bp_in_array('lo0',$proxy_ifaces)) {
+			$proxy_ifaces[] = 'lo0';
+		}
+                $transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
+                $transparent_ifaces = array_map('trim', $transparent_ifaces);
+                $transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+                // Trailing commas or empty interface slots break pf rule generation ("no rdr on  proto ...")
+                // which disables the transparent NAT rules entirely.
+                $transparent_ifaces = array_filter($transparent_ifaces);
 	} else {
 		$transparent_ifaces = array();
 	}
