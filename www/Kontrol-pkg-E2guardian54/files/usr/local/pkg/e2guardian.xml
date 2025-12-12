@@ -115,8 +115,9 @@
 		<field>
 			<fielddescr>Listen Interface(s)</fielddescr>
 			<fieldname>interface</fieldname>
-			<description><![CDATA[Default: <strong>LAN/loopback</strong><br>Select interface(s) that you want to e2guardian to listen on.<br>
-				<strong>Note: Do NOT select more then one interface if you plan to use more then one authentication plugin.</strong>]]></description>
+			<description><![CDATA[Default: <strong>LAN</strong><br>Select interface(s) that you want to e2guardian to listen on.<br>
+				<strong>Note: Do NOT select more then one interface if you plan to use more then one authentication plugin.<br>
+					Do NOT select more than one interface if you are usign Transparent Proxy</strong>]]></description>
 			<type>interfaces_selection</type>
 			<required/>
 			<multiple/>
