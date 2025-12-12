@@ -502,27 +502,11 @@ EOF;
 }
 
 function dg_get_real_interface_address($iface) {
-        global $config;
-        $iface = convert_friendly_interface_to_real_interface_name($iface);
-        $line = trim(shell_exec("ifconfig $iface | grep inet | grep -v inet6"));
-        list($dummy, $ip, $dummy2, $netmask) = explode(" ", $line);
-        return array($ip, long2ip(hexdec($netmask)));
-}
-
-function dg_normalize_interface_list($iface_value)
-{
-        if (is_array($iface_value)) {
-                $iface_list = $iface_value;
-        } else {
-                $iface_list = explode(",", (string)$iface_value);
-        }
-
-        $iface_list = array_map('trim', $iface_list);
-        $iface_list = array_filter($iface_list, function ($value) {
-                return ($value !== '');
-        });
-
-        return array_values($iface_list);
+	global $config;
+	$iface = convert_friendly_interface_to_real_interface_name($iface);
+	$line = trim(shell_exec("ifconfig $iface | grep inet | grep -v inet6"));
+	list($dummy, $ip, $dummy2, $netmask) = explode(" ", $line);
+	return array($ip, long2ip(hexdec($netmask)));
 }
 
 function check_ca_hashes() {
@@ -578,36 +562,35 @@ function e2g_generate_rules($type) {
 		return;
 	}
 
-        // Proxy Interface(s)
-        $proxy_ifaces_friendly = dg_normalize_interface_list($e2g_conf['interface']);
-        $proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces_friendly);
+	// Proxy Interface(s)
+	$proxy_ifaces_friendly = explode(",", $e2g_conf['interface']);
+	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces_friendly);
+	$proxy_iface_ips = array();
+	foreach ($proxy_ifaces_friendly as $idx => $iface_friendly) {
+		$iface_real = $proxy_ifaces[$idx];
+		if (empty($iface_real)) {
+			continue;
+		}
+		$iface_details = dg_get_real_interface_address($iface_friendly);
+		if (!empty($iface_details[0])) {
+			$proxy_iface_ips[$iface_real] = $iface_details[0];
+		}
+	}
+	$default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
 	// Transparent Proxy Interface(s)
 	if ($e2g_conf['transparent_proxy'] == "on") {
-                if (! bp_in_array('lo0',$proxy_ifaces)) {
-                        $proxy_ifaces[] = 'lo0';
-                        $proxy_ifaces_friendly[] = 'lo0';
-                }
+		if (! bp_in_array('lo0',$proxy_ifaces)) {
+			$proxy_ifaces[] = 'lo0';
+		}
                 $transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
                 $transparent_ifaces = array_map('trim', $transparent_ifaces);
                 $transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
                 // Trailing commas or empty interface slots break pf rule generation ("no rdr on  proto ...")
                 // which disables the transparent NAT rules entirely.
                 $transparent_ifaces = array_filter($transparent_ifaces);
-        } else {
-                $transparent_ifaces = array();
-        }
-        $proxy_iface_ips = array();
-        foreach ($proxy_ifaces_friendly as $idx => $iface_friendly) {
-                $iface_real = $proxy_ifaces[$idx];
-                if (empty($iface_real)) {
-                        continue;
-                }
-                $iface_details = dg_get_real_interface_address($iface_friendly);
-                if (!empty($iface_details[0])) {
-                        $proxy_iface_ips[$iface_real] = $iface_details[0];
-                }
-        }
-        $default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
+	} else {
+		$transparent_ifaces = array();
+	}
         // SSL Intercept Interface(s)
         $ssl_intercept_enabled = e2g_ssl_intercept_is_enabled($e2g_conf);
 
@@ -2110,15 +2093,15 @@ EOF;
 	$filtergroups = ($count > 1?($count -1):1);
 	$filterip = "";
 	$filterports = "";
-        foreach (dg_normalize_interface_list($e2guardian['interface']) as $i => $iface) {
-                $real_ifaces[] = dg_get_real_interface_address($iface);
-                if (!empty($real_ifaces[$i][0])) {
-                        $filterip .= "filterip = " . $real_ifaces[$i][0] . "\n";
-                        $filterports .= "filterports = " . $filterport . "\n";
-                }
-        }
-        $filterip = ($filterip == "" ? "filterip = " : $filterip);
-        $filterports = ($filterports == "" ? "filterports = $filterport" : $filterports);
+	foreach (explode(",", $e2guardian['interface']) as $i => $iface) {
+		$real_ifaces[] = dg_get_real_interface_address($iface);
+		if ($real_ifaces[$i][0]) {
+			$filterip .= "filterip = " . $real_ifaces[$i][0] . "\n";
+		}
+		$filterports .= "filterports = " . $filterport . "\n";
+	}
+	$filterip = ($filterip == "" ? "filterip = " : $filterip);
+	$filterports = ($filterports == "" ? "filterports = $filterport" : $filterports);
 	$ssl_proxy_port = $e2guardian['ssl_proxy_port'] ? $e2guardian['ssl_proxy_port'] : "8081";
 	include(E2GUARDIAN_PKGDIR . "/e2guardian.conf.template");
 
