@@ -142,6 +142,39 @@ function e2g_normalize_bypass_entries($list_string, $context = 'bypass list')
     return $valid_entries;
 }
 
+function e2g_sanitize_bypass_field($list_string, $context = 'bypass list')
+{
+    $allowed_pattern = '/[^A-Za-z0-9\-\._:;\/$]/u';
+    $sanitized_parts = array();
+    $removed = array();
+
+    foreach (explode(';', (string)$list_string) as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+
+        $clean = preg_replace($allowed_pattern, '', $part);
+        if ($clean === '') {
+            $removed[] = $part;
+            continue;
+        }
+
+        if ($clean !== $part) {
+            $removed[] = $part;
+        }
+
+        $sanitized_parts[] = $clean;
+    }
+
+    if (!empty($removed)) {
+        $removed_as_string = implode(', ', $removed);
+        log_error("[E2guardian] Removed invalid characters from {$context}: {$removed_as_string}");
+    }
+
+    return implode(';', $sanitized_parts);
+}
+
 function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = array())
 {
     $defaults = array(
@@ -2520,15 +2553,26 @@ function e2guardian_validate_input($post, &$input_errors) {
                 squid_update_clamav();
                 return;
         }
-	if (is_array($config['installedpackages']['e2guardian'])) {
-		$settings = $config['installedpackages']['e2guardian']['config'][0];
-	} else {
-		$settings = array();
-	}
+        if (is_array($config['installedpackages']['e2guardian'])) {
+                $settings = $config['installedpackages']['e2guardian']['config'][0];
+        } else {
+                $settings = array();
+        }
+
+        $post['defined_ip_proxy_off'] = e2g_sanitize_bypass_field(
+            $post['defined_ip_proxy_off'] ?? '',
+            'transparent source bypass field'
+        );
+        $post['defined_ip_proxy_off_dest'] = e2g_sanitize_bypass_field(
+            $post['defined_ip_proxy_off_dest'] ?? '',
+            'transparent destination bypass field'
+        );
+        $_POST['defined_ip_proxy_off'] = $post['defined_ip_proxy_off'];
+        $_POST['defined_ip_proxy_off_dest'] = $post['defined_ip_proxy_off_dest'];
 
 
-	if ( is_array($post['scan_options']) && bp_in_array('logclienthostnames', $post['scan_options']) &&
-	    !bp_in_array('reverseclientiplookups', $post['scan_options'])) {
+        if ( is_array($post['scan_options']) && bp_in_array('logclienthostnames', $post['scan_options']) &&
+            !bp_in_array('reverseclientiplookups', $post['scan_options'])) {
 		$input_errors[] = "Scan option 'Log client hostnames' needs 'Reverse client ip lookups' to be selected as well.";
 	}
 	if (is_array($post['group_options']) && sizeof ($post['group_options']) > 0) {
