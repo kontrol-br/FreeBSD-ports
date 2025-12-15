@@ -102,11 +102,33 @@ function e2g_normalize_bypass_entries($list_string, $context = 'bypass list')
             is_ipaddr($part) ||
             is_ipaddrv6($part) ||
             is_subnet($part) ||
-            is_subnetv6($part) ||
-            is_hostname($part)
+            is_subnetv6($part)
         ) {
             $valid_entries[] = $part;
             continue;
+        }
+
+        if (is_hostname($part)) {
+            $resolved_ips = array();
+            $dns_records = @dns_get_record($part, DNS_A + DNS_AAAA);
+            if (is_array($dns_records)) {
+                foreach ($dns_records as $record) {
+                    if (!empty($record['ip'])) {
+                        $resolved_ips[] = $record['ip'];
+                    }
+                    if (!empty($record['ipv6'])) {
+                        $resolved_ips[] = $record['ipv6'];
+                    }
+                }
+            }
+
+            $resolved_ips = array_unique($resolved_ips);
+            if (!empty($resolved_ips)) {
+                foreach ($resolved_ips as $resolved_ip) {
+                    $valid_entries[] = $resolved_ip;
+                }
+                continue;
+            }
         }
 
         $invalid_entries[] = $part;
