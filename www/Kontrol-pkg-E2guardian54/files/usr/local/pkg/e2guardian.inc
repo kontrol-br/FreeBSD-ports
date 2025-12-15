@@ -67,8 +67,8 @@ if (!function_exists('e2g_flag_is_enabled')) {
 }
 
 if (!function_exists('e2g_ssl_intercept_is_enabled')) {
-    function e2g_ssl_intercept_is_enabled(array $config): bool
-    {
+function e2g_ssl_intercept_is_enabled(array $config): bool
+{
         if (isset($config['enablessl']) && e2g_flag_is_enabled($config['enablessl'])) {
             return true;
         }
@@ -79,6 +79,45 @@ if (!function_exists('e2g_ssl_intercept_is_enabled')) {
 
         return false;
     }
+}
+
+function e2g_normalize_bypass_entries($list_string, $context = 'bypass list')
+{
+    $valid_entries = array();
+    $invalid_entries = array();
+
+    $parts = explode(';', (string)$list_string);
+    foreach ($parts as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+
+        if (is_alias($part)) {
+            $valid_entries[] = '$' . $part;
+            continue;
+        }
+
+        if (
+            is_ipaddr($part) ||
+            is_ipaddrv6($part) ||
+            is_subnet($part) ||
+            is_subnetv6($part) ||
+            is_hostname($part)
+        ) {
+            $valid_entries[] = $part;
+            continue;
+        }
+
+        $invalid_entries[] = $part;
+    }
+
+    if (!empty($invalid_entries)) {
+        $invalid_as_string = implode(', ', $invalid_entries);
+        log_error("[E2guardian] Ignoring invalid {$context} entr" . (count($invalid_entries) > 1 ? 'ies' : 'y') . ": {$invalid_as_string}");
+    }
+
+    return $valid_entries;
 }
 
 function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = array())
@@ -624,50 +663,30 @@ function e2g_generate_rules($type) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_nat_ports}\n";
 				}
 			}
-			/* Bypass Proxy for These Source IPs */
-			if (!empty($e2g_conf['defined_ip_proxy_off'])) {
-				$defined_ip_proxy_off = explode(";", $e2g_conf['defined_ip_proxy_off']);
-				$exempt_ip = "";
-				foreach ($defined_ip_proxy_off as $ip_proxy_off) {
-					if (!empty($ip_proxy_off)) {
-						$ip_proxy_off = trim($ip_proxy_off);
-						if (is_alias($ip_proxy_off)) {
-							$ip_proxy_off = '$' . $ip_proxy_off;
-						}
-						$exempt_ip .= ", $ip_proxy_off";
-					}
-				}
-				$exempt_ip = substr($exempt_ip, 2);
+                        /* Bypass Proxy for These Source IPs */
+                        $defined_ip_proxy_off = e2g_normalize_bypass_entries($e2g_conf['defined_ip_proxy_off'], 'transparent source bypass list');
+                        if (!empty($defined_ip_proxy_off)) {
+                                $exempt_ip = implode(', ', $defined_ip_proxy_off);
                                 foreach ($transparent_ifaces as $iface) {
                                         $rules .= "no rdr on $iface proto tcp from { $exempt_ip } to any port {$pf_transparent_rule_port}\n";
                                 }
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
-				}
-			}
-			/* Bypass Proxy for These Destination IPs */
-			if (!empty($e2g_conf['defined_ip_proxy_off_dest'])) {
-				$defined_ip_proxy_off_dest = explode(";", $e2g_conf['defined_ip_proxy_off_dest']);
-				$exempt_dest = "";
-				foreach ($defined_ip_proxy_off_dest as $ip_proxy_off_dest) {
-					if (!empty($ip_proxy_off_dest)) {
-						$ip_proxy_off_dest = trim($ip_proxy_off_dest);
-						if (is_alias($ip_proxy_off_dest)) {
-							$ip_proxy_off_dest = '$' . $ip_proxy_off_dest;
-						}
-						$exempt_dest .= ", $ip_proxy_off_dest";
-					}
-				}
-				$exempt_dest = substr($exempt_dest, 2);
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
+                                }
+                        }
+                        /* Bypass Proxy for These Destination IPs */
+                        $defined_ip_proxy_off_dest = e2g_normalize_bypass_entries($e2g_conf['defined_ip_proxy_off_dest'], 'transparent destination bypass list');
+                        if (!empty($defined_ip_proxy_off_dest)) {
+                                $exempt_dest = implode(', ', $defined_ip_proxy_off_dest);
                                 foreach ($transparent_ifaces as $iface) {
                                         $rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
                                 }
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
-				}
-			}
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
+                                }
+                        }
                         /* Transparent Proxy Interface(s) */
                         foreach ($transparent_ifaces as $t_iface) {
                                 $redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
