@@ -1,5 +1,5 @@
 PORTNAME=	cbsd
-DISTVERSION=	14.3.2
+DISTVERSION=	15.0.0
 CATEGORIES=	sysutils
 
 MAINTAINER=	fbsd-ports@convectix.com
@@ -13,10 +13,9 @@ LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libssh2.so:security/libssh2
 RUN_DEPENDS=	curl:ftp/curl \
 		jq:textproc/jq \
-		rsync:net/rsync \
-		sudo:security/sudo
+		rsync:net/rsync
 
-USES=		compiler:c++11-lang libedit pkgconfig:both sqlite
+USES=		compiler:c++11-lang libedit pkgconfig:both sqlite sudo
 USE_GITHUB=	yes
 USE_RC_SUBR=	cbsdd cbsdrsyncd cbsd-statsd-bhyve cbsd-statsd-hoster \
 		cbsd-statsd-jail

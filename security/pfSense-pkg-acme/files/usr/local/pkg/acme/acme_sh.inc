@@ -52,12 +52,14 @@ class acme_sh_domain {
 	
 class acme_sh {
 
+	private $acmeconf;
 	private $accountconfig;
 	private $path_account;
 	private $name;
 	private $debug = true;
 	public $dnssleep;
 	public $preferredchain;
+	public $addressfamily;
 	
 	private function execacmesh($command, $envvariables = null) {
 		$command = "/usr/local/pkg/acme/acme.sh " . $command;
@@ -117,10 +119,10 @@ class acme_sh {
 	function init($ca, $name, $email) {
 		$conf = "ACME_DIRECTORY='{$ca}'\nACCOUNT_EMAIL='{$email}'\n";
 		$cadir = parse_url($ca, PHP_URL_HOST) . parse_url($ca, PHP_URL_PATH);
-		$acmeconf = "/tmp/acme/{$name}/";
-		$this->path_account = "{$acmeconf}/ca/{$cadir}";
+		$this->acmeconf = "/tmp/acme/{$name}/";
+		$this->path_account = "{$this->acmeconf}/ca/{$cadir}";
 		safe_mkdir($this->path_account);
-		$this->accountconfig = "{$acmeconf}accountconf.conf";
+		$this->accountconfig = "{$this->acmeconf}accountconf.conf";
 		file_put_contents("{$this->accountconfig}", $conf);
 	}
 	
@@ -180,6 +182,13 @@ class acme_sh {
 		}
 		if (!empty($this->preferredchain)) {
 			$cmdparameters .= " --preferred-chain " . escapeshellarg($this->preferredchain);
+		}
+		if (!empty($this->addressfamily)) {
+			if ($this->addressfamily == 'ipv4') {
+				$cmdparameters .= " --request-v4";
+			} elseif ($this->addressfamily == 'ipv6') {
+				$cmdparameters .= " --request-v6";
+			}
 		}
 
 		$Le_Domain = $domainstosign[0]->domainname;

@@ -57,7 +57,6 @@
     SUBDIR += duckdb
     SUBDIR += ejdb
     SUBDIR += emacsql
-    SUBDIR += erlfdb
     SUBDIR += evolution-data-server
     SUBDIR += fastdb
     SUBDIR += firebird30-client
@@ -66,10 +65,6 @@
     SUBDIR += firebird40-server
     SUBDIR += fmptools
     SUBDIR += fortytwo-bdb
-    SUBDIR += foundationdb71-client
-    SUBDIR += foundationdb71-server
-    SUBDIR += foundationdb73-client
-    SUBDIR += foundationdb73-server
     SUBDIR += frece
     SUBDIR += freetds
     SUBDIR += freetds-devel
@@ -179,7 +174,6 @@
     SUBDIR += memcached
     SUBDIR += metabase
     SUBDIR += mongodb-tools
-    SUBDIR += mongodb60
     SUBDIR += mongodb70
     SUBDIR += mongodb80
     SUBDIR += mongosh
@@ -199,6 +193,8 @@
     SUBDIR += mysql84-server
     SUBDIR += mysql91-client
     SUBDIR += mysql91-server
+    SUBDIR += mysql94-client
+    SUBDIR += mysql94-server
     SUBDIR += mysqlbackup
     SUBDIR += mysqldump-secure
     SUBDIR += mysqlreport
@@ -538,6 +534,7 @@
     SUBDIR += percona-orchestrator
     SUBDIR += percona-toolkit
     SUBDIR += pg-gvm
+    SUBDIR += pg-safeupdate
     SUBDIR += pg.el
     SUBDIR += pgFormatter
     SUBDIR += pg_activity
@@ -564,6 +561,7 @@
     SUBDIR += pgbarman
     SUBDIR += pgbouncer
     SUBDIR += pgdbf
+    SUBDIR += pgjwt
     SUBDIR += pgloader3
     SUBDIR += pglogical
     SUBDIR += pgmetrics
@@ -573,11 +571,13 @@
     SUBDIR += pgpool-II-44
     SUBDIR += pgpool-II-45
     SUBDIR += pgpool-II-46
+    SUBDIR += pgpool-II-47
     SUBDIR += pgreplay
     SUBDIR += pgroonga
     SUBDIR += pgrouting
     SUBDIR += pgsanity
     SUBDIR += pgschema
+    SUBDIR += pgsql-http
     SUBDIR += pgtcl
     SUBDIR += pgtop
     SUBDIR += pguri
@@ -729,6 +729,7 @@
     SUBDIR += powa-archivist
     SUBDIR += powa-web
     SUBDIR += powerarchitect
+    SUBDIR += prisma-engines
     SUBDIR += proftpd-mod_sql_mysql
     SUBDIR += proftpd-mod_sql_odbc
     SUBDIR += proftpd-mod_sql_postgres
@@ -756,6 +757,7 @@
     SUBDIR += py-aiosql
     SUBDIR += py-aiosqlite
     SUBDIR += py-alembic
+    SUBDIR += py-anysqlite
     SUBDIR += py-apache-arrow
     SUBDIR += py-apsw
     SUBDIR += py-asyncmy
@@ -765,6 +767,7 @@
     SUBDIR += py-couchdb
     SUBDIR += py-cymysql
     SUBDIR += py-databases
+    SUBDIR += py-databricks-sql-connector
     SUBDIR += py-datafusion
     SUBDIR += py-dbf
     SUBDIR += py-dbt-core
@@ -813,6 +816,7 @@
     SUBDIR += py-pony
     SUBDIR += py-postgresql
     SUBDIR += py-powa-collector
+    SUBDIR += py-prisma
     SUBDIR += py-psycogreen
     SUBDIR += py-psycopg
     SUBDIR += py-psycopg-c
@@ -821,7 +825,6 @@
     SUBDIR += py-psycopg2cffi
     SUBDIR += py-pum
     SUBDIR += py-pyarrow
-    SUBDIR += py-pycql
     SUBDIR += py-pylibmc
     SUBDIR += py-pymemcache
     SUBDIR += py-pymongo
@@ -840,6 +843,9 @@
     SUBDIR += py-redis
     SUBDIR += py-redis2
     SUBDIR += py-redis5
+    SUBDIR += py-redis6
+    SUBDIR += py-redisvl
+    SUBDIR += py-redshift-connector
     SUBDIR += py-rrdtool
     SUBDIR += py-schemachange
     SUBDIR += py-sispy
@@ -898,6 +904,7 @@
     SUBDIR += redis72
     SUBDIR += redis74
     SUBDIR += redis80
+    SUBDIR += redis82
     SUBDIR += redis_exporter
     SUBDIR += redisjson
     SUBDIR += retcl
@@ -926,6 +933,7 @@
     SUBDIR += rubygem-activemodel71
     SUBDIR += rubygem-activemodel72
     SUBDIR += rubygem-activemodel80
+    SUBDIR += rubygem-activemodel81
     SUBDIR += rubygem-activerecord-explain-analyze
     SUBDIR += rubygem-activerecord-gitlab
     SUBDIR += rubygem-activerecord-import
@@ -943,6 +951,7 @@
     SUBDIR += rubygem-activerecord71
     SUBDIR += rubygem-activerecord72
     SUBDIR += rubygem-activerecord80
+    SUBDIR += rubygem-activerecord81
     SUBDIR += rubygem-after_commit_queue
     SUBDIR += rubygem-amalgalite
     SUBDIR += rubygem-arel
@@ -1004,6 +1013,7 @@
     SUBDIR += rubygem-globalid-rails71
     SUBDIR += rubygem-globalid-rails72
     SUBDIR += rubygem-globalid-rails80
+    SUBDIR += rubygem-globalid-rails81
     SUBDIR += rubygem-google-cloud-datastore
     SUBDIR += rubygem-google-cloud-datastore-v1
     SUBDIR += rubygem-google-cloud-firestore
@@ -1037,6 +1047,7 @@
     SUBDIR += rubygem-red-arrow
     SUBDIR += rubygem-red-arrow-dataset
     SUBDIR += rubygem-red-arrow-flight
+    SUBDIR += rubygem-red-arrow-flight-sql
     SUBDIR += rubygem-red-gandiva
     SUBDIR += rubygem-red-parquet
     SUBDIR += rubygem-redis
@@ -1051,7 +1062,10 @@
     SUBDIR += rubygem-redis-client
     SUBDIR += rubygem-redis-cluster-client
     SUBDIR += rubygem-redis-clustering
+    SUBDIR += rubygem-redis-clustering-gitlab
+    SUBDIR += rubygem-redis-gitlab
     SUBDIR += rubygem-redis-namespace
+    SUBDIR += rubygem-redis-namespace-gitlab
     SUBDIR += rubygem-redis-namespace110
     SUBDIR += rubygem-ruby-mysql
     SUBDIR += rubygem-sdbm
@@ -1059,10 +1073,13 @@
     SUBDIR += rubygem-seed-fu-gitlab
     SUBDIR += rubygem-solid_cable
     SUBDIR += rubygem-solid_cable-rails72
+    SUBDIR += rubygem-solid_cable-rails80
     SUBDIR += rubygem-solid_cache
     SUBDIR += rubygem-solid_cache-rails72
+    SUBDIR += rubygem-solid_cache-rails80
     SUBDIR += rubygem-solid_queue
     SUBDIR += rubygem-solid_queue-rails72
+    SUBDIR += rubygem-solid_queue-rails80
     SUBDIR += rubygem-sqlite3
     SUBDIR += rubygem-sqlite3-ruby
     SUBDIR += rubygem-sqlite31
@@ -1112,6 +1129,7 @@
     SUBDIR += tcl-lmdb
     SUBDIR += tcl-sqlite3
     SUBDIR += tdb
+    SUBDIR += tdb1
     SUBDIR += tdb1410
     SUBDIR += tdb1413
     SUBDIR += tdbc
@@ -1131,6 +1149,7 @@
     SUBDIR += unixODBC
     SUBDIR += usql
     SUBDIR += valkey
+    SUBDIR += valkey8
     SUBDIR += vfront
     SUBDIR += virtualpg
     SUBDIR += weaviate

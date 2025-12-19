@@ -1,5 +1,6 @@
 PORTNAME=	gimp
 DISTVERSION=	3.0.6
+PORTREVISION=	2
 CATEGORIES?=	graphics gnome
 MASTER_SITES=	GIMP/gimp/v${PORTVERSION:R}
 PKGNAMESUFFIX=	3-app
@@ -31,6 +32,7 @@ LIB_DEPENDS=	libpng.so:graphics/png \
 		libjson-c.so:devel/json-c \
 		libmypaint.so:graphics/libmypaint \
 		libfreetype.so:print/freetype2 \
+		libappstream.so:devel/appstream \
 		libappstream-glib.so:devel/appstream-glib \
 		libImath.so:math/Imath \
 		libwebp.so:graphics/webp \
@@ -153,6 +155,10 @@ PLIST_SUB+=	BINVER=${PORTVERSION:R:R} ABIVER=${PORTVERSION:R} SHLIBVER=${PORTVER
 PLIST_SUB+=	LUASCRIPTS=""
 .else
 PLIST_SUB+=	LUASCRIPTS="@comment "
+.endif
+
+.if !exists(/usr/include/omp.h)
+MESON_ARGS+=	-Dopenmp=disabled
 .endif
 
 #post-patch:

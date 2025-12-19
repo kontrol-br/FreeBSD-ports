@@ -1,4 +1,4 @@
---- components/viz/service/frame_sinks/root_compositor_frame_sink_impl.cc.orig	2025-10-02 04:28:32 UTC
+--- components/viz/service/frame_sinks/root_compositor_frame_sink_impl.cc.orig	2025-12-05 10:12:50 UTC
 +++ components/viz/service/frame_sinks/root_compositor_frame_sink_impl.cc
 @@ -142,7 +142,7 @@ RootCompositorFrameSinkImpl::Create(
    output_surface->SetNeedsSwapSizeNotifications(

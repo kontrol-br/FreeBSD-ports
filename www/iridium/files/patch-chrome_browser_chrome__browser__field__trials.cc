@@ -1,6 +1,6 @@
---- chrome/browser/chrome_browser_field_trials.cc.orig	2025-09-11 13:19:19 UTC
+--- chrome/browser/chrome_browser_field_trials.cc.orig	2025-12-10 15:04:57 UTC
 +++ chrome/browser/chrome_browser_field_trials.cc
-@@ -45,7 +45,7 @@
+@@ -51,7 +51,7 @@
  #include "chromeos/ash/services/multidevice_setup/public/cpp/first_run_field_trial.h"
  #endif
  
@@ -9,7 +9,7 @@
  #include "base/nix/xdg_util.h"
  #include "ui/base/ui_base_features.h"
  #endif  // BUILDFLAG(IS_LINUX)
-@@ -101,7 +101,7 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverride
+@@ -107,7 +107,7 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverride
      base::FeatureList* feature_list) {
    variations::FeatureOverrides feature_overrides(*feature_list);
  

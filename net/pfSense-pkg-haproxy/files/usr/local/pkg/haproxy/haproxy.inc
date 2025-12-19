@@ -28,6 +28,8 @@ require_once("filter.inc");
 require_once("haproxy_utils.inc");
 require_once("haproxy_socketinfo.inc");
 
+define('LOG_PREFIX_PKG_HAPROXY', 'HAProxy');
+
 $d_haproxyconfdirty_path = $g['varrun_path'] . "/haproxy.conf.dirty";
 #region Global haproxy array item definitions..
 global $a_frontendmode;
@@ -1351,7 +1353,7 @@ function haproxy_check_and_run(&$messages, $reload, $force = false) {
 	global $g, $haproxy_server_state_path;
 	if ($force) {
 		unlink_if_exists($haproxy_server_state_path);
-		log_error("Removed HAProxy server state file.");
+		logger(LOG_INFO, localize_text("Removed HAProxy server state file."), LOG_PREFIX_PKG_HAPROXY);
 	}
 	$testpath = "{$g['varetc_path']}/haproxy_test";
 	haproxy_writeconf($testpath);
@@ -1370,7 +1372,7 @@ function haproxy_check_and_run(&$messages, $reload, $force = false) {
 			$messages .= "<br/>" . htmlspecialchars($line) . "\n";
 			$syslogmessage .= str_replace("\n"," ", $line) . " ";
 		}
-		syslog(LOG_NOTICE, "haproxy: check error output: {$syslogmessage}");
+		logger(LOG_NOTICE, localize_text("check error output: %s", $syslogmessage), LOG_PREFIX_PKG_HAPROXY);
 	}
 	$ok = strstr($retval, "Configuration file is valid");
 	if ($ok && $reload) {
@@ -1473,25 +1475,25 @@ function haproxy_updateocsp_one($socketupdate, $filename, $name) {
 	global $openssl111;
 	if (file_exists("{$filename}.ocsp")) {
 		// If the .ocsp file exists we want to use ocsp
-		syslog(LOG_NOTICE, "HAProxy Retrieving OCSP for frontend {$name}.. ");
+		logger(LOG_NOTICE, localize_text("Retrieving OCSP for frontend %s.. ", $name), LOG_PREFIX_PKG_HAPROXY);
 		$ocsp_url = haproxy_getocspurl($filename);
 		$ocsp_host = parse_url($ocsp_url, PHP_URL_HOST);
 		$ocsp_host_dm = ($openssl111) ? "=" : " ";
 		if (empty($ocsp_url)) {
 			// If cert does not have a ocsp_uri, it cannot be updated..
-			syslog(LOG_ERR, "HAProxy OCSP ERROR Cert does not have a ocsp_uri");
+			logger(LOG_ERR, localize_text("OCSP ERROR Cert does not have a %s", 'ocsp_uri'), LOG_PREFIX_PKG_HAPROXY);
 		} else {
 			$retval = exec("openssl ocsp -issuer {$filename}.issuer -verify_other {$filename}.issuer -cert {$filename} -url {$ocsp_url} -header Host{$ocsp_host_dm}{$ocsp_host} -respout {$filename}.ocsp 2>&1", $output, $err);
 			if ($socketupdate) {
 				$ocspresponse = base64_encode(file_get_contents("{$filename}.ocsp"));
 				$r = haproxy_socket_command("set ssl ocsp-response $ocspresponse");
 				if ($r[0] == "OCSP Response updated!\n") {
-					syslog(LOG_NOTICE, "HAProxy OCSP socket update successful for frontend {$name}..result: ".$retval);
+					logger(LOG_NOTICE, localize_text("OCSP socket update successful for frontend %s..result: %s", $name, $retval), LOG_PREFIX_PKG_HAPROXY);
 				} else {
-					syslog(LOG_ERR, "HAProxy OCSP ERROR while performing haproxy socket update OCSP response for:  {$name}");
+					logger(LOG_ERR, localize_text("OCSP ERROR while performing haproxy socket update OCSP response for: %s", $name), LOG_PREFIX_PKG_HAPROXY);
 				}
 			} else {
-				syslog(LOG_NOTICE, "HAProxy Retrieving OCSP for frontend {$name}..result: ".$retval);
+				logger(LOG_NOTICE, localize_text("Retrieving OCSP for frontend %s..result: %s", $name, $retval), LOG_PREFIX_PKG_HAPROXY);
 			}
 		}
 	}
@@ -2520,7 +2522,7 @@ function haproxy_check_run($reload) {
 			$status = haproxy_carpipismaster($a_global['carpdev']);
 			if (!$status) {
 				if (haproxy_is_running()) {
-					log_error("Stopping haproxy on CARP backup.");
+					logger(LOG_INFO, localize_text("Stopping haproxy on CARP backup."), LOG_PREFIX_PKG_HAPROXY);
 					//exec("/bin/pkill -F /var/run/haproxy.pid haproxy");//doesnt work for multiple pid's in a pidfile
 					haproxy_kill();
 				}
@@ -2530,7 +2532,7 @@ function haproxy_check_run($reload) {
 				unlock($haproxylock);
 				return (0);
 			}
-			log_error("Starting haproxy on CARP master.");
+			logger(LOG_INFO, localize_text("Starting haproxy on CARP master."), LOG_PREFIX_PKG_HAPROXY);
 			/* fallthrough */
 		} elseif ($reload == 0) {
 			unlock($haproxylock);
@@ -2559,14 +2561,14 @@ function haproxy_check_run($reload) {
 				$sf_st = "-sf";//finish serving existing connections exit when done, and the new process is listening
 			}
 
-			syslog(LOG_NOTICE, "haproxy: reload old pid:$old_pid");
+			logger(LOG_NOTICE, localize_text("reload old pid:%s", $old_pid), LOG_PREFIX_PKG_HAPROXY);
 			$restartargs = "";
 			if (haproxy_version() >= "1.8") {
 				$restartargs = " -x /tmp/haproxy.socket";
 			}
 			exec("/usr/local/sbin/haproxy -f {$configpath}/haproxy.cfg -p /var/run/haproxy.pid -D $restartargs $sf_st `cat /var/run/haproxy.pid` 2>&1", $output, $errcode);
 		} else {
-			syslog(LOG_NOTICE, "haproxy: starting old pid:$old_pid");
+			logger(LOG_NOTICE, localize_text("starting old pid:%s", $old_pid), LOG_PREFIX_PKG_HAPROXY);
 			exec("/usr/local/sbin/haproxy -f {$configpath}/haproxy.cfg -p /var/run/haproxy.pid -D 2>&1", $output, $errcode);
 		}
 		if (file_exists('/var/run/haproxy.pid')){
@@ -2574,7 +2576,7 @@ function haproxy_check_run($reload) {
 		} else {
 			$new_pid = 'none';
 		}
-		syslog(LOG_NOTICE, "haproxy: started new pid:$new_pid");
+		logger(LOG_NOTICE, localize_text("started new pid:%s", $new_pid), LOG_PREFIX_PKG_HAPROXY);
 
 		$syslogmessage = "";
 		foreach($output as $line) {
@@ -2582,7 +2584,7 @@ function haproxy_check_run($reload) {
 			$syslogmessage .= str_replace("\n"," ",$line);
 		}
 		if (!empty($syslogmessage)) {
-			syslog(LOG_NOTICE, "haproxy: startup error output!: {$syslogmessage}");
+			logger(LOG_NOTICE, localize_text("startup error output!: %s", $syslogmessage), LOG_PREFIX_PKG_HAPROXY);
 		}
 
 	} else {

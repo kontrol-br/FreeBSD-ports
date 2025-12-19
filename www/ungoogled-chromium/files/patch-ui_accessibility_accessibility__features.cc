@@ -1,20 +1,20 @@
---- ui/accessibility/accessibility_features.cc.orig	2025-09-11 16:30:26 UTC
+--- ui/accessibility/accessibility_features.cc.orig	2025-12-06 13:30:52 UTC
 +++ ui/accessibility/accessibility_features.cc
-@@ -516,7 +516,7 @@ bool IsScreenAITestModeEnabled() {
+@@ -485,7 +485,7 @@ bool IsScreenAITestModeEnabled() {
    return base::FeatureList::IsEnabled(::features::kScreenAITestMode);
  }
  
 -#if BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
  BASE_FEATURE(kScreenAIPartitionAllocAdvancedChecksEnabled,
-              "ScreenAIPartitionAllocAdvancedChecksEnabled",
               base::FEATURE_DISABLED_BY_DEFAULT);
-@@ -558,7 +558,7 @@ bool IsBlockRootWindowAccessibleNameChangeEventEnabled
+ #endif
+@@ -520,7 +520,7 @@ bool IsBlockRootWindowAccessibleNameChangeEventEnabled
  }
  #endif  // BUILDFLAG(IS_MAC)
  
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
  BASE_FEATURE(kWasmTtsComponentUpdaterV3Enabled,
-              "WasmTtsComponentUpdaterV3Enabled",
-              base::FEATURE_DISABLED_BY_DEFAULT);
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ bool IsWasmTtsComponentUpdaterV3Enabled() {

@@ -1,5 +1,6 @@
     COMMENT = Domain Name Service tools
 
+    SUBDIR += aardvark-dns
     SUBDIR += acme-dns
     SUBDIR += adns
     SUBDIR += amass
@@ -67,7 +68,6 @@
     SUBDIR += encrypted-dns-server
     SUBDIR += fastresolve
     SUBDIR += flamethrower
-    SUBDIR += fpdns
     SUBDIR += gdnsd2
     SUBDIR += gdnsd3
     SUBDIR += gen6dns

@@ -1,5 +1,5 @@
 PORTNAME=	chromium
-PORTVERSION=	141.0.7390.54
+PORTVERSION=	143.0.7499.109
 PORTREVISION=	1
 PULSEMV=	16
 PULSEV=		${PULSEMV}.1
@@ -7,7 +7,7 @@ CATEGORIES=	www wayland
 MASTER_SITES=	https://commondatastorage.googleapis.com/chromium-browser-official/ \
 		https://nerd.hu/distfiles/:external \
 		https://freedesktop.org/software/pulseaudio/releases/:pulseaudio
-DISTFILES=	${DISTNAME}${EXTRACT_SUFX} \
+DISTFILES=	${DISTNAME}-lite${EXTRACT_SUFX} \
 		pulseaudio-${PULSEV}.tar.gz:pulseaudio
 
 MAINTAINER=	chromium@FreeBSD.org
@@ -231,7 +231,7 @@ TEST_ALL_TARGET=	${TEST_TARGETS}
 IGNORE=		you have selected HEIMDAL_BASE but do not have Heimdal installed in base
 .endif
 
-LLVM_DEFAULT=		19
+LLVM_DEFAULT=		21
 BUILD_DEPENDS+=		clang${LLVM_DEFAULT}:devel/llvm${LLVM_DEFAULT}
 BINARY_ALIAS+=		cpp=${LOCALBASE}/bin/clang-cpp${LLVM_DEFAULT} \
 			cc=${LOCALBASE}/bin/clang${LLVM_DEFAULT} \
@@ -267,11 +267,9 @@ MAKE_ENV+=	C_INCLUDE_PATH=${LOCALBASE}/include \
 		CPLUS_INCLUDE_PATH=${LOCALBASE}/include
 
 # rust
-RUSTC_VERSION!=	rustc -V 2>/dev/null || true
 MAKE_ENV+=	RUSTC_BOOTSTRAP=1
 GN_ARGS+=	enable_rust=true \
-		rust_sysroot_absolute="${LOCALBASE}" \
-		rustc_version="${RUSTC_VERSION}"
+		rust_sysroot_absolute="${LOCALBASE}"
 
 pre-everything::
 	@${ECHO_MSG}
@@ -301,10 +299,17 @@ pre-configure:
 .endfor
 	touch ${WRKDIR}/pulseaudio-${PULSEV}/src/pulse/version.h
 	@${REINPLACE_CMD} -e 's|$${LOCALBASE}|${LOCALBASE}|;s|$${MODCLANG_VERSION}|${LLVM_DEFAULT}|' \
+		${WRKSRC}/build/linux/strip_binary.gni \
 		${WRKSRC}/build/rust/rust_bindgen.gni \
 		${WRKSRC}/build/rust/rust_bindgen_generator.gni
 
 do-configure:
+	@( \
+		echo "#ifndef GPU_WEBGPU_DAWN_COMMIT_HASH_H_" ;\
+		echo "#define GPU_WEBGPU_DAWN_COMMIT_HASH_H_" ;\
+		echo "#define DAWN_COMMIT_HASH \"$$(cat ${WRKSRC}/gpu/webgpu/DAWN_VERSION)\"" ;\
+		echo "#endif  // GPU_WEBGPU_DAWN_COMMIT_HASH_H_" \
+	) > ${WRKSRC}/gpu/webgpu/dawn_commit_hash.h
 	# GN generator bootstrapping and generating ninja files
 	cd ${WRKSRC} && ${SETENV} ${CONFIGURE_ENV} CC=${CC} CXX=${CXX} LD=${CXX} \
 		READELF=${READELF} AR=${AR} NM=${NM} ${PYTHON_CMD} \

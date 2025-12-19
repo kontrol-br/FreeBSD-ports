@@ -1,5 +1,5 @@
 PORTNAME=	pdm
-PORTVERSION=	2.25.9
+PORTVERSION=	2.26.2
 CATEGORIES=	devel python
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -19,13 +19,13 @@ RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}blinker>=0:devel/py-blinker@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}dep-logic>=0.5:devel/py-dep-logic@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}filelock>=3.13:sysutils/py-filelock@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}findpython>=0.7.0<1.0.0:devel/py-findpython@${PY_FLAVOR} \
-		${PYTHON_PKGNAMEPREFIX}hishel>=0.0.32:devel/py-hishel@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}hishel0>=0.0.32<1.0.0:devel/py-hishel0@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}httpcore>=1.0.6:www/py-httpcore@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}httpx>=0.20<1:www/py-httpx@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}id>=1.5.0:devel/py-id@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}installer>=0.7<0.8:devel/py-installer@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}packaging>=22.0:devel/py-packaging@${PY_FLAVOR} \
-		${PYTHON_PKGNAMEPREFIX}pbs-installer>=2025.6.6:devel/py-pbs-installer@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}pbs-installer>=2025.10.7:devel/py-pbs-installer@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}platformdirs>=0:devel/py-platformdirs@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pyproject-hooks>=0:devel/py-pyproject-hooks@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}python-dotenv>=0.15:www/py-python-dotenv@${PY_FLAVOR} \
@@ -34,6 +34,7 @@ RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}blinker>=0:devel/py-blinker@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}shellingham>=1.3.2:devel/py-shellingham@${PY_FLAVOR} \
 		${PY_TOMLI} \
 		${PYTHON_PKGNAMEPREFIX}tomlkit>=0.11.1<1:textproc/py-tomlkit@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}truststore>=0.10.4:security/py-truststore@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}unearth>=0.17.5:devel/py-unearth@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}virtualenv>=20:devel/py-virtualenv@${PY_FLAVOR}
 
@@ -54,12 +55,4 @@ COPIER_RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}copier>=8.0.0:devel/py-copier@${PY_FL
 KEYRING_RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}keyring>=0,1:security/py-keyring@${PY_FLAVOR} \
 MSGPACK_RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}msgpack>=1.0:devel/py-msgpack@${PY_FLAVOR} \
 
-.include <bsd.port.pre.mk>
-
-.if ${PYTHON_REL} < 31000
-RUN_DEPENDS+=	${PYTHON_PKGNAMEPREFIX}importlib-metadata>=3.6:devel/py-importlib-metadata@${PY_FLAVOR}
-.else
-RUN_DEPENDS+=	${PYTHON_PKGNAMEPREFIX}truststore>=0.10.4:security/py-truststore@${PY_FLAVOR}
-.endif
-
-.include <bsd.port.post.mk>
+.include <bsd.port.mk>

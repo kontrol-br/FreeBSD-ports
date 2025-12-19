@@ -1,7 +1,7 @@
 PORTNAME=	go-librespot
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.5.0
-PORTREVISION=	2
+DISTVERSION=	0.5.3
+PORTREVISION=	1
 CATEGORIES=	audio
 
 MAINTAINER=	ale@biancalanas.net
@@ -13,7 +13,8 @@ LICENSE_FILE=	${WRKSRC}/LICENSE
 
 LIB_DEPENDS=	libogg.so:audio/libogg \
 		libasound.so:audio/alsa-lib \
-		libvorbis.so:audio/libvorbis
+		libvorbis.so:audio/libvorbis \
+		libFLAC.so:audio/flac
 
 USES=		go:modules pkgconfig
 USE_RC_SUBR=	${PORTNAME}
@@ -21,7 +22,9 @@ USE_RC_SUBR=	${PORTNAME}
 GO_MODULE=	github.com/devgianlu/go-librespot
 
 GO_TARGET=	./cmd/daemon:${PREFIX}/bin/go-librespot
-GO_BUILDFLAGS=	-ldflags "-X github.com/devgianlu/go-librespot.version=${DISTVERSION} -X github.com/devgianlu/go-librespot.commit=fc55ed0"
+GO_BUILDFLAGS=	-ldflags "\
+		-X github.com/devgianlu/go-librespot.version=${DISTVERSION} \
+		-X github.com/devgianlu/go-librespot.commit=ab178ff"
 
 post-install:
 	${MKDIR} ${STAGEDIR}${ETCDIR}

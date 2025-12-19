@@ -1,5 +1,5 @@
 PORTNAME=	aws-sdk-resources
-PORTVERSION=	3.241.0
+PORTVERSION=	3.249.0
 CATEGORIES=	devel rubygems
 MASTER_SITES=	RG
 
@@ -36,7 +36,6 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-apprunner>=1<2:devel/rubygem-aws-sdk-apprunner \
 		rubygem-aws-sdk-appstream>=1<2:devel/rubygem-aws-sdk-appstream \
 		rubygem-aws-sdk-appsync>=1<2:devel/rubygem-aws-sdk-appsync \
-		rubygem-aws-sdk-apptest>=1<2:devel/rubygem-aws-sdk-apptest \
 		rubygem-aws-sdk-arcregionswitch>=1<2:devel/rubygem-aws-sdk-arcregionswitch \
 		rubygem-aws-sdk-arczonalshift>=1<2:devel/rubygem-aws-sdk-arczonalshift \
 		rubygem-aws-sdk-artifact>=1<2:devel/rubygem-aws-sdk-artifact \
@@ -110,6 +109,7 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-comprehend>=1<2:devel/rubygem-aws-sdk-comprehend \
 		rubygem-aws-sdk-comprehendmedical>=1<2:devel/rubygem-aws-sdk-comprehendmedical \
 		rubygem-aws-sdk-computeoptimizer>=1<2:devel/rubygem-aws-sdk-computeoptimizer \
+		rubygem-aws-sdk-computeoptimizerautomation>=1<2:devel/rubygem-aws-sdk-computeoptimizerautomation \
 		rubygem-aws-sdk-configservice>=1<2:devel/rubygem-aws-sdk-configservice \
 		rubygem-aws-sdk-connect>=1<2:devel/rubygem-aws-sdk-connect \
 		rubygem-aws-sdk-connectcampaignservice>=1<2:devel/rubygem-aws-sdk-connectcampaignservice \
@@ -205,7 +205,6 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-iotdeviceadvisor>=1<2:devel/rubygem-aws-sdk-iotdeviceadvisor \
 		rubygem-aws-sdk-iotevents>=1<2:devel/rubygem-aws-sdk-iotevents \
 		rubygem-aws-sdk-ioteventsdata>=1<2:devel/rubygem-aws-sdk-ioteventsdata \
-		rubygem-aws-sdk-iotfleethub>=1<2:devel/rubygem-aws-sdk-iotfleethub \
 		rubygem-aws-sdk-iotfleetwise>=1<2:devel/rubygem-aws-sdk-iotfleetwise \
 		rubygem-aws-sdk-iotjobsdataplane>=1<2:devel/rubygem-aws-sdk-iotjobsdataplane \
 		rubygem-aws-sdk-iotmanagedintegrations>=1<2:devel/rubygem-aws-sdk-iotmanagedintegrations \
@@ -245,8 +244,6 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-lightsail>=1<2:devel/rubygem-aws-sdk-lightsail \
 		rubygem-aws-sdk-locationservice>=1<2:devel/rubygem-aws-sdk-locationservice \
 		rubygem-aws-sdk-lookoutequipment>=1<2:devel/rubygem-aws-sdk-lookoutequipment \
-		rubygem-aws-sdk-lookoutforvision>=1<2:devel/rubygem-aws-sdk-lookoutforvision \
-		rubygem-aws-sdk-lookoutmetrics>=1<2:devel/rubygem-aws-sdk-lookoutmetrics \
 		rubygem-aws-sdk-machinelearning>=1<2:devel/rubygem-aws-sdk-machinelearning \
 		rubygem-aws-sdk-macie2>=1<2:devel/rubygem-aws-sdk-macie2 \
 		rubygem-aws-sdk-mailmanager>=1<2:devel/rubygem-aws-sdk-mailmanager \
@@ -282,6 +279,7 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-mq>=1<2:devel/rubygem-aws-sdk-mq \
 		rubygem-aws-sdk-mturk>=1<2:devel/rubygem-aws-sdk-mturk \
 		rubygem-aws-sdk-mwaa>=1<2:devel/rubygem-aws-sdk-mwaa \
+		rubygem-aws-sdk-mwaaserverless>=1<2:devel/rubygem-aws-sdk-mwaaserverless \
 		rubygem-aws-sdk-neptune>=1<2:devel/rubygem-aws-sdk-neptune \
 		rubygem-aws-sdk-neptunedata>=1<2:devel/rubygem-aws-sdk-neptunedata \
 		rubygem-aws-sdk-neptunegraph>=1<2:devel/rubygem-aws-sdk-neptunegraph \
@@ -291,6 +289,7 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-networkmonitor>=1<2:devel/rubygem-aws-sdk-networkmonitor \
 		rubygem-aws-sdk-notifications>=1<2:devel/rubygem-aws-sdk-notifications \
 		rubygem-aws-sdk-notificationscontacts>=1<2:devel/rubygem-aws-sdk-notificationscontacts \
+		rubygem-aws-sdk-novaact>=1<2:devel/rubygem-aws-sdk-novaact \
 		rubygem-aws-sdk-oam>=1<2:devel/rubygem-aws-sdk-oam \
 		rubygem-aws-sdk-observabilityadmin>=1<2:devel/rubygem-aws-sdk-observabilityadmin \
 		rubygem-aws-sdk-odb>=1<2:devel/rubygem-aws-sdk-odb \
@@ -301,6 +300,9 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-osis>=1<2:devel/rubygem-aws-sdk-osis \
 		rubygem-aws-sdk-outposts>=1<2:devel/rubygem-aws-sdk-outposts \
 		rubygem-aws-sdk-panorama>=1<2:devel/rubygem-aws-sdk-panorama \
+		rubygem-aws-sdk-partnercentralaccount>=1<2:devel/rubygem-aws-sdk-partnercentralaccount \
+		rubygem-aws-sdk-partnercentralbenefits>=1<2:devel/rubygem-aws-sdk-partnercentralbenefits \
+		rubygem-aws-sdk-partnercentralchannel>=1<2:devel/rubygem-aws-sdk-partnercentralchannel \
 		rubygem-aws-sdk-partnercentralselling>=1<2:devel/rubygem-aws-sdk-partnercentralselling \
 		rubygem-aws-sdk-paymentcryptography>=1<2:devel/rubygem-aws-sdk-paymentcryptography \
 		rubygem-aws-sdk-paymentcryptographydata>=1<2:devel/rubygem-aws-sdk-paymentcryptographydata \
@@ -323,8 +325,6 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-qapps>=1<2:devel/rubygem-aws-sdk-qapps \
 		rubygem-aws-sdk-qbusiness>=1<2:devel/rubygem-aws-sdk-qbusiness \
 		rubygem-aws-sdk-qconnect>=1<2:devel/rubygem-aws-sdk-qconnect \
-		rubygem-aws-sdk-qldb>=1<2:devel/rubygem-aws-sdk-qldb \
-		rubygem-aws-sdk-qldbsession>=1<2:devel/rubygem-aws-sdk-qldbsession \
 		rubygem-aws-sdk-quicksight>=1<2:devel/rubygem-aws-sdk-quicksight \
 		rubygem-aws-sdk-ram>=1<2:devel/rubygem-aws-sdk-ram \
 		rubygem-aws-sdk-rds>=1<2:devel/rubygem-aws-sdk-rds \
@@ -339,15 +339,16 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-resourceexplorer2>=1<2:devel/rubygem-aws-sdk-resourceexplorer2 \
 		rubygem-aws-sdk-resourcegroups>=1<2:devel/rubygem-aws-sdk-resourcegroups \
 		rubygem-aws-sdk-resourcegroupstaggingapi>=1<2:devel/rubygem-aws-sdk-resourcegroupstaggingapi \
-		rubygem-aws-sdk-robomaker>=1<2:devel/rubygem-aws-sdk-robomaker \
 		rubygem-aws-sdk-rolesanywhere>=1<2:devel/rubygem-aws-sdk-rolesanywhere \
 		rubygem-aws-sdk-route53>=1<2:devel/rubygem-aws-sdk-route53 \
 		rubygem-aws-sdk-route53domains>=1<2:devel/rubygem-aws-sdk-route53domains \
+		rubygem-aws-sdk-route53globalresolver>=1<2:devel/rubygem-aws-sdk-route53globalresolver \
 		rubygem-aws-sdk-route53profiles>=1<2:devel/rubygem-aws-sdk-route53profiles \
 		rubygem-aws-sdk-route53recoverycluster>=1<2:devel/rubygem-aws-sdk-route53recoverycluster \
 		rubygem-aws-sdk-route53recoverycontrolconfig>=1<2:devel/rubygem-aws-sdk-route53recoverycontrolconfig \
 		rubygem-aws-sdk-route53recoveryreadiness>=1<2:devel/rubygem-aws-sdk-route53recoveryreadiness \
 		rubygem-aws-sdk-route53resolver>=1<2:devel/rubygem-aws-sdk-route53resolver \
+		rubygem-aws-sdk-rtbfabric>=1<2:devel/rubygem-aws-sdk-rtbfabric \
 		rubygem-aws-sdk-s3>=1<2:devel/rubygem-aws-sdk-s3 \
 		rubygem-aws-sdk-s3control>=1<2:devel/rubygem-aws-sdk-s3control \
 		rubygem-aws-sdk-s3outposts>=1<2:devel/rubygem-aws-sdk-s3outposts \
@@ -359,6 +360,7 @@ RUN_DEPENDS=	rubygem-aws-sdk-accessanalyzer>=1<2:devel/rubygem-aws-sdk-accessana
 		rubygem-aws-sdk-sagemakergeospatial>=1<2:devel/rubygem-aws-sdk-sagemakergeospatial \
 		rubygem-aws-sdk-sagemakermetrics>=1<2:devel/rubygem-aws-sdk-sagemakermetrics \
 		rubygem-aws-sdk-sagemakerruntime>=1<2:devel/rubygem-aws-sdk-sagemakerruntime \
+		rubygem-aws-sdk-sagemakerruntimehttp2>=1<2:devel/rubygem-aws-sdk-sagemakerruntimehttp2 \
 		rubygem-aws-sdk-savingsplans>=1<2:devel/rubygem-aws-sdk-savingsplans \
 		rubygem-aws-sdk-scheduler>=1<2:devel/rubygem-aws-sdk-scheduler \
 		rubygem-aws-sdk-schemas>=1<2:devel/rubygem-aws-sdk-schemas \

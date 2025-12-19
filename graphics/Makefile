@@ -389,6 +389,7 @@
     SUBDIR += jdraw
     SUBDIR += jgraph
     SUBDIR += jhead
+    SUBDIR += jkqtplotter
     SUBDIR += jogamp-jogl
     SUBDIR += jogl
     SUBDIR += jp
@@ -589,6 +590,7 @@
     SUBDIR += mapnik
     SUBDIR += mapserver
     SUBDIR += mapyrus
+    SUBDIR += materialx
     SUBDIR += matplotlib-cpp
     SUBDIR += matplotplusplus
     SUBDIR += meh
@@ -637,6 +639,8 @@
     SUBDIR += nvidia-drm-66-kmod-devel
     SUBDIR += nvidia-drm-kmod
     SUBDIR += nvidia-drm-kmod-devel
+    SUBDIR += nvidia-drm-latest-kmod
+    SUBDIR += nvidia-drm-latest-kmod-devel
     SUBDIR += nvidia-texture-tools
     SUBDIR += ocaml-cairo
     SUBDIR += ocaml-images
@@ -919,8 +923,10 @@
     SUBDIR += py-contextily
     SUBDIR += py-descartes
     SUBDIR += py-diplib
+    SUBDIR += py-dj52-sorl-thumbnail
     SUBDIR += py-django-easy-thumbnails
     SUBDIR += py-djvulibre
+    SUBDIR += py-easyocr
     SUBDIR += py-exifread
     SUBDIR += py-f3d
     SUBDIR += py-face_recognition
@@ -975,6 +981,7 @@
     SUBDIR += py-optimize-images
     SUBDIR += py-osmnet
     SUBDIR += py-pandana
+    SUBDIR += py-pandarm
     SUBDIR += py-pdf2image
     SUBDIR += py-photocollage
     SUBDIR += py-piexif
@@ -1004,6 +1011,7 @@
     SUBDIR += py-pymaging
     SUBDIR += py-pymaging-png
     SUBDIR += py-pyocr
+    SUBDIR += py-pyogrio
     SUBDIR += py-pypillowfight
     SUBDIR += py-pyproj
     SUBDIR += py-pyqrcode
@@ -1027,6 +1035,7 @@
     SUBDIR += py-rawkit
     SUBDIR += py-rawpy
     SUBDIR += py-rich-pixels
+    SUBDIR += py-rlpycairo
     SUBDIR += py-s2
     SUBDIR += py-scikit-image
     SUBDIR += py-seqdiag
@@ -1187,6 +1196,7 @@
     SUBDIR += simpleviewer
     SUBDIR += skanlite
     SUBDIR += skanpage
+    SUBDIR += skia
     SUBDIR += spirv-cross
     SUBDIR += spirv-tools
     SUBDIR += springgraph
@@ -1290,6 +1300,7 @@
     SUBDIR += xpdf3
     SUBDIR += xpdf4
     SUBDIR += xpx
+    SUBDIR += xreader
     SUBDIR += xsane
     SUBDIR += xtexcad
     SUBDIR += xv

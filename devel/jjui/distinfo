@@ -1,5 +1,5 @@
-TIMESTAMP = 1757710792
-SHA256 (go/devel_jjui/jjui-v0.9.3/v0.9.3.mod) = 5aed03db49976cb9517769f1f91d05c7f6ec185448687a4b3cc6f3eb9b552696
-SIZE (go/devel_jjui/jjui-v0.9.3/v0.9.3.mod) = 1664
-SHA256 (go/devel_jjui/jjui-v0.9.3/v0.9.3.zip) = 1f639e27ac669a2c98f604452ae36898a487b202f87db69a539944b50cf887ac
-SIZE (go/devel_jjui/jjui-v0.9.3/v0.9.3.zip) = 154796
+TIMESTAMP = 1764948251
+SHA256 (go/devel_jjui/jjui-v0.9.7/v0.9.7.mod) = f74a5bbe44f8d2404cf6f7ccb9aa16d79be410b6455a7c03145c09b67b92c61d
+SIZE (go/devel_jjui/jjui-v0.9.7/v0.9.7.mod) = 1544
+SHA256 (go/devel_jjui/jjui-v0.9.7/v0.9.7.zip) = dfe51d6ed5d5a50e9230be53aa26b01b50c36c4c08a515d2bba5e25294cc29fe
+SIZE (go/devel_jjui/jjui-v0.9.7/v0.9.7.zip) = 186495

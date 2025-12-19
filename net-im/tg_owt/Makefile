@@ -1,8 +1,8 @@
 PORTNAME=	tg_owt
-PORTVERSION=	0.0.20250914
+PORTVERSION=	0.0.20251117
 CATEGORIES=	net-im
 
-MAINTAINER=	ports@FreeBSD.org
+MAINTAINER=	osa@FreeBSD.org
 COMMENT=	Webrtc library used by telegram-desktop
 WWW=		https://github.com/desktop-app/tg_owt
 
@@ -28,7 +28,7 @@ USE_GL=		gbm gl
 USE_GITHUB=	yes
 USE_GNOME=	glib20
 GH_ACCOUNT=	desktop-app
-GH_TAGNAME=	5c5c712
+GH_TAGNAME=	d067233
 
 CMAME_ON=	TG_OWT_PACKAGED_BUILD
 

@@ -36,6 +36,7 @@
     SUBDIR += assh
     SUBDIR += authenticator
     SUBDIR += authoscope
+    SUBDIR += autofirma
     SUBDIR += autossh
     SUBDIR += aws-c-auth
     SUBDIR += aws-c-cal
@@ -181,6 +182,7 @@
     SUBDIR += git-remote-gcrypt
     SUBDIR += git-secret
     SUBDIR += gitjacker
+    SUBDIR += gitlab-analyzers-secrets
     SUBDIR += globalprotect-openconnect
     SUBDIR += gnome-keyring
     SUBDIR += gnupg
@@ -466,6 +468,7 @@
     SUBDIR += openvpn-devel
     SUBDIR += ophcrack
     SUBDIR += opie
+    SUBDIR += opkssh
     SUBDIR += ossec-hids
     SUBDIR += ossec-hids-agent
     SUBDIR += ossec-hids-agent-config
@@ -639,6 +642,7 @@
     SUBDIR += p5-Crypt-Twofish2
     SUBDIR += p5-Crypt-Twofish_PP
     SUBDIR += p5-Crypt-URandom
+    SUBDIR += p5-Crypt-URandom-Token
     SUBDIR += p5-Crypt-UnixCrypt
     SUBDIR += p5-Crypt-UnixCrypt_XS
     SUBDIR += p5-Crypt-X509
@@ -952,6 +956,7 @@
     SUBDIR += py-google-auth
     SUBDIR += py-google-auth-httplib2
     SUBDIR += py-google-auth-oauthlib
+    SUBDIR += py-google-cloud-kms
     SUBDIR += py-gpg
     SUBDIR += py-gpsoauth
     SUBDIR += py-greenbone-feed-sync
@@ -1000,7 +1005,6 @@
     SUBDIR += py-oauthlib
     SUBDIR += py-omemo-dr
     SUBDIR += py-openssh-wrapper
-    SUBDIR += py-openssl
     SUBDIR += py-oscrypto
     SUBDIR += py-ospd-openvas
     SUBDIR += py-paramiko
@@ -1033,6 +1037,7 @@
     SUBDIR += py-pylibacl
     SUBDIR += py-pymacaroons
     SUBDIR += py-pynacl
+    SUBDIR += py-pyopenssl
     SUBDIR += py-pyotp
     SUBDIR += py-pyotp2289
     SUBDIR += py-pysaml2
@@ -1109,6 +1114,7 @@
     SUBDIR += qt-sudo
     SUBDIR += qtkeychain
     SUBDIR += quantis-kmod
+    SUBDIR += radamsa
     SUBDIR += rage-encryption
     SUBDIR += ratify
     SUBDIR += ratproxy
@@ -1117,7 +1123,6 @@
     SUBDIR += rekor
     SUBDIR += reop
     SUBDIR += rhash
-    SUBDIR += rhonabwy
     SUBDIR += ridl
     SUBDIR += rifiuti2
     SUBDIR += rkhunter
@@ -1198,6 +1203,7 @@
     SUBDIR += rubygem-omniauth-cas
     SUBDIR += rubygem-omniauth-dingtalk-oauth2
     SUBDIR += rubygem-omniauth-gitlab
+    SUBDIR += rubygem-omniauth-gl
     SUBDIR += rubygem-omniauth-jwt
     SUBDIR += rubygem-omniauth-multipassword
     SUBDIR += rubygem-omniauth-multipassword2
@@ -1209,6 +1215,7 @@
     SUBDIR += rubygem-omniauth-saml1
     SUBDIR += rubygem-omniauth-shibboleth
     SUBDIR += rubygem-omniauth-shibboleth-redux
+    SUBDIR += rubygem-omniauth-shibboleth-redux-gitlab
     SUBDIR += rubygem-omniauth1
     SUBDIR += rubygem-openssl
     SUBDIR += rubygem-openssl-ccm
@@ -1396,6 +1403,7 @@
     SUBDIR += unix-selfauth-helper
     SUBDIR += vanguards-tor
     SUBDIR += vault
+    SUBDIR += vault-medusa
     SUBDIR += vaultwarden
     SUBDIR += veracrypt
     SUBDIR += vigenere

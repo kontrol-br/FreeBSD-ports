@@ -38,6 +38,7 @@ include/snort/flow/flow_data.h
 include/snort/flow/flow_key.h
 include/snort/flow/flow_stash.h
 include/snort/flow/ha.h
+include/snort/flow/prune_stats.h
 include/snort/flow/session.h
 include/snort/flow/stream_flow.h
 include/snort/framework/api_options.h
@@ -198,6 +199,7 @@ include/snort/pub_sub/detection_events.h
 include/snort/pub_sub/domain_fronting.h
 include/snort/pub_sub/dhcp_events.h
 include/snort/pub_sub/dns_events.h
+include/snort/pub_sub/dns_payload_event.h
 include/snort/pub_sub/eof_event.h
 include/snort/pub_sub/eve_process_event.h
 include/snort/pub_sub/expect_events.h
@@ -243,6 +245,7 @@ include/snort/service_inspectors/http_inspect/http_inspect_base.h
 include/snort/service_inspectors/http_inspect/http_stream_splitter_base.h
 include/snort/service_inspectors/http_inspect/http_test_manager.h
 include/snort/service_inspectors/netflow/netflow_record.h
+include/snort/service_inspectors/ssh/ssh_types.h
 include/snort/service_inspectors/ssl/ssl_flow_data.h
 include/snort/sfip/sf_cidr.h
 include/snort/sfip/sf_ip.h
@@ -303,6 +306,7 @@ libdata/pkgconfig/snort.pc
 %%PORTDOCS%%%%DOCSDIR%%/iec104.txt
 %%PORTDOCS%%%%DOCSDIR%%/js_norm.txt
 %%PORTDOCS%%%%DOCSDIR%%/mms.txt
+%%PORTDOCS%%%%DOCSDIR%%/opcua.txt
 %%PORTDOCS%%%%DOCSDIR%%/overview.txt
 %%PORTDOCS%%%%DOCSDIR%%/params.txt
 %%PORTDOCS%%%%DOCSDIR%%/perf_monitor.txt

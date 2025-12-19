@@ -1,6 +1,5 @@
 PORTNAME=	gitlab-cloud-connector
-PORTVERSION=	1.31.0
-PORTREVISION=	1
+PORTVERSION=	1.36.0
 CATEGORIES=	security rubygems
 MASTER_SITES=	RG
 

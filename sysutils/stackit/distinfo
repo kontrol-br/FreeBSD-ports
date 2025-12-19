@@ -1,5 +1,5 @@
-TIMESTAMP = 1760361014
-SHA256 (go/sysutils_stackit/stackit-v0.44.0/v0.44.0.mod) = d01643fd9026430b5940e6a6847bbf6eb35e127259f932918c7d9634ef45b63e
-SIZE (go/sysutils_stackit/stackit-v0.44.0/v0.44.0.mod) = 13041
-SHA256 (go/sysutils_stackit/stackit-v0.44.0/v0.44.0.zip) = 730574ae4de0531194265ee09bfcc44f34c071c95c0982aedaaafd9f09b1d759
-SIZE (go/sysutils_stackit/stackit-v0.44.0/v0.44.0.zip) = 2165408
+TIMESTAMP = 1763545637
+SHA256 (go/sysutils_stackit/stackit-v0.49.0/v0.49.0.mod) = 797faa7ab87026392e261ed99577d6b02d9378ccddae6ad489fca5c0a8293781
+SIZE (go/sysutils_stackit/stackit-v0.49.0/v0.49.0.mod) = 13164
+SHA256 (go/sysutils_stackit/stackit-v0.49.0/v0.49.0.zip) = 56aad46ff0818177228b4535073854422a2582cbf51aac000fdf5120800f9f9a
+SIZE (go/sysutils_stackit/stackit-v0.49.0/v0.49.0.zip) = 2242129

@@ -5,6 +5,134 @@ they are unavoidable.
 You should get into the habit of checking this file for changes each time
 you update your ports collection, before attempting any port upgrades.
 
+20251208:
+  AFFECTS: users of net-mgmt/unifi{9,10}
+  AUTHOR: otis@FreeBSD.org
+
+  Version 10 of UniFi controller has been introduced, conflicting with
+  version 9.
+
+  Users are strongly advised to make a fresh backup of UniFi controller
+  database from within the UI, prior to upgrade to unifi10.
+
+20251201:
+  AFFECTS: users of lang/php83
+  AUTHOR: bofh@FreeBSD.org
+
+  The default version of PHP has been switched from 8.3 to 8.4.
+
+  If you use binary packages you should make a list of php packages
+  before running 'pkg upgrade':
+
+  # pkg info \*php83\* > ~/installed-php-ports-list
+
+  After the upgrade, check with such list if all your php extensions
+  are still installed, and reinstall them if needed.
+
+  If you use mod_php83 you need to deinstall it and install mod_php84.
+
+20251201:
+  AFFECTS: users of sysutils/tmux
+  AUTHOR: jrm@FreeBSD.org
+
+  tmux must be restarted after upgrading.  This is particularly
+  important with version 3.6 because one of the libraries that tmux uses
+  has changed its protocol.  If you see the following message when you
+  try to attach, it likely means you forgot to restart tmux:
+
+  open terminal failed: not a terminal
+
+20251130:
+  AFFECTS: users of www/node{22,24,25}
+  AUTHOR: sunpoet@FreeBSD.org
+
+  www/node{22,24,25} now uses databases/sqlite3 instead of the bundled one.
+  It requires SESSION option (enabled by default) in databases/sqlite3.
+  Please update your option configuration. Otherwise, the build fails.
+  See PR 290509 and 290588 for details.
+
+20251113:
+  AFFECTS: users of deskutils/fet
+  AUTHOR: uzsolt@FreeBSD.org
+
+  Remove Qt flavors, only use Qt6.
+
+  You should uninstall the flavored package and install the unflavored package.
+
+20251105:
+  AFFECTS: users of net/unison
+  AUTHOR: madpilot@FreeBSD.org
+
+  With the update to version 2.53.8 the port uses upstream install target.
+  This causes the installed unison binary to always me the command line
+  version, even when the port is compiled with xorg support. The UI binary
+  is installed as unison-gui.
+
+  The unison.desktop file provided with the port is adjusted to launch the
+  new unison-gui binary.
+
+  Please verify any local scripts using the unison binaries are adapted to
+  this change.
+
+20251019:
+  AFFECTS: users of security/clamav
+  AUTHOR: yasu@FreeBSD.org
+
+  After security/clamav is updated to 1.5.0, some users report that build
+  fails as below.
+
+    /usr/ports/security/clamav/work/clamav-1.5.1/libclamav/others.c:623:23: error: use of undeclared identifier 'CERTSDIR'
+      623 |         cvdcertsdir = CERTSDIR;
+          |                       ^
+    1 warning and 1 error generated.
+    ninja: build stopped: subcommand failed.
+    *** Error code 1
+
+  The error seems to happen with following conditions.
+
+  * Non-base SSL stack is used. That is, in /etc/make.conf there is such
+    setting as 'DEFAULT_VERSIONS+=ssl=openssl'.
+  * Previous version (1.4.3) of clamav package is already installed.
+
+  If you face it, you can work around it by uninstalling current clamav
+  package first.
+
+20251016:
+  AFFECTS: users of devel/nexus2-oss
+  AUTHOR: michaelo@FreeBSD.org
+
+  With the upgrade to javaservicewrapper-3.6.3 Nexus won't start unless you
+  remove all properties ending with '.stripquotes' in your
+  %%ETCDIR%%/wrapper.conf.
+
+20251016:
+  AFFECTS: users of sysutils/javaservicewrapper
+  AUTHOR: michaelo@FreeBSD.org
+
+  With the upgrade to version 3.6.0+ support for all properties ending with
+  '.stripquotes' in your wrapper.conf has been dropped and your application
+  won't start again.
+
+  Read the release notes for more details:
+  https://wrapper.tanukisoftware.com/doc/english/release-notes.html#3.6.0
+
+20251015:
+  AFFECTS: users of security/libressl
+  AUTHOR: brnrd@FreeBSD.org
+
+  The port has been updated to the latest stable version 4.2 of LibreSSL.
+  The shared library versions of the libraries have been bumped.
+
+  After upgrading, manually update all packages that depend on any of the
+  libraries provided by LibreSSL (libssl, libcrypto and libtls) since the
+  versions of these libraries have changed. Normally, you can obtain the
+  list of dependent software by running the following command:
+
+  # pkg info -r libressl
+
+  Then you should rebuild all ports depending on libressl to avoid dangling
+  shared library dependencies.
+
 20251011:
   AFFECTS: users of net-im/gotosocial
   AUTHOR: dinoex@FreeBSD.org
@@ -158,7 +286,7 @@ you update your ports collection, before attempting any port upgrades.
   AUTHOR: mandree@FreeBSD.org
 
   The mail/bogofilter-bdb port has expired and will be removed.
-  
+
   1. BEFORE uninstallation or changing to a different mail/bogofilter*
   variant, please use bogoutil to export all user data bases (wordlist.db)
   to text files, bogoutil has a -d option for that.

@@ -1,4 +1,4 @@
---- third_party/blink/renderer/core/page/context_menu_controller.cc.orig	2025-10-02 04:28:32 UTC
+--- third_party/blink/renderer/core/page/context_menu_controller.cc.orig	2025-12-05 10:12:50 UTC
 +++ third_party/blink/renderer/core/page/context_menu_controller.cc
 @@ -650,7 +650,7 @@ bool ContextMenuController::ShowContextMenu(LocalFrame
      if (potential_image_node != nullptr &&

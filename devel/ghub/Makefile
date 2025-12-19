@@ -1,10 +1,10 @@
 PORTNAME=	ghub
 DISTVERSIONPREFIX=	v
-DISTVERSION=	5.0.1
+DISTVERSION=	5.0.2
 CATEGORIES=	devel elisp
 PKGNAMESUFFIX=	${EMACS_PKGNAMESUFFIX}
 
-MAINTAINER=	yasu@FreeBSD.org
+MAINTAINER=	ports@FreeBSD.org
 COMMENT=	Client libraries for the APIs of various Git forges
 WWW=		https://github.com/magit/ghub
 

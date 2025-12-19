@@ -607,6 +607,7 @@
     SUBDIR += octave-forge-joystick
     SUBDIR += octave-forge-level-set
     SUBDIR += octave-forge-linear-algebra
+    SUBDIR += octave-forge-llms
     SUBDIR += octave-forge-lssa
     SUBDIR += octave-forge-ltfat
     SUBDIR += octave-forge-mapping
@@ -640,7 +641,6 @@
     SUBDIR += octave-forge-octproj
     SUBDIR += octave-forge-odbc
     SUBDIR += octave-forge-odebvp
-    SUBDIR += octave-forge-onsas
     SUBDIR += octave-forge-optics
     SUBDIR += octave-forge-optim
     SUBDIR += octave-forge-optiminterp
@@ -1294,7 +1294,6 @@
     SUBDIR += vinci
     SUBDIR += visualpolylib
     SUBDIR += vowpal_wabbit
-    SUBDIR += vtk8
     SUBDIR += vtk9
     SUBDIR += wavelib
     SUBDIR += wcalc

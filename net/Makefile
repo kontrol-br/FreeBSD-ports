@@ -37,7 +37,6 @@
     SUBDIR += asio130
     SUBDIR += asterisk-chan_sccp
     SUBDIR += asterisk-g72x
-    SUBDIR += asterisk18
     SUBDIR += asterisk20
     SUBDIR += asterisk22
     SUBDIR += astron
@@ -196,7 +195,6 @@
     SUBDIR += gitup
     SUBDIR += glflow
     SUBDIR += glib-networking
-    SUBDIR += glusterfs
     SUBDIR += gmid
     SUBDIR += gnet2
     SUBDIR += gnetcat
@@ -249,6 +247,7 @@
     SUBDIR += haproxy26
     SUBDIR += haproxy28
     SUBDIR += haproxy30
+    SUBDIR += haproxy33
     SUBDIR += hblock
     SUBDIR += hexinject
     SUBDIR += hlmaster
@@ -464,6 +463,7 @@
     SUBDIR += mailcommon
     SUBDIR += mailimporter
     SUBDIR += malo-firmware-kmod
+    SUBDIR += mcast-bridge
     SUBDIR += mcjoin
     SUBDIR += mdns-bridge
     SUBDIR += mdns-repeater
@@ -594,6 +594,7 @@
     SUBDIR += openvswitch
     SUBDIR += ortp
     SUBDIR += osrtspproxy
+    SUBDIR += otelcol-contrib
     SUBDIR += ovhcloud-cli
     SUBDIR += owamp
     SUBDIR += p5-Acme-HTTP
@@ -1020,6 +1021,7 @@
     SUBDIR += pktanon
     SUBDIR += pload
     SUBDIR += plugdaemon
+    SUBDIR += pmix
     SUBDIR += poptop
     SUBDIR += portfwd
     SUBDIR += pptpclient
@@ -1029,6 +1031,7 @@
     SUBDIR += proxy-suite
     SUBDIR += proxychains
     SUBDIR += proxychains-ng
+    SUBDIR += prrte
     SUBDIR += prtunnel
     SUBDIR += ptpd2
     SUBDIR += ptunnel
@@ -1076,6 +1079,7 @@
     SUBDIR += py-haproxy-log-analysis
     SUBDIR += py-haproxyctl
     SUBDIR += py-httpstat
+    SUBDIR += py-icmplib
     SUBDIR += py-ifaddr
     SUBDIR += py-impacket
     SUBDIR += py-iplib
@@ -1097,7 +1101,6 @@
     SUBDIR += py-msrplib
     SUBDIR += py-ndg-httpsclient
     SUBDIR += py-netaddr
-    SUBDIR += py-netif
     SUBDIR += py-netifaces
     SUBDIR += py-netifaces-plus
     SUBDIR += py-netsnmpagent
@@ -1132,6 +1135,7 @@
     SUBDIR += py-pysmb
     SUBDIR += py-pysocks
     SUBDIR += py-pystun
+    SUBDIR += py-pystun3
     SUBDIR += py-python-barbicanclient
     SUBDIR += py-python-bitcoinrpc
     SUBDIR += py-python-cinderclient
@@ -1232,9 +1236,11 @@
     SUBDIR += rdesktop
     SUBDIR += rdist6
     SUBDIR += rdist7
+    SUBDIR += rdp2tcp
     SUBDIR += read_bbrlog
     SUBDIR += realtek-re-kmod
     SUBDIR += realtek-re-kmod198
+    SUBDIR += realtek-rge-kmod
     SUBDIR += reaver
     SUBDIR += recvnet
     SUBDIR += redir
@@ -1270,6 +1276,7 @@
     SUBDIR += rubygem-activestorage71
     SUBDIR += rubygem-activestorage72
     SUBDIR += rubygem-activestorage80
+    SUBDIR += rubygem-activestorage81
     SUBDIR += rubygem-amazon-ec2
     SUBDIR += rubygem-amq-protocol
     SUBDIR += rubygem-amqp
@@ -1300,7 +1307,6 @@
     SUBDIR += rubygem-fog-atmos
     SUBDIR += rubygem-fog-aws
     SUBDIR += rubygem-fog-aws-gitlab
-    SUBDIR += rubygem-fog-aws328
     SUBDIR += rubygem-fog-azure
     SUBDIR += rubygem-fog-brightbox
     SUBDIR += rubygem-fog-cloudatcost
@@ -1337,6 +1343,7 @@
     SUBDIR += rubygem-gitlab-fog-azure-rm
     SUBDIR += rubygem-gitlab-kas-grpc
     SUBDIR += rubygem-gitlab_omniauth-ldap
+    SUBDIR += rubygem-gitlab_omniauth-ldap-gitlab
     SUBDIR += rubygem-google-cloud-bigquery
     SUBDIR += rubygem-google-cloud-bigtable
     SUBDIR += rubygem-google-cloud-bigtable-admin-v2
@@ -1492,6 +1499,8 @@
     SUBDIR += samba416
     SUBDIR += samba419
     SUBDIR += samba420
+    SUBDIR += samba422
+    SUBDIR += samba423
     SUBDIR += samplicator
     SUBDIR += savvycan
     SUBDIR += sbm

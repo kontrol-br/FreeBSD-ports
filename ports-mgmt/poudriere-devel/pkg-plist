@@ -9,6 +9,7 @@ libexec/poudriere/clock
 libexec/poudriere/cpdup
 libexec/poudriere/dirempty
 libexec/poudriere/dirwatch
+libexec/poudriere/getpid
 libexec/poudriere/locked_mkdir
 libexec/poudriere/lockf
 libexec/poudriere/nc
@@ -32,6 +33,7 @@ share/man/man8/poudriere-options.8.gz
 share/man/man8/poudriere-pkgclean.8.gz
 share/man/man8/poudriere-ports.8.gz
 share/man/man8/poudriere-queue.8.gz
+share/man/man8/poudriere-repo.8.gz
 share/man/man8/poudriere-status.8.gz
 share/man/man8/poudriere-testport.8.gz
 share/man/man8/poudriere-version.8.gz
@@ -114,6 +116,7 @@ share/man/man8/poudriere.8.gz
 %%DATADIR%%/ports.sh
 %%DATADIR%%/processonelog.sh
 %%DATADIR%%/queue.sh
+%%DATADIR%%/repo.sh
 %%DATADIR%%/status.sh
 %%DATADIR%%/testport.sh
 %%ZSH%%share/zsh/site-functions/_poudriere

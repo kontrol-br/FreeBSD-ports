@@ -1,4 +1,4 @@
---- content/public/common/content_switches.cc.orig	2025-09-11 13:19:19 UTC
+--- content/public/common/content_switches.cc.orig	2025-12-10 15:04:57 UTC
 +++ content/public/common/content_switches.cc
 @@ -347,6 +347,10 @@ const char kEnableIsolatedWebAppsInRenderer[] =
  // builds.
