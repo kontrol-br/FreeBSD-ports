@@ -1,6 +1,7 @@
 PORTNAME=	walker
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.0.4
+DISTVERSION=	2.12.2
+PORTREVISION=	1
 CATEGORIES=	x11 wayland
 PKGNAMESUFFIX=	-launcher
 
@@ -21,7 +22,7 @@ USES=		cargo gnome
 USE_GITHUB=	yes
 GH_ACCOUNT=	abenz1267
 
-USE_GNOME=	cairo gtk40
+USE_GNOME=	cairo gdkpixbuf gtk40
 
 DOCSDIR=	${PREFIX}/share/doc/${PKGBASE}
 

@@ -1,6 +1,5 @@
 PORTNAME=	breeze-icons
 DISTVERSION=	${KDE_FRAMEWORKS_VERSION}
-PORTREVISION=	1
 CATEGORIES=	x11-themes kde kde-frameworks
 
 MAINTAINER=	kde@FreeBSD.org
@@ -15,8 +14,8 @@ USE_KDE=	ecm:build
 USE_LDCONFIG=	yes
 USE_QT=		base
 
-SHEBANG_FILES=	generate-24px-versions.py \
-		svg-xml-script-template.py
+SHEBANG_FILES=	tools/generate-24px-versions.py \
+		tools/svg-xml-script-template.py
 
 CMAKE_ON=	BINARY_ICONS_RESOURCE \
 		WITH_ICON_GENERATION

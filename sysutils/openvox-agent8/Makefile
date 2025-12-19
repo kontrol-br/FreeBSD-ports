@@ -1,5 +1,6 @@
 PORTNAME=	openvox-agent
 PORTVERSION=	8.22.0
+PORTREVISION=	1
 CATEGORIES=	sysutils
 MASTER_SITES=   https://forge.puppet.com/v3/files/:forge
 PKGNAMESUFFIX=	8
@@ -26,6 +27,8 @@ RUN_DEPENDS=	rubygem-base64>=0.1:converters/rubygem-base64 \
 		rubygem-ruby-augeas>=0:textproc/rubygem-ruby-augeas \
 		rubygem-scanf>=1.0:devel/rubygem-scanf \
 		rubygem-semantic_puppet>=1.0:devel/rubygem-semantic_puppet
+# Ruby 3.4 support
+RUN_DEPENDS+=	rubygem-syslog>=0.3:devel/rubygem-syslog
 
 USES=		cpe ruby
 USE_GITHUB=	yes

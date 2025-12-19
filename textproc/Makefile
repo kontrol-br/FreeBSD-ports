@@ -234,6 +234,7 @@
     SUBDIR += gdome2
     SUBDIR += gh-grep
     SUBDIR += git-chglog
+    SUBDIR += gitlab-code-parser
     SUBDIR += gitlab-elasticsearch-indexer
     SUBDIR += gitlab-zoekt-indexer
     SUBDIR += gl-aspell
@@ -492,8 +493,8 @@
     SUBDIR += ml-aspell
     SUBDIR += ml1
     SUBDIR += mn-aspell
-    SUBDIR += moar
     SUBDIR += modlogan
+    SUBDIR += moor
     SUBDIR += mp_doccer
     SUBDIR += mr-aspell
     SUBDIR += ms-aspell
@@ -1351,6 +1352,7 @@
     SUBDIR += py-cloud_sptheme
     SUBDIR += py-cmarkgfm
     SUBDIR += py-collective.checkdocs
+    SUBDIR += py-conllu
     SUBDIR += py-creole
     SUBDIR += py-cssselect2
     SUBDIR += py-csvkit
@@ -1403,6 +1405,7 @@
     SUBDIR += py-genshi
     SUBDIR += py-gensim
     SUBDIR += py-gi-docgen
+    SUBDIR += py-gladtex
     SUBDIR += py-graphemeu
     SUBDIR += py-grep-ast
     SUBDIR += py-griffe
@@ -1413,6 +1416,7 @@
     SUBDIR += py-hexdump
     SUBDIR += py-hieroglyph
     SUBDIR += py-hjson
+    SUBDIR += py-html-text
     SUBDIR += py-html2json
     SUBDIR += py-html2text
     SUBDIR += py-htmlmin2
@@ -1447,6 +1451,7 @@
     SUBDIR += py-language-data
     SUBDIR += py-language-tags
     SUBDIR += py-laserhammer
+    SUBDIR += py-latex2mathml
     SUBDIR += py-latexcodec
     SUBDIR += py-license-expression
     SUBDIR += py-line-protocol-parser
@@ -1470,6 +1475,7 @@
     SUBDIR += py-mdx_wikilink_plus
     SUBDIR += py-meilisearch
     SUBDIR += py-merge3
+    SUBDIR += py-mf2py
     SUBDIR += py-mike
     SUBDIR += py-misaka
     SUBDIR += py-mistletoe
@@ -1533,6 +1539,7 @@
     SUBDIR += py-pscript
     SUBDIR += py-pss
     SUBDIR += py-pyPEG2
+    SUBDIR += py-pyRdfa3
     SUBDIR += py-pyahocorasick
     SUBDIR += py-pyaml
     SUBDIR += py-pybtex
@@ -1552,6 +1559,7 @@
     SUBDIR += py-pygtail
     SUBDIR += py-pyhamcrest
     SUBDIR += py-pykwalify
+    SUBDIR += py-pylatexenc
     SUBDIR += py-pylons-sphinx-themes
     SUBDIR += py-pyls-spyder
     SUBDIR += py-pymdown-extensions
@@ -1569,6 +1577,7 @@
     SUBDIR += py-python-docx
     SUBDIR += py-python-frontmatter
     SUBDIR += py-python-gettext
+    SUBDIR += py-python-iso639
     SUBDIR += py-python-lsp-black
     SUBDIR += py-python-lsp-jsonrpc
     SUBDIR += py-python-lsp-server
@@ -1688,6 +1697,9 @@
     SUBDIR += py-texttable
     SUBDIR += py-textual
     SUBDIR += py-textual-autocomplete
+    SUBDIR += py-textual-image
+    SUBDIR += py-textual-speedups
+    SUBDIR += py-textual0
     SUBDIR += py-textwrap3
     SUBDIR += py-three-merge
     SUBDIR += py-tika-client
@@ -1704,12 +1716,14 @@
     SUBDIR += py-towncrier
     SUBDIR += py-translationstring
     SUBDIR += py-transpopy
+    SUBDIR += py-tree-sitter-language-pack
     SUBDIR += py-ttp
     SUBDIR += py-ttp-templates
     SUBDIR += py-typogrify
     SUBDIR += py-uc-micro-py
     SUBDIR += py-ucl
     SUBDIR += py-ufal.udpipe
+    SUBDIR += py-unicode-segmentation-rs
     SUBDIR += py-unicodeitplus
     SUBDIR += py-untangle
     SUBDIR += py-urlscan
@@ -1736,6 +1750,7 @@
     SUBDIR += py-xmlschema
     SUBDIR += py-yapf
     SUBDIR += py-youseedee
+    SUBDIR += py-zensical
     SUBDIR += py-zope.i18nmessageid
     SUBDIR += py-zpt
     SUBDIR += qprint
@@ -1784,6 +1799,7 @@
     SUBDIR += ruby-rdtool
     SUBDIR += ruby-rttool
     SUBDIR += rubygem-abbrev
+    SUBDIR += rubygem-action_text-trix
     SUBDIR += rubygem-actionpack-xml_parser-rails5
     SUBDIR += rubygem-actionpack-xml_parser-rails52
     SUBDIR += rubygem-actionpack-xml_parser-rails61
@@ -1795,6 +1811,7 @@
     SUBDIR += rubygem-actiontext71
     SUBDIR += rubygem-actiontext72
     SUBDIR += rubygem-actiontext80
+    SUBDIR += rubygem-actiontext81
     SUBDIR += rubygem-albino
     SUBDIR += rubygem-amatch
     SUBDIR += rubygem-asciidoctor
@@ -1827,10 +1844,9 @@
     SUBDIR += rubygem-css_parser
     SUBDIR += rubygem-cssmin
     SUBDIR += rubygem-cucumber-gherkin
-    SUBDIR += rubygem-cucumber-gherkin27
-    SUBDIR += rubygem-cucumber-gherkin30
-    SUBDIR += rubygem-cucumber-gherkin32
+    SUBDIR += rubygem-cucumber-gherkin34
     SUBDIR += rubygem-cucumber-html-formatter
+    SUBDIR += rubygem-cucumber-html-formatter21
     SUBDIR += rubygem-dartsass
     SUBDIR += rubygem-diff-lcs
     SUBDIR += rubygem-diff_match_patch
@@ -1923,6 +1939,7 @@
     SUBDIR += rubygem-nokogiri-diff
     SUBDIR += rubygem-octopress-escape-code
     SUBDIR += rubygem-opensearch-ruby-gitlab
+    SUBDIR += rubygem-openvox-strings
     SUBDIR += rubygem-opml
     SUBDIR += rubygem-org-ruby
     SUBDIR += rubygem-ox
@@ -1947,6 +1964,7 @@
     SUBDIR += rubygem-rails-dom-testing-rails71
     SUBDIR += rubygem-rails-dom-testing-rails72
     SUBDIR += rubygem-rails-dom-testing-rails80
+    SUBDIR += rubygem-rails-dom-testing-rails81
     SUBDIR += rubygem-rails-dom-testing1
     SUBDIR += rubygem-rails-html-sanitizer
     SUBDIR += rubygem-rak
@@ -2001,6 +2019,7 @@
     SUBDIR += rubygem-syntax
     SUBDIR += rubygem-termcolor
     SUBDIR += rubygem-terminal-table
+    SUBDIR += rubygem-terminal-table3
     SUBDIR += rubygem-terser
     SUBDIR += rubygem-text
     SUBDIR += rubygem-tidy_ffi
@@ -2134,6 +2153,7 @@
     SUBDIR += txt2html
     SUBDIR += txt2man
     SUBDIR += txt2tags
+    SUBDIR += typos
     SUBDIR += typst
     SUBDIR += uchardet
     SUBDIR += ucto

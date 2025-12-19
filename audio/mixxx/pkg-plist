@@ -130,6 +130,8 @@ share/metainfo/org.mixxx.Mixxx.metainfo.xml
 %%DATADIR%%/controllers/Hercules_DJControl_Inpulse_500.midi.xml
 %%DATADIR%%/controllers/Hercules_DJControl_Jogvision-scripts.js
 %%DATADIR%%/controllers/Hercules_DJControl_Jogvision.midi.xml
+%%DATADIR%%/controllers/Icon-P1Nano-scripts.js
+%%DATADIR%%/controllers/Icon-P1Nano.midi.xml
 %%DATADIR%%/controllers/Icon-iControls-scripts.js
 %%DATADIR%%/controllers/Icon-iControls.midi.xml
 %%DATADIR%%/controllers/Intech TEK2.midi.xml

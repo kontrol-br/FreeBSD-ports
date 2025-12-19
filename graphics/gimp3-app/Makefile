@@ -1,5 +1,5 @@
 PORTNAME=	gimp
-DISTVERSION=	3.0.4
+DISTVERSION=	3.0.6
 PORTREVISION=	2
 CATEGORIES?=	graphics gnome
 MASTER_SITES=	GIMP/gimp/v${PORTVERSION:R}
@@ -12,7 +12,7 @@ WWW=		https://www.gimp.org/
 LICENSE=	GPLv3 LGPL3
 LICENSE_COMB=	multi
 
-BUILD_DEPENDS=	${LOCALBASE}/libdata/pkgconfig/iso-codes.pc:misc/iso-codes \
+BUILD_DEPENDS=	iso-codes>=0:misc/iso-codes \
 		glib-networking>=0:net/glib-networking \
 		mypaint-brushes>0:graphics/mypaint-brushes \
 		bash:shells/bash \
@@ -32,6 +32,7 @@ LIB_DEPENDS=	libpng.so:graphics/png \
 		libjson-c.so:devel/json-c \
 		libmypaint.so:graphics/libmypaint \
 		libfreetype.so:print/freetype2 \
+		libappstream.so:devel/appstream \
 		libappstream-glib.so:devel/appstream-glib \
 		libImath.so:math/Imath \
 		libwebp.so:graphics/webp \
@@ -47,7 +48,7 @@ LIB_DEPENDS_i386=		libunwind.so:devel/libunwind
 LIB_DEPENDS_powerpc64=		libunwind.so:devel/libunwind
 LIB_DEPENDS_powerpc64le=	libunwind.so:devel/libunwind
 
-RUN_DEPENDS=	${LOCALBASE}/libdata/pkgconfig/iso-codes.pc:misc/iso-codes \
+RUN_DEPENDS=	iso-codes>=0:misc/iso-codes \
 		glib-networking>=0:net/glib-networking \
 		mypaint-brushes>0:graphics/mypaint-brushes
 
@@ -111,10 +112,10 @@ WMF_LIB_DEPENDS=	libexpat.so:textproc/expat2 \
 			libwmf.so:graphics/libwmf
 WMF_MESON_ENABLED=	wmf
 
-JS_DESC=                Install Javascript plug-ins
-JS_LIB_DEPENDS=         libgjs.so:lang/gjs
-JS_RUN_DEPENDS=         gjs-console:lang/gjs
-JS_MESON_ENABLED=       javascript
+JS_DESC=		Install Javascript plug-ins
+JS_LIB_DEPENDS=		libgjs.so:lang/gjs
+JS_RUN_DEPENDS=		gjs-console:lang/gjs
+JS_MESON_ENABLED=	javascript
 
 DOCS_BUILD_DEPENDS=	gi-docgen:textproc/py-gi-docgen
 DOCS_MESON_ENABLED=	gi-docgen
@@ -146,7 +147,7 @@ SHEBANG_FILES=	plug-ins/python/*.py \
 
 SHEBANG_LANG+=	gjs
 
-PLIST_SUB+=	BINVER=${PORTVERSION:R:R} ABIVER=${PORTVERSION:R} SHLIBVER=${PORTVERSION:E}
+PLIST_SUB+=	BINVER=${PORTVERSION:R:R} ABIVER=${PORTVERSION:R} SHLIBVER=${PORTVERSION:R:E}.${PORTVERSION:E}.${PORTVERSION:R:E}
 
 .include <bsd.port.options.mk>
 
@@ -154,6 +155,10 @@ PLIST_SUB+=	BINVER=${PORTVERSION:R:R} ABIVER=${PORTVERSION:R} SHLIBVER=${PORTVER
 PLIST_SUB+=	LUASCRIPTS=""
 .else
 PLIST_SUB+=	LUASCRIPTS="@comment "
+.endif
+
+.if !exists(/usr/include/omp.h)
+MESON_ARGS+=	-Dopenmp=disabled
 .endif
 
 #post-patch:

@@ -1,6 +1,7 @@
 PORTNAME=		salmon
 DISTVERSIONPREFIX=	v
 DISTVERSION=		1.10.3
+PORTREVISION=	1
 CATEGORIES=		biology
 
 MAINTAINER=	jwb@FreeBSD.org
@@ -23,7 +24,8 @@ BUILD_DEPENDS=	bash:shells/bash \
 		eigen>0:math/eigen3 \
 		libdivide>0:math/libdivide \
 		curl>0:ftp/curl
-LIB_DEPENDS=	libtbb.so:devel/onetbb
+LIB_DEPENDS=	libtbb.so:devel/onetbb \
+		libboost_thread.so:devel/boost-libs
 
 USES=		cmake:noninja gmake localbase shebangfix
 USE_GITHUB=	yes
@@ -44,7 +46,6 @@ CMAKE_ARGS+=	-DHAVE_FAST_MALLOC:BOOL=on \
 		-DFETCHED_PUFFERFISH:BOOL=on \
 		-DFETCHED_LIBGFF:BOOL=on \
 		-DFETCH_STADEN:BOOL=true
-WITH_DEBUG=	yes
 CXXFLAGS+=	-I${LOCALBASE}/include/eigen3
 LDFLAGS+=	-lpthread
 

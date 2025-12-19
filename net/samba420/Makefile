@@ -1,6 +1,5 @@
 PORTNAME=			${SAMBA4_BASENAME}420
 PORTVERSION=			${SAMBA4_VERSION}
-PORTREVISION=			10
 CATEGORIES?=			net
 MASTER_SITES=			SAMBA/samba/stable SAMBA/samba/rc
 DISTNAME=			${SAMBA4_DISTNAME}
@@ -11,6 +10,8 @@ WWW=				https://gitlab.com/samba-freebsd/
 
 LICENSE=			GPLv3+
 LICENSE_FILE=			${WRKSRC}/COPYING
+
+DEPRECATED=	Discontinued upstream; transition to a supported versions of Samba (refer to https://wiki.samba.org/index.php/Samba_Release_Planning)
 
 USES=				cpe
 
@@ -47,11 +48,12 @@ EXTRA_PATCHES=			\
 				${PATCHDIR}/0028-Fix-rl_completion_func_t.patch:-p1 \
 				${PATCHDIR}/0028-s3-lib-system-add-FreeBSD-proc_fd_pattern.patch \
 				${PATCHDIR}/0100-Fix-pathref-handling-for-FreeBSD-13plus_samba42x.patch:-p1 \
-				${PATCHDIR}/0102-FreeBSD-vfs_freebsd-fix-sys_proc_fd_path-args.patch:-p1
+				${PATCHDIR}/0102-FreeBSD-vfs_freebsd-fix-sys_proc_fd_path-args.patch:-p1 \
+				${PATCHDIR}/Oct25CVEs.patch:-p1
 
 SAMBA4_BASENAME=		samba
 SAMBA4_PORTNAME=		${SAMBA4_BASENAME}4
-SAMBA4_VERSION=			4.20.7
+SAMBA4_VERSION=			4.20.8
 SAMBA4_DISTNAME=		${SAMBA4_BASENAME}-${SAMBA4_VERSION:S|.p|pre|:S|.r|rc|:S|.t|tp|:S|.a|alpha|}
 
 WRKSRC?=			${WRKDIR}/${DISTNAME}

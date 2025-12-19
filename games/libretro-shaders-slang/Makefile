@@ -1,5 +1,5 @@
 PORTNAME=	libretro-shaders-slang
-DISTVERSION=	g20250823
+DISTVERSION=	g20251121
 CATEGORIES=	games
 
 MAINTAINER=	bsdcode@disroot.org
@@ -13,7 +13,7 @@ LICENSE_COMB=	multi
 USE_GITHUB=	yes
 GH_ACCOUNT=	libretro
 GH_PROJECT=	slang-shaders
-GH_TAGNAME=	063beb1f26a438fffcdf196ccde3ee496e545c0e
+GH_TAGNAME=	a2ac00bcd5a44982ecaa6ba6e5b8cc9a9608b1d6
 
 MAKE_ARGS=	PREFIX=${PREFIX}
 

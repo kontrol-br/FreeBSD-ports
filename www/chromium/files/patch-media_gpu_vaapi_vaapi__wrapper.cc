@@ -1,6 +1,6 @@
---- media/gpu/vaapi/vaapi_wrapper.cc.orig	2025-08-07 06:57:29 UTC
+--- media/gpu/vaapi/vaapi_wrapper.cc.orig	2025-12-05 10:12:50 UTC
 +++ media/gpu/vaapi/vaapi_wrapper.cc
-@@ -83,7 +83,7 @@
+@@ -84,7 +84,7 @@
  using media_gpu_vaapi::kModuleVa_prot;
  #endif
  

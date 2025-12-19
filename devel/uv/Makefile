@@ -1,5 +1,6 @@
 PORTNAME=	uv
-DISTVERSION=	0.8.15
+DISTVERSION=	0.9.17
+PORTREVISION=	1
 CATEGORIES=	devel
 
 MAINTAINER=	yuri@FreeBSD.org
@@ -31,11 +32,20 @@ OPENSSLLIB=	/usr/lib
 
 RUSTFLAGS+=	-C link-args=-Wl,-rpath=${LOCALBASE}/lib
 
-PROGS=		uv uvx
+PROGS=		uv \
+		uvx \
+		uv-build \
+		uv-globfilter
 
 PLIST_FILES=	${PROGS:S/^/bin\//}
 
 PORTSCOUT=	limit:.*\..*$$ # prevent tags like perma-39
+
+post-patch:
+	@${REINPLACE_CMD} -e 's|/etc/uv|${PREFIX}/etc/uv|g' \
+		-e 's|/etc/xdg|${PREFIX}/etc/xdg|g' \
+		${WRKSRC}/crates/uv-dirs/src/lib.rs \
+		${WRKSRC}/crates/uv-settings/src/settings.rs
 
 do-install:
 # workaround for error: found a virtual manifest at `xx` instead of a package manifest

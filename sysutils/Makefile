@@ -301,6 +301,7 @@
     SUBDIR += diskcheckd
     SUBDIR += diskimage-tools
     SUBDIR += diskonaut
+    SUBDIR += diskroaster
     SUBDIR += diskscrub
     SUBDIR += diskus
     SUBDIR += dmg2img
@@ -360,7 +361,6 @@
     SUBDIR += env4801
     SUBDIR += envconsul
     SUBDIR += epazote
-    SUBDIR += equinix-metal-cli
     SUBDIR += erdtree
     SUBDIR += etcmerge
     SUBDIR += ethname
@@ -369,6 +369,7 @@
     SUBDIR += evtviewer
     SUBDIR += exa
     SUBDIR += extipl
+    SUBDIR += extrace-freebsd
     SUBDIR += eza
     SUBDIR += ezjail
     SUBDIR += f-upgrade
@@ -413,6 +414,7 @@
     SUBDIR += fortunelock
     SUBDIR += fpart
     SUBDIR += framework-system
+    SUBDIR += framework-tool-tui
     SUBDIR += frand
     SUBDIR += freebsd-bsdlabel
     SUBDIR += freebsd-fdisk
@@ -431,6 +433,8 @@
     SUBDIR += ftwin
     SUBDIR += fvcool
     SUBDIR += fwup
+    SUBDIR += fwupd
+    SUBDIR += fwupd-efi
     SUBDIR += fx
     SUBDIR += g15daemon
     SUBDIR += gaffitter
@@ -461,6 +465,7 @@
     SUBDIR += glogg
     SUBDIR += glow
     SUBDIR += gnome-control-center
+    SUBDIR += gnome-firmware
     SUBDIR += gnome-power-manager
     SUBDIR += gnome-settings-daemon
     SUBDIR += gnome-system-monitor
@@ -470,8 +475,10 @@
     SUBDIR += goaccess
     SUBDIR += goawk
     SUBDIR += gobi_loader
+    SUBDIR += gol
     SUBDIR += gomi
     SUBDIR += gomplate
+    SUBDIR += gonzo
     SUBDIR += google-compute-engine-oslogin
     SUBDIR += gotop
     SUBDIR += govmomi
@@ -567,6 +574,7 @@
     SUBDIR += jdupes
     SUBDIR += jest
     SUBDIR += jkill
+    SUBDIR += jmore
     SUBDIR += joshuto
     SUBDIR += jps
     SUBDIR += jruls
@@ -606,6 +614,7 @@
     SUBDIR += kshutdown
     SUBDIR += ksystemlog
     SUBDIR += kubectl
+    SUBDIR += kubetail
     SUBDIR += kubie
     SUBDIR += kubo-go
     SUBDIR += kustomize
@@ -642,13 +651,12 @@
     SUBDIR += lineak-defaultplugin
     SUBDIR += lineak-xosdplugin
     SUBDIR += lineakd
-    SUBDIR += linrename
     SUBDIR += linux-c7-lttng-ust
     SUBDIR += linux-c7-numactl-libs
     SUBDIR += linux-c7-userspace-rcu
     SUBDIR += linux-miniconda-installer
+    SUBDIR += linux-racadm
     SUBDIR += linux-rkbin
-    SUBDIR += linuxfdisk
     SUBDIR += littlejet
     SUBDIR += lmmon
     SUBDIR += lmon
@@ -734,7 +742,6 @@
     SUBDIR += monit
     SUBDIR += monitord
     SUBDIR += monitorix
-    SUBDIR += moor
     SUBDIR += moreutils
     SUBDIR += most
     SUBDIR += mountsmb2
@@ -970,6 +977,7 @@
     SUBDIR += plasma6-kde-cli-tools
     SUBDIR += plasma6-kinfocenter
     SUBDIR += plasma6-kmenuedit
+    SUBDIR += plasma6-knighttime
     SUBDIR += plasma6-ksystemstats
     SUBDIR += plasma6-libksysguard
     SUBDIR += plasma6-plasma-disks
@@ -1002,6 +1010,7 @@
     SUBDIR += process-viewer
     SUBDIR += procmap
     SUBDIR += procs
+    SUBDIR += progress
     SUBDIR += pslist
     SUBDIR += psmisc
     SUBDIR += pstack
@@ -1019,6 +1028,7 @@
     SUBDIR += pxattr
     SUBDIR += py-ansible-compat
     SUBDIR += py-ansible-core
+    SUBDIR += py-ansible-core219
     SUBDIR += py-ansible-lint
     SUBDIR += py-ansible-runner
     SUBDIR += py-appjail-gui
@@ -1030,6 +1040,7 @@
     SUBDIR += py-bitrot
     SUBDIR += py-blinkstick
     SUBDIR += py-borgmatic
+    SUBDIR += py-clustershell
     SUBDIR += py-concurrent-log-handler
     SUBDIR += py-container-inspector
     SUBDIR += py-cron-descriptor
@@ -1061,6 +1072,7 @@
     SUBDIR += py-ioztat
     SUBDIR += py-jailconf
     SUBDIR += py-keep
+    SUBDIR += py-kubernetes
     SUBDIR += py-leviathan
     SUBDIR += py-liquidctl
     SUBDIR += py-mitogen
@@ -1091,6 +1103,7 @@
     SUBDIR += py-rdiff-backup
     SUBDIR += py-resolve-march-native
     SUBDIR += py-salt
+    SUBDIR += py-salt-tower
     SUBDIR += py-scandir
     SUBDIR += py-scarab
     SUBDIR += py-supervisor
@@ -1214,6 +1227,7 @@
     SUBDIR += rubygem-mothra
     SUBDIR += rubygem-murder
     SUBDIR += rubygem-ohai
+    SUBDIR += rubygem-openbolt
     SUBDIR += rubygem-openfact
     SUBDIR += rubygem-openvoxserver-ca
     SUBDIR += rubygem-parallel
@@ -1251,6 +1265,7 @@
     SUBDIR += rubygem-winrm
     SUBDIR += rubygem-winrm-elevated
     SUBDIR += rubygem-winrm-elevated-gitlab
+    SUBDIR += rubygem-winrm-gitlab
     SUBDIR += rubygem-yell
     SUBDIR += runas
     SUBDIR += rundeck
@@ -1499,6 +1514,7 @@
     SUBDIR += u-boot-tools
     SUBDIR += u-boot-wandboard
     SUBDIR += ua
+    SUBDIR += ucored
     SUBDIR += ucspi-ipc
     SUBDIR += ucspi-proxy
     SUBDIR += ucspi-ssl
@@ -1507,6 +1523,7 @@
     SUBDIR += udfclient
     SUBDIR += ufetch
     SUBDIR += uhidd
+    SUBDIR += uhubctl
     SUBDIR += uif2iso
     SUBDIR += unetbootin
     SUBDIR += uniutils
@@ -1530,6 +1547,7 @@
     SUBDIR += userneu-devel
     SUBDIR += usrinfo
     SUBDIR += utcount
+    SUBDIR += util-linux
     SUBDIR += vagrant
     SUBDIR += vagrant-gitlab
     SUBDIR += vbetool
@@ -1540,6 +1558,7 @@
     SUBDIR += vii
     SUBDIR += vils
     SUBDIR += vimpager
+    SUBDIR += virt-firmware
     SUBDIR += virt-what
     SUBDIR += virtualmin
     SUBDIR += vivid
@@ -1555,6 +1574,7 @@
     SUBDIR += vtm
     SUBDIR += vttest
     SUBDIR += wait_on
+    SUBDIR += waitforssh
     SUBDIR += walk
     SUBDIR += watchfolder
     SUBDIR += watchman
@@ -1579,6 +1599,7 @@
     SUBDIR += wmscript
     SUBDIR += wmtop
     SUBDIR += wmupmon
+    SUBDIR += work-tuimer
     SUBDIR += worldtools
     SUBDIR += wuzzah
     SUBDIR += xbatt
@@ -1628,8 +1649,10 @@
     SUBDIR += zetaback
     SUBDIR += zetaback-devel
     SUBDIR += zidrav
+    SUBDIR += zli
     SUBDIR += znapzend
     SUBDIR += zogftw
+    SUBDIR += zot
     SUBDIR += zoxide
     SUBDIR += zpool-iostat-viz
     SUBDIR += zrep

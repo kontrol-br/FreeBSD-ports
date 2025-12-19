@@ -1,15 +1,19 @@
 PORTNAME=	unit-otel
 PORTVERSION=	${UNIT_VERSION}
+PORTREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES?=	https://unit.nginx.org/download/
 DISTFILES=	unit-${PORTVERSION}.tar.gz
 
-MAINTAINER=	osa@FreeBSD.org
+MAINTAINER=	ports@FreeBSD.org
 COMMENT=	OTel static library for Unit
 WWW=		https://unit.nginx.org
 
 LICENSE=	APACHE20
 LICENSE_FILE=	${WRKDIR}/unit-${PORTVERSION}/LICENSE
+
+DEPRECATED=	Upstream repo archived on Oct 8 2025
+EXPIRATION_DATE=2025-12-31
 
 USES=		cargo cpe ssl
 

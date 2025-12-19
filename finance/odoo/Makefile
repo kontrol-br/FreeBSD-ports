@@ -1,6 +1,6 @@
 PORTNAME=	odoo
 PORTVERSION=	18.0.20250719
-PORTREVISION=	3
+PORTREVISION=	4
 CATEGORIES=	finance www
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
 
@@ -39,7 +39,6 @@ RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}Babel>=1.3:devel/py-babel@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}num2words>=0:devel/py-num2words@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}ofxparse>=0.20:finance/py-ofxparse@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}openpyxl>0:textproc/py-openpyxl@${PY_FLAVOR} \
-		${PYTHON_PKGNAMEPREFIX}openssl>0:security/py-openssl@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}passlib>0:security/py-passlib@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pdfminer.six>0:textproc/py-pdfminer.six@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pillow>=7.0.0:graphics/py-pillow@${PY_FLAVOR} \
@@ -47,6 +46,7 @@ RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}Babel>=1.3:devel/py-babel@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}psutil>0:sysutils/py-psutil@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}psycopg2>0:databases/py-psycopg2@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pydot>=0:graphics/py-pydot@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}pyopenssl>0:security/py-pyopenssl@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pyparsing>=0:devel/py-pyparsing@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pypdf>0:print/py-pypdf@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pyserial>=0:comms/py-pyserial@${PY_FLAVOR} \
@@ -71,6 +71,8 @@ USES=		cpe gnome ldap python pgsql shebangfix
 USE_GNOME=	libxml2
 USE_PYTHON=	cryptography distutils
 
+NO_ARCH=	yes
+
 SHEBANG_LANG=	python
 SHEBANG_FILES=	${WRKSRC}/${PORTNAME}/addons/web/tooling/*.sh \
 		${WRKSRC}/${PORTNAME}/addons/web/tooling/hooks/pre-commit \
@@ -87,12 +89,6 @@ CONFLICTS=	odoo16 odoo17
 
 ETCDIR=		${PREFIX}/etc/odoo
 
-.include <bsd.port.pre.mk>
-
-.if ${PYTHON_REL} < 31000
-IGNORE=		odoo requires Python 3.10+
-.endif
-
 post-patch:
 	@${REINPLACE_CMD} -i "" -e 's|(index !== |(index == |g' \
 		${WRKSRC}/odoo/addons/web/static/src/core/network/download.js
@@ -106,4 +102,4 @@ pre-install:
 post-install:
 	@${INSTALL_SCRIPT} ${FILESDIR}/odoo.conf ${STAGEDIR}${ETCDIR}/odoo.conf.sample
 
-.include <bsd.port.post.mk>
+.include <bsd.port.mk>

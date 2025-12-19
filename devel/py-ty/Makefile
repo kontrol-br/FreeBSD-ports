@@ -1,5 +1,6 @@
 PORTNAME=	ty
-DISTVERSION=	0.0.1a20
+DISTVERSION=	0.0.1a34
+PORTREVISION=	1
 CATEGORIES=	devel python
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -26,7 +27,7 @@ CARGO_INSTALL=	no
 
 MAKE_ENV=	${CARGO_ENV}
 
-PORTSCOUT=	limit:^[0-9]\.
+PORTSCOUT=	site:https://files.pythonhosted.org/packages/source/t/ty/
 
 PORTDOCS=	README.md
 

@@ -1,4 +1,4 @@
---- ui/native_theme/features/native_theme_features.cc.orig	2025-08-07 06:57:29 UTC
+--- ui/native_theme/features/native_theme_features.cc.orig	2025-10-30 15:44:36 UTC
 +++ ui/native_theme/features/native_theme_features.cc
 @@ -54,7 +54,7 @@ namespace ui {
  

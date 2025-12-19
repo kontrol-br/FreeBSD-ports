@@ -1,6 +1,6 @@
 PORTNAME=	glab
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.72.0
+DISTVERSION=	1.80.2
 CATEGORIES=	devel
 
 MAINTAINER=	mfechner@FreeBSD.org
@@ -13,12 +13,13 @@ LICENSE_FILE=	${WRKSRC}/LICENSE
 BUILD_DEPENDS=	git:devel/git
 RUN_DEPENDS=	git:devel/git
 
-USES=		go:1.25,modules
+USES=		go:modules
 
 _BUILD_VERSION=		${DISTVERSION}
 _BUILD_PLATFORM=	${OPSYS:tl}
 _BUILD_DATE=		$$(date +%Y-%m-%d)
-_TAG=			fe60bcf75bfb58801f5a429a52a3461ef62b0f6e
+# Find here: https://gitlab.com/gitlab-org/cli/-/tags
+_TAG=			cca0f120be46f464b84f88b9ce69007314499a2a
 
 GO_MODULE=	gitlab.com/gitlab-org/cli
 GO_TARGET=	./cmd/${PORTNAME}

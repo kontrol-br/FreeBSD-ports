@@ -1,5 +1,5 @@
 PORTNAME=	vscode
-DISTVERSION=	1.104.1
+DISTVERSION=	${VSCODE_VERSION}
 CATEGORIES=	editors
 MASTER_SITES=	https://github.com/tagattie/FreeBSD-VSCode/releases/download/${DISTVERSION}/:node_modules
 DISTFILES=	vscode-node-modules-${DISTVERSION}${EXTRACT_SUFX}:node_modules \
@@ -60,14 +60,12 @@ RUN_DEPENDS=	xdg-open:devel/xdg-utils \
 TEST_DEPENDS=	electron${ELECTRON_VER_MAJOR}:devel/electron${ELECTRON_VER_MAJOR} \
 		bash:shells/bash
 
-USES=		desktop-file-utils gl gmake gnome gssapi:mit iconv:wchar_t \
-		jpeg localbase:ldflags nodejs:22,build pkgconfig python:build \
-		shebangfix xorg
+USES=		desktop-file-utils display:test gl gmake gnome gssapi:mit \
+		iconv:wchar_t jpeg localbase:ldflags nodejs:22,build pkgconfig \
+		python:build shebangfix xorg
 
 USE_GITHUB=	yes
 GH_ACCOUNT=	microsoft
-
-SOURCE_COMMIT_HASH=	0f0d87fa9e96c856c5212fc86db137ac0d783365
 
 BINARY_ALIAS=	python=${PYTHON_CMD}
 
@@ -94,9 +92,12 @@ MAKE_ENV+=	PLAYWRIGHT_BROWSERS_PATH=${WRKDIR}/pw-browsers \
 MAKE_ENV+=	PYTHONDONTWRITEBYTECODE=1
 TEST_ENV=	${MAKE_ENV:C/TMPDIR=.*//}
 
-NODEJS_DIR=	${.CURDIR:H:H}/www/node22
+.include "Makefile.version"
+.include <bsd.port.pre.mk>
+
+NODEJS_DIR=	${.CURDIR:H:H}/www/node${NODEJS_VERSION}
 .include "${NODEJS_DIR}/Makefile.version"
-ELECTRON_DIR=	${.CURDIR:H:H}/devel/electron37
+ELECTRON_DIR=	${.CURDIR:H:H}/devel/electron39
 .include "${ELECTRON_DIR}/Makefile.version"
 
 ELECTRON_DOWNLOAD_URL=	https://github.com/electron/electron/releases/download/v${ELECTRON_VER}
@@ -117,7 +118,7 @@ post-extract:
 		${WRKSRC}/build/.moduleignore.freebsd
 	@${ECHO_MSG} "===>  Installing node modules in ${WRKSRC}"
 	@${TAR} -xzf ${WRKDIR}/vscode-.-node-modules${EXTRACT_SUFX} -C ${WRKSRC}
-	@for dir in `node -p "JSON.stringify(require('${WRKSRC}/build/npm/dirs').dirs)" | jq -r '.[]'`; do \
+	@for dir in `node --input-type=module -e "console.log(JSON.stringify((await import('${WRKSRC}/build/npm/dirs.ts')).dirs))" | jq -r '.[]'`; do \
 		if [ -f ${WRKDIR}/vscode-`echo $${dir} | tr _ __ | tr / _`-node-modules${EXTRACT_SUFX} ]; then \
 			${ECHO_MSG} "===>  Installing node modules in ${WRKSRC}/$${dir}"; \
 			${TAR} -xzf ${WRKDIR}/vscode-`echo $${dir} | tr _ __ | tr / _`-node-modules${EXTRACT_SUFX} -C ${WRKSRC}/$${dir}; \
@@ -129,6 +130,9 @@ post-patch:
 		${WRKSRC}/.npmrc
 	@${REINPLACE_CMD} -E 's|^(target=").*(")$$|\1${NODEJS_PORTVERSION}\2|' \
 		${WRKSRC}/remote/.npmrc
+	@${REINPLACE_CMD} -e 's/%%DISTVERSION%%/${DISTVERSION}/g' \
+		${WRKSRC}/build/gulpfile.reh.ts \
+		${WRKSRC}/build/gulpfile.vscode.ts
 	@(cd ${WRKSRC} && \
 		${FIND} -E . -type f -iregex '${SHEBANG_REGEX}' \
 			-exec ${SED} -i '' -e "s|/usr/bin/pgrep|/bin/pgrep|g" {} ';')
@@ -155,6 +159,8 @@ post-patch:
 		${FIND} . -type f -name '*.sh' \
 			-exec ${SED} -i '' -e "s|/usr/bin/pgrep|/bin/pgrep|g" \
 					-e 's|#!/bin/bash|#!${LOCALBASE}/bin/bash|' {} ';')
+	@${SETENV} FILESDIR=${FILESDIR} \
+		${SH} ${FILESDIR}/update-product-json.sh ${WRKSRC}
 
 pre-build:
 # rebuild native node modules in top directory
@@ -168,7 +174,7 @@ pre-build:
 			node-gyp --userconfig=${WRKSRC}/.npmrc rebuild; \
 	done
 # rebuild native node modules in subdirectories
-	@for dir in `node -p "JSON.stringify(require('${WRKSRC}/build/npm/dirs').dirs)" | jq -r '.[]'`; do \
+	@for dir in `node --input-type=module -e "console.log(JSON.stringify((await import('${WRKSRC}/build/npm/dirs.ts')).dirs))" | jq -r '.[]'`; do \
 		for subdir in `${FIND} ${WRKSRC}/$${dir}/node_modules -type f -name binding.gyp -exec ${DIRNAME} {} ';' 2> /dev/null`; do \
 			${ECHO_MSG} "===>   Rebuilding native modules in $${subdir}"; \
 			if [ "`${ECHO_CMD} $${subdir} | ${GREP} /build/`" ]; then \
@@ -209,14 +215,14 @@ do-build:
 	@cd ${LOCALBASE}/share/electron${ELECTRON_VER_MAJOR} && \
 		zip -q -r ${WRKDIR}/.cache/electron/${ELECTRON_DOWNLOAD_URL_HASH}/electron-v${ELECTRON_VER}-linux-${ELECTRON_ARCH}.zip .
 # remove backup files so that they are not included in the package
-	@${FIND} ${WRKSRC} -type f \( -name '*.orig' -o -name '*~' \) -delete
+	@${FIND} ${WRKSRC} -type f \( -name '*.bak' -o -name '*.orig' -o -name '*~' \) -delete
 # build and package vscode
-	cd ${WRKSRC} && ${SETENV} ${MAKE_ENV} npx tsc -p build/tsconfig.build.json
-	cd ${WRKSRC} && ${SETENV} ${MAKE_ENV} \
-		npm_config_runtime=electron \
-		npm_config_target=${ELECTRON_VER} \
-		npm_config_nodedir=${LOCALBASE}/share/electron${ELECTRON_VER_MAJOR}/node_headers \
-		npm --userconfig=${WRKSRC}/.npmrc run gulp vscode-linux-${ELECTRON_ARCH}-min
+	cd ${WRKSRC} && \
+		${SETENV} ${MAKE_ENV} \
+			npm_config_runtime=electron \
+			npm_config_target=${ELECTRON_VER} \
+			npm_config_nodedir=${LOCALBASE}/share/electron${ELECTRON_VER_MAJOR}/node_headers \
+			npm --userconfig=${WRKSRC}/.npmrc run gulp vscode-linux-${ELECTRON_ARCH}-min
 # move marketplace extensions
 	@${MV} ${WRKDIR}/builtInExtensions/* ${WRKDIR}/VSCode-linux-${ELECTRON_ARCH}/resources/app/extensions
 
@@ -260,7 +266,6 @@ pre-test:
 	@cd ${WRKSRC}/.build/electron && ${MV} -f electron code-oss
 
 do-test:
-# Note: Xvfb or something similar is necessary for headless testing
 # unit tests
 	cd ${WRKSRC} && ${SETENV} ${TEST_ENV} ./scripts/test.sh --build || ${TRUE}
 # UI smoke tests
@@ -295,7 +300,7 @@ make-node-modules-archive: extract patch-package-json
 	${SETENV} ${MAKE_ENV} npm install \
 		--ignore-scripts --no-progress --no-audit --no-fund --no-update-notifier && \
 	${TAR} -czf ${WRKDIR}/vscode-.-node-modules${EXTRACT_SUFX} node_modules
-	@for dir in `node -p "JSON.stringify(require('${WRKSRC}/build/npm/dirs').dirs)" | jq -r '.[]'`; do \
+	@for dir in `node --input-type=module -e "console.log(JSON.stringify((await import('${WRKSRC}/build/npm/dirs.ts')).dirs))" | jq -r '.[]'`; do \
 		cd ${WRKSRC}/$${dir} && \
 		${ECHO_MSG} "===>  Fetching and installing node modules in ${WRKSRC}/$${dir}" && \
 		${SETENV} ${MAKE_ENV} npm install \
@@ -313,4 +318,4 @@ make-marketplace-exts-archive: extract
 	${SETENV} ${MAKE_ENV} npm run download-builtin-extensions
 	@${TAR} -czf ${WRKDIR}/vscode-marketplace-exts-${DISTVERSION}${EXTRACT_SUFX} -C ${WRKSRC}/.build builtInExtensions
 
-.include <bsd.port.mk>
+.include <bsd.port.post.mk>

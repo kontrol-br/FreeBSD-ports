@@ -1,6 +1,7 @@
 PORTNAME=	gotosocial
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.19.2
+DISTVERSION=	0.20.2
+PORTREVISION=	1
 CATEGORIES=	net-im
 MASTER_SITES=	https://codeberg.org/superseriousbusiness/${PORTNAME}/releases/download/v${DISTVERSION}/
 DISTFILES=	${PORTNAME}-${DISTVERSION}-source-code.tar.gz ${PORTNAME}_${DISTVERSION}_web-assets.tar.gz
@@ -20,7 +21,7 @@ LICENSE_FILE_OFL11=		${WRKSRC}/OFL11
 ONLY_FOR_ARCHS=	aarch64 amd64 armv7 i386
 ONLY_FOR_ARCHS_REASON=	https://gitlab.com/cznic/libc/-/issues/15
 
-USES=		go:1.24,modules
+USES=		go:modules
 USE_RC_SUBR=	${PORTNAME}
 
 GO_TARGET=	./cmd/gotosocial

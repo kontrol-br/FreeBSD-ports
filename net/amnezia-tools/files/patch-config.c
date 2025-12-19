@@ -1,6 +1,15 @@
---- config.c.orig	2024-10-01 13:02:42 UTC
+--- config.c.orig	2025-09-03 14:11:13 UTC
 +++ config.c
-@@ -337,6 +337,20 @@ static bool validate_netmask(struct wgallowedip *allow
+@@ -259,7 +259,7 @@ static inline bool parse_endpoint(struct sockaddr *end
+ 		 *
+ 		 * So this is what we do, except FreeBSD removed EAI_NODATA some time ago, so that's conditional.
+ 		 */
+-		if (ret == EAI_NONAME || ret == EAI_FAIL ||
++		if (ret == EAI_FAIL ||
+ 			#ifdef EAI_NODATA
+ 				ret == EAI_NODATA ||
+ 			#endif
+@@ -344,6 +344,20 @@ static bool validate_netmask(struct wgallowedip *allow
  	return true;
  }
  
@@ -21,7 +30,7 @@
  static inline bool parse_allowedips(struct wgpeer *peer, struct wgallowedip **last_allowedip, const char *value)
  {
  	struct wgallowedip *allowedip = *last_allowedip, *new_allowedip;
-@@ -353,10 +367,18 @@ static inline bool parse_allowedips(struct wgpeer *pee
+@@ -360,10 +374,18 @@ static inline bool parse_allowedips(struct wgpeer *pee
  	}
  	sep = mutable;
  	while ((mask = strsep(&sep, ","))) {
@@ -40,7 +49,7 @@
  		ip = strsep(&mask, "/");
  
  		new_allowedip = calloc(1, sizeof(*new_allowedip));
-@@ -387,6 +409,7 @@ static inline bool parse_allowedips(struct wgpeer *pee
+@@ -394,6 +416,7 @@ static inline bool parse_allowedips(struct wgpeer *pee
  		else
  			goto err;
  		new_allowedip->cidr = cidr;

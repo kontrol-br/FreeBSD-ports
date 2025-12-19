@@ -1,6 +1,6 @@
---- wg-quick/freebsd.bash.orig	2024-10-01 13:02:42 UTC
+--- wg-quick/freebsd.bash.orig	2025-12-12 22:28:42 UTC
 +++ wg-quick/freebsd.bash
-@@ -25,11 +25,20 @@ CONFIG_FILE=""
+@@ -25,11 +25,18 @@ CONFIG_FILE=""
  POST_DOWN=( )
  SAVE_CONFIG=0
  CONFIG_FILE=""
@@ -11,17 +11,15 @@
  PROGRAM="${0##*/}"
  ARGS=( "$@" )
  
- IS_ASESCURITY_ON=0
+ IS_AWG_ON=0
  
-+
 +declare -A ROUTES
-+declare -A ENDPOINTS
-+
++declare -A ENDPOINTS_MAP
 +
  cmd() {
  	echo "[#] $*" >&3
  	"$@"
-@@ -40,7 +49,7 @@ die() {
+@@ -40,7 +47,7 @@ die() {
  	exit 1
  }
  
@@ -30,7 +28,7 @@
  
  unset ORIGINAL_TMPDIR
  make_temp() {
-@@ -64,7 +73,7 @@ parse_options() {
+@@ -64,7 +71,7 @@ parse_options() {
  }
  
  parse_options() {
@@ -39,7 +37,7 @@
  	CONFIG_FILE="$1"
  	if [[ $CONFIG_FILE =~ ^[a-zA-Z0-9_=+.-]{1,15}$ ]]; then
  		for path in "${CONFIG_SEARCH_PATHS[@]}"; do
-@@ -82,7 +91,7 @@ parse_options() {
+@@ -82,7 +89,7 @@ parse_options() {
  		stripped="${line%%\#*}"
  		key="${stripped%%=*}"; key="${key##*([[:space:]])}"; key="${key%%*([[:space:]])}"
  		value="${stripped#*=}"; value="${value##*([[:space:]])}"; value="${value%%*([[:space:]])}"
@@ -48,7 +46,7 @@
  		[[ $key == "[Interface]" ]] && interface_section=1
  		if [[ $interface_section -eq 1 ]]; then
  			case "$key" in
-@@ -96,9 +105,14 @@ parse_options() {
+@@ -96,9 +103,14 @@ parse_options() {
  			PreDown) PRE_DOWN+=( "$value" ); continue ;;
  			PostUp) POST_UP+=( "$value" ); continue ;;
  			PostDown) POST_DOWN+=( "$value" ); continue ;;
@@ -63,9 +61,9 @@
  			Jc);&
  			Jmin);&
  			Jmax);&
-@@ -109,6 +123,17 @@ parse_options() {
- 			H3);&
- 			H4) IS_ASESCURITY_ON=1;;
+@@ -116,6 +128,17 @@ parse_options() {
+ 			I4);&
+ 			I5) IS_AWG_ON=1;;
  			esac
 +		else
 +			case "$key" in
@@ -74,43 +72,112 @@
 +			Endpoint)
 +				endpoint_host="${value%%:*}"
 +				if ! [[ "$endpoint_host" =~ ^[0-9]+ ]]; then
-+					ENDPOINTS["$last_public_key"]="$endpoint_host"
++					ENDPOINTS_MAP["$last_public_key"]="$endpoint_host"
 +				fi
 +				;;
 +			esac
  		fi
  		WG_CONFIG+="$line"$'\n'
  	done < "$CONFIG_FILE"
-@@ -129,12 +154,15 @@ add_if() {
+@@ -136,20 +159,24 @@ add_if() {
  
  add_if() {
  	local ret rc
 -	local cmd="ifconfig wg create name "$INTERFACE""
--	if [[ $IS_ASESCURITY_ON == 1 ]]; then
-+	local cmd="ifconfig amn create name "$INTERFACE""
-+	if [[ $USERLAND == 1 ]]; then
- 		cmd="amneziawg-go "$INTERFACE"";
- 	fi
+-	if [[ $IS_AWG_ON == 1 ]]; then
+-		cmd="amneziawg-go "$INTERFACE"";
+-	fi
 -	if ret="$(cmd $cmd 2>&1 >/dev/null)"; then
 -		return 0
-+	if [ -n "$DESCRIPTION" ]; then
-+		ret="$(cmd $cmd description "$DESCRIPTION" 2>&1 >/dev/null)" && return 0
-+	else
-+
-+		ret="$(cmd $cmd 2>&1 >/dev/null)" && return 0
+-	fi
+-	rc=$?
+-	if [[ $ret == *"ifconfig: ioctl SIOCSIFNAME (set name): File exists"* ]]; then
+-		echo "$ret" >&3
+-		return $rc
+-	fi
+-	echo "[!] Missing WireGuard kernel support ($ret). Falling back to slow userspace implementation." >&3
++	local cmd="ifconfig amn create name "$INTERFACE""
++	if [[ $USERLAND == 0 ]]; then
++        if [ -n "$DESCRIPTION" ]; then
++            ret="$(cmd $cmd description "$DESCRIPTION" 2>&1 >/dev/null)" && return 0
++        else
++            ret="$(cmd $cmd 2>&1 >/dev/null)" && return 0
++        fi
++        rc=$?
++        if [[ $ret == *"ifconfig: ioctl SIOCSIFNAME (set name): File exists"* ]]; then
++            echo "$ret" >&3
++            return $rc
++        fi
++    fi
++	echo "[!] Missing Amnezia kernel support ($ret). Falling back to slow userspace implementation." >&3
+ 	cmd "${WG_QUICK_USERSPACE_IMPLEMENTATION:-amneziawg-go}" "$INTERFACE"
++    if [ -n "$DESCRIPTION" ]; then
++        cmd ifconfig $INTERFACE description "$DESCRIPTION"
++    fi
+ }
+ 
+ del_routes() {
+@@ -181,9 +208,9 @@ del_if() {
+ 	if [[ -S /var/run/amneziawg/$INTERFACE.sock ]]; then
+ 		cmd rm -f "/var/run/amneziawg/$INTERFACE.sock"
+ 	else
+-		cmd ifconfig "$INTERFACE" destroy
++		cmd ifconfig -n "$INTERFACE" destroy
  	fi
- 	rc=$?
- 	if [[ $ret == *"ifconfig: ioctl SIOCSIFNAME (set name): File exists"* ]]; then
-@@ -209,7 +237,7 @@ set_mtu() {
+-	while ifconfig "$INTERFACE" >/dev/null 2>&1; do
++	while ifconfig -n "$INTERFACE" >/dev/null 2>&1; do
+ 		# HACK: it would be nice to `route monitor` here and wait for RTM_IFANNOUNCE
+ 		# but it turns out that the announcement is made before the interface
+ 		# disappears so we sometimes get a hang. So, we're instead left with polling
+@@ -193,21 +220,21 @@ up_if() {
+ }
+ 
+ up_if() {
+-	cmd ifconfig "$INTERFACE" up
++	cmd ifconfig -n "$INTERFACE" up
+ }
+ 
+ add_addr() {
+ 	if [[ $1 == *:* ]]; then
+-		cmd ifconfig "$INTERFACE" inet6 "$1" alias
++		cmd ifconfig -n "$INTERFACE" inet6 "$1" alias
+ 	else
+-		cmd ifconfig "$INTERFACE" inet "$1" alias
++		cmd ifconfig -n "$INTERFACE" inet "$1" alias
+ 	fi
+ }
+ 
+ set_mtu() {
+ 	local mtu=0 endpoint output family
+ 	if [[ -n $MTU ]]; then
+-		cmd ifconfig "$INTERFACE" mtu "$MTU"
++		cmd ifconfig -n "$INTERFACE" mtu "$MTU"
+ 		return
+ 	fi
+ 	while read -r _ endpoint; do
+@@ -215,14 +242,16 @@ set_mtu() {
+ 		family=inet
  		[[ ${BASH_REMATCH[1]} == *:* ]] && family=inet6
  		output="$(route -n get "-$family" "${BASH_REMATCH[1]}" || true)"
- 		[[ $output =~ interface:\ ([^ ]+)$'\n' && $(ifconfig "${BASH_REMATCH[1]}") =~ mtu\ ([0-9]+) && ${BASH_REMATCH[1]} -gt $mtu ]] && mtu="${BASH_REMATCH[1]}"
+-		[[ $output =~ interface:\ ([^ ]+)$'\n' && $(ifconfig "${BASH_REMATCH[1]}") =~ mtu\ ([0-9]+) && ${BASH_REMATCH[1]} -gt $mtu ]] && mtu="${BASH_REMATCH[1]}"
 -	done < <(wg show "$INTERFACE" endpoints)
++		[[ $output =~ interface:\ ([^ ]+)$'\n' && $(ifconfig -n "${BASH_REMATCH[1]}") =~ mtu\ ([0-9]+) && ${BASH_REMATCH[1]} -gt $mtu ]] && mtu="${BASH_REMATCH[1]}"
 +	done < <(awg show "$INTERFACE" endpoints)
  	if [[ $mtu -eq 0 ]]; then
  		read -r output < <(route -n get default || true) || true
- 		[[ $output =~ interface:\ ([^ ]+)$'\n' && $(ifconfig "${BASH_REMATCH[1]}") =~ mtu\ ([0-9]+) && ${BASH_REMATCH[1]} -gt $mtu ]] && mtu="${BASH_REMATCH[1]}"
-@@ -242,7 +270,7 @@ collect_endpoints() {
+-		[[ $output =~ interface:\ ([^ ]+)$'\n' && $(ifconfig "${BASH_REMATCH[1]}") =~ mtu\ ([0-9]+) && ${BASH_REMATCH[1]} -gt $mtu ]] && mtu="${BASH_REMATCH[1]}"
++		[[ $output =~ interface:\ ([^ ]+)$'\n' && $(ifconfig -n "${BASH_REMATCH[1]}") =~ mtu\ ([0-9]+) && ${BASH_REMATCH[1]} -gt $mtu ]] && mtu="${BASH_REMATCH[1]}"
+ 	fi
+-	[[ $mtu -gt 0 ]] || mtu=1500
+-	cmd ifconfig "$INTERFACE" mtu $(( mtu - 80 ))
++	if [[ $mtu -gt 0 && $mtu -lt 1420 ]]; then
++        # setup MTU only if discovered MTU is less then default
++    	cmd ifconfig -n "$INTERFACE" mtu $(( mtu - 80 )) || true
++	fi
+ }
+ 
+ 
+@@ -249,7 +278,7 @@ collect_endpoints() {
  	while read -r _ endpoint; do
  		[[ $endpoint =~ ^\[?([a-z0-9:.]+)\]?:[0-9]+$ ]] || continue
  		ENDPOINTS+=( "${BASH_REMATCH[1]}" )
@@ -119,12 +186,20 @@
  }
  
  set_endpoint_direct_route() {
-@@ -297,18 +325,18 @@ monitor_daemon() {
+@@ -304,25 +333,108 @@ monitor_daemon() {
  }
  
  monitor_daemon() {
+-	echo "[+] Backgrounding route monitor" >&2
 +	[[ $MONITOR -eq 0 ]] && return 0
- 	echo "[+] Backgrounding route monitor" >&2
++
++	if [[ $1 == "spawn" ]]; then
++		# re-run this function over daemon to detach from session
++	    echo "[+] Backgrounding route monitor" >&2
++        env TMPDIR="${ORIGINAL_TMPDIR}" daemon $0 monitor-daemon ${INTERFACE}
++        return 0
++    fi
++
  	(make_temp
  	trap 'del_routes; clean_temp; exit 0' INT TERM EXIT
  	exec >/dev/null 2>&1
@@ -137,10 +212,11 @@
  	# endpoints change.
  	while read -u 19 -r event; do
 -		[[ $event == RTM_* ]] || continue
- 		ifconfig "$INTERFACE" >/dev/null 2>&1 || break
+-		ifconfig "$INTERFACE" >/dev/null 2>&1 || break
++		ifconfig -n "$INTERFACE" >/dev/null 2>&1 || break
  		[[ $AUTO_ROUTE4 -eq 1 || $AUTO_ROUTE6 -eq 1 ]] && set_endpoint_direct_route
  		# TODO: set the mtu as well, but only if up
-@@ -316,6 +344,77 @@ monitor_daemon() {
+ 	done
  	kill $pid) & disown
  }
  
@@ -175,10 +251,15 @@
 +
 +monitor_dns_changes() {
 +	local pk peer_ip port peer_host host_ip
++
 +	[[ $TRACK_DNS_CHANGES -eq 0 ]] && return 0
 +
-+	echo "[+] Backgrounding DNS tracker" >&2
-+	exec >/dev/null 2>&1
++	if [[ $1 == "spawn" ]]; then
++		# re-run this function over daemon to detach from session
++	    echo "[+] Backgrounding DNS tracker" >&2
++        env TMPDIR="${ORIGINAL_TMPDIR}" daemon $0 monitor-dns-changes ${INTERFACE}
++        return 0
++    fi
 +
 +	pid_file="$(tracker_pid_file)"
 +	[[ -f "$pid_file" ]] && kill $(cat "$pid_file") 2>/dev/null || true
@@ -193,7 +274,7 @@
 +
 +			$cmd awg showconf "$INTERFACE" 2> /dev/null | wg_endpoints | \
 +			while read -r pk peer_ip port; do
-+				peer_host="${ENDPOINTS[$pk]}"
++				peer_host="${ENDPOINTS_MAP[$pk]}"
 +				if [[ -n "$peer_host" ]]; then
 +					host_ip=$(host "$peer_host" 2>/dev/null | awk '/has address/ { print $4; exit; }') || continue
 +
@@ -210,7 +291,7 @@
 +			done
 +
 +		done
-+	) & disown
++	) </dev/null >/dev/null 2>&1 3>&- & disown
 +	echo "$!" > "$pid_file"
 +}
 +
@@ -218,7 +299,7 @@
  HAVE_SET_DNS=0
  set_dns() {
  	[[ ${#DNS[@]} -gt 0 ]] || return 0
-@@ -354,7 +453,7 @@ set_config() {
+@@ -361,7 +473,7 @@ set_config() {
  }
  
  set_config() {
@@ -227,7 +308,7 @@
  }
  
  save_config() {
-@@ -386,7 +485,7 @@ save_config() {
+@@ -393,7 +505,7 @@ save_config() {
  	done
  	old_umask="$(umask)"
  	umask 077
@@ -236,7 +317,21 @@
  	trap 'rm -f "$CONFIG_FILE.tmp"; clean_temp; exit' INT TERM EXIT
  	echo "${current_config/\[Interface\]$'\n'/$new_config}" > "$CONFIG_FILE.tmp" || die "Could not write configuration file"
  	sync "$CONFIG_FILE.tmp"
-@@ -433,6 +532,20 @@ cmd_usage() {
+@@ -419,7 +531,7 @@ cmd_usage() {
+ 	  followed by \`.conf'. Otherwise, INTERFACE is an interface name, with
+ 	  configuration found at:
+ 	  ${CONFIG_SEARCH_PATHS[@]/%//INTERFACE.conf}.
+-	  It is to be readable by wg(8)'s \`setconf' sub-command, with the exception
++	  It is to be readable by awg(8)'s \`setconf' sub-command, with the exception
+ 	  of the following additions to the [Interface] section, which are handled
+ 	  by $PROGRAM:
+ 
+@@ -436,13 +548,27 @@ cmd_usage() {
+ 	  - SaveConfig: if set to \`true', the configuration is saved from the current
+ 	    state of the interface upon shutdown.
+ 
+-	See wg-quick(8) for more info and examples.
++	See awg-quick(8) for more info and examples.
  	_EOF
  }
  
@@ -256,8 +351,12 @@
 +
  cmd_up() {
  	local i
- 	[[ -z $(ifconfig "$INTERFACE" 2>/dev/null) ]] || die "\`$INTERFACE' already exists"
-@@ -446,26 +559,31 @@ cmd_up() {
+-	[[ -z $(ifconfig "$INTERFACE" 2>/dev/null) ]] || die "\`$INTERFACE' already exists"
++	[[ -z $(ifconfig -n "$INTERFACE" 2>/dev/null) ]] || die "\`$INTERFACE' already exists"
+ 	trap 'del_if; del_routes; clean_temp; exit' INT TERM EXIT
+ 	add_if
+ 	execute_hooks "${PRE_UP[@]}"
+@@ -453,26 +579,31 @@ cmd_up() {
  	set_mtu
  	up_if
  	set_dns
@@ -266,15 +365,16 @@
  		add_route "$i"
  	done
  	[[ $AUTO_ROUTE4 -eq 1 || $AUTO_ROUTE6 -eq 1 ]] && set_endpoint_direct_route
- 	monitor_daemon
-+	monitor_dns_changes
+-	monitor_daemon
++	monitor_daemon spawn
++	monitor_dns_changes spawn
  	execute_hooks "${POST_UP[@]}"
  	trap 'clean_temp; exit' INT TERM EXIT
  }
  
  cmd_down() {
 -	[[ " $(wg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a WireGuard interface"
-+	[[ " $(awg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a WireGuard interface"
++	[[ " $(awg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a Amnezia interface"
  	execute_hooks "${PRE_DOWN[@]}"
  	[[ $SAVE_CONFIG -eq 0 ]] || save_config
  	del_if
@@ -288,11 +388,11 @@
  
  cmd_save() {
 -	[[ " $(wg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a WireGuard interface"
-+	[[ " $(awg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a WireGuard interface"
++	[[ " $(awg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a Amnezia interface"
  	save_config
  }
  
-@@ -473,6 +591,10 @@ cmd_strip() {
+@@ -480,6 +611,10 @@ cmd_strip() {
  	echo "$WG_CONFIG"
  }
  
@@ -303,7 +403,7 @@
  # ~~ function override insertion point ~~
  
  make_temp
-@@ -496,6 +618,10 @@ elif [[ $# -eq 2 && $1 == strip ]]; then
+@@ -503,6 +638,18 @@ elif [[ $# -eq 2 && $1 == strip ]]; then
  	auto_su
  	parse_options "$2"
  	cmd_strip
@@ -311,6 +411,14 @@
 +	auto_su
 +	parse_options "$2"
 +	cmd_reload
++elif [[ $# -eq 2 && $1 == "monitor-daemon" ]]; then
++	auto_su
++	parse_options "$2"
++    monitor_daemon
++elif [[ $# -eq 2 && $1 == "monitor-dns-changes" ]]; then
++	auto_su
++	parse_options "$2"
++    monitor_dns_changes
  else
  	cmd_usage
  	exit 1

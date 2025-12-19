@@ -1,6 +1,6 @@
 PORTNAME=	bhyvemgr
 DISTVERSIONPREFIX=	v
-PORTVERSION=	1.10.0
+PORTVERSION=	1.13.1
 CATEGORIES=	sysutils
 PKGNAMESUFFIX=	${LAZARUS_PKGNAMESUFFIX}
 
@@ -10,12 +10,11 @@ WWW=		https://github.com/alonsobsd/bhyvemgr
 
 LICENSE=	BSD3CLAUSE
 
-RUN_DEPENDS=	virt-viewer>0:net-mgmt/virt-viewer \
-		sudo>0:security/sudo
+RUN_DEPENDS=	virt-viewer>0:net-mgmt/virt-viewer
 
 ONLY_FOR_ARCHS?=amd64
 
-USES=		desktop-file-utils fpc lazarus:flavors xorg
+USES=		desktop-file-utils fpc lazarus:flavors sudo xorg
 USE_XORG=	x11
 USE_GITHUB=	yes
 GH_ACCOUNT=	alonsobsd

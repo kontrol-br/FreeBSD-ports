@@ -1,5 +1,5 @@
 PORTNAME=	google-cloud-storage
-PORTVERSION=	3.3.0
+PORTVERSION=	3.7.0
 CATEGORIES=	www python
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -7,14 +7,15 @@ DISTNAME=	google_cloud_storage-${PORTVERSION}
 
 MAINTAINER=	sunpoet@FreeBSD.org
 COMMENT=	Python Client for Google Cloud Storage
-WWW=		https://github.com/googleapis/python-storage
+WWW=		https://cloud.google.com/python/docs/reference/storage/latest \
+		https://github.com/googleapis/python-storage
 
 LICENSE=	APACHE20
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
 BUILD_DEPENDS=	${PYTHON_PKGNAMEPREFIX}setuptools>=0:devel/py-setuptools@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}wheel>=0:devel/py-wheel@${PY_FLAVOR}
-RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}google-api-core>=2.15.0<3.0.0:www/py-google-api-core@${PY_FLAVOR} \
+RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}google-api-core>=2.27.0<3.0.0:www/py-google-api-core@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}google-auth>=2.26.1<3.0.0:security/py-google-auth@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}google-cloud-core>=2.4.2<3.0.0:www/py-google-cloud-core@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}google-crc32c>=1.1.3<2.0.0:devel/py-google-crc32c@${PY_FLAVOR} \
@@ -27,7 +28,6 @@ USE_PYTHON=	autoplist concurrent pep517
 NO_ARCH=	yes
 
 OPTIONS_DEFINE=	PROTOBUF TRACING
-OPTIONS_DEFINE=	PROTOBUF
 PROTOBUF_DESC=	Protocol buffers support
 TRACING_DESC=	Generate traces using OpenTelemetry
 

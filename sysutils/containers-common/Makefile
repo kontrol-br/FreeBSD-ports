@@ -1,6 +1,6 @@
 PORTNAME=	containers-common
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.64.1
+DISTVERSION=	0.64.2
 PORTREVISION=	1
 CATEGORIES=	sysutils
 
@@ -27,8 +27,12 @@ GH_TAGNAME=	v${DISTVERSION}:common v${IMAGEVERSION}:image \
 NO_ARCH=	yes
 
 IMAGEVERSION=	5.36.2
-SKOPEOVERSION=	1.20.0
+SKOPEOVERSION=	1.21.0
 STORAGEVERSION=	1.59.1
+
+post-patch:
+	${SED} -I '' /golangci/d ${WRKSRC_storage}/tests/tools/Makefile
+	${SED} -I '' -Ee s/go-md2man../go-md2man/ ${WRKSRC_storage}/tests/tools/Makefile
 
 do-build:
 	${GMAKE} -C ${WRKSRC_common}/docs

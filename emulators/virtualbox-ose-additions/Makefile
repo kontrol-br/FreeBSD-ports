@@ -1,6 +1,6 @@
 PORTNAME=	virtualbox-ose
 DISTVERSION=	6.1.50
-PORTREVISION?=	2
+PORTREVISION?=	3
 CATEGORIES=	emulators
 MASTER_SITES=	https://download.virtualbox.org/virtualbox/${DISTVERSION}/
 PKGNAMESUFFIX?=	-additions
@@ -12,6 +12,9 @@ WWW=		https://www.virtualbox.org/
 
 LICENSE=	GPLv2
 LICENSE_FILE=	${WRKSRC}/COPYING
+
+DEPRECATED=		Upstream EOL reaches on 2024-01-31, use emulators/virtualbox-ose${PKGNAMESUFFIX}-72 instead
+EXPIRATION_DATE=	2026-12-31
 
 ONLY_FOR_ARCHS=	amd64
 

@@ -1,5 +1,5 @@
 PORTNAME=	flare
-DISTVERSION=	0.17.0
+DISTVERSION=	0.17.5
 PORTREVISION=	1
 CATEGORIES=	net-im
 
@@ -14,9 +14,10 @@ BUILD_DEPENDS=	blueprint-compiler:devel/blueprint-compiler \
 		protoc:devel/protobuf
 LIB_DEPENDS=	libdbus-1.so:devel/dbus \
 		libsecret-1.so:security/libsecret
-RUN_DEPENDS=	gnome-keyring:security/gnome-keyring
+RUN_DEPENDS=	gnome-keyring:security/gnome-keyring \
+		noto-emoji>=0:x11-fonts/noto-emoji
 
-USES=		cargo gettext-tools gnome meson pkgconfig python:build
+USES=		cargo gettext-tools gnome meson pkgconfig python:build ssl
 USE_GITLAB=	yes
 GL_ACCOUNT=	schmiddi-on-mobile
 USE_GNOME=	cairo gdkpixbuf gtk40 gtksourceview5 libadwaita libxml2 pango

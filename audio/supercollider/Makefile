@@ -1,8 +1,11 @@
 PORTNAME=	supercollider
-DISTVERSION=	3.14.0
+DISTVERSION=	3.14.1
 CATEGORIES=	audio
 MASTER_SITES=	https://github.com/${PORTNAME}/${PORTNAME}/releases/download/Version-${DISTVERSION}/
 DISTNAME=	SuperCollider-${DISTVERSION}-Source
+
+PATCH_SITES=	https://github.com/supercollider/supercollider/commit/
+PATCHFILES+=	e997e47890a9cee137756dede664811a58dbf85a.patch:-p1 # Fix build with Qt 6.10.1
 
 MAINTAINER=	ports@nicandneal.net
 COMMENT=	Programming language for real time audio synthesis
@@ -14,7 +17,7 @@ LICENSE_FILE=	${WRKSRC}/COPYING
 BUILD_DEPENDS=	${LOCALBASE}/include/fftw3.h:math/fftw3 \
 		vulkan-headers>0:graphics/vulkan-headers
 
-LIB_DEPENDS=	libboost_system.so:devel/boost-libs \
+LIB_DEPENDS=	libboost_thread.so:devel/boost-libs \
 		libjack.so:audio/jack \
 		libsndfile.so:audio/libsndfile \
 		libfftw3f.so:math/fftw3-float \
@@ -44,7 +47,7 @@ OPTIONS_DEFINE_amd64=	SSE2 SSE
 OPTIONS_DEFINE_i386=	SSE2 SSE
 OPTIONS_DEFAULT=	AVAHI SUPERNOVA
 OPTIONS_DEFAULT_amd64=	SSE2 SSE WEBENGINE
-OPTIONS_DEFAULT_i386=	QTWEBENGINE
+OPTIONS_DEFAULT_i386=	WEBENGINE
 OPTIONS_SUB=		yes
 
 DOCS_DESC=		Install on-line help text

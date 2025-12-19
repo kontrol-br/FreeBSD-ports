@@ -6,6 +6,7 @@
     SUBDIR += R-cran-xfun
     SUBDIR += aclgen
     SUBDIR += actiona
+    SUBDIR += adiak
     SUBDIR += adios2
     SUBDIR += aichat
     SUBDIR += air
@@ -13,7 +14,6 @@
     SUBDIR += amanda-client
     SUBDIR += amanda-perl-wrapper
     SUBDIR += amanda-server
-    SUBDIR += amazon-qldb-shell
     SUBDIR += ansiweather
     SUBDIR += apparix
     SUBDIR += arrow-datafusion
@@ -42,18 +42,21 @@
     SUBDIR += broot
     SUBDIR += bsod
     SUBDIR += caffe
+    SUBDIR += chatblade
     SUBDIR += chatgpt-shell-cli
     SUBDIR += cheat
     SUBDIR += chef
     SUBDIR += chmlib
     SUBDIR += chrono
     SUBDIR += cinnamon-translations
+    SUBDIR += claude-code
     SUBDIR += cldr-emoji-annotation
     SUBDIR += clex
     SUBDIR += clifm
     SUBDIR += cloc
     SUBDIR += clpbar
     SUBDIR += code2prompt
+    SUBDIR += codex
     SUBDIR += colortail
     SUBDIR += coloursum
     SUBDIR += colwide
@@ -63,6 +66,7 @@
     SUBDIR += compat12x
     SUBDIR += compat13x
     SUBDIR += compat14x
+    SUBDIR += compat15x
     SUBDIR += compat4x
     SUBDIR += compat5x
     SUBDIR += compat6x
@@ -75,6 +79,7 @@
     SUBDIR += cpp-mcp
     SUBDIR += cpuid
     SUBDIR += crosti
+    SUBDIR += crush
     SUBDIR += cryptoballot
     SUBDIR += cs
     SUBDIR += cstream
@@ -157,9 +162,13 @@
     SUBDIR += g810-led
     SUBDIR += gedkeeper
     SUBDIR += geekcode
+    SUBDIR += gemini-cli
     SUBDIR += getopt
     SUBDIR += ggml
     SUBDIR += gimp-help-en
+    SUBDIR += github-copilot-cli
+    SUBDIR += github-copilot-language-server
+    SUBDIR += gitlogue
     SUBDIR += gkrellm-gamma
     SUBDIR += gkrellm-xkb
     SUBDIR += gkrellmbgchg2
@@ -181,6 +190,7 @@
     SUBDIR += gpsim
     SUBDIR += granulate
     SUBDIR += grc
+    SUBDIR += grok-cli
     SUBDIR += gwhich
     SUBDIR += hashdb
     SUBDIR += hello
@@ -193,6 +203,7 @@
     SUBDIR += hulgalugha
     SUBDIR += hwdata
     SUBDIR += hxtools
+    SUBDIR += hyprqt6engine
     SUBDIR += ignition-fuel-tools
     SUBDIR += iio-oscilloscope
     SUBDIR += imerge
@@ -288,6 +299,7 @@
     SUBDIR += molequeue
     SUBDIR += mtx
     SUBDIR += najitool
+    SUBDIR += nanocoder
     SUBDIR += navi
     SUBDIR += ncnn
     SUBDIR += netron
@@ -495,13 +507,17 @@
     SUBDIR += py-mem0ai
     SUBDIR += py-mffpy
     SUBDIR += py-mixpanel
+    SUBDIR += py-ml-collections
     SUBDIR += py-mmcv
     SUBDIR += py-mmdet
     SUBDIR += py-mmengine
     SUBDIR += py-mmsegmentation
     SUBDIR += py-molequeue
+    SUBDIR += py-napari
+    SUBDIR += py-napari-svg
     SUBDIR += py-natten
     SUBDIR += py-npTDMS
+    SUBDIR += py-npe2
     SUBDIR += py-numcodecs
     SUBDIR += py-ollama
     SUBDIR += py-onnx
@@ -531,10 +547,13 @@
     SUBDIR += py-pyfiglet
     SUBDIR += py-pykml
     SUBDIR += py-pymatreader
+    SUBDIR += py-pyowm
     SUBDIR += py-pypatent
     SUBDIR += py-pyprind
     SUBDIR += py-pyqir
+    SUBDIR += py-python-crc
     SUBDIR += py-python-geohash
+    SUBDIR += py-python-pygtrie
     SUBDIR += py-python-utils
     SUBDIR += py-pytorch
     SUBDIR += py-pytorch-lightning
@@ -543,6 +562,10 @@
     SUBDIR += py-safetensors
     SUBDIR += py-sagemaker
     SUBDIR += py-sagemaker-core
+    SUBDIR += py-sagemaker-mlops
+    SUBDIR += py-sagemaker-serve
+    SUBDIR += py-sagemaker-shim
+    SUBDIR += py-sagemaker-train
     SUBDIR += py-schedulefree
     SUBDIR += py-scikit-fusion
     SUBDIR += py-scikit-quant
@@ -574,6 +597,7 @@
     SUBDIR += py-transformers
     SUBDIR += py-tvm
     SUBDIR += py-uhi
+    SUBDIR += py-uuid-utils
     SUBDIR += py-vaderSentiment
     SUBDIR += py-wandb
     SUBDIR += py-wurlitzer
@@ -595,6 +619,7 @@
     SUBDIR += quantum++
     SUBDIR += quary
     SUBDIR += radio_datetime_analyzer
+    SUBDIR += raja
     SUBDIR += randomx
     SUBDIR += rash
     SUBDIR += raspberrypi-gpioshutdown
@@ -624,6 +649,7 @@
     SUBDIR += rubygem-rabbit
     SUBDIR += rubygem-vpim
     SUBDIR += rump
+    SUBDIR += rustlings
     SUBDIR += ruut
     SUBDIR += schilytools
     SUBDIR += sdformat
@@ -677,6 +703,7 @@
     SUBDIR += tkregexp
     SUBDIR += tkrunit
     SUBDIR += tlci
+    SUBDIR += tlm
     SUBDIR += toilet
     SUBDIR += translate
     SUBDIR += trurl

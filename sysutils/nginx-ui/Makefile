@@ -1,7 +1,6 @@
 PORTNAME=	nginx-ui
 DISTVERSIONPREFIX=	v
-DISTVERSION=	2.1.17
-PORTREVISION=	2
+DISTVERSION=	2.3.2
 CATEGORIES=	sysutils
 MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/
 DISTFILES=	${PORTNAME}-${DISTVERSIONPREFIX}${DISTVERSION}.frontend${EXTRACT_SUFX} \
@@ -14,7 +13,7 @@ WWW=		https://nginxui.com
 LICENSE=	AGPLv3
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
-USES=		go:1.25,modules
+USES=		go:1.25+,modules
 USE_GITHUB=	yes
 GH_ACCOUNT=	0xJacky
 
@@ -37,13 +36,14 @@ BUILD_DATE=	$$(date -u +%s)
 
 # Run 'git checkout ${DISTVERSIONPREFIX}${DISTVERSION} && git rev-parse HEAD'
 # in the NGINX UI repository to get the value of GITID.
-GITID=		876213ad12449216d82520b3808b59cdaf0e1276
+GITID=		cb1fb691aff413a3bf322a5e48bd51c299051724
 
 post-extract:
 	@${MKDIR} ${WRKSRC}/vendor
 	@cd ${WRKDIR}/${PORTNAME}-vendor && ${COPYTREE_SHARE} . ${WRKSRC}/vendor
 	@${MKDIR} ${WRKSRC}/app/dist
 	@cd ${WRKDIR}/${PORTNAME}-frontend && ${COPYTREE_SHARE} . ${WRKSRC}/app/dist
+	@${MV} ${WRKSRC}/app/dist/dist.tar.xz ${WRKSRC}/app/dist.tar.xz
 
 post-patch:
 	@${REINPLACE_CMD} -e 's/newLineSymbol/"\\n"/g' \

@@ -39,7 +39,7 @@ USE_KDE=	activities activities-stats archive attica auth baloo \
 		newstuff notifications notifyconfig package parts phonon \
 		plasma5support prison runner service solid sonnet \
 		statusnotifieritem svg syntaxhighlighting texteditor \
-		textwidgets unitconversion userfeedback wallet wayland \
+		textwidgets userfeedback wallet wayland \
 		widgetsaddons windowsystem xmlgui \
 		ecm:build plasma-wayland-protocols:build \
 		kwin-x11:run
