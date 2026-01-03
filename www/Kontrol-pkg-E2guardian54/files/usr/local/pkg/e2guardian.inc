@@ -67,8 +67,8 @@ if (!function_exists('e2g_flag_is_enabled')) {
 }
 
 if (!function_exists('e2g_ssl_intercept_is_enabled')) {
-    function e2g_ssl_intercept_is_enabled(array $config): bool
-    {
+function e2g_ssl_intercept_is_enabled(array $config): bool
+{
         if (isset($config['enablessl']) && e2g_flag_is_enabled($config['enablessl'])) {
             return true;
         }
@@ -79,6 +79,100 @@ if (!function_exists('e2g_ssl_intercept_is_enabled')) {
 
         return false;
     }
+}
+
+function e2g_normalize_bypass_entries($list_string, $context = 'bypass list')
+{
+    $valid_entries = array();
+    $invalid_entries = array();
+
+    $parts = explode(';', (string)$list_string);
+    foreach ($parts as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+
+        if (is_alias($part)) {
+            $valid_entries[] = '$' . $part;
+            continue;
+        }
+
+        if (
+            is_ipaddr($part) ||
+            is_ipaddrv6($part) ||
+            is_subnet($part) ||
+            is_subnetv6($part)
+        ) {
+            $valid_entries[] = $part;
+            continue;
+        }
+
+        if (is_hostname($part)) {
+            $resolved_ips = array();
+            $dns_records = @dns_get_record($part, DNS_A + DNS_AAAA);
+            if (is_array($dns_records)) {
+                foreach ($dns_records as $record) {
+                    if (!empty($record['ip'])) {
+                        $resolved_ips[] = $record['ip'];
+                    }
+                    if (!empty($record['ipv6'])) {
+                        $resolved_ips[] = $record['ipv6'];
+                    }
+                }
+            }
+
+            $resolved_ips = array_unique($resolved_ips);
+            if (!empty($resolved_ips)) {
+                foreach ($resolved_ips as $resolved_ip) {
+                    $valid_entries[] = $resolved_ip;
+                }
+                continue;
+            }
+        }
+
+        $invalid_entries[] = $part;
+    }
+
+    if (!empty($invalid_entries)) {
+        $invalid_as_string = implode(', ', $invalid_entries);
+        log_error("[E2guardian] Ignoring invalid {$context} entr" . (count($invalid_entries) > 1 ? 'ies' : 'y') . ": {$invalid_as_string}");
+    }
+
+    return $valid_entries;
+}
+
+function e2g_sanitize_bypass_field($list_string, $context = 'bypass list')
+{
+    $allowed_pattern = '/[^A-Za-z0-9\-\._:;\/$]/u';
+    $sanitized_parts = array();
+    $removed = array();
+
+    foreach (explode(';', (string)$list_string) as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+
+        $clean = preg_replace($allowed_pattern, '', $part);
+        if ($clean === '') {
+            $removed[] = $part;
+            continue;
+        }
+
+        if ($clean !== $part) {
+            $removed[] = $part;
+        }
+
+        $sanitized_parts[] = $clean;
+    }
+
+    if (!empty($removed)) {
+        $removed_as_string = implode(', ', $removed);
+        log_error("[E2guardian] Removed invalid characters from {$context}: {$removed_as_string}");
+    }
+
+    return implode(';', $sanitized_parts);
 }
 
 function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = array())
@@ -579,29 +673,29 @@ function e2g_generate_rules($type) {
 	$default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
 	// Transparent Proxy Interface(s)
 	if ($e2g_conf['transparent_proxy'] == "on") {
-	    if (! bp_in_array('lo0',$proxy_ifaces)) {
-	        $proxy_ifaces[] = 'lo0';
-	    }
-		$transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
-		$transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+		if (! bp_in_array('lo0',$proxy_ifaces)) {
+			$proxy_ifaces[] = 'lo0';
+		}
+                $transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
+                $transparent_ifaces = array_map('trim', $transparent_ifaces);
+                $transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+                // Trailing commas or empty interface slots break pf rule generation ("no rdr on  proto ...")
+                // which disables the transparent NAT rules entirely.
+                $transparent_ifaces = array_filter($transparent_ifaces);
 	} else {
 		$transparent_ifaces = array();
 	}
         // SSL Intercept Interface(s)
         $ssl_intercept_enabled = e2g_ssl_intercept_is_enabled($e2g_conf);
-        if ($ssl_intercept_enabled) {
-                $ssl_ifaces = $transparent_ifaces;
-        } else {
-                $ssl_ifaces = array();
-        }
 
 	// Define proxy ports
 	$port = ($e2g_conf['filterports'] ? $e2g_conf['filterports'] : 8080);
 	$ssl_port = ($e2g_conf['ssl_proxy_port'] ? $e2g_conf['ssl_proxy_port'] : 8081);
 	$pf_rule_ports = "{{$port},{$ssl_port}}";
 
-	// Define NAT ports - 80 and 443 if SSL filtering is enabled
+        // Define NAT ports - 80 and 443 if SSL filtering is enabled
         $pf_nat_ports = ($ssl_intercept_enabled ? "{80,443}" : "80");
+        $pf_transparent_rule_port = $pf_nat_ports;
 
 	/*
 	 * When transparent proxy is enabled and we are doing NAT, use rdr pass to pass traffic
@@ -616,69 +710,46 @@ function e2g_generate_rules($type) {
 			$rules .= "\n# Setup E2guardian proxy redirect\n";
 			/* Bypass Proxy for Private Address Destination - RFC1918 */
 			if ($e2g_conf['private_subnet_proxy_off'] == 'on') {
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_transparent_rule_port}\n";
-				}
+                                foreach ($transparent_ifaces as $iface) {
+                                        $rules .= "no rdr on $iface proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_transparent_rule_port}\n";
+                                }
 				/* Handle PPPOE case */
 				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_nat_ports}\n";
 				}
 			}
-			/* Bypass Proxy for These Source IPs */
-			if (!empty($e2g_conf['defined_ip_proxy_off'])) {
-				$defined_ip_proxy_off = explode(";", $e2g_conf['defined_ip_proxy_off']);
-				$exempt_ip = "";
-				foreach ($defined_ip_proxy_off as $ip_proxy_off) {
-					if (!empty($ip_proxy_off)) {
-						$ip_proxy_off = trim($ip_proxy_off);
-						if (is_alias($ip_proxy_off)) {
-							$ip_proxy_off = '$' . $ip_proxy_off;
-						}
-						$exempt_ip .= ", $ip_proxy_off";
-					}
-				}
-				$exempt_ip = substr($exempt_ip, 2);
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from { $exempt_ip } to any port {$pf_transparent_rule_port}\n";
-				}
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
-				}
-			}
-			/* Bypass Proxy for These Destination IPs */
-			if (!empty($e2g_conf['defined_ip_proxy_off_dest'])) {
-				$defined_ip_proxy_off_dest = explode(";", $e2g_conf['defined_ip_proxy_off_dest']);
-				$exempt_dest = "";
-				foreach ($defined_ip_proxy_off_dest as $ip_proxy_off_dest) {
-					if (!empty($ip_proxy_off_dest)) {
-						$ip_proxy_off_dest = trim($ip_proxy_off_dest);
-						if (is_alias($ip_proxy_off_dest)) {
-							$ip_proxy_off_dest = '$' . $ip_proxy_off_dest;
-						}
-						$exempt_dest .= ", $ip_proxy_off_dest";
-					}
-				}
-				$exempt_dest = substr($exempt_dest, 2);
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
-				}
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
-				}
-			}
-			/* Transparent Proxy Interface(s) */
-			foreach ($transparent_ifaces as $t_iface) {
-				$redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
-				$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
-				if (bp_in_array($t_iface, $ssl_ifaces)) {
-					$rules .= "rdr on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
-				}
-			}
+                        /* Bypass Proxy for These Source IPs */
+                        $defined_ip_proxy_off = e2g_normalize_bypass_entries($e2g_conf['defined_ip_proxy_off'], 'transparent source bypass list');
+                        if (!empty($defined_ip_proxy_off)) {
+                                $exempt_ip = implode(', ', $defined_ip_proxy_off);
+                                foreach ($transparent_ifaces as $iface) {
+                                        $rules .= "no rdr on $iface proto tcp from { $exempt_ip } to any port {$pf_transparent_rule_port}\n";
+                                }
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
+                                }
+                        }
+                        /* Bypass Proxy for These Destination IPs */
+                        $defined_ip_proxy_off_dest = e2g_normalize_bypass_entries($e2g_conf['defined_ip_proxy_off_dest'], 'transparent destination bypass list');
+                        if (!empty($defined_ip_proxy_off_dest)) {
+                                $exempt_dest = implode(', ', $defined_ip_proxy_off_dest);
+                                foreach ($transparent_ifaces as $iface) {
+                                        $rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
+                                }
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
+                                }
+                        }
+                        /* Transparent Proxy Interface(s) */
+                        foreach ($transparent_ifaces as $t_iface) {
+                                $redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
+                                $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
+                                if ($ssl_intercept_enabled) {
+                                        $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
+                                }
+                        }
 			/*
 			 * Transparent Proxy Interface(s) - handle the PPPOE case
 			 * For PPPoE server, mpd uses a group of different _local_ interfaces
@@ -2482,15 +2553,26 @@ function e2guardian_validate_input($post, &$input_errors) {
                 squid_update_clamav();
                 return;
         }
-	if (is_array($config['installedpackages']['e2guardian'])) {
-		$settings = $config['installedpackages']['e2guardian']['config'][0];
-	} else {
-		$settings = array();
-	}
+        if (is_array($config['installedpackages']['e2guardian'])) {
+                $settings = $config['installedpackages']['e2guardian']['config'][0];
+        } else {
+                $settings = array();
+        }
+
+        $post['defined_ip_proxy_off'] = e2g_sanitize_bypass_field(
+            $post['defined_ip_proxy_off'] ?? '',
+            'transparent source bypass field'
+        );
+        $post['defined_ip_proxy_off_dest'] = e2g_sanitize_bypass_field(
+            $post['defined_ip_proxy_off_dest'] ?? '',
+            'transparent destination bypass field'
+        );
+        $_POST['defined_ip_proxy_off'] = $post['defined_ip_proxy_off'];
+        $_POST['defined_ip_proxy_off_dest'] = $post['defined_ip_proxy_off_dest'];
 
 
-	if ( is_array($post['scan_options']) && bp_in_array('logclienthostnames', $post['scan_options']) &&
-	    !bp_in_array('reverseclientiplookups', $post['scan_options'])) {
+        if ( is_array($post['scan_options']) && bp_in_array('logclienthostnames', $post['scan_options']) &&
+            !bp_in_array('reverseclientiplookups', $post['scan_options'])) {
 		$input_errors[] = "Scan option 'Log client hostnames' needs 'Reverse client ip lookups' to be selected as well.";
 	}
 	if (is_array($post['group_options']) && sizeof ($post['group_options']) > 0) {
