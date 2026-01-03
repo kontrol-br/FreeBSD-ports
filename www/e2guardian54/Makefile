@@ -22,7 +22,7 @@ LIB_DEPENDS=	libpcre.so:devel/pcre
 USES=		autoreconf compiler:c++11-lang libtool localbase pkgconfig \
 		python
 USE_GITHUB=	yes
-BINARY_ALIAS=	autom4te2.71=autom4te-2.71
+BINARY_ALIAS=	autom4te2.72=autom4te-2.72
 
 USE_CXXSTD=	c++11
 USE_RC_SUBR=	e2guardian
