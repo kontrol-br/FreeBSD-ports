@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.4.9
-PORTREVISION=	02
+PORTREVISION=	03
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -28,7 +28,7 @@ USE_CXXSTD=	c++11
 USE_RC_SUBR=	e2guardian
 GNU_CONFIGURE=	yes
 CONFIGURE_ARGS=	--with-logdir=/var/log \
-		--with-piddir=/var/run
+		--with-piddir=/var/run --disable-man
 
 OPTIONS_RADIO=	AV
 OPTIONS_RADIO_AV=AVAST CLAMD KAV
