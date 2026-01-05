@@ -103,6 +103,10 @@ _COMPONENTS+=		cargo-${_PACKAGE_VERS}-${_RUST_TARGET} \
 IGNORE=		is only for FreeBSD
 .endif
 
+.if ${ARCH} == powerpc64 || ${ARCH} == powerpc64le
+EXTRA_PATCHES+=	${FILESDIR}/powerpc64/patch-compiler_rustc__target_src_callconv_powerpc64.rs
+.endif
+
 .if ${ARCH} == powerpc
 LIB_DEPENDS+=	libatomic.so:lang/gcc${GCC_DEFAULT}
 MAKE_ENV+=	RUSTFLAGS="-L/usr/local/lib/gcc${GCC_DEFAULT}"
