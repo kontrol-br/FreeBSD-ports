@@ -22,9 +22,8 @@ LICENSE_COMB=	dual
 LICENSE_FILE_APACHE20=	${WRKSRC}/LICENSE-APACHE
 LICENSE_FILE_MIT=	${WRKSRC}/LICENSE-MIT
 
-ONLY_FOR_ARCHS?=	aarch64 amd64 armv7 i386 powerpc64 powerpc64le powerpc \
-			riscv64
-ONLY_FOR_ARCHS_REASON?=	requires prebuilt bootstrap compiler
+ONLY_FOR_ARCHS=		amd64
+ONLY_FOR_ARCHS_REASON=	requires prebuilt bootstrap compiler for amd64
 
 LIB_DEPENDS=	libcurl.so:ftp/curl
 
@@ -34,7 +33,8 @@ CPE_VENDOR=	rust-lang
 
 MAKE_ENV=	DESTDIR=${STAGEDIR} \
 		LIBGIT2_NO_PKG_CONFIG=1 \
-		OPENSSL_DIR="${OPENSSLBASE}"
+		OPENSSL_DIR="${OPENSSLBASE}" \
+		RUST_BACKTRACE=1
 TEST_ENV=	${MAKE_ENV} \
 		ALLOW_NONZERO_RLIMIT_CORE=1
 
@@ -78,8 +78,6 @@ CARGO_VENDOR_DIR?=		${WRKSRC}/vendor
 
 # Rust's target arch string might be different from *BSD arch strings
 _RUST_ARCH_amd64=	x86_64
-_RUST_ARCH_i386=	i686
-_RUST_ARCH_riscv64=	riscv64gc
 _RUST_TARGET=		${_RUST_ARCH_${ARCH}:U${ARCH}}-unknown-${OPSYS:tl}
 _RUST_TARGETS=		${_RUST_TARGET}
 _RUST_TOOLS=		analysis cargo clippy rust-analyzer rustdoc rustfmt
@@ -102,15 +100,6 @@ _COMPONENTS+=		cargo-${_PACKAGE_VERS}-${_RUST_TARGET} \
 IGNORE=		is only for FreeBSD
 .endif
 
-.if ${ARCH} == powerpc
-LIB_DEPENDS+=	libatomic.so:lang/gcc${GCC_DEFAULT}
-MAKE_ENV+=	RUSTFLAGS="-L/usr/local/lib/gcc${GCC_DEFAULT}"
-.endif
-
-.if ${ARCH} != powerpc64le
-MAKE_ENV+=	RUST_BACKTRACE=1
-.endif
-
 # per https://rust-lang.github.io/rustup/concepts/components.html
 # rustc-dev is only usefull on nightly
 .if defined(NIGHTLY_DATE)
@@ -119,10 +108,6 @@ _COMPONENTS+=	rustc-dev-${_PACKAGE_VERS}-${_RUST_TARGET}
 
 .if ${PORT_OPTIONS:MWASM} && ${PORT_OPTIONS:MDOCS}
 _COMPONENTS+=	rust-docs-${_PACKAGE_VERS}-wasm32-unknown-unknown rust-docs-json-${_PACKAGE_VERS}-wasm32-unknown-unknown
-.endif
-
-.if exists(${PATCHDIR}/${ARCH}${BOOTSTRAPS_SUFFIX})
-EXTRA_PATCHES+=	${PATCHDIR}/${ARCH}${BOOTSTRAPS_SUFFIX}
 .endif
 
 .ifdef QEMU_EMULATING
@@ -202,25 +187,11 @@ do-configure:
 	@${ECHO_CMD} 'ccache=false' >> ${WRKSRC}/config.toml
 .endif
 	@${ECHO_CMD} 'ninja=true' >> ${WRKSRC}/config.toml
-.if ${ARCH} == powerpc
-# Rust doesn't call the system compiler with the full version of the target.
-# This makes powerpc miscompile due to the secure-plt ABI change.
-# Additionally, force using ld.bfd to work around a linking problem in rustc_mir
-	@${PRINTF} '#!/bin/sh\nexec ${CC} "$$@" --target=powerpc-unknown-freebsd13.2' > ${WRKDIR}/cc-wrapper
-	@${CHMOD} +x ${WRKDIR}/cc-wrapper
-	@${PRINTF} '#!/bin/sh\nexec ${CXX} "$$@" --target=powerpc-unknown-freebsd13.2' > ${WRKDIR}/cxx-wrapper
-	@${CHMOD} +x ${WRKDIR}/cxx-wrapper
-.endif
 .for _target in ${_RUST_TARGETS}
 	@${ECHO_CMD} '[target.${_target}]' >> ${WRKSRC}/config.toml
 	@${ECHO_CMD} 'ar="${AR}"' >> ${WRKSRC}/config.toml
-.if ${ARCH} == powerpc
-	@${ECHO_CMD} 'cc="${WRKDIR}/cc-wrapper"' >> ${WRKSRC}/config.toml
-	@${ECHO_CMD} 'cxx="${WRKDIR}/cxx-wrapper"' >> ${WRKSRC}/config.toml
-.else
 	@${ECHO_CMD} 'cc="${CC}"' >> ${WRKSRC}/config.toml
 	@${ECHO_CMD} 'cxx="${CXX}"' >> ${WRKSRC}/config.toml
-.endif
 	@${ECHO_CMD} 'linker="${CC}"' >> ${WRKSRC}/config.toml
 .if ${PORT_OPTIONS:MPORT_LLVM}
 	@${ECHO_CMD} 'llvm-config="${LOCALBASE}/bin/${LLVM_CONFIG}"' >> ${WRKSRC}/config.toml
