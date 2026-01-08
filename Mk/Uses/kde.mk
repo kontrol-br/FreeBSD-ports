@@ -99,7 +99,7 @@ KDE_FRAMEWORKS5_VERSION?=	5.116.0
 KDE_FRAMEWORKS5_BRANCH?=	stable
 
 # Current KDE Frameworks (Qt6 based).
-KDE_FRAMEWORKS6_VERSION?=	6.20.0
+KDE_FRAMEWORKS6_VERSION?=	6.21.0
 KDE_FRAMEWORKS6_BRANCH?=	stable
 
 # Current KDE applications. Update _${PORTNAME}_PROJECT_VERSION for the following ports:
@@ -226,6 +226,9 @@ DIST_SUBDIR?=		KDE/frameworks/${KDE_FRAMEWORKS_VERSION}
 .        if ${_KDE_VERSION:M6}
 DIST_SUBDIR=		KDE/frameworks/${KDE_FRAMEWORKS_VERSION:R}
 DESCR=			${.CURDIR:H:H}/x11/kf6-frameworks/pkg-descr
+.        endif
+.        if ${_KDE_VERSION:M5}
+PORTSCOUT=	limit:^5\.
 .        endif
 .      else
 IGNORE?=		unknown CATEGORY value '${_KDE_CATEGORY}' #'
