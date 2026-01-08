@@ -69,11 +69,8 @@ include/kea/config/http_command_mgr.h
 include/kea/config/http_command_response_creator.h
 include/kea/config/http_command_response_creator_factory.h
 include/kea/config/timeouts.h
-<<<<<<< HEAD
 include/kea/config/unix_command_config.h
 include/kea/config/unix_command_mgr.h
-=======
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 include/kea/config_backend/base_config_backend.h
 include/kea/config_backend/base_config_backend_mgr.h
 include/kea/config_backend/base_config_backend_pool.h
@@ -472,7 +469,6 @@ lib/kea/hooks/libdhcp_run_script.so
 lib/kea/hooks/libdhcp_stat_cmds.so
 lib/kea/hooks/libdhcp_subnet_cmds.so
 lib/libkea-asiodns.so
-<<<<<<< HEAD
 lib/libkea-asiodns.so.62
 lib/libkea-asiodns.so.62.0.0
 lib/libkea-asiolink.so
@@ -487,28 +483,10 @@ lib/libkea-cfgrpt.so.3.0.0
 lib/libkea-config.so
 lib/libkea-config.so.83
 lib/libkea-config.so.83.0.0
-=======
-lib/libkea-asiodns.so.48
-lib/libkea-asiodns.so.48.0.0
-lib/libkea-asiolink.a
-lib/libkea-asiolink.so
-lib/libkea-asiolink.so.71
-lib/libkea-asiolink.so.71.0.0
-lib/libkea-cc.a
-lib/libkea-cc.so
-lib/libkea-cc.so.68
-lib/libkea-cc.so.68.0.0
-lib/libkea-cfgclient.a
-lib/libkea-cfgclient.so
-lib/libkea-cfgclient.so.65
-lib/libkea-cfgclient.so.65.0.0
-lib/libkea-cryptolink.a
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 lib/libkea-cryptolink.so
 lib/libkea-cryptolink.so.64
 lib/libkea-cryptolink.so.64.0.0
 lib/libkea-d2srv.so
-<<<<<<< HEAD
 lib/libkea-d2srv.so.63
 lib/libkea-d2srv.so.63.0.0
 lib/libkea-database.so
@@ -526,31 +504,6 @@ lib/libkea-dhcpsrv.so.130.0.0
 lib/libkea-dns.so
 lib/libkea-dns.so.71
 lib/libkea-dns.so.71.0.0
-=======
-lib/libkea-d2srv.so.46
-lib/libkea-d2srv.so.46.0.0
-lib/libkea-database.a
-lib/libkea-database.so
-lib/libkea-database.so.62
-lib/libkea-database.so.62.0.0
-lib/libkea-dhcp++.a
-lib/libkea-dhcp++.so
-lib/libkea-dhcp++.so.91
-lib/libkea-dhcp++.so.91.0.0
-lib/libkea-dhcp_ddns.a
-lib/libkea-dhcp_ddns.so
-lib/libkea-dhcp_ddns.so.56
-lib/libkea-dhcp_ddns.so.56.0.0
-lib/libkea-dhcpsrv.a
-lib/libkea-dhcpsrv.so
-lib/libkea-dhcpsrv.so.110
-lib/libkea-dhcpsrv.so.110.0.0
-lib/libkea-dns++.a
-lib/libkea-dns++.so
-lib/libkea-dns++.so.56
-lib/libkea-dns++.so.56.0.0
-lib/libkea-eval.a
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 lib/libkea-eval.so
 lib/libkea-eval.so.84
 lib/libkea-eval.so.84.0.0
@@ -558,7 +511,6 @@ lib/libkea-exceptions.so
 lib/libkea-exceptions.so.45
 lib/libkea-exceptions.so.45.0.0
 lib/libkea-hooks.so
-<<<<<<< HEAD
 lib/libkea-hooks.so.119
 lib/libkea-hooks.so.119.0.0
 lib/libkea-http.so
@@ -567,15 +519,6 @@ lib/libkea-http.so.87.0.0
 lib/libkea-log-interprocess.so
 lib/libkea-log-interprocess.so.3
 lib/libkea-log-interprocess.so.3.0.0
-=======
-lib/libkea-hooks.so.99
-lib/libkea-hooks.so.99.0.0
-lib/libkea-http.a
-lib/libkea-http.so
-lib/libkea-http.so.71
-lib/libkea-http.so.71.0.0
-lib/libkea-log.a
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 lib/libkea-log.so
 lib/libkea-log.so.75
 lib/libkea-log.so.75.0.0
@@ -586,48 +529,23 @@ lib/libkea-log.so.75.0.0
 %%PGSQL%%lib/libkea-pgsql.so.88
 %%PGSQL%%lib/libkea-pgsql.so.88.0.0
 lib/libkea-process.so
-<<<<<<< HEAD
 lib/libkea-process.so.90
 lib/libkea-process.so.90.0.0
-=======
-lib/libkea-process.so.73
-lib/libkea-process.so.73.0.0
-lib/libkea-stats.a
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 lib/libkea-stats.so
 lib/libkea-stats.so.53
 lib/libkea-stats.so.53.0.0
 lib/libkea-tcp.so
-<<<<<<< HEAD
 lib/libkea-tcp.so.33
 lib/libkea-tcp.so.33.0.0
-=======
-lib/libkea-tcp.so.18
-lib/libkea-tcp.so.18.0.0
-lib/libkea-util-io.a
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 lib/libkea-util-io.so
 lib/libkea-util-io.so.12
 lib/libkea-util-io.so.12.0.0
 lib/libkea-util.so
-<<<<<<< HEAD
 lib/libkea-util.so.101
 lib/libkea-util.so.101.0.0
 %%PYTHON_SITELIBDIR%%/kea/kea_conn.py
 %%PYTHON_SITELIBDIR%%/kea/kea_connector3.py
 libdata/pkgconfig/kea.pc
-=======
-lib/libkea-util.so.85
-lib/libkea-util.so.85.0.0
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/__pycache__/kea_conn%%PYTHON_EXT_SUFFIX%%.opt-1.pyc
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/__pycache__/kea_conn%%PYTHON_EXT_SUFFIX%%.opt-2.pyc
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/__pycache__/kea_conn%%PYTHON_EXT_SUFFIX%%.pyc
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/__pycache__/kea_connector3%%PYTHON_EXT_SUFFIX%%.opt-1.pyc
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/__pycache__/kea_connector3%%PYTHON_EXT_SUFFIX%%.opt-2.pyc
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/__pycache__/kea_connector3%%PYTHON_EXT_SUFFIX%%.pyc
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/kea_conn.py
-%%SHELL%%%%PYTHON_SITELIBDIR%%/kea/kea_connector3.py
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 sbin/kea-admin
 sbin/kea-ctrl-agent
 sbin/kea-dhcp-ddns

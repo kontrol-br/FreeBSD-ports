@@ -1,9 +1,5 @@
 PORTNAME=	kea
-<<<<<<< HEAD
 DISTVERSION=	3.0.1
-=======
-DISTVERSION=	2.6.2
->>>>>>> parent of af0648d7c66c (net/kea: Update to 2.6.3)
 CATEGORIES=	net
 MASTER_SITES=	ISC/kea/${DISTVERSION}
 
