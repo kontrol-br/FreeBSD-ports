@@ -1,6 +1,5 @@
 PORTNAME=	kea
-DISTVERSION=	3.1.0
-PORTREVISION=	2
+DISTVERSION=	3.1.3
 CATEGORIES=	net
 MASTER_SITES=	ISC/kea/cur/3.1
 PKGNAMESUFFIX=	-devel
@@ -42,7 +41,7 @@ MESON_ARGS=	--auto-features=disabled \
 
 SHEBANG_GLOB=	*.py *.in
 python_OLD_CMD+=@PYTHON@
-		
+
 MYSQL_USES=		mysql
 MYSQL_MESON_ENABLED=	mysql
 MYSQL_SUB_LIST=		REQ_MYSQL=mysql

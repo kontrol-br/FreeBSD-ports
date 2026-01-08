@@ -7,7 +7,7 @@
 -    LOCALSTATEDIR = 'var'    # Otherwise, it would have been 'var/local'.
 +    LOCALSTATEDIR = '/var'    # Otherwise, it would have been 'var/local'.
  endif
- 
+
  DATABASE_SCRIPTS_DIR = TOP_BUILD_DIR / 'src/share/database/scripts'
 @@ -69,17 +69,17 @@
  KEA_ADMIN_INSTALLED = PREFIX / SBINDIR / 'kea-admin'
@@ -42,7 +42,7 @@
 +    RUNSTATEDIR_INSTALLED = '/var/run/kea'
 +    SHAREDSTATEDIR_INSTALLED = '/var/db/kea'
  endif
- 
+
  #### Build Options
 @@ -1108,9 +1108,9 @@
  # In case prefix is default, install to hardcoded path.
@@ -55,5 +55,5 @@
 +    install_emptydir('/var/log/kea')
 +    install_emptydir('/var/run/kea')
  endif
- 
+
  # Print the setup report.

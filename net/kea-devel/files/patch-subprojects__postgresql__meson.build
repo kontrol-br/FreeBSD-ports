@@ -15,7 +15,7 @@
          pgsql_libdir = libdir.stdout().strip()
 -        pgsql_link_args = libs.stdout().split()
          pgsql_version = version.stdout().strip()
- 
+
 -        link_args = [f'-L@pgsql_libdir@'] + pgsql_ldflags + pgsql_link_args
 +        link_args = ['-L' + pgsql_libdir] + pgsql_ldflags
          if libpq.found()
