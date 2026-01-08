@@ -7,5 +7,5 @@
 -keactrl_conf_data.set('runstatedir', '${prefix}/' + LOCALSTATEDIR + '/run')
 +keactrl_conf_data.set('runstatedir', '/' + LOCALSTATEDIR + '/run')
  keactrl_conf_data.set('localstatedir', '${prefix}/' + LOCALSTATEDIR)
- 
+
  kea_conf_data = configuration_data()
