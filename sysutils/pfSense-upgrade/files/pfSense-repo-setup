@@ -3,7 +3,7 @@
 # pfSense-repo-setup
 #
 # part of pfSense (https://www.pfsense.org)
-# Copyright (c) 2015-2025 Rubicon Communications, LLC (Netgate)
+# Copyright (c) 2015-2023 Rubicon Communications, LLC (Netgate)
 # All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,40 +48,8 @@ get_default_repo() {
 	echo ""
 }
 
-get_repo_path() {
-	local _repo_name="${1}"
-
-	# If the argument is a repo name, look for the respective repo conf path
-	for file in "${PLUS_CERT_BASE}/${PRODUCT}-repo-"*".name"; do
-		if [ ! -f "${file}" ]; then
-			continue
-		fi
-		if [ "$(/bin/cat ${file})" = "${_repo_name}" ]; then
-			echo -n "${file%.name}.conf"
-			return
-		fi
-	done
-
-	# No path found, return the given value
-	echo -n "${_repo_name}"
-	return
-}
-
-get_repo_id() {
-	local _id _repo_conf
-
-	# If the argument is a repo name, look for its path
-	_repo_conf="$(get_repo_path "${1}")"
-	_id="$(echo -n "${_repo_conf}" | \
-	    /usr/bin/sed 's/.*pfSense-repo-\(.*\).conf/\1/g')"
-
-	echo -n "${_id}"
-}
-
 get_repo_name() {
-	# If the argument is a repo name, verify its path
-	local _repo_conf="$(get_repo_path "${1}")"
-
+	local _repo_conf="${1}"
 	repo_path="${_repo_conf%.conf}"
 	repo_name="${repo_path}.name"
 	if [ ! -f "${repo_name}" ]; then
@@ -91,30 +59,11 @@ get_repo_name() {
 	/bin/cat "${repo_name}"
 }
 
-get_repoc_feat() {
-	local _err _feat
-
-	_feat="$("/usr/local/sbin/${PRODUCT}-repoc-static" -f 2>&1)"
-	_err="${?}"
-	if [ "${_err}" -ne 0 ] || [ -z "${_feat}" ]; then
-		echo -n ""
-		return "${_err}"
-	fi
-	echo -n "${_feat}"
-	return 0
-}
-
 validate_repo_conf() {
 	local default_file=$(ls -1 ${PLUS_CERT_BASE}/*.default 2>/dev/null | tail -n 1)
 	local default="${PLUS_CERT_BASE}/${PRODUCT}-repo-stable.conf"
 	local repo_name=$(get_repo_name "${PKG_REPO_CONF_PATH}")
-	local id pkg_repo_conf
-
-	pkg_repo_conf="${PLUS_CERT_BASE}/${PRODUCT}-repo-${repo_name}.conf"
-	if [ ! -f "${pkg_repo_conf}" ]; then
-		repo_id="$(get_repo_id "${PKG_REPO_CONF_PATH}")"
-		pkg_repo_conf="${PLUS_CERT_BASE}/${PRODUCT}-repo-${repo_id}.conf"
-	fi
+	local pkg_repo_conf="${PLUS_CERT_BASE}/${PRODUCT}-repo-${repo_name}.conf"
 
 	if [ -n "${default_file}" ] && [ -f "${default_file}" ]; then
 		default="${default_file%%.default}.conf"
@@ -148,74 +97,42 @@ validate_repo_conf() {
 }
 
 abi_setup() {
-	local _arch _cur_abi _cur_altabi _freebsd_version _new_pkg _pkg_ver _repo_conf_file
-	unset _arch _cur_abi _cur_altabi _freebsd_version _new_pkg _pkg_ver _repo_conf_file
+	local _arch="$(uname -p)"
+	local _freebsd_version="$(uname -r)"
+	local _repo_conf_file="$(readlink ${PFSENSE_REPO_CONF})"
 
-	_arch="$(uname -p)"
-	_freebsd_version="$(uname -r)"
-	_repo_conf_file="$(readlink ${PFSENSE_REPO_CONF})"
+	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${_arch}"
+	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
 
-	_cur_abi="FreeBSD:${_freebsd_version%%.*}:${_arch}"
-	_cur_altabi="freebsd:${_freebsd_version%%.*}"
-
-	case "${_arch}" in
-	"aarch64")
-		_cur_altabi="${_cur_altabi}:${_arch}:64"
-		;;
-	"amd64")
-		_cur_altabi="${_cur_altabi}:x86:64"
-		;;
-	"armv6")
-		_cur_altabi="${_cur_altabi}:${_arch}:32:el:eabi:hardfp"
-		;;
-	"armv7")
-		_cur_altabi="${_cur_altabi}:${_arch}:32:el:eabi:softfp"
-		;;
-	*)
-		return 1
-		;;
-	esac
+	if [ "${_arch}" = "armv6" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${_arch}:32:el:eabi:hardfp"
+	elif [ "${_arch}" = "armv7" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${_arch}:32:el:eabi:softfp"
+	elif [ "${_arch}" = "aarch64" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${_arch}:64"
+	elif [ "${_arch}" = "i386" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:x86:32"
+	else
+		CUR_ALTABI="${CUR_ALTABI}:x86:64"
+	fi
 
 	if [ -f ${_repo_conf_file%%.conf}.abi ]; then
-		ABI="$(cat "${_repo_conf_file%%.conf}.abi")"
+		ABI=$(cat ${_repo_conf_file%%.conf}.abi)
 	else
-		ABI="${_cur_abi}"
+		ABI=${CUR_ABI}
 	fi
 
 	if [ -f ${_repo_conf_file%%.conf}.altabi ]; then
-		ALTABI="$(cat "${_repo_conf_file%%.conf}.altabi")"
+		ALTABI=$(cat ${_repo_conf_file%%.conf}.altabi)
 	else
-		ALTABI="${_cur_altabi}"
+		ALTABI=${CUR_ALTABI}
 	fi
 
-	OSVERSION="$(echo "${ABI}" | cut -f2 -d:)00000"
-	OSVERSION_FEAT="$(get_repoc_feat | /usr/bin/grep -c "osversion")"
-	[ "${?}" -eq 0 ] && [ "${OSVERSION_FEAT}" = "1" ] && \
-	    [ -r "${_repo_conf_file%%.conf}.osversion" ] && \
-	    OSVERSION="$(/bin/cat "${_repo_conf_file%%.conf}.osversion")"
-
-	/bin/rm -f "${PKG_CONF}" 2> /dev/null
-	/usr/bin/touch "${PKG_CONF}" 2> /dev/null
-
-	#
-	# Make sure pkg.conf is set properly so GUI can work.
-	# Do not set the ALTABI for the new pkg (>= 2.0.6).
-        # Use ABI and OSVERSION instead.
-	#
-	_pkg_ver="$(_pkg query %v pkg)"
-	_new_pkg="$(_pkg version -t 2.0.6 "${_pkg_ver}")"
-	if [ -n "${_new_pkg}" ] && [ "${_new_pkg}" = ">" ]; then
-		cat << EOF > "${PKG_CONF}"
+	# Make sure pkg.conf is set properly so GUI can work
+	cat << EOF > "${PKG_CONF}"
 ABI=${ABI}
 ALTABI=${ALTABI}
 EOF
-	else
-		cat << EOF > "${PKG_CONF}"
-ABI=${ABI}
-OSVERSION=${OSVERSION}
-EOF
-	fi
-
 	if [ -n "${dbdir}" ] && [ -n "${reposdir}" ]; then
 			cat << EOF >> ${PKG_CONF}""
 PKG_DBDIR=${dbdir}
@@ -228,12 +145,6 @@ EOF
 	PLUS_REPO_CONF="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_NAME}.conf"
 	PLUS_CERT="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_NAME}-cert.pem"
 	PLUS_KEY="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_NAME}-key.pem"
-	if [ ! -f "${PLUS_REPO_CONF}" ]; then
-		REPO_ID="$(get_repo_id "${PKG_REPO_CONF_PATH}")"
-		PLUS_REPO_CONF="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_ID}.conf"
-		PLUS_CERT="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_ID}-cert.pem"
-		PLUS_KEY="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_ID}-key.pem"
-	fi
 	if [ -f "${PLUS_REPO_CONF}" ] && \
 	   [ "${PLUS_REPO_CONF}" != "$(realpath "${PFSENSE_REPO_CONF}")" ]; then
 		rm -f "${PFSENSE_REPO_CONF}"
@@ -252,12 +163,12 @@ EOF
 	err=0
 
 	local _pkg_abi=$(_pkg query %q pkg)
-	if [ "${_cur_abi}" != "${_pkg_abi}" ] && [ "${_pkg_abi}" != "${ABI}" ]; then
+	if [ "${CUR_ABI}" != "${_pkg_abi}" ] && [ "${_pkg_abi}" != "${ABI}" ]; then
 		# Upgrade pkg
 		err=11
 	fi
 
-	if [ "${_cur_abi}" != "${ABI}" ] && [ "${_cur_abi}" != "${ALTABI}" ]; then
+	if [ "${CUR_ABI}" != "${ABI}" ] && [ "${CUR_ABI}" != "${ALTABI}" ]; then
 		# Set NEW_MAJOR
 		if [ "${err}" -eq 11 ]; then
 			err=13
@@ -271,17 +182,12 @@ EOF
 
 
 pfSense_repo_setup() {
-	local _fstyle _repoc_args
 
 	cp "${PFSENSE_REPO_CONF}" "/tmp/${PRODUCT}.conf.copy"
 
 	if [ -z "${NOUPDATE}" ]; then
-		_repoc_args=""
-		_fstyle="$(get_repoc_feat | /usr/bin/grep -c "repodir-new-fstyle")"
-		[ "${?}" -eq 0 ] && [ "${_fstyle}" = "1" ] && \
-		    _repoc_args="${_repoc_args} -N"
 		# Fetch the repository settings.
-		if ! "/usr/local/sbin/${PRODUCT}-repoc-static" $_repoc_args; then
+		if ! /usr/local/sbin/${PRODUCT}-repoc-static; then
 			echo "failed to update the repository settings!!!"
 			rm -f "/tmp/${PRODUCT}.conf.copy"
 			exit 1
@@ -316,9 +222,7 @@ export PLUS_CERT_BASE="$("${PHP}" -n /usr/local/sbin/read_global_var pkg_repos_p
 export PRODUCT="$("${PHP}" -n /usr/local/sbin/read_global_var product_name pfSense)"
 export PFSENSE_REPO_CONF="/usr/local/etc/pkg/repos/${PRODUCT}.conf"
 export PKG_CONF="/usr/local/etc/pkg.conf"
-PKG_REPO_CONF_PATH="$("${READ_XML_TAG}" string system/pkg_repo_conf_path)"
-# If the value is a repo name, get its path
-export PKG_REPO_CONF_PATH="$(get_repo_path "${PKG_REPO_CONF_PATH}")"
+export PKG_REPO_CONF_PATH="$("${READ_XML_TAG}" string system/pkg_repo_conf_path)"
 
 # If no branch is saved on the XML configuration, use the default repo.
 if [ -z "${PKG_REPO_CONF_PATH}" ]; then
