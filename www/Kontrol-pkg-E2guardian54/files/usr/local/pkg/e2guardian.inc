@@ -799,6 +799,10 @@ function e2g_generate_rules($type) {
 function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	global $config, $g, $savemsg, $e2g_sched_in_use;
 
+	if (empty($savemsg)) {
+		$savemsg = gettext("E2guardian configuration updated.");
+	}
+
 	// detect boot process
 	if (is_array($_POST)) {
 		if (preg_match("/\w+/", $_POST['__csrf_magic'])) {
