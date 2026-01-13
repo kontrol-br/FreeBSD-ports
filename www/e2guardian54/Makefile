@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.4.9
-PORTREVISION=	03
+PORTREVISION=	04
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -14,7 +14,6 @@ WWW=		https://e2guardian.org
 
 LICENSE=	GPLv2
 
-BUILD_DEPENDS=	rst2man:textproc/py-docutils@${PY_FLAVOR}
 RUN_DEPENDS+=   openssl111>=1.1.1w_2:security/openssl111
 
 LIB_DEPENDS=	libpcre.so:devel/pcre
