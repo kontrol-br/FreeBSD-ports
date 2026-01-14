@@ -128,10 +128,12 @@ abi_setup() {
 		ALTABI=${CUR_ALTABI}
 	fi
 
+	OSVERSION=$(/sbin/sysctl -n kern.osreldate)
+
 	# Make sure pkg.conf is set properly so GUI can work
 	cat << EOF > "${PKG_CONF}"
 ABI=${ABI}
-ALTABI=${ALTABI}
+OSVERSION=${OSVERSION}
 EOF
 	if [ -n "${dbdir}" ] && [ -n "${reposdir}" ]; then
 			cat << EOF >> ${PKG_CONF}""
