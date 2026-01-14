@@ -1134,6 +1134,15 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$generatedcertpath = "";
 	$cert_key = "";
 	$certprivatekeypath = '/etc/ssl/demoCA/private/serverkey.pem';
+	if ($enablessl === "on") {
+		$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
+		$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
+		$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
+		if (! file_exists($certprivatekeypath)) {
+			system("openssl genrsa 4096 > $certprivatekeypath");
+		}
+		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
+	}
 	$ca_cert = lookup_ca($e2guardian["dca"]);
 	if ($ca_cert != false) {
 		if (base64_decode($ca_cert['prv'])) {
@@ -1148,23 +1157,6 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
 			$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
 		}
-	}
-
-	if ($enablessl === "on") {
-		if ($ca_cert == false && (! file_exists("/etc/ssl/demoCA/cacert.pem") || ! file_exists("/etc/ssl/demoCA/private/cakey.pem"))) {
-			system("/usr/bin/openssl req -new -x509 -days 3650 -nodes -subj '/CN=E2Guardian CA' -keyout /etc/ssl/demoCA/private/cakey.pem -out /etc/ssl/demoCA/cacert.pem");
-		}
-		if (file_exists("/etc/ssl/demoCA/cacert.pem")) {
-			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
-			$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
-		}
-		if (file_exists("/etc/ssl/demoCA/private/cakey.pem")) {
-			$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
-		}
-		if (! file_exists($certprivatekeypath)) {
-			system("openssl genrsa 4096 > $certprivatekeypath");
-		}
-		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
 		/*
 		$svr_cert = lookup_cert($e2guardian_config["dcert"]);
 		if ($svr_cert != false) {
