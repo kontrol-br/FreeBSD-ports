@@ -1,9 +1,10 @@
+
 <?php
 /*
  * e2guardian.inc
  *
  * part of Unofficial packages for pfSense(R) softwate
- * Copyright (c) 2015-2025 Marcello Coutinho
+ * Copyright (c) 2015-2023 Marcello Coutinho
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,9 +28,6 @@ require_once("pkg-utils.inc");
 require_once("services.inc");
 require_once("util.inc");
 require_once("filter.inc");
-require_once("util.inc");
-require_once("filter.inc");
-require_once("certs.inc");
 $pfs_version = substr(trim(file_get_contents("/etc/version")),0,3);
 
 require_once("xmlrpc_client.inc");
@@ -56,6 +54,190 @@ if (! function_exists("bp_array_key_exists")) {
  }
 }
 
+if (!function_exists('e2g_flag_is_enabled')) {
+    function e2g_flag_is_enabled($value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        $normalized = strtolower(trim((string)$value));
+        return in_array($normalized, array('on', 'yes', 'true', '1'), true);
+    }
+}
+
+if (!function_exists('e2g_ssl_intercept_is_enabled')) {
+function e2g_ssl_intercept_is_enabled(array $config): bool
+{
+        if (isset($config['enablessl']) && e2g_flag_is_enabled($config['enablessl'])) {
+            return true;
+        }
+
+        if (isset($config['ssl_proxy']) && e2g_flag_is_enabled($config['ssl_proxy'])) {
+            return true;
+        }
+
+        return false;
+    }
+}
+
+function e2g_normalize_bypass_entries($list_string, $context = 'bypass list')
+{
+    $valid_entries = array();
+    $invalid_entries = array();
+
+    $parts = explode(';', (string)$list_string);
+    foreach ($parts as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+
+        if (is_alias($part)) {
+            $valid_entries[] = '$' . $part;
+            continue;
+        }
+
+        if (
+            is_ipaddr($part) ||
+            is_ipaddrv6($part) ||
+            is_subnet($part) ||
+            is_subnetv6($part)
+        ) {
+            $valid_entries[] = $part;
+            continue;
+        }
+
+        if (is_hostname($part)) {
+            $resolved_ips = array();
+            $dns_records = @dns_get_record($part, DNS_A + DNS_AAAA);
+            if (is_array($dns_records)) {
+                foreach ($dns_records as $record) {
+                    if (!empty($record['ip'])) {
+                        $resolved_ips[] = $record['ip'];
+                    }
+                    if (!empty($record['ipv6'])) {
+                        $resolved_ips[] = $record['ipv6'];
+                    }
+                }
+            }
+
+            $resolved_ips = array_unique($resolved_ips);
+            if (!empty($resolved_ips)) {
+                foreach ($resolved_ips as $resolved_ip) {
+                    $valid_entries[] = $resolved_ip;
+                }
+                continue;
+            }
+        }
+
+        $invalid_entries[] = $part;
+    }
+
+    if (!empty($invalid_entries)) {
+        $invalid_as_string = implode(', ', $invalid_entries);
+        log_error("[E2guardian] Ignoring invalid {$context} entr" . (count($invalid_entries) > 1 ? 'ies' : 'y') . ": {$invalid_as_string}");
+    }
+
+    return $valid_entries;
+}
+
+function e2g_sanitize_bypass_field($list_string, $context = 'bypass list')
+{
+    $allowed_pattern = '/[^A-Za-z0-9\-\._:;\/$]/u';
+    $sanitized_parts = array();
+    $removed = array();
+
+    foreach (explode(';', (string)$list_string) as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+
+        $clean = preg_replace($allowed_pattern, '', $part);
+        if ($clean === '') {
+            $removed[] = $part;
+            continue;
+        }
+
+        if ($clean !== $part) {
+            $removed[] = $part;
+        }
+
+        $sanitized_parts[] = $clean;
+    }
+
+    if (!empty($removed)) {
+        $removed_as_string = implode(', ', $removed);
+        log_error("[E2guardian] Removed invalid characters from {$context}: {$removed_as_string}");
+    }
+
+    return implode(';', $sanitized_parts);
+}
+
+function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = array())
+{
+    $defaults = array(
+        'require_strings' => array(),
+        'force' => false,
+        'compare_hash' => false,
+        'backup_suffix' => '.pre54',
+        'log_prefix' => '[E2guardian]'
+    );
+    $options += $defaults;
+
+    if (!is_file($sample_path)) {
+        return false;
+    }
+
+    $needs_update = $options['force'] || !is_file($target_path);
+
+    $target_contents = '';
+    if (!$needs_update) {
+        $target_contents = @file_get_contents($target_path);
+        if ($target_contents === false) {
+            $needs_update = true;
+        }
+    }
+
+    if (!$needs_update && !empty($options['require_strings'])) {
+        foreach ((array)$options['require_strings'] as $needle) {
+            if (strpos((string)$target_contents, (string)$needle) === false) {
+                $needs_update = true;
+                break;
+            }
+        }
+    }
+
+    if (!$needs_update && $options['compare_hash'] === true) {
+        $needs_update = (hash_file('sha256', $target_path) !== hash_file('sha256', $sample_path));
+    }
+
+    if (!$needs_update) {
+        return false;
+    }
+
+    $target_dir = dirname($target_path);
+    if (!is_dir($target_dir) && !@mkdir($target_dir, 0755, true) && !is_dir($target_dir)) {
+        log_error("{$options['log_prefix']} Unable to create directory {$target_dir} while updating " . basename($target_path));
+        return false;
+    }
+
+    if (is_file($target_path) && !empty($options['backup_suffix'])) {
+        @copy($target_path, $target_path . $options['backup_suffix']);
+    }
+
+    if (@copy($sample_path, $target_path) !== true) {
+        log_error("{$options['log_prefix']} Failed to update {$target_path} from sample " . basename($sample_path));
+        return false;
+    }
+
+    @chmod($target_path, 0640);
+    log_error("{$options['log_prefix']} Updated {$target_path} from sample " . basename($sample_path));
+
+    return true;
+}
+
 if (version_compare(PHP_VERSION, "7.3") < 0 && !function_exists("is_countable")) {
     function is_countable($var): bool{
         return (is_array($var) || is_object($var) || is_iterable($var) || $var instanceof Countable);
@@ -66,14 +248,49 @@ $shortcut_section = "e2guardian";
 
 $pf_version = substr(trim(file_get_contents("/etc/version")), 0, 3);
 
-define('E2GUARDIAN_DIR', '/usr/local');
+if (!defined('E2GUARDIAN_DIR')) {
+    define('E2GUARDIAN_DIR', '/usr/local');
+}
+if (!defined('E2GUARDIAN_ETCDIR')) {
+    define('E2GUARDIAN_ETCDIR', E2GUARDIAN_DIR . '/etc/e2guardian');
+}
+if (!defined('E2GUARDIAN_PKGDIR')) {
+    define('E2GUARDIAN_PKGDIR', E2GUARDIAN_DIR . '/pkg');
+}
+if (!defined('E2GUARDIAN_WWWDIR')) {
+    define('E2GUARDIAN_WWWDIR', E2GUARDIAN_DIR . '/www');
+}
+if (!defined('E2GUARDIAN_SBINDIR')) {
+    define('E2GUARDIAN_SBINDIR', E2GUARDIAN_DIR . '/sbin');
+}
+if (!defined('E2GUARDIAN_BINDIR')) {
+    define('E2GUARDIAN_BINDIR', E2GUARDIAN_DIR . '/bin');
+}
+if (!defined('E2GUARDIAN_RCDIR')) {
+    define('E2GUARDIAN_RCDIR', E2GUARDIAN_DIR . '/etc/rc.d');
+}
+if (!defined('E2GUARDIAN_SHAREDIR')) {
+    define('E2GUARDIAN_SHAREDIR', E2GUARDIAN_DIR . '/share/e2guardian');
+}
+if (!defined('E2GUARDIAN_CERTSDIR')) {
+    define('E2GUARDIAN_CERTSDIR', E2GUARDIAN_DIR . '/share/certs');
+}
+if (!defined('E2GUARDIAN_LIBEXECDIR')) {
+    define('E2GUARDIAN_LIBEXECDIR', E2GUARDIAN_DIR . '/libexec');
+}
+if (!defined('E2GUARDIAN_SQUIDCONFDIR')) {
+    define('E2GUARDIAN_SQUIDCONFDIR', E2GUARDIAN_DIR . '/etc/squid');
+}
+if (!defined('E2GUARDIAN_SQUIDLIBEXECDIR')) {
+    define('E2GUARDIAN_SQUIDLIBEXECDIR', E2GUARDIAN_LIBEXECDIR . '/squid');
+}
 
 if ($_POST['clear_cert_cache'] == 'clear_cert_cache') {
     //clear MITM cert cache data
-    $tc_dir = "/usr/local/etc/e2guardian/ssl/generatedcerts";
+    $tc_dir = E2GUARDIAN_ETCDIR . "/ssl/generatedcerts";
     if (e2g_delTree($tc_dir)) {
         mkdir ($tc_dir, "0755", true);
-        mwexec_bg("/usr/local/sbin/e2guardian -Q");
+        mwexec_bg(E2GUARDIAN_SBINDIR . "/e2guardian -Q");
         clear_subsystem_dirty('e2guardian');
     }
 }
@@ -96,42 +313,243 @@ function e2g_delTree($dir) {
     }
 }
 
-if (!function_exists("e2g_fix_divs")) {
-function e2g_fix_divs() {
-    print <<<EOF
-<script type="text/javascript">
-//<![CDATA[
-document.addEventListener('DOMContentLoaded', function() {
-// Seleciona todas as divs com a classe 'col-sm-2'
-const divs = document.querySelectorAll('.col-sm-2');
-
-// Itera sobre as divs
-divs.forEach(div => {
-  // Verifica se a div contem um form com select de name especifico
-  const select = div.querySelector('form select[name="cnticatfwd[]"], form select[name="snicatfwd[]"], form select[name="cnticatallow[]"], form select[name="cnticatdeny[]"], form select[name="snicatdeny[]"], form select[name="snicatallow[]"]');
-
-  if (select) {
-    // Altera a classe para 'col-sm-3' se atender a condicao do select
-    div.classList.remove('col-sm-2');
-    div.classList.add('col-sm-3');
-  } else if (div.innerHTML.trim() === '' || div.childElementCount === 0) {
-    // Altera a classe para 'col-sm-0' se a div estiver vazia
-    div.classList.remove('col-sm-2');
-    div.classList.add('col-sm-0');
-  }
-
-});
-
-});
-
-//]]>
-</script>
-EOF;
-}
-}
-
 function e2_text_area_decode($text) {
-	return preg_replace('/\r\n/', "\n", base64_decode($text));
+        return preg_replace('/\r\n/', "\n", base64_decode($text));
+}
+
+function e2g_normalize_category_key(array $parts) {
+        $normalized = array();
+        foreach ($parts as $part) {
+                $part = strtolower(trim((string)$part));
+                $part = preg_replace('/[^a-z0-9]+/i', '_', $part);
+                $part = trim($part, '_');
+                if ($part !== '') {
+                        $normalized[] = $part;
+                }
+        }
+
+        return implode('_', $normalized);
+}
+
+function e2g_title_case($string) {
+        $string = str_replace('_', ' ', strtolower((string)$string));
+
+        return ucwords($string);
+}
+
+function e2g_humanize_type_label($type) {
+        $map = array(
+                'urls' => 'URLs',
+                'url' => 'URL',
+                'domains' => 'Domains',
+                'domain' => 'Domain',
+                'weighted' => 'Weighted',
+                'exception' => 'Exception',
+                'expression' => 'Expression',
+                'banned' => 'Banned'
+        );
+        $type = strtolower($type);
+
+        return $map[$type] ?? ucwords(str_replace('_', ' ', $type));
+}
+
+function e2g_ensure_category_comment($file_path, $category_key) {
+        if ($category_key === '' || !is_file($file_path)) {
+                return;
+        }
+
+        $comment = '#listcategory: "' . $category_key . '"';
+        $handle = fopen($file_path, 'c+b');
+        if ($handle === false) {
+                return;
+        }
+
+        if (!flock($handle, LOCK_EX)) {
+                fclose($handle);
+                return;
+        }
+
+        fseek($handle, 0, SEEK_END);
+        $size = ftell($handle);
+        $tail_length = ($size !== false) ? min(8192, $size) : 0;
+        $tail = '';
+
+        if ($tail_length > 0) {
+                fseek($handle, -$tail_length, SEEK_END);
+                $tail = fread($handle, $tail_length);
+                if ($tail !== false && strpos($tail, $comment) !== false) {
+                        flock($handle, LOCK_UN);
+                        fclose($handle);
+                        return;
+                }
+
+                if ($tail !== false && $tail !== '' && substr($tail, -1) !== "\n") {
+                        fseek($handle, 0, SEEK_END);
+                        fwrite($handle, PHP_EOL);
+                } else {
+                        fseek($handle, 0, SEEK_END);
+                }
+        }
+
+        fwrite($handle, $comment . PHP_EOL);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+}
+
+function e2g_extract_xml_type($filename) {
+        $name = preg_replace('/\.[^.]+$/', '', (string)$filename);
+        if ($name === '') {
+                return '';
+        }
+
+        $parts = explode('_', $name);
+        if (preg_match('/^[a-z0-9]+$/i', $parts[0])) {
+                return strtolower($parts[0]);
+        }
+
+        return '';
+}
+
+function e2g_parse_blacklist_metadata($blacklist_root) {
+        $metadata = array();
+        $usage_file = $blacklist_root . '/global_usage';
+        if (!is_file($usage_file) || !is_readable($usage_file)) {
+                return $metadata;
+        }
+
+        $handle = fopen($usage_file, 'rb');
+        if ($handle === false) {
+                return $metadata;
+        }
+
+        $current = null;
+        while (!feof($handle)) {
+                $line = fgets($handle);
+                if ($line === false) {
+                        break;
+                }
+                $trimmed = trim($line);
+                if ($trimmed === '') {
+                        $current = null;
+                        continue;
+                }
+
+                if (preg_match('/^NAME\s*:\s*(.+)$/', $line, $matches)) {
+                        $raw = trim($matches[1]);
+                        $parts = array_map('trim', explode('/', $raw));
+                        $key = e2g_normalize_category_key($parts);
+                        if ($key === '') {
+                                $key = e2g_normalize_category_key(array($raw));
+                        }
+                        if ($key === '') {
+                                $current = null;
+                                continue;
+                        }
+
+                        $metadata[$key] = array(
+                                'id' => $key,
+                                'raw' => $raw,
+                                'name_en' => '',
+                                'desc_en' => '',
+                                'names' => array(),
+                                'descriptions' => array(),
+                                'default_type' => ''
+                        );
+                        $current = $key;
+                        continue;
+                }
+
+                if ($current === null || !isset($metadata[$current])) {
+                        continue;
+                }
+
+                if (preg_match('/^DEFAULT_TYPE\s*:\s*(.+)$/', $line, $matches)) {
+                        $metadata[$current]['default_type'] = trim($matches[1]);
+                } elseif (preg_match('/^NAME\s+([A-Z]{2})\s*:\s*(.*)$/', $line, $matches)) {
+                        $lang = strtolower($matches[1]);
+                        $value = trim($matches[2]);
+                        $metadata[$current]['names'][$lang] = $value;
+                        if ($lang === 'en' && $value !== '') {
+                                $metadata[$current]['name_en'] = $value;
+                        }
+                } elseif (preg_match('/^DESC\s+([A-Z]{2})\s*:\s*(.*)$/', $line, $matches)) {
+                        $lang = strtolower($matches[1]);
+                        $value = trim($matches[2]);
+                        $metadata[$current]['descriptions'][$lang] = $value;
+                        if ($lang === 'en' && $value !== '') {
+                                $metadata[$current]['desc_en'] = $value;
+                        }
+                }
+        }
+
+        fclose($handle);
+
+        return $metadata;
+}
+
+function e2g_register_list_file(array &$collection, $group, array $category_parts, $file_path, $file_name, $liston, array $metadata) {
+        $category_key = e2g_normalize_category_key($category_parts);
+        if ($category_key === '') {
+                $category_key = e2g_normalize_category_key(array(preg_replace('/\.[^.]+$/', '', (string)$file_name)));
+        }
+
+        $xml_type = e2g_extract_xml_type($file_name);
+        if ($xml_type === '') {
+                return;
+        }
+
+        e2g_ensure_category_comment($file_path, $category_key);
+
+        $category_display = $category_key;
+        if ($category_key !== '' && isset($metadata[$category_key]) && $metadata[$category_key]['name_en'] !== '') {
+                $category_display = $metadata[$category_key]['name_en'];
+        } else {
+                $category_display = e2g_title_case($category_display);
+        }
+
+        $type_label = e2g_humanize_type_label($xml_type);
+        $entry = array(
+                'descr' => trim($category_display . ' - ' . $type_label),
+                'list'  => $category_key,
+                'file'  => $file_path
+        );
+
+        $collection[$group][$xml_type][] = $entry;
+        if ($group === 'blacklists' && $liston === 'both') {
+                $collection['whitelists'][$xml_type][] = $entry;
+        }
+}
+
+function e2g_collect_category(array &$collection, $group_dir, $group, array $category_parts, $liston, array $metadata) {
+        $relative_path = implode('/', $category_parts);
+        $directory = $group_dir . '/' . $relative_path;
+        if (!is_dir($directory)) {
+                return;
+        }
+
+        $entries = array_diff(scandir($directory), array('.', '..'));
+        foreach ($entries as $entry) {
+                $entry_path = $directory . '/' . $entry;
+                if (is_dir($entry_path)) {
+                        $next_parts = $category_parts;
+                        $next_parts[] = $entry;
+                        e2g_collect_category($collection, $group_dir, $group, $next_parts, $liston, $metadata);
+                } else {
+                        e2g_register_list_file($collection, $group, $category_parts, $entry_path, $entry, $liston, $metadata);
+                }
+        }
+}
+
+function e2g_unique_entries(array $entries) {
+        $unique = array();
+        foreach ($entries as $entry) {
+                if (!isset($entry['file'])) {
+                        continue;
+                }
+                $unique[$entry['file']] = $entry;
+        }
+
+        return array_values($unique);
 }
 
 function e2g_check_sched($iface_sched){
@@ -147,14 +565,14 @@ function e2g_check_sched($iface_sched){
 }
 
 function e2g_check_logdeniedcgi($logdeniedcgi) {
-	$e2g_file = "/usr/local/www/e2gerror.php";
+	$e2g_file = E2GUARDIAN_WWWDIR . "/e2gerror.php";
 	if ($logdeniedcgi == 'on') {
 		$e2g_log = "/var/log/e2guardian/denied.log";
 	} else {
 		 $e2g_log = "none";
 	}
 	exec("/usr/bin/sed -i 'bak' \"s@LOG_DENIED', '.*'@LOG_DENIED', '$e2g_log'@\" $e2g_file",$out);
-	foreach (glob("/usr/local/www/wpad*/e2gerror.php") as $e2g_wpad) {
+	foreach (glob(E2GUARDIAN_WWWDIR . "/wpad*/e2gerror.php") as $e2g_wpad) {
 		copy ($e2g_file, $e2g_wpad);
 	}
 }
@@ -190,8 +608,8 @@ function check_ca_hashes() {
 
 	//check certificates
 	$cert_count = 0;
-	if (is_dir('/usr/local/share/certs')) {
-		if ($handle = opendir('/usr/local/share/certs')) {
+    if (is_dir(E2GUARDIAN_CERTSDIR)) {
+                if ($handle = opendir(E2GUARDIAN_CERTSDIR)) {
 			while (false !== ($file = readdir($handle))) {
 				if (preg_match ("/\d+.0/", $file)) {
 					$cert_count++;
@@ -203,7 +621,7 @@ function check_ca_hashes() {
 	if ($cert_count < 10) {
 		//create ca-root hashes from ca-root-nss package
 		log_error("Creating root certificate bundle hashes from the Mozilla Project");
-		$cas = file('/usr/local/share/certs/ca-root-nss.crt');
+		$cas = file(E2GUARDIAN_CERTSDIR . '/ca-root-nss.crt');
 		$cert = 0;
 		foreach ($cas as $ca) {
 			if (preg_match("/--BEGIN CERTIFICATE--/", $ca)) {
@@ -216,7 +634,7 @@ function check_ca_hashes() {
 				file_put_contents("/tmp/cert.pem", $crt, LOCK_EX);
 				$cert_hash = array();
 				exec("/usr/bin/openssl x509 -hash -noout -in /tmp/cert.pem", $cert_hash);
-				file_put_contents("/usr/local/share/certs/". $cert_hash[0] . ".0", $crt, LOCK_EX);
+				file_put_contents(E2GUARDIAN_CERTSDIR . "/". $cert_hash[0] . ".0", $crt, LOCK_EX);
 				$crt = "";
 				$cert = 0;
 			}
@@ -239,32 +657,45 @@ function e2g_generate_rules($type) {
 	}
 
 	// Proxy Interface(s)
-	$proxy_ifaces = explode(",", $e2g_conf['interface']);
-	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces);
+	$proxy_ifaces_friendly = explode(",", $e2g_conf['interface']);
+	$proxy_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $proxy_ifaces_friendly);
+	$proxy_iface_ips = array();
+	foreach ($proxy_ifaces_friendly as $idx => $iface_friendly) {
+		$iface_real = $proxy_ifaces[$idx];
+		if (empty($iface_real)) {
+			continue;
+		}
+		$iface_details = dg_get_real_interface_address($iface_friendly);
+		if (!empty($iface_details[0])) {
+			$proxy_iface_ips[$iface_real] = $iface_details[0];
+		}
+	}
+	$default_redirect_ip = (!empty($proxy_iface_ips) ? reset($proxy_iface_ips) : '127.0.0.1');
 	// Transparent Proxy Interface(s)
 	if ($e2g_conf['transparent_proxy'] == "on") {
-	    if (! bp_in_array('lo0',$proxy_ifaces)) {
-	        $proxy_ifaces[] = 'lo0';
-	    }
-		$transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
-		$transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+		if (! bp_in_array('lo0',$proxy_ifaces)) {
+			$proxy_ifaces[] = 'lo0';
+		}
+                $transparent_ifaces = explode(",", $e2g_conf['transparent_active_interface']);
+                $transparent_ifaces = array_map('trim', $transparent_ifaces);
+                $transparent_ifaces = array_map('convert_friendly_interface_to_real_interface_name', $transparent_ifaces);
+                // Trailing commas or empty interface slots break pf rule generation ("no rdr on  proto ...")
+                // which disables the transparent NAT rules entirely.
+                $transparent_ifaces = array_filter($transparent_ifaces);
 	} else {
 		$transparent_ifaces = array();
 	}
-	// SSL Intercept Interface(s)
-	if ($e2g_conf['enablessl'] == "on") {
-		$ssl_ifaces = $transparent_ifaces;
-	} else {
-		$ssl_ifaces = array();
-	}
+        // SSL Intercept Interface(s)
+        $ssl_intercept_enabled = e2g_ssl_intercept_is_enabled($e2g_conf);
 
 	// Define proxy ports
 	$port = ($e2g_conf['filterports'] ? $e2g_conf['filterports'] : 8080);
 	$ssl_port = ($e2g_conf['ssl_proxy_port'] ? $e2g_conf['ssl_proxy_port'] : 8081);
 	$pf_rule_ports = "{{$port},{$ssl_port}}";
 
-	// Define NAT ports - 80 and 443 if SSL filtering is enabled
-	$pf_nat_ports = ($e2g_conf['enablessl'] == "on" ? "{80,443}" : "80");
+        // Define NAT ports - 80 and 443 if SSL filtering is enabled
+        $pf_nat_ports = ($ssl_intercept_enabled ? "{80,443}" : "80");
+        $pf_transparent_rule_port = $pf_nat_ports;
 
 	/*
 	 * When transparent proxy is enabled and we are doing NAT, use rdr pass to pass traffic
@@ -279,78 +710,56 @@ function e2g_generate_rules($type) {
 			$rules .= "\n# Setup E2guardian proxy redirect\n";
 			/* Bypass Proxy for Private Address Destination - RFC1918 */
 			if ($e2g_conf['private_subnet_proxy_off'] == 'on') {
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_transparent_rule_port}\n";
-				}
+                                foreach ($transparent_ifaces as $iface) {
+                                        $rules .= "no rdr on $iface proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_transparent_rule_port}\n";
+                                }
 				/* Handle PPPOE case */
 				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
 					$rules .= "no rdr on \$pppoe proto tcp from any to { 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 } port {$pf_nat_ports}\n";
 				}
 			}
-			/* Bypass Proxy for These Source IPs */
-			if (!empty($e2g_conf['defined_ip_proxy_off'])) {
-				$defined_ip_proxy_off = explode(";", $e2g_conf['defined_ip_proxy_off']);
-				$exempt_ip = "";
-				foreach ($defined_ip_proxy_off as $ip_proxy_off) {
-					if (!empty($ip_proxy_off)) {
-						$ip_proxy_off = trim($ip_proxy_off);
-						if (is_alias($ip_proxy_off)) {
-							$ip_proxy_off = '$' . $ip_proxy_off;
-						}
-						$exempt_ip .= ", $ip_proxy_off";
-					}
-				}
-				$exempt_ip = substr($exempt_ip, 2);
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from { $exempt_ip } to any port {$pf_transparent_rule_port}\n";
-				}
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
-				}
-			}
-			/* Bypass Proxy for These Destination IPs */
-			if (!empty($e2g_conf['defined_ip_proxy_off_dest'])) {
-				$defined_ip_proxy_off_dest = explode(";", $e2g_conf['defined_ip_proxy_off_dest']);
-				$exempt_dest = "";
-				foreach ($defined_ip_proxy_off_dest as $ip_proxy_off_dest) {
-					if (!empty($ip_proxy_off_dest)) {
-						$ip_proxy_off_dest = trim($ip_proxy_off_dest);
-						if (is_alias($ip_proxy_off_dest)) {
-							$ip_proxy_off_dest = '$' . $ip_proxy_off_dest;
-						}
-						$exempt_dest .= ", $ip_proxy_off_dest";
-					}
-				}
-				$exempt_dest = substr($exempt_dest, 2);
-				foreach ($transparent_ifaces as $iface) {
-					$pf_transparent_rule_port = (bp_in_array($iface, $ssl_ifaces) ? "{80,443}" : "80");
-					$rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
-				}
-				/* Handle PPPOE case */
-				if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-					$rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
-				}
-			}
-			/* Transparent Proxy Interface(s) */
-			foreach ($transparent_ifaces as $t_iface) {
-				$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
-				if (bp_in_array($t_iface, $ssl_ifaces)) {
-					$rules .= "rdr on $t_iface proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
-				}
-			}
+                        /* Bypass Proxy for These Source IPs */
+                        $defined_ip_proxy_off = e2g_normalize_bypass_entries($e2g_conf['defined_ip_proxy_off'], 'transparent source bypass list');
+                        if (!empty($defined_ip_proxy_off)) {
+                                $exempt_ip = implode(', ', $defined_ip_proxy_off);
+                                foreach ($transparent_ifaces as $iface) {
+                                        $rules .= "no rdr on $iface proto tcp from { $exempt_ip } to any port {$pf_transparent_rule_port}\n";
+                                }
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from { $exempt_ip } to any port {$pf_nat_ports}\n";
+                                }
+                        }
+                        /* Bypass Proxy for These Destination IPs */
+                        $defined_ip_proxy_off_dest = e2g_normalize_bypass_entries($e2g_conf['defined_ip_proxy_off_dest'], 'transparent destination bypass list');
+                        if (!empty($defined_ip_proxy_off_dest)) {
+                                $exempt_dest = implode(', ', $defined_ip_proxy_off_dest);
+                                foreach ($transparent_ifaces as $iface) {
+                                        $rules .= "no rdr on $iface proto tcp from any to { $exempt_dest } port {$pf_transparent_rule_port}\n";
+                                }
+                                /* Handle PPPOE case */
+                                if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
+                                        $rules .= "no rdr on \$pppoe proto tcp from any to { $exempt_dest } port {$pf_nat_ports}\n";
+                                }
+                        }
+                        /* Transparent Proxy Interface(s) */
+                        foreach ($transparent_ifaces as $t_iface) {
+                                $redirect_ip = !empty($proxy_iface_ips[$t_iface]) ? $proxy_iface_ips[$t_iface] : $default_redirect_ip;
+                                $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 80 -> {$redirect_ip} port {$port}\n";
+                                if ($ssl_intercept_enabled) {
+                                        $rules .= "rdr pass on $t_iface proto tcp from any to !($t_iface) port 443 -> {$redirect_ip} port {$ssl_port}\n";
+                                }
+                        }
 			/*
 			 * Transparent Proxy Interface(s) - handle the PPPOE case
 			 * For PPPoE server, mpd uses a group of different _local_ interfaces
 			 * The rules below are needed so that the clients can be transparently proxied
 			 */
 			if (($config['pppoe']['mode'] == "server" && $config['pppoe']['localip']) || (function_exists("is_pppoe_server_enabled") && is_pppoe_server_enabled())) {
-				$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 80 -> 127.0.0.1 port {$port}\n";
-				if ($e2g_conf['ssl_proxy'] == "on") {
-					$rules .= "rdr pass on \$pppoe proto tcp from any to ! 127.0.0.1 port 443 -> 127.0.0.1 port {$ssl_port}\n";
-				}
+				$rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 80 -> {$default_redirect_ip} port {$port}\n";
+                                if ($ssl_intercept_enabled) {
+                                        $rules .= "rdr pass on \$pppoe proto tcp from any to ! {$default_redirect_ip} port 443 -> {$default_redirect_ip} port {$ssl_port}\n";
+                                }
 			}
 			$rules .= "\n";
 			break;
@@ -390,23 +799,9 @@ function e2g_generate_rules($type) {
 function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	global $config, $g, $savemsg, $e2g_sched_in_use;
 
-	$lib_files = array('/usr/lib/libssl.so','/lib/libcrypto.so');
-	foreach ($lib_files as $lib) {
-   	  if (!file_exists("$lib.35") && file_exists("$lib.30")) {
-             symlink("$lib.30", "$lib.35");
-   	  }
-        }
-
-	$conf_files = ['preauth.story','site.story','common.story','downloadmanagers/default.conf','lists/authexceptionsitelist','lists/authexceptionurllist'];
-        foreach ($conf_files as $conf_file) {
-          if (!file_exists("/usr/local/etc/e2guardian/$conf_file")){
-	    if (file_exists("/usr/local/etc/e2guardian/$conf_file.sample")) {
-              copy("/usr/local/etc/e2guardian/$conf_file.sample","/usr/local/etc/e2guardian/$conf_file");
-            } else {
-	      file_put_contents("/usr/local/etc/e2guardian/$conf_file","",LOCK_EX);
-	    }
-          }
-        }
+	if (empty($savemsg)) {
+		$savemsg = gettext("E2guardian configuration updated.");
+	}
 
 	// detect boot process
 	if (is_array($_POST)) {
@@ -518,7 +913,12 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$recheckreplacedurls = (preg_match('/recheckreplacedurls/', $e2guardian_config['misc_options']) ? "on" : "off");
 	$forwardedfor = (preg_match('/(^|\W)forwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
 	$recheckreplacedurls = (preg_match('/icapscan/', $e2guardian_config['misc_options']) ? "on" : "off");
-	$usexforwardedfor = (preg_match('/usexforwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
+        $usexforwardedfor = (preg_match('/usexforwardedfor/', $e2guardian_config['misc_options']) ? "on" : "off");
+        if (isset($e2guardian_config['dstatinterval']) && is_numeric($e2guardian_config['dstatinterval'])) {
+                $dstatinterval = (string)$e2guardian_config['dstatinterval'];
+        } else {
+                $dstatinterval = "300";
+        }
 	$authplugin = (preg_match('/usr/', $e2guardian_config['auth_plugin']) ? "authplugin = '" . $e2guardian_config['auth_plugin'] . "'" : "");
 	if ($e2guardian_config['auth_plugin'] != "") {
 		$auth_plugins = explode(",", $e2guardian_config['auth_plugin']);
@@ -552,7 +952,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	}
 
 	if ($e2guardian_config['contentscannericapurl'] != "") {
-		include("/usr/local/pkg/icapscan.conf.template");
+		include(E2GUARDIAN_PKGDIR . "/icapscan.conf.template");
 		file_put_contents(E2GUARDIAN_DIR . "/etc/e2guardian/contentscanners/icapscan.conf", $icap_conf_file , LOCK_EX);
 	}
 	// limits
@@ -602,93 +1002,147 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 
 	// check files
 	#create sample files
-$files = array(
-		"/e2guardianf1.conf",
-		"/lists/filtergroupslist",
-		"/lists/bannedphraselist",
-		"/lists/exceptionphraselist",
-		"/lists/weightedphraselist",
-		"/lists/exceptionsitelist",
-		"/lists/bannedsitelist",
-		"/lists/bannedsitewithbypasslist",
-		"/lists/greysitelist",
-		"/lists/logsitelist",
-		"/lists/bannedregexpurllist",
-		"/lists/sslsiteregexplist",
-		"/lists/bannedurllist",
-		"/lists/exceptionregexpurllist",
-		"/lists/exceptionurllist",
-		"/lists/greyurllist",
-		"/lists/logregexpurllist",
-		"/lists/logurllist",
-		"/lists/urlregexplist",
-		"/lists/exceptionfilesitelist",
-		"/lists/exceptionfileurllist",
-		"/lists/searchregexplist",
-		"/lists/bannedsearchlist",
-		"/lists/contentregexplist",
-		"/lists/exceptionextensionlist",
-		"/lists/bannedextensionlist",
-		"/lists/exceptionmimetypelist",
-		"/lists/bannedmimetypelist",
-		"/lists/headerregexplist",
+        $files = array(
+                "/e2guardianf1.conf",
+                "/lists/authplugins/filtergroupslist",
+                "/lists/bannedphraselist",
+                "/lists/exceptionphraselist",
+                "/lists/weightedphraselist",
+                "/lists/exceptionsitelist",
+                "/lists/bannedsitelist",
+                "/lists/bannedsitewithbypasslist",
+                "/lists/greysitelist",
+                "/lists/logsitelist",
+                "/lists/bannedregexpurllist",
+                "/lists/sslsiteregexplist",
+                "/lists/bannedurllist",
+                "/lists/exceptionregexpurllist",
+                "/lists/exceptionurllist",
+                "/lists/greyurllist",
+                "/lists/logregexpurllist",
+                "/lists/logurllist",
+                "/lists/urlregexplist",
+                "/lists/exceptionfilesitelist",
+                "/lists/exceptionfileurllist",
+                "/lists/searchregexplist",
+                "/lists/bannedsearchlist",
+                "/lists/contentregexplist",
+                "/lists/exceptionextensionlist",
+                "/lists/bannedextensionlist",
+                "/lists/exceptionmimetypelist",
+                "/lists/bannedmimetypelist",
+                "/lists/headerregexplist",
         "/lists/addheaderregexplist",
-		"/lists/bannedregexpheaderlist",
+                "/lists/bannedregexpheaderlist",
         "/lists/exceptionregexpheaderlist",
         "/lists/exceptionregexpuseragentlist",
-		"/lists/authplugins/ipgroups",
-		"/lists/contentscanners/exceptionvirusextensionlist",
-		"/lists/contentscanners/exceptionvirusmimetypelist",
-		"/lists/contentscanners/exceptionvirussitelist",
-		"/lists/contentscanners/exceptionvirusurllist",
-		"/lists/exceptioniplist",
-		"/lists/pics",
-		"/lists/common/nomitmsitelist",
-		"/lists/common/nomitmsiteiplist",
-		"/lists/common/browserregexplist",
-		"/lists/bannedtimelist",
-		"/lists/blankettimelist",
-		"/lists/responseheaderregexplist",
-		"/lists/common/nologurllist",
-		"/lists/common/nologsitelist",
-		"/lists/common/nologregexpurllist",
-		"/lists/common/nologextensionlist",
-		"/lists/common/searchexceptionregexplist");
+                "/lists/authexceptionsitelist",
+                "/lists/authexceptionurllist",
+                "/lists/authexceptioniplist",
+                "/lists/authexceptionsiteiplist",
+                "/lists/authplugins/ipgroups",
+                "/lists/authplugins/portgroups",
+                "/lists/browser",
+                "/lists/authplugins/defaultusermap",
+                "/lists/authplugins/ipmap",
+                "/lists/nomitm",
+                "/lists/authplugins/portmap",
+                "/lists/contentscanners/exceptionvirusextensionlist",
+                "/lists/contentscanners/exceptionvirusmimetypelist",
+                "/lists/contentscanners/exceptionvirussitelist",
+                "/lists/contentscanners/exceptionvirusurllist",
+                "/lists/exceptioniplist",
+                "/lists/pics");
 
-	$e2guardian_dir = E2GUARDIAN_DIR . "/etc/e2guardian";
+        $e2guardian_dir = E2GUARDIAN_DIR . "/etc/e2guardian";
+
+        $authplugins_dir = $e2guardian_dir . '/lists/authplugins';
+        if (!is_dir($authplugins_dir)) {
+                @mkdir($authplugins_dir, 0755, true);
+        }
+
+        $legacy_auth_maps = array(
+                '/lists/filtergroupslist' => '/lists/authplugins/filtergroupslist',
+                '/lists/defaultusermap' => '/lists/authplugins/defaultusermap',
+                '/lists/ipmap' => '/lists/authplugins/ipmap',
+                '/lists/portmap' => '/lists/authplugins/portmap'
+        );
+        foreach ($legacy_auth_maps as $legacy_path => $modern_path) {
+                $legacy_file = $e2guardian_dir . $legacy_path;
+                $modern_file = $e2guardian_dir . $modern_path;
+                if (file_exists($legacy_file) && !file_exists($modern_file)) {
+                        @mkdir(dirname($modern_file), 0755, true);
+                        @rename($legacy_file, $modern_file);
+                }
+
+                $legacy_sample = $legacy_file . '.sample';
+                $modern_sample = $modern_file . '.sample';
+                if (file_exists($legacy_sample) && !file_exists($modern_sample)) {
+                        @mkdir(dirname($modern_sample), 0755, true);
+                        @rename($legacy_sample, $modern_sample);
+                }
+        }
 
 	if (file_exists("{$e2guardian_dir}/lists/bannedsitelistwithbypass")) {
 		rename("{$e2guardian_dir}/lists/bannedsitelistwithbypass", "{$e2guardian_dir}/lists/bannedsitewithbypasslist");
 		unlink_if_exists("{$e2guardian_dir}/lists/bannedsitewithbypasslist.sample");
         }
 
-	foreach ($files as $file) {
-		if (!file_exists($e2guardian_dir . $file)) {
-            touch($e2guardian_dir . $file);
-        }
-		if (!file_exists($e2guardian_dir . $file.'.sample')) {
-			$new_file = "";
-			$install_file = file($e2guardian_dir . $file);
-			foreach ($install_file as $line) {
+        foreach ($files as $file) {
+                if (!file_exists($e2guardian_dir . $file.'.sample')) {
+                        $new_file = "";
+                        $install_file = file($e2guardian_dir . $file);
+                        foreach ($install_file as $line) {
 				if (!preg_match("/Include/", $line)) {
 					$new_file .= $line;
 				}
 			}
 			file_put_contents($e2guardian_dir . $file.'.sample', $new_file, LOCK_EX);
-		}
-	}
+                }
+        }
 
-	$load_samples = 0;
+        $list_samples = array(
+                '/lists/authexceptionsitelist',
+                '/lists/authexceptionurllist',
+                '/lists/authexceptioniplist',
+                '/lists/authexceptionsiteiplist',
+                '/lists/authplugins/portgroups'
+        );
+        foreach ($list_samples as $list_sample) {
+                $sample_path = $e2guardian_dir . $list_sample . '.sample';
+                $target_path = $e2guardian_dir . $list_sample;
+                e2g_copy_sample_if_needed(
+                        $sample_path,
+                        $target_path,
+                        array('compare_hash' => true)
+                );
+        }
+
+        $load_samples = 0;
 
 	#ssl men-in-the-middle feature
-	$dirs = array("/var/log/e2guardian", "/var/log/e2guardian/stats", "/etc/ssl/demoCA", "/etc/ssl/demoCA/private", "/etc/ssl/demoCA/crl", "/etc/ssl/demoCA/certs", $e2guardian_dir . "/ssl/generatedcerts", $e2guardian_dir . "/ssl/generatedlinks", $e2guardian_dir . "/lists/common");
+	$dirs = array("/var/log/e2guardian", "/var/log/e2guardian/stats", "/etc/ssl/demoCA", "/etc/ssl/demoCA/private", "/etc/ssl/demoCA/crl", "/etc/ssl/demoCA/certs", $e2guardian_dir . "/ssl/generatedcerts", $e2guardian_dir . "/ssl/generatedlinks");
 	foreach ($dirs as $dir) {
 		if (!is_dir($dir)) {
 			mkdir ($dir, 0755, true);
 		}
 	}
 
-	$enablessl=($e2guardian["enablessl"] == "on" ? "on" : "off");
+        $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
+	$ca_pem = "";
+	$ca_pk = "";
+	$generatedcertpath = "";
+	$cert_key = "";
+	$certprivatekeypath = '/etc/ssl/demoCA/private/serverkey.pem';
+	if ($enablessl === "on") {
+		$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
+		$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
+		$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
+		if (! file_exists($certprivatekeypath)) {
+			system("openssl genrsa 4096 > $certprivatekeypath");
+		}
+		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
+	}
 	$ca_cert = lookup_ca($e2guardian["dca"]);
 	if ($ca_cert != false) {
 		if (base64_decode($ca_cert['prv'])) {
@@ -699,15 +1153,10 @@ $files = array(
 			$cert_hash = array();
 			file_put_contents("/etc/ssl/demoCA/cacert.pem", base64_decode($ca_cert['crt']));
 			exec("/usr/bin/openssl x509 -hash -noout -in /etc/ssl/demoCA/cacert.pem", $cert_hash);
-			file_put_contents("/usr/local/share/certs/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
+			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
 			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
-			$generatedcertpath= "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
+			$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
 		}
-		$certprivatekeypath='/etc/ssl/demoCA/private/serverkey.pem';
-		if (! file_exists($certprivatekeypath)) {
-			system("openssl genrsa 4096 > $certprivatekeypath");
-		}
-		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
 		/*
 		$svr_cert = lookup_cert($e2guardian_config["dcert"]);
 		if ($svr_cert != false) {
@@ -822,7 +1271,7 @@ $files = array(
 		$config['installedpackages']['e2guardianblacklist']['config'][0] = array(
 			'liston' => 'both',
 			'cron' => '02days',
-			'url' => "https://web.archive.org/web/20210502020725/http://www.shallalist.de/Downloads/shallalist.tar.gz", //"http://www.shallalist.de/Downloads/shallalist.tar.gz",
+			'url' => "http://pkg.kontrol.com.br:8081/blacklist/blacklist.tar.gz",
  			'enable_custom_script' => "",
 			'update_script' => "");
 	}
@@ -898,18 +1347,42 @@ $files = array(
 		$count++;
 	}
 
-	$files_5 = array("/downloadmanagers/default.conf",
-			"/authplugins/ident.conf",
-			"/authplugins/ip.conf",
-			"/authplugins/port.conf",
-			"/authplugins/proxy-basic.conf",
-			"/authplugins/proxy-digest.conf");
-
-        foreach ($files_5 as $f_5) {
-                if (! file_exists($e2guardian_dir . $f_5) && file_exists($e2guardian_dir . "{$f_5}.sample")) {
-                        copy ($e2guardian_dir . "{$f_5}.sample",$e2guardian_dir . $f_5);
+        $authplugin_samples = glob($e2guardian_dir . '/authplugins/*.conf.sample');
+        if ($authplugin_samples !== false) {
+                foreach ($authplugin_samples as $sample_path) {
+                        $target_path = substr($sample_path, 0, -7);
+                        e2g_copy_sample_if_needed(
+                                $sample_path,
+                                $target_path,
+                                array(
+                                        'require_strings' => array('story_function'),
+                                        'log_prefix' => '[E2guardian auth plugin]'
+                                )
+                        );
                 }
         }
+
+        $story_samples = array('common.story', 'preauth.story', 'site.story');
+        foreach ($story_samples as $story_file) {
+                $sample_path = $e2guardian_dir . '/' . $story_file . '.sample';
+                $target_path = $e2guardian_dir . '/' . $story_file;
+                e2g_copy_sample_if_needed(
+                        $sample_path,
+                        $target_path,
+                        array(
+                                'compare_hash' => true,
+                                'log_prefix' => '[E2guardian story]'
+                        )
+                );
+        }
+
+        $download_manager_sample = $e2guardian_dir . '/downloadmanagers/default.conf.sample';
+        $download_manager_target = $e2guardian_dir . '/downloadmanagers/default.conf';
+        e2g_copy_sample_if_needed(
+                $download_manager_sample,
+                $download_manager_target,
+                array('log_prefix' => '[E2guardian download manager]')
+        );
 
 	//URL ACL
 	//create a default setup if not exists
@@ -1251,7 +1724,7 @@ $files = array(
 	file_put_contents($e2guardian_dir . "/lists/contentscanners/exceptionvirusextensionlist", ($e2guardian_antivirus['extension_enabled'] ? e2_text_area_decode($config['installedpackages']['e2guardianantivirusacl']['config'][0]['extension_list']):""), LOCK_EX);
 	*/
 	//log report
-	$rf = "/usr/local/share/e2guardian/languages/{$reportlanguage}/template.html";
+	$rf = E2GUARDIAN_SHAREDIR . "/languages/{$reportlanguage}/template.html";
 	if(file_exists($rf) && !file_exists("$rf.sample")) {
 		copy($rf, "$rf.sample");
 	}
@@ -1531,7 +2004,7 @@ break;
 		$e2_dir = E2GUARDIAN_DIR;
 
 		//remove localchecks from common.story
-		$c_story_file = "/usr/local/etc/e2guardian/common.story";
+		$c_story_file = E2GUARDIAN_ETCDIR . "/common.story";
 		if (file_exists($c_story_file)) {
 		  $c_story = file($c_story_file);
 		  $c_story_count = 0;
@@ -1548,10 +2021,10 @@ break;
 		      file_put_contents($c_story_file, $nc_story_file, LOCK_EX);
 		  }
 		}
-		include("/usr/local/pkg/e2guardian_story.template");
+		include(E2GUARDIAN_PKGDIR . "/e2guardian_story.template");
 		file_put_contents($e2guardian_dir . "/g_" . $e2guardian_groups['name'] . ".story", $dg_story, LOCK_EX);
 
-		include("/usr/local/pkg/e2guardianfx.conf.template");
+		include(E2GUARDIAN_PKGDIR . "/e2guardianfx.conf.template");
 		file_put_contents($e2guardian_dir . "/e2guardianf" . $count . ".conf", $dgf, LOCK_EX);
 
 		if (is_array($config['installedpackages']['e2guardianusers']) &&
@@ -1573,10 +2046,11 @@ break;
 			asort($import_ips);
 			$config['installedpackages']['e2guardianips']['config'][0][$e2guardian_group_name] = base64_encode(implode("\n", $import_ips));
 			foreach ($import_ips as $new_ip) {
-				if (preg_match("/(\S+)\s+(.*)/", $new_ip, $matches)) {
-					$filtergroupsiplist .= $matches[1] . " = filter" . $count . " #" . $matches[2] . "\n";
-				} elseif (preg_match("/(\S+)/", $new_ip, $matches)) {
-					$filtergroupsiplist .= $matches[1] . " = filter" . $count . "\n";
+                                if (preg_match("/(\S+)\s+(.*)/", $new_ip, $matches)) {
+                                        $comment = ltrim($matches[2]);
+                                        $filtergroupsiplist .= $matches[1] . " = filter" . $count . ($comment !== '' ? " #{$comment}" : "") . "\n";
+                                } elseif (preg_match("/(\S+)/", $new_ip, $matches)) {
+                                        $filtergroupsiplist .= $matches[1] . " = filter" . $count . "\n";
 				}
 			}
 		}
@@ -1584,9 +2058,9 @@ break;
 		is_countable($import_ips) ? $filtergroupip_count = count($import_ips) : $filtergroupip_count=0;
 // 		$filtergroup_count = count($import_users);
 // 		$filtergroupip_count = count($import_ips);
-		//Default group catch all unauth groups as well non listed users
-		if ($count > 1)
-		$user_xml .=<<<EOF
+               //Default group catch all unauth groups as well non listed users.
+               //Always expose the first group in the Users tab so every group can be edited.
+               $user_xml .=<<<EOF
 		<field>
 			<name>{$e2guardian_groups['description']} ({$filtergroup_count})</name>
 			<type>listtopic</type>
@@ -1594,7 +2068,7 @@ break;
 		<field>
 			<fieldname>{$e2guardian_group_name}</fieldname>
 			<fielddescr>{$e2guardian_groups['name']}</fielddescr>
-			<description><![CDATA[Include users for this group one per line<br>Hint:PFSENSE\marcelloc #Marcello Coutinho]]></description>
+			<description><![CDATA[Include users for this group one per line<br>Hint:KONTROL\smith #John Smith]]></description>
 			<type>textarea</type>
 
 			<cols>80</cols><rows>12</rows>
@@ -1633,20 +2107,47 @@ EOF;
 		</field>
 EOF;
 	}
-	//Create/update filtergroupslist
-	file_put_contents($e2guardian_dir . "/lists/filtergroupslist", $filtergroupslist, LOCK_EX);
-	//Create/update filtergroupsiplist
-	file_put_contents($e2guardian_dir . "/lists/authplugins/ipgroups", $filtergroupsiplist, LOCK_EX);
+        //Create/update filtergroupslist
+        file_put_contents($e2guardian_dir . "/lists/authplugins/filtergroupslist", $filtergroupslist, LOCK_EX);
+        //Create/update filtergroupsiplist
+        $ip_group_body = trim(preg_replace('/\s*=\s*/', '=', $filtergroupsiplist));
+        file_put_contents(
+                $e2guardian_dir . "/lists/authplugins/ipgroups",
+                ($ip_group_body !== '' ? $ip_group_body . "\n" : ''),
+                LOCK_EX
+        );
+
+        $map_header = "#Do not edit this file.\n#It's created by e2guardian package and overwritten every config save.\n";
+
+        //Create/update default user mapping list used by the pre-auth storyboard
+        $default_map_body = trim($filtergroupslist);
+        if ($default_map_body === '') {
+                $default_map_body = "#No explicit user mappings defined";
+        }
+        file_put_contents($e2guardian_dir . "/lists/authplugins/defaultusermap", $map_header . $default_map_body . "\n", LOCK_EX);
+
+        //Create/update IP map list used by the pre-auth storyboard
+        $ip_map_body = $ip_group_body;
+        if ($ip_map_body === '') {
+                $ip_map_body = "#No IP based filter overrides defined";
+        }
+        file_put_contents($e2guardian_dir . "/lists/authplugins/ipmap", $map_header . $ip_map_body . "\n", LOCK_EX);
+
+        //Ensure ancillary storyboard lists exist
+        $port_map_body = ($filterport ? $filterport . "=filter1" : "#No port based filter overrides defined");
+        file_put_contents($e2guardian_dir . "/lists/authplugins/portmap", $map_header . $port_map_body . "\n", LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/browser", $map_header . "#Populate this list with User-Agent rules when needed\n", LOCK_EX);
+        file_put_contents($e2guardian_dir . "/lists/nomitm", $map_header . "#Populate this list with hosts that must bypass MITM inspection\n", LOCK_EX);
 	//Create/update userlist xml file
-	$ips_xml_header = file_get_contents("/usr/local/pkg/e2guardian_ips_header.template");
-	$user_xml_header = file_get_contents("/usr/local/pkg/e2guardian_users_header.template");
-	$user_xml_footer = file_get_contents("/usr/local/pkg/e2guardian_users_footer.template");
-	file_put_contents("/usr/local/pkg/e2guardian_users.xml", $user_xml_header . $user_xml . $user_xml_footer, LOCK_EX);
-	file_put_contents("/usr/local/pkg/e2guardian_ips.xml", $ips_xml_header . $ips_xml . $user_xml_footer, LOCK_EX);
+	$ips_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_ips_header.template");
+	$user_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users_header.template");
+	$user_xml_footer = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users_footer.template");
+	file_put_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users.xml", $user_xml_header . $user_xml . $user_xml_footer, LOCK_EX);
+	file_put_contents(E2GUARDIAN_PKGDIR . "/e2guardian_ips.xml", $ips_xml_header . $ips_xml . $user_xml_footer, LOCK_EX);
 
 	//Create report template
-	if (is_dir("/usr/local/share/e2guardian/languages/{$reportlanguage}")) {
-		file_put_contents("/usr/local/share/e2guardian/languages/{$reportlanguage}/template.html", e2_text_area_decode($e2guardian_log['report_file']), LOCK_EX);
+	if (is_dir(E2GUARDIAN_SHAREDIR . "/languages/{$reportlanguage}")) {
+		file_put_contents(E2GUARDIAN_SHAREDIR . "/languages/{$reportlanguage}/template.html", e2_text_area_decode($e2guardian_log['report_file']), LOCK_EX);
 	}
 	//check blacklist download files
 	file_put_contents("/root/e2guardian_custom.script", base64_decode($e2guardian_blacklist['custom_script']), LOCK_EX);
@@ -1655,14 +2156,14 @@ EOF;
 		file_notice("E2guardian",$error,"E2guardian - " . gettext("Blacklist update process started"), "");
 		if ($e2guardian_blacklist['enable_custom_script']) {
 			mwexec_bg("/root/e2guardian_custom.script");
-		} else {
-			mwexec_bg("/usr/local/bin/php /usr/local/www/e2guardian.php fetch_blacklist");
-		}
+                } else {
+                        mwexec_bg(E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist");
+                }
 	}
 
 	//Update blacklist categories on Acls
 	if ($_POST["force_update"] || $_POST["liston"]) {
-		require_once("/usr/local/www/e2guardian.php");
+		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		extract_black_list();
 	}
 	//get clamav user
@@ -1684,77 +2185,18 @@ EOF;
 		if ($real_ifaces[$i][0]) {
 			$filterip .= "filterip = " . $real_ifaces[$i][0] . "\n";
 		}
-		//$filterports .= "filterports = " . $filterport . "\n";
+		$filterports .= "filterports = " . $filterport . "\n";
 	}
 	$filterip = ($filterip == "" ? "filterip = " : $filterip);
 	$filterports = ($filterports == "" ? "filterports = $filterport" : $filterports);
-	$filterports = ($filterports == "" ? "filterports = $filterport" : $filterports);
 	$ssl_proxy_port = $e2guardian['ssl_proxy_port'] ? $e2guardian['ssl_proxy_port'] : "8081";
-
-    // SSL MITM Paths
-    if ($e2guardian['enablessl'] == 'on' || $e2guardian['ssl_mitm'] == 'on') {
-        $ca_pem_path = $e2guardian['cacertificatepath'] ?: '/usr/local/etc/e2guardian/ca.pem';
-        $ca_key_path = $e2guardian['caprivatekeypath'] ?: '/usr/local/etc/e2guardian/ca.key';
-
-        // Try to export CA from pfSense config if file missing
-        if (!file_exists($ca_pem_path) || !file_exists($ca_key_path)) {
-            $ca_found = false;
-            if (is_array($config['ca'])) {
-                foreach ($config['ca'] as $ca) {
-                    if (stripos($ca['descr'], 'e2guardian') !== false) {
-                        file_put_contents($ca_pem_path, base64_decode($ca['crt']));
-                        file_put_contents($ca_key_path, base64_decode($ca['prv']));
-                        $ca_found = true;
-                        break;
-                    }
-                }
-            }
-
-            // If still no CA, look for the first internal CA
-            if (!$ca_found && is_array($config['ca'])) {
-                 foreach ($config['ca'] as $ca) {
-                    if ($ca['prv']) { // Has private key
-                        file_put_contents($ca_pem_path, base64_decode($ca['crt']));
-                        file_put_contents($ca_key_path, base64_decode($ca['prv']));
-                        $ca_found = true;
-                        break;
-                    }
-                }
-            }
-
-            // Create self-signed if absolutely nothing found (last resort fallback)
-            if (!$ca_found) {
-                 // Basic self-signed gen
-                 $subj = "/C=US/ST=State/L=Locality/O=e2guardian/CN=e2guardianCA";
-                 exec("/usr/bin/openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -keyout {$ca_key_path} -out {$ca_pem_path} -subj \"{$subj}\"");
-            }
-        }
-
-        $ca_pem = "cacertificatepath = '" . $ca_pem_path . "'";
-        $ca_pk = "caprivatekeypath = '" . $ca_key_path . "'";
-        $cert_key = "certprivatekeypath = '" . ($e2guardian['certprivatekeypath'] ?: '/usr/local/etc/e2guardian/cert.key') . "'";
-
-        // Ensure cert key exists (create dummy if missing to start service)
-         if (!file_exists($e2guardian['certprivatekeypath'] ?: '/usr/local/etc/e2guardian/cert.key')) {
-             $cert_key_path = $e2guardian['certprivatekeypath'] ?: '/usr/local/etc/e2guardian/cert.key';
-              exec("/usr/bin/openssl genrsa -out {$cert_key_path} 2048");
-         }
-
-        $generatedcertpath = "generatedcertpath = '" . ($e2guardian['generatedcertpath'] ?: $e2guardian_dir . '/ssl/generatedcerts/') . "'";
-    } else {
-        $ca_pem = "#cacertificatepath = ''";
-        $ca_pk = "#caprivatekeypath = ''";
-        $cert_key = "#certprivatekeypath = ''";
-        $generatedcertpath = "#generatedcertpath = ''";
-    }
-
-	include("/usr/local/pkg/e2guardian.conf.template");
+	include(E2GUARDIAN_PKGDIR . "/e2guardian.conf.template");
 
 
 	//log rotation script
     	log_error("Checking log rotation");
-	$lrt_file = "/usr/local/www/e2guardian_logrotate.php";
-	$cron_cmd = "/usr/local/bin/php -q {$lrt_file}";
+	$lrt_file = E2GUARDIAN_WWWDIR . "/e2guardian_logrotate.php";
+	$cron_cmd = E2GUARDIAN_BINDIR . "/php -q {$lrt_file}";
 	if ($logrotate == "on") {
         log_error("Log rotate on");
 		e2g_check_cron($cron_cmd, "create", $cronminute, $cronhour);
@@ -1764,25 +2206,25 @@ EOF;
 	}
 
 	//watchdog script;
-	$cron_cmd = "/usr/local/bin/e2g_watchdog.sh";
+	$cron_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
 	if ($e2guardian['watchdog'] == "on") {
 		e2g_check_cron("/bin/sh $cron_cmd", "create");
 		if ($e2guardian['parentmode'] == 'local') {
 			//e2g parent
 			$parent_pid = "/var/run/squid/e2gsquid.pid";
-			$parent_cmd = "/usr/local/etc/rc.d/e2parent.sh start";
+			$parent_cmd = E2GUARDIAN_RCDIR . "/e2parent.sh start";
 			$watchdog_parent = e2g_watchdog_script($parent_pid, $parent_cmd, "parent");
 		}
 		//e2g watchdog
 		$we2g_pid = "/var/run/e2guardian.pid";
-		$we2g_cmd = "/usr/local/etc/rc.d/e2guardian.sh start";
+		$we2g_cmd = E2GUARDIAN_RCDIR . "/e2guardian.sh start";
 		$watchdog_e2g = e2g_watchdog_script($we2g_pid,$we2g_cmd,"e2guardian");
 		//e2g main squid process
 		if (is_array($config['installedpackages']['squid'])) {
 			$squid_cfg = $config['installedpackages']['squid']['config'][0];
-			if ($squid_cfg['enable_squid'] == "on") {
-				$msqd_pid = "/var/run/squid/squid.pid";
-				$msqd_cmd = "/usr/local/sbin/squid -f /usr/local/etc/squid/squid.conf";
+                        if ($squid_cfg['enable_squid'] == "on") {
+                                $msqd_pid = "/var/run/squid/squid.pid";
+                                $msqd_cmd = E2GUARDIAN_SBINDIR . "/squid -f " . E2GUARDIAN_SQUIDCONFDIR . "/squid.conf";
 				$watchdog_squid = e2g_watchdog_script($msqd_pid, $msqd_cmd, "squid");
 			}
 		}
@@ -1797,27 +2239,27 @@ EOF;
 	}
 
 	// Check acl schedules
-	$cron_cmd = "/usr/local/bin/php -q /usr/local/www/e2guardian_scheds.php";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/php -q " . E2GUARDIAN_WWWDIR . "/e2guardian_scheds.php";
 	if (sizeof($e2g_sched_in_use) > 1) {
 		e2g_check_cron($cron_cmd, "create");
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}
 
-	$cron_cmd = E2GUARDIAN_DIR . "/bin/freshclam";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/freshclam";
 	$cron_field= array('day' => '*' , '02days' => '*/2', 'week' => '*/7');
 	if ($e2guardian_config['cron'] && preg_match("/clamd/", $e2guardian_config['content_scanners'])) {
 		e2g_check_cron($cron_cmd, "create", "0", "0", $cron_field[$e2guardian_config['cron']]);
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}
-	$cron_cmd = "/usr/local/bin/php /usr/local/www/e2guardian.php fetch_blacklist";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist";
 	if ($e2guardian_blacklist['cron']) {
 		e2g_check_cron($cron_cmd, "create", "0", "0", $cron_field[$e2guardian_blacklist['cron']]);
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}
-	$cron_cmd = "/usr/local/bin/php /usr/local/www/e2guardian_ldap.php";
+        $cron_cmd = E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian_ldap.php";
 	if (is_array($config['installedpackages']['e2guardiangroups']['config'])) {
 		foreach ($config['installedpackages']['e2guardiangroups']['config'] as $e2guardian_groups) {
 			$e2_group_source = ($e2guardian_groups['groupnamesource'] != "" ? $e2guardian_groups['groupnamesource'] : "name");
@@ -1838,9 +2280,9 @@ EOF;
 
 	write_config('e2guardian - updating package crontab tasks.');
 
-	$dirs = array(
-		E2GUARDIAN_DIR . '/etc/e2guardian/lists/bannedrooms/',
-		'/var/log/e2guardian');
+        $dirs = array(
+                E2GUARDIAN_ETCDIR . '/lists/bannedrooms/',
+                '/var/log/e2guardian');
 
 	foreach ($dirs as $dir) {
 		if (!is_dir($dir)) {
@@ -1849,14 +2291,14 @@ EOF;
 	}
 
 	//update file owner
-	mwexec("chown -R $daemonuser:$daemongroup " . E2GUARDIAN_DIR . "/etc/e2guardian");
+        mwexec("chown -R $daemonuser:$daemongroup " . E2GUARDIAN_ETCDIR);
 	mwexec("chown -R $daemonuser:$daemongroup /var/log/e2guardian");
 
 	//create config files
 	file_put_contents($e2guardian_dir . "/e2guardian.conf", $dg, LOCK_EX);
 
 	//check virus_scanner options
-	$libexec_dir = E2GUARDIAN_DIR . "/libexec/e2guardian/";
+        $libexec_dir = E2GUARDIAN_LIBEXECDIR . "/e2guardian/";
 	if ($install_process == true) {
 		update_output_window("Skipping clamav check during package install.");
 	}
@@ -1864,10 +2306,10 @@ EOF;
 		if (!(file_exists('/var/db/clamav/main.cvd') || file_exists('/var/db/clamav/main.cld'))) {
 			file_notice("E2guardian",$error,"E2guardian - " . gettext("No antivirus database found for clamav, running freshclam in background."), "");
 			log_error('No antivirus database found for clamav, running freshclam in background. Content-scanner may not work until freshclam finishes.');
-			mwexec_bg(E2GUARDIAN_DIR . '/bin/freshclam && /usr/local/etc/rc.d/clamav-clamd');
+                   mwexec_bg(E2GUARDIAN_BINDIR . '/freshclam && ' . E2GUARDIAN_RCDIR . '/clamav-clamd');
 		}
 		//clamdscan.conf e2guardian file
-		$cconf = E2GUARDIAN_DIR . "/etc/e2guardian/contentscanners/clamdscan.conf";
+                $cconf = E2GUARDIAN_ETCDIR . "/contentscanners/clamdscan.conf";
 		$cconf_file = file_get_contents($cconf);
 		if (preg_match('/#clamdudsfile/', $cconf_file)) {
 			$cconf_file = preg_replace('/#clamdudsfile/', 'clamdudsfile', $cconf_file);
@@ -1878,11 +2320,11 @@ EOF;
 		$cconf_file = file_get_contents($cconf);
 		if (preg_match("/User (\w+)/", $cconf_file, $matches)) {
 			#clamd script file
-			$script = '/usr/local/etc/rc.d/clamav-clamd';
+			$script = E2GUARDIAN_RCDIR . '/clamav-clamd';
 			$script_file = file($script);
 			$new_clamav_startup = "";
 			$cpreg_m[0] = "@NO@";
-			$cpreg_m[1] = "@/usr/local@";
+                        $cpreg_m[1] = "@" . E2GUARDIAN_DIR . "@";
 			$cpreg_r[0] = "YES";
 			$cpreg_r[1] = E2GUARDIAN_DIR;
 			foreach ($script_file as $script_line) {
@@ -1969,18 +2411,18 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
         }
 
 	//as main squid daemon looks for any squid copy running, lets create an alias for us
-	$our_squid = "/usr/local/sbin/e2guid";
+	$our_squid = E2GUARDIAN_SBINDIR . "/e2guid";
 	if (!file_exists($our_squid) && $e2g_cfg['parentmode'] == 'local') {
-		system("/usr/local/etc/rc.d/e2parent.sh stop");
-		symlink("/usr/local/sbin/squid", $our_squid);
+		system(E2GUARDIAN_RCDIR . "/e2parent.sh stop");
+		symlink(E2GUARDIAN_SBINDIR . "/squid", $our_squid);
 	}
 
 	//squid parent start stop script
 	$parent_pid = "/var/run/squid/e2gsquid.pid";
-	$parent_cmd = "$our_squid -f /usr/local/etc/e2guardian/squidparent.conf";
+        $parent_cmd = $our_squid . ' -f ' . E2GUARDIAN_ETCDIR . '/squidparent.conf';
 	$start  = "\nif [ ! -d /var/squid/lib/ssl_db2/certs ];then\n\t";
 	$start .= "mkdir -p /var/squid/lib\n\t";
-	$start .= "/usr/local/libexec/squid/ssl_crtd -c -s /var/squid/lib/ssl_db2\nfi\n";
+	$start .= E2GUARDIAN_SQUIDLIBEXECDIR . "/ssl_crtd -c -s /var/squid/lib/ssl_db2\nfi\n";
 	$start .= "if [ -f {$parent_pid} ];then\n\t";
 	$start .= "cat {$parent_pid} | xargs ps ||\n\t";
 	$start .= "{$parent_cmd}\nelse\n\t";
@@ -1989,14 +2431,14 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 	$stop .= "kill `cat {$parent_pid}`\nfi";
 	write_rcfile(array("file" => "e2parent.sh", "start" => $start, "stop" => $stop));
 
-	$script = '/usr/local/etc/rc.d/e2guardian.sh';
-	$script_parent = '/usr/local/etc/rc.d/e2parent.sh';
-	unlink_if_exists('/usr/local/etc/rc.d/e2guardian');
+        $script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+        $script_parent = E2GUARDIAN_RCDIR . '/e2parent.sh';
+        unlink_if_exists(E2GUARDIAN_RCDIR . '/e2guardian');
 	$squid_parent_pid = "/var/run/squid/e2gsquid.pid";
 
 	if ($e2g_cfg['enable'] == "on") {
-		chmod("/usr/local/sbin/e2guardian",0755);
-		copy('/usr/local/pkg/e2guardian_rc.template', $script);
+                chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0755);
+                copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $script);
 		chmod ($script, 0755);
 		$max_threads = "sysctl kern.threads.max_threads_per_proc=20480";
 		if (is_process_running('e2guardian')) {
@@ -2009,11 +2451,11 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 					break;
 				case "-r":
 					log_error("Sending USR1 to e2g processes");
-					mwexec_bg("$max_threads;/usr/local/sbin/e2guardian -g");
+                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
 					break;
 				default:
 					log_error("Restarting e2g by sending -Q action to e2g binaries");
-					mwexec_bg("$max_threads;/usr/local/sbin/e2guardian -Q");
+                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
 					break;
 			}
 		} else {
@@ -2124,15 +2566,26 @@ function e2guardian_validate_input($post, &$input_errors) {
                 squid_update_clamav();
                 return;
         }
-	if (is_array($config['installedpackages']['e2guardian'])) {
-		$settings = $config['installedpackages']['e2guardian']['config'][0];
-	} else {
-		$settings = array();
-	}
+        if (is_array($config['installedpackages']['e2guardian'])) {
+                $settings = $config['installedpackages']['e2guardian']['config'][0];
+        } else {
+                $settings = array();
+        }
+
+        $post['defined_ip_proxy_off'] = e2g_sanitize_bypass_field(
+            $post['defined_ip_proxy_off'] ?? '',
+            'transparent source bypass field'
+        );
+        $post['defined_ip_proxy_off_dest'] = e2g_sanitize_bypass_field(
+            $post['defined_ip_proxy_off_dest'] ?? '',
+            'transparent destination bypass field'
+        );
+        $_POST['defined_ip_proxy_off'] = $post['defined_ip_proxy_off'];
+        $_POST['defined_ip_proxy_off_dest'] = $post['defined_ip_proxy_off_dest'];
 
 
-	if ( is_array($post['scan_options']) && bp_in_array('logclienthostnames', $post['scan_options']) &&
-	    !bp_in_array('reverseclientiplookups', $post['scan_options'])) {
+        if ( is_array($post['scan_options']) && bp_in_array('logclienthostnames', $post['scan_options']) &&
+            !bp_in_array('reverseclientiplookups', $post['scan_options'])) {
 		$input_errors[] = "Scan option 'Log client hostnames' needs 'Reverse client ip lookups' to be selected as well.";
 	}
 	if (is_array($post['group_options']) && sizeof ($post['group_options']) > 0) {
@@ -2174,7 +2627,7 @@ function e2guardian_validate_input($post, &$input_errors) {
 	if ($post['report_language'] != "") {
 	    $e2glog = $config['installedpackages']['e2guardianlog']['config'][0];
     	if ($_POST['report_file'] == "" || $post['report_language'] != $e2glog['report_language']) {
-    	    $rf = "/usr/local/share/e2guardian/languages/{$post['report_language']}/template.html";
+    	    $rf = E2GUARDIAN_SHAREDIR . "/languages/{$post['report_language']}/template.html";
     	    if (file_exists($rf) && ! file_exists("{$rf}.sample")) {
     	        copy ($rf, "{$rf}.sample");
     	    }
@@ -2195,17 +2648,23 @@ function e2guardian_validate_input($post, &$input_errors) {
 	if ($post['parentmode'] == "local" && $post['dca'] == "") {
 		 $input_errors[] = "E2guardian needs a configured CA while using automatic parent proxy mode.";
 	}
-	if ($post['parentmode'] == "remote") {
-		if ($post['proxyip'] == "") {
-			$input_errors[] = "E2guardian proxy ip cannot be empty in manual parent mode.";
-		}
-		 if ($post['proxyport'] == "" || !is_numeric($post['proxyport'])) {
+        if ($post['parentmode'] == "remote") {
+                if ($post['proxyip'] == "") {
+                        $input_errors[] = "E2guardian proxy ip cannot be empty in manual parent mode.";
+                }
+                 if ($post['proxyport'] == "" || !is_numeric($post['proxyport'])) {
                         $input_errors[] = "E2guardian proxy port cannot be empty or invalid in manual parent mode.";
                 }
-	}
+        }
 
-	// check that the proxy port does not clash with WebGUI
-	$port = ($settings['filterports'] ? $settings['filterports'] : 8080);
+        if ($post['dstatinterval'] != "") {
+                if (!is_numeric($post['dstatinterval']) || $post['dstatinterval'] < 10 || $post['dstatinterval'] > 3600) {
+                        $input_errors[] = "DSTATS timing must be a numeric value between 10 and 3600 seconds.";
+                }
+        }
+
+        // check that the proxy port does not clash with WebGUI
+        $port = ($settings['filterports'] ? $settings['filterports'] : 8080);
 	$port = $post['filterports'] ? $post['filterports'] : $port;
 	$webgui_port = $config['system']['webgui']['port'];
 	if (($config['system']['webgui']['port'] == "") && ($config['system']['webgui']['protocol'] == "http")) {
@@ -2215,7 +2674,7 @@ function e2guardian_validate_input($post, &$input_errors) {
                 $webgui_port = 443;
         }
         if (($post['transparent_proxy'] != 'on') && ($port == $webgui_port)) {
-                $input_errors[] = "You can not run E2guardian on the same port as the pfSense WebGUI";
+                $input_errors[] = "You can not run E2guardian on the same port as the Kontrol WebGUI";
         }
         unset($port, $webgui_port);
 	if ($post['transparent_proxy'] == 'on') {
@@ -2274,9 +2733,9 @@ function isValidXmlElementName($elementName)
 function e2guardian_php_install_command() {
 	sync_package_e2guardian("no", true);
 	echo "Checking Blacklist...\n";
-	require_once("/usr/local/www/e2guardian.php");
+	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 
-	if (file_exists("/usr/local/pkg/blacklist.tgz")) {
+	if (file_exists(E2GUARDIAN_PKGDIR . "/blacklist.tgz")) {
 		extract_black_list();
 	} else {
         	fetch_blacklist(false, true);
@@ -2291,22 +2750,22 @@ function e2guardian_php_deinstall_command() {
 	echo "Remove modified xml files...\n";
 	$e2gxmls = array("users", "ips");
 	foreach ($e2gxmls as $e2gxml) {
-		unlink_if_exists("/usr/local/pkg/e2guardian_{$e2gxml}.xml");
+		unlink_if_exists(E2GUARDIAN_PKGDIR . "/e2guardian_{$e2gxml}.xml");
 	}
 	echo "Removing package crons...\n";
-	$crons = array("/bin/sh /usr/local/bin/e2g_watchdog.sh", //robotman3000 - Leave this until the branch to the v5 gui
-			"/usr/local/bin/php -q /usr/local/www/e2guardian_scheds.php",
-			E2GUARDIAN_DIR . "/bin/freshclam",
-			"/usr/local/bin/php /usr/local/www/e2guardian.php fetch_blacklist",
-			"/usr/local/bin/php /usr/local/www/e2guardian_ldap.php",
-			"/usr/local/bin/php -q /usr/local/www/e2guardian_logrotate.php");
+        $crons = array("/bin/sh " . E2GUARDIAN_BINDIR . "/e2g_watchdog.sh", //robotman3000 - Leave this until the branch to the v5 gui
+                        E2GUARDIAN_BINDIR . "/php -q " . E2GUARDIAN_WWWDIR . "/e2guardian_scheds.php",
+                        E2GUARDIAN_BINDIR . "/freshclam",
+                        E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist",
+                        E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian_ldap.php",
+                        E2GUARDIAN_BINDIR . "/php -q " . E2GUARDIAN_WWWDIR . "/e2guardian_logrotate.php");
 	foreach ($crons as $cron_cmd) {
 		e2g_check_cron($cron_cmd, "remove");
 	}
 
 	echo "Disabling automtic parent squid script...\n";
-	$ecmds = array("e2guardian squid parent" => "/usr/local/etc/rc.d/e2parent.sh",
-		       "e2guradian" => "/usr/local/etc/rc.d/e2guardian.sh");
+	$ecmds = array("e2guardian squid parent" => E2GUARDIAN_RCDIR . "/e2parent.sh",
+		       "e2guradian" => E2GUARDIAN_RCDIR . "/e2guardian.sh");
 	foreach ($ecmds as $einfo => $ecmd) {
 		if (file_exists($ecmd)) {
 			log_error("stopping $einfo..");
@@ -2316,13 +2775,19 @@ function e2guardian_php_deinstall_command() {
 	}
 
 	//prevent e2guardian binary from starting from watchdog during package uninstall
-	chmod("/usr/local/sbin/e2guardian",0444);
+	chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0444);
 
-	echo "Removing conf files...\n";
-	$rconfs = array('*sample', '*conf', 'lists/*.*', 'authplugins/*sample', 'contentscanners/*sample', 'downloadmanagers/*sample');
-	foreach ($rconfs as $rm) {
-		system("/bin/rm -f /usr/local/etc/e2guardian/$rm");
-	}
+        echo "Removing conf files...\n";
+        $rconfs = array('*sample', '*.conf', '*.story', 'lists/*', 'authplugins/*sample', 'authplugins/*.conf', 'contentscanners/*sample', 'downloadmanagers/*sample', 'downloadmanagers/*.conf');
+        foreach ($rconfs as $rm) {
+                foreach (glob(E2GUARDIAN_ETCDIR . '/' . $rm) as $path) {
+                        if (is_dir($path)) {
+                                e2g_delTree($path);
+                        } elseif (file_exists($path)) {
+                                @unlink($path);
+                        }
+                }
+        }
 
 	clear_subsystem_dirty('e2guardian');
 }
@@ -2359,7 +2824,7 @@ function e2guardian_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $pa
         $synchronizetoip .= $sync_to_ip;
 
 	/* Commands to reload Squid settings on the destination sync host. */
-	$execcmd  = "require_once('/usr/local/pkg/e2guardian.inc');\n";
+   $execcmd  = "require_once('" . E2GUARDIAN_PKGDIR . "/e2guardian.inc');\n";
 	$execcmd .= "sync_package_e2guardian('yes');\n";
 	$execcmd .= "e2guardian_start('yes');";
 
