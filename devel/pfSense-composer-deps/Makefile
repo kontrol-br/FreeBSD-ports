@@ -1,12 +1,12 @@
 PORTNAME=	pfSense-composer-deps
-DISTVERSION=	0.3
+DISTVERSION=	0.4
 CATEGORIES=	devel
 
 MAINTAINER=	coreteam@pfSense.org
 COMMENT=	pfSense deps from composer
 WWW=
 
-VENDORBASE=	/pfSense/include/vendor
+VENDORBASE=	/Kontrol/include/vendor
 
 NO_BUILD=	yes
 SHCMD_VER=	1.7.0
