@@ -37,11 +37,11 @@ fi
 PKG_CONF="/usr/local/etc/pkg.conf"
 REAL_CONF=$(readlink ${REPO_CONF})
 
-ABI=$(cat ${REAL_CONF%%.conf}.abi)
-ALTABI=$(cat ${REAL_CONF%%.conf}.altabi)
+ABI_FILE="${REAL_CONF%%.conf}.abi"
+OSVERSION=$(/sbin/sysctl -n kern.osreldate)
 
-echo "ABI=${ABI}" > ${PKG_CONF}
-echo "ALTABI=${ALTABI}" >> ${PKG_CONF}
+echo "ABI_FILE=${ABI_FILE}" > ${PKG_CONF}
+echo "OSVERSION=${OSVERSION}" >> ${PKG_CONF}
 
 # Help users to fix fstab before risk moving to FreeBSD 11
 if /usr/bin/grep -q -E '/dev/ad[[:digit:]]' /etc/fstab; then
