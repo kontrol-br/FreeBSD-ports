@@ -577,7 +577,7 @@ function e2guardian_antivirus_get_raw_config() {
 		}
 	}
 	if ($loaded) {
-		write_config("Squid - Loaded raw configuration files", false);
+		write_config('Squid - Loaded raw configuration files', false);
 		log_error("[squid] Successfully loaded raw configuration files");
 	}
 }
