@@ -6,7 +6,7 @@ MAINTAINER=	coreteam@pfSense.org
 COMMENT=	pfSense deps from composer
 WWW=
 
-VENDORBASE=	/pfSense/include/vendor
+VENDORBASE=	/Kontrol/include/vendor
 
 NO_BUILD=	yes
 SHCMD_VER=	1.7.0
