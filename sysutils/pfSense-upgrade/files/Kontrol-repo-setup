@@ -218,8 +218,8 @@ pfSense_repo_setup() {
 
 PHP="/usr/local/bin/php"
 READ_XML_TAG="/usr/local/sbin/read_xml_tag.sh"
-export PLUS_CERT_BASE="$("${PHP}" -n /usr/local/sbin/read_global_var pkg_repos_path pfSense)"
-export PRODUCT="$("${PHP}" -n /usr/local/sbin/read_global_var product_name pfSense)"
+export PLUS_CERT_BASE="$("${PHP}" -n /usr/local/sbin/read_global_var pkg_repos_path Kontrol)"
+export PRODUCT="$("${PHP}" -n /usr/local/sbin/read_global_var product_name Kontrol)"
 export PFSENSE_REPO_CONF="/usr/local/etc/pkg/repos/${PRODUCT}.conf"
 export PKG_CONF="/usr/local/etc/pkg.conf"
 export PKG_REPO_CONF_PATH="$("${READ_XML_TAG}" string system/pkg_repo_conf_path)"
