@@ -22,7 +22,8 @@ SUB_LIST=	PORTNAME=${PORTNAME} \
 		PRODUCT_NAME=${PRODUCT_NAME} \
 		DEFAULT_REPO=${DEFAULT_REPO}
 
-DATADIR=	${PREFIX}/share/pfSense
+PRODUCT_NAME?=	pfSense
+DATADIR=	${PREFIX}/share/${PRODUCT_NAME}
 
 # Flag used to detect when we want to reinstall all packages during upgrade
 PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
@@ -118,8 +119,8 @@ do-build:
 do-install:
 	${MKDIR} ${STAGEDIR}${DATADIR}/pkg/repos
 	${TOUCH} ${STAGEDIR}${DEFAULT_REPO}.default
-	${MKDIR} ${STAGEDIR}/usr/local/share/Kontrol/keys/pkg/trusted/
-	${INSTALL_DATA} ${FILESDIR}/usr/local/share/Kontrol/keys/pkg/trusted/pkg.kontrol.com.br.20180421 ${STAGEDIR}/usr/local/share/Kontrol/keys/pkg/trusted/pkg.kontrol.com.br.20180421
+	${MKDIR} ${STAGEDIR}${DATADIR}/keys/pkg/trusted/
+	${INSTALL_DATA} ${FILESDIR}/usr/local/share/Kontrol/keys/pkg/trusted/pkg.kontrol.com.br.20180421 ${STAGEDIR}${DATADIR}/keys/pkg/trusted/pkg.kontrol.com.br.20180421
 .for f in ${PFSENSE_REPOS_${ARCH}}
 	${INSTALL_DATA} ${WRKSRC}/${f}.conf ${STAGEDIR}${DATADIR}/pkg/repos
 	${INSTALL_DATA} ${WRKSRC}/${f}.descr ${STAGEDIR}${DATADIR}/pkg/repos
