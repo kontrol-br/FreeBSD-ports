@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	pfSense-upgrade
-PORTVERSION=	1.2.3
+PORTVERSION=	1.2.4
 PORTREVISION=	# empty
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
@@ -17,8 +17,7 @@ NO_MTREE=	yes
 NO_BUILD=	yes
 
 PLIST_FILES=	libexec/pfSense-upgrade \
-		sbin/pfSense-upgrade \
-		sbin/pfSense-repo-setup
+		sbin/pfSense-upgrade
 
 do-extract:
 	@${MKDIR} ${WRKSRC}
@@ -32,7 +31,5 @@ do-install:
 		${STAGEDIR}${PREFIX}/libexec
 	${INSTALL_SCRIPT} ${WRKSRC}/pfSense-upgrade.wrapper \
 		${STAGEDIR}${PREFIX}/sbin/pfSense-upgrade
-	${INSTALL_SCRIPT} ${WRKSRC}/pfSense-repo-setup \
-		${STAGEDIR}${PREFIX}/sbin/pfSense-repo-setup
 
 .include <bsd.port.mk>

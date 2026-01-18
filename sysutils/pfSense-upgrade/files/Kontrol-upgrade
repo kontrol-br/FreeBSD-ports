@@ -254,7 +254,7 @@ unset_vital_flag() {
 }
 
 is_ce() {
-	if [ "${product_label}" == "Kontrol" ]; then
+	if [ "${product_label}" == "pfSense" ]; then
 		return 0
 	fi
 	return 1
@@ -684,15 +684,6 @@ pkg_upgrade() {
 		# was upgraded together with pfSense-repo, exit 99
 		if [ -n "${_new_pfsense_upgrade}" ]; then
 			_exit 99
-		fi
-
-		# Do not upgrade if Squid or KontrolSquid is installed.
-		if [ -f /usr/local/sbin/squid ]; then
-			notice "ERROR: Remove KontrolSquid or Squid package before" \
-			    "upgrading."
-			_echo "ERROR: Remove KontrolSquid or Squid package before" \
-			    "upgrading."
-			_exit 1
 		fi
 
 		# Do not upgrade while wg interfaces are assigned
