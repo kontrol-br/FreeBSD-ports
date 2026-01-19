@@ -276,6 +276,16 @@
 				Default value: 300 (5 mins).]]></description>
 		</field>
 		<field>
+			<fielddescr>Max header line length</fielddescr>
+			<fieldname>maxheaderlinelength</fieldname>
+			<type>input</type>
+			<size>10</size>
+			<description><![CDATA[Limit maximum length of any individual HTTP/ICAP header line (including the request line).<br>
+				Increase this if very long URLs cause truncated header reads.<br>
+				Minimum 4096 max 16777216<br>
+				<strong>Default is 32768</strong>]]></description>
+		</field>
+		<field>
 			<fielddescr>Misc Options</fielddescr>
 			<fieldname>misc_options</fieldname>
 			<description><![CDATA[Misc options. Default values are in ( )]]></description>
