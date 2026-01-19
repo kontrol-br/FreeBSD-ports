@@ -572,6 +572,11 @@ logconnectionhandlingerrors = {$logconnectionhandlingerrors}
 # On large site you might want to try 5000 (max value 20000)
 httpworkers = {$httpworkers}
 
+# Stack size (in KiB) for each worker/listener/logger thread created by E2guardian.
+# Use this to mitigate stack overflows on systems with small default thread stacks.
+# Set to 0 to use the built-in default (currently 2048 KiB).
+threadstacksize = {$threadstacksize}
+
 
 # Process options
 # (Change these only if you really know what you are doing).

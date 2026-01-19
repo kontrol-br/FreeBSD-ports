@@ -829,6 +829,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			'watchdog'   => 'on',
 			'applyaction' => '-Q',
 			'httpworkers' => '256',
+			'threadstacksize' => '0',
 			'daemon_options' => 'softrestart');
 	}
 	$e2guardian = $config['installedpackages']['e2guardian']['config'][0];
@@ -874,6 +875,9 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$softrestart = (preg_match('/softrestart/', $e2guardian['daemon_options']) ? "on" : "off");
 	$nodaemon = (preg_match('/nodaemon/', $e2guardian['daemon_options']) ? "yes" : "off");
 	$httpworkers=($e2guardian['httpworkers'] ? $e2guardian['httpworkers'] : "100");
+	$threadstacksize = (isset($e2guardian['threadstacksize']) && $e2guardian['threadstacksize'] !== "")
+		? $e2guardian['threadstacksize']
+		: "0";
 	$preforkchildren = ($e2guardian['preforkchildren']? $e2guardian['preforkchildren'] : "10");
 	switch ($e2guardian['parentmode']) {
 		case "remote":
