@@ -199,6 +199,15 @@
                                On large site you might want to try 2500 (max value 20000)<br>
 				]]></description>
 		</field>
+		<field>
+			<fielddescr>Thread stack size (KiB)</fielddescr>
+			<fieldname>threadstacksize</fieldname>
+			<type>input</type>
+			<size>10</size>
+			<description><![CDATA[Default: <strong>0</strong> (uses the built-in value of 2048 KiB).<br>
+				Sets the stack size (in KiB) for each worker/listener/logger thread created by E2guardian.<br>
+				Use this to mitigate stack overflows on systems with small default thread stacks.]]></description>
+		</field>
 <field>
 			<name>Transparent Proxy Settings</name>
 			<type>listtopic</type>
