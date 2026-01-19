@@ -841,6 +841,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			'weightedphrasemode' => '2',
 			'preservecase' => '0',
 			'phrasefiltermode' => '2',
+			'maxheaderlinelength' => '32768',
 			'cron' => 'day');
 	}
 	$e2guardian_config= $config['installedpackages']['e2guardianconfig']['config'][0];
@@ -910,6 +911,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$weightedphrasemode = ($e2guardian_config['weightedphrasemode'] ? $e2guardian_config['weightedphrasemode'] : "2");
 	$phrasefiltermode = ($e2guardian_config['phrasefiltermode'] ? $e2guardian_config['phrasefiltermode'] : "2");
 	$preservecase = ($e2guardian_config['preservecase'] ? $e2guardian_config['preservecase'] : "0");
+	$maxheaderlinelength = ($e2guardian_config['maxheaderlinelength'] ? $e2guardian_config['maxheaderlinelength'] : "32768");
 	$clamdscan = (preg_match('/clamdscan/', $e2guardian_config['content_scanners']) ? "on" : "off");
 	$icapscan = (preg_match('/icapscan/', $e2guardian_config['content_scanners']) ? "on" : "off");
 	$contentscannertimeout = ($e2guardian_config['contentscannertimeout'] ? $e2guardian_config['contentscannertimeout'] : "60");
