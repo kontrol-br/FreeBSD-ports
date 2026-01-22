@@ -5,7 +5,7 @@ DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
 GH_PROJECT=    e2guardian
-GH_TAGNAME=    v5.4
+GH_TAGNAME=    v5.5.1
 
 
 MAINTAINER=	contato@kontrol.com.br
