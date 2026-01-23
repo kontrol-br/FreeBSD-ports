@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.5.9
-PORTREVISION=	01
+PORTREVISION=	02
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -30,13 +30,12 @@ CONFIGURE_ARGS=	--with-logdir=/var/log \
 		--with-piddir=/var/run
 
 OPTIONS_RADIO=	AV
-OPTIONS_RADIO_AV=AVAST CLAMD KAV
+OPTIONS_RADIO_AV=AVAST KAV
 OPTIONS_DEFINE=	CLISCAN ICAP NTLM DNS EMAIL DEBUG DOCS SSL_MITM
-OPTIONS_DEFAULT=CLAMD DNS ICAP NTLM SSL_MITM
+OPTIONS_DEFAULT=DNS ICAP NTLM SSL_MITM
 OPTIONS_SUB=	yes
 
 CLISCAN_DESC=	Enable support for CLI content scanners
-CLAMD_DESC=	Enable ClamD AV content scanner
 ICAP_DESC=	Enable ICAP AV content scanner support
 KAV_DESC=	Enable Kaspersky AV support
 AVAST_DESC=	Enable AvastD content scanner
@@ -49,8 +48,6 @@ SSL_MITM_DESC=	Enable support for the SSL MITM plugin
 CONFDIR=	${PREFIX}/etc/e2guardian
 
 CLISCAN_CONFIGURE_ENABLE=	commandline
-CLAMD_CONFIGURE_ENABLE=		clamd
-CLAMD_RUN_DEPENDS=		clamav>=0:security/clamav
 ICAP_CONFIGURE_ENABLE=		icap
 KAV_CONFIGURE_ENABLE=		kavd
 AVAST_CONFIGURE_ENABLE=		avastd
@@ -79,7 +76,7 @@ LDFLAGS+=       -L${OPENSSLLIB}
 
 .include <bsd.port.options.mk>
 
-.if ${PORT_OPTIONS:MCLAMD} || ${PORT_OPTIONS:MICAP} || \
+.if ${PORT_OPTIONS:MICAP} || \
     ${PORT_OPTIONS:MKAV} || ${PORT_OPTIONS:MCLISCAN} || \
     ${PORT_OPTIONS:MAVAST}
 PLIST_SUB+=	SCANNERS=""
