@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <pfsensepkgs>
         <package>
-                <name>E2guardian54</name>
-                <descr><![CDATA[Full featured content filtering for e2guardian 5.4 with MITM, domain, URL and body filtering.]]></descr>
+                <name>E2guardian55</name>
+                <descr><![CDATA[Full featured content filtering for e2guardian 5.5 with MITM, domain, URL and body filtering.]]></descr>
                 <pkginfolink/>
                 <version>%%PKGVERSION%%</version>
                 <configurationfile>e2guardian.xml</configurationfile>

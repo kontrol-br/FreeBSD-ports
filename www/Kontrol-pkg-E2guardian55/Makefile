@@ -1,6 +1,6 @@
 # $FreeBSD$
 
-PORTNAME=	Kontrol-pkg-E2guardian54
+PORTNAME=	Kontrol-pkg-E2guardian55
 PORTVERSION=	0.7.5.1
 PORTREVISION=
 CATEGORIES=	www
