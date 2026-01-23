@@ -86,6 +86,9 @@ PLIST_SUB+=	SCANNERS="@comment "
 
 SUB_FILES=	pkg-message
 
+pre-install:
+	@${MKDIR} ${STAGEDIR}${ETCDIR}/lists/bannedrooms
+
 post-install:
 	@${FIND} ${STAGEDIR}${ETCDIR} -type f \
 		\( -name '*.conf' -or -name '*list' -or -name '*.story' \) \
