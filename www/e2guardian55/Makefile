@@ -86,26 +86,37 @@ PLIST_SUB+=	SCANNERS="@comment "
 
 SUB_FILES=	pkg-message
 
+pre-install:
+	@${MKDIR} ${STAGEDIR}${ETCDIR}/lists/bannedrooms
+
 post-install:
 	@${FIND} ${STAGEDIR}${ETCDIR} -type f \
 		\( -name '*.conf' -or -name '*list' -or -name '*.story' \) \
 		-exec ${MV} {} {}.sample \;
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/authplugins/ipgroups \
-		${STAGEDIR}${ETCDIR}/lists/authplugins/ipgroups.sample
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/authplugins/portgroups \
-		${STAGEDIR}${ETCDIR}/lists/authplugins/portgroups.sample
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/bannedrooms/default \
-		${STAGEDIR}${ETCDIR}/lists/bannedrooms/default.sample
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/domainsnobypass \
-		${STAGEDIR}${ETCDIR}/lists/domainsnobypass.sample
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/ipnobypass \
-		${STAGEDIR}${ETCDIR}/lists/ipnobypass.sample
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/urlnobypass \
-		${STAGEDIR}${ETCDIR}/lists/urlnobypass.sample
+	@for file in lists/authplugins/ipgroups \
+		lists/authplugins/portgroups \
+		lists/bannedrooms/default \
+		lists/domainsnobypass \
+		lists/ipnobypass \
+		lists/urlnobypass; do \
+		if [ -f ${STAGEDIR}${ETCDIR}/$$file ]; then \
+			${MV} ${STAGEDIR}${ETCDIR}/$$file \
+				${STAGEDIR}${ETCDIR}/$$file.sample; \
+		else \
+			${INSTALL_DATA} /dev/null \
+				${STAGEDIR}${ETCDIR}/$$file.sample; \
+		fi; \
+	done
 	@${MKDIR} ${STAGEDIR}${ETCDIR}/lists/contentscanners
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/exceptionvirusextensionlist.sample \
-		${STAGEDIR}${ETCDIR}/lists/contentscanners/
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/exceptionvirussiteiplist.sample \
-		${STAGEDIR}${ETCDIR}/lists/contentscanners/
+	@for file in exceptionvirusextensionlist \
+		exceptionvirussiteiplist; do \
+		if [ -f ${STAGEDIR}${ETCDIR}/lists/$$file.sample ]; then \
+			${MV} ${STAGEDIR}${ETCDIR}/lists/$$file.sample \
+				${STAGEDIR}${ETCDIR}/lists/contentscanners/; \
+		else \
+			${INSTALL_DATA} /dev/null \
+				${STAGEDIR}${ETCDIR}/lists/contentscanners/$$file.sample; \
+		fi; \
+	done
 
 .include <bsd.port.mk>
