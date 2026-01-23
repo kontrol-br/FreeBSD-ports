@@ -908,8 +908,6 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$createlistcachefiles = (preg_match('/createlistcachefiles/', $e2guardian_config['scan_options']) ? "on" : "off");
 	$prefercachedlists = (preg_match('/prefercachedlists/', $e2guardian_config['scan_options']) ? "on" : "off");
 	$deletedownloadedtempfiles = (preg_match('/deletedownloadedtempfiles/', $e2guardian_config['scan_options']) ? "on" : "off");
-	$weightedphrasemode = ($e2guardian_config['weightedphrasemode'] ? $e2guardian_config['weightedphrasemode'] : "2");
-	$phrasefiltermode = ($e2guardian_config['phrasefiltermode'] ? $e2guardian_config['phrasefiltermode'] : "2");
 	$preservecase = ($e2guardian_config['preservecase'] ? $e2guardian_config['preservecase'] : "0");
 	$maxheaderlinelength = ($e2guardian_config['maxheaderlinelength'] ? $e2guardian_config['maxheaderlinelength'] : "32768");
 	$clamdscan = (preg_match('/clamdscan/', $e2guardian_config['content_scanners']) ? "on" : "off");
@@ -1292,6 +1290,23 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			file_put_contents($e2guardian_dir . "/lists/exceptionphraselist." . $e2guardian_phrase['name'], ($e2guardian_phrase['exception_enabled'] ? e2_text_area_decode($config['installedpackages']['e2guardianphraseacl']['config'][$count]['exception_phraselist']) : ""), LOCK_EX);
 			$count++;
 		}
+	}
+	$phrase_filter_enabled = false;
+	if (is_array($config['installedpackages']['e2guardianphraseacl']['config'])) {
+		foreach ($config['installedpackages']['e2guardianphraseacl']['config'] as $e2guardian_phrase) {
+			if ($e2guardian_phrase['banned_enabled'] == "on" ||
+				$e2guardian_phrase['weighted_enabled'] == "on" ||
+				$e2guardian_phrase['exception_enabled'] == "on") {
+				$phrase_filter_enabled = true;
+				break;
+			}
+		}
+	}
+	$weightedphrasemode = ($e2guardian_config['weightedphrasemode'] ? $e2guardian_config['weightedphrasemode'] : "2");
+	$phrasefiltermode = ($e2guardian_config['phrasefiltermode'] ? $e2guardian_config['phrasefiltermode'] : "2");
+	if (!$phrase_filter_enabled) {
+		$weightedphrasemode = "0";
+		$phrasefiltermode = "0";
 	}
 
 	//site ACL
