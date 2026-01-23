@@ -6,7 +6,6 @@
 @sample %%ETCDIR%%/authplugins/proxy-digest.conf.sample
 %%DNS%%@sample %%ETCDIR%%/authplugins/proxy-header.conf.sample
 %%NTLM%%@sample %%ETCDIR%%/authplugins/proxy-ntlm.conf.sample
-%%CLAMD%%@sample %%ETCDIR%%/contentscanners/clamdscan.conf.sample
 %%ICAP%%@sample %%ETCDIR%%/contentscanners/icapscan.conf.sample
 %%CLISCAN%%@sample %%ETCDIR%%/contentscanners/commandlinescan.conf.sample
 %%KAV%%@sample %%ETCDIR%%/contentscanners/kavdscan.conf.sample

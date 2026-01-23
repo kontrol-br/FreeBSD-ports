@@ -133,5 +133,32 @@ post-install:
 				${STAGEDIR}${ETCDIR}/lists/contentscanners/$$file.sample; \
 		fi; \
 	done
+	@${AWK} -v dns="${PORT_OPTIONS:MDNS}" \
+		-v icap="${PORT_OPTIONS:MICAP}" \
+		-v ntlm="${PORT_OPTIONS:MNTLM}" \
+		-v cliscan="${PORT_OPTIONS:MCLISCAN}" \
+		-v kav="${PORT_OPTIONS:MKAV}" \
+		-v avast="${PORT_OPTIONS:MAVAST}" \
+		-v scanners="${PORT_OPTIONS:MICAP}${PORT_OPTIONS:MKAV}${PORT_OPTIONS:MCLISCAN}${PORT_OPTIONS:MAVAST}" \
+		'\
+		/^%%DNS%%/ { if (dns == "") next; sub(/^%%DNS%%/, ""); } \
+		/^%%ICAP%%/ { if (icap == "") next; sub(/^%%ICAP%%/, ""); } \
+		/^%%NTLM%%/ { if (ntlm == "") next; sub(/^%%NTLM%%/, ""); } \
+		/^%%CLISCAN%%/ { if (cliscan == "") next; sub(/^%%CLISCAN%%/, ""); } \
+		/^%%KAV%%/ { if (kav == "") next; sub(/^%%KAV%%/, ""); } \
+		/^%%AVAST%%/ { if (avast == "") next; sub(/^%%AVAST%%/, ""); } \
+		/^%%SCANNERS%%/ { if (scanners == "") next; sub(/^%%SCANNERS%%/, ""); } \
+		/^@sample/ { print $$2; next } \
+		/^[^@]/ { print $$1 }' ${.CURDIR}/pkg-plist | \
+		${GREP} '%%ETCDIR%%' | \
+		${SED} -e 's,%%ETCDIR%%,${STAGEDIR}${ETCDIR},' | \
+		${SORT} -u | \
+		while read -r file; do \
+			if [ ! -f "$$file" ]; then \
+				dir=$$(dirname "$$file"); \
+				${MKDIR} "$$dir"; \
+				${INSTALL_DATA} /dev/null "$$file"; \
+			fi; \
+		done
 
 .include <bsd.port.mk>
