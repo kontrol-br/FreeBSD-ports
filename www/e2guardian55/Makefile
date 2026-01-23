@@ -90,6 +90,21 @@ pre-install:
 	@${MKDIR} ${STAGEDIR}${ETCDIR}/lists/bannedrooms
 
 post-install:
+	@${MKDIR} ${STAGEDIR}${ETCDIR}/authplugins
+	@if [ -d ${WRKSRC}/data/authplugins ]; then \
+		${COPYTREE_SHARE} ${WRKSRC}/data/authplugins \
+			${STAGEDIR}${ETCDIR}/authplugins; \
+	fi
+	@${MKDIR} ${STAGEDIR}${ETCDIR}/contentscanners
+	@if [ -d ${WRKSRC}/data/contentscanners ]; then \
+		${COPYTREE_SHARE} ${WRKSRC}/data/contentscanners \
+			${STAGEDIR}${ETCDIR}/contentscanners; \
+	fi
+	@${MKDIR} ${STAGEDIR}${ETCDIR}/lists
+	@if [ -d ${WRKSRC}/data/lists ]; then \
+		${COPYTREE_SHARE} ${WRKSRC}/data/lists \
+			${STAGEDIR}${ETCDIR}/lists; \
+	fi
 	@${FIND} ${STAGEDIR}${ETCDIR} -type f \
 		\( -name '*.conf' -or -name '*list' -or -name '*.story' \) \
 		-exec ${MV} {} {}.sample \;
