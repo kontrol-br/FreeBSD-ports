@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.5.9
-PORTREVISION=	03
+PORTREVISION=	04
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -118,24 +118,5 @@ post-install:
 				${STAGEDIR}${ETCDIR}/lists/contentscanners/$$file.sample; \
 		fi; \
 	done
-	@${AWK} -v etcdir="${ETCDIR}" -v prefix="${PREFIX}" \
-		'!/^@/ { \
-			line=$$0; \
-			gsub(/%%ETCDIR%%/, etcdir, line); \
-			gsub(/%%PREFIX%%/, prefix, line); \
-			while (match(line, /%%[A-Z0-9_]+%%/)) { \
-				line = substr(line, 1, RSTART - 1) substr(line, RSTART + RLENGTH); \
-			} \
-			sub(/^@comment[[:space:]]+/, "", line); \
-			sub(/^@sample[[:space:]]+/, "", line); \
-			if (line != "" && line !~ /^@/) print line; \
-		}' ${PKGDIR}/pkg-plist | \
-		while read file; do \
-			dest="${STAGEDIR}${PREFIX}/$$file"; \
-			if [ ! -f "$$dest" ]; then \
-				${MKDIR} "$$(dirname "$$dest")"; \
-				${INSTALL_DATA} /dev/null "$$dest"; \
-			fi; \
-		done
 
 .include <bsd.port.mk>
