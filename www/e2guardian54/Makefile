@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.4.9
-PORTREVISION=	09
+PORTREVISION=	08
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -64,11 +64,7 @@ DEBUG_CONFIGURE_ON=		--with-dgdebug=on --with-newdebug=on
 # >>>> FLAGS DE DEBUG (ADICIONADO)
 DEBUG_CFLAGS=		-g -O0 -fno-omit-frame-pointer
 DEBUG_CXXFLAGS=		-g -O0 -fno-omit-frame-pointer
-
-# Evitar strip quando DEBUG estiver ativo
-.if ${PORT_OPTIONS:MDEBUG}
-STRIP=
-.endif
+DEBUG_VARS=		STRIP=
 # <<<< FLAGS DE DEBUG
 
 #SSL_MITM_USES=                 ssl
