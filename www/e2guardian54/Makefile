@@ -58,8 +58,8 @@ NTLM_CONFIGURE_ENABLE=		ntlm
 NTLM_USES=			iconv
 DNS_CONFIGURE_ENABLE=		dnsauth
 EMAIL_CONFIGURE_ENABLE=		email
-DEBUG_CONFIGURE_OFF=		--with-dgdebug=off --with-newdebug=off
-DEBUG_CONFIGURE_ON=		--with-dgdebug=on --with-newdebug=on
+DEBUG_CONFIGURE_OFF=		--with-e2debug=off --with-newdebug=off
+DEBUG_CONFIGURE_ON=		--with-e2debug=on --with-newdebug=on
 
 # >>>> FLAGS DE DEBUG (ADICIONADO)
 DEBUG_CFLAGS=		-g -O0 -fno-omit-frame-pointer
