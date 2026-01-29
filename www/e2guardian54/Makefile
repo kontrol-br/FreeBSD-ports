@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
-PORTVERSION=	5.4.8
-PORTREVISION=	30
+PORTVERSION=	5.4.10
+PORTREVISION=	1
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -14,7 +14,6 @@ WWW=		https://e2guardian.org
 
 LICENSE=	GPLv2
 
-BUILD_DEPENDS=	rst2man:textproc/py-docutils@${PY_FLAVOR}
 RUN_DEPENDS+=   openssl111>=1.1.1w_2:security/openssl111
 
 LIB_DEPENDS=	libpcre.so:devel/pcre
@@ -22,7 +21,7 @@ LIB_DEPENDS=	libpcre.so:devel/pcre
 USES=		autoreconf compiler:c++11-lang libtool localbase pkgconfig \
 		python
 USE_GITHUB=	yes
-BINARY_ALIAS=	autom4te2.71=autom4te-2.71
+#BINARY_ALIAS=	autom4te2.72=autom4te-2.72
 
 USE_CXXSTD=	c++11
 USE_RC_SUBR=	e2guardian
@@ -59,8 +58,15 @@ NTLM_CONFIGURE_ENABLE=		ntlm
 NTLM_USES=			iconv
 DNS_CONFIGURE_ENABLE=		dnsauth
 EMAIL_CONFIGURE_ENABLE=		email
-DEBUG_CONFIGURE_OFF=		--with-dgdebug=off --with-newdebug=off
-DEBUG_CONFIGURE_ON=		--with-dgdebug=on --with-newdebug=on
+DEBUG_CONFIGURE_OFF=		--with-e2debug=off --with-newdebug=off
+DEBUG_CONFIGURE_ON=		--with-e2debug=on --with-newdebug=on
+
+# >>>> FLAGS DE DEBUG (ADICIONADO)
+DEBUG_CFLAGS=		-g -O0 -fno-omit-frame-pointer
+DEBUG_CXXFLAGS=		-g -O0 -fno-omit-frame-pointer
+DEBUG_VARS=		STRIP=
+# <<<< FLAGS DE DEBUG
+
 #SSL_MITM_USES=                 ssl
 SSL_MITM_CONFIGURE_ENABLE=      sslmitm
 #DEFAULT_VERSIONS+=                     ssl=openssl
