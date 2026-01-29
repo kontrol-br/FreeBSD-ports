@@ -61,12 +61,6 @@ EMAIL_CONFIGURE_ENABLE=		email
 DEBUG_CONFIGURE_OFF=		--with-e2debug=off --with-newdebug=off
 DEBUG_CONFIGURE_ON=		--with-e2debug=on --with-newdebug=on
 
-# >>>> FLAGS DE DEBUG (ADICIONADO)
-DEBUG_CFLAGS=		-g -O0 -fno-omit-frame-pointer
-DEBUG_CXXFLAGS=		-g -O0 -fno-omit-frame-pointer
-DEBUG_VARS=		STRIP=
-# <<<< FLAGS DE DEBUG
-
 #SSL_MITM_USES=                 ssl
 SSL_MITM_CONFIGURE_ENABLE=      sslmitm
 #DEFAULT_VERSIONS+=                     ssl=openssl
