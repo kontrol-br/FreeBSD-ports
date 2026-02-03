@@ -462,7 +462,9 @@ pkg_upgrade_repo() {
 			local _force=""
 			;;
 		">")
-			local _force=" -f"
+			# Do not downgrade repository package when repo points to
+			# an older ABI or release branch.
+			return
 			;;
 		"=")
 			return
