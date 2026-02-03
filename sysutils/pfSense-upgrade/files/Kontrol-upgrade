@@ -944,6 +944,9 @@ pkg_upgrade() {
 		if upgrade_available; then
 			delete_annotation=1
 			if [ -n "${is_pkg_locked}" ]; then
+				_exec "pkg-static bootstrap -f" \
+				    "Bootstrapping pkg for major upgrade" mute
+
 				# Upgrade pkg
 				pkg_unlock pkg
 				_pkg annotate -q -D ${kernel_pkg} new_major
