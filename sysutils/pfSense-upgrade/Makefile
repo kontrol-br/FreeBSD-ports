@@ -27,7 +27,7 @@ do-extract:
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/sbin
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
-	${MKDIR} ${STAGEDIR}${PREFIX}/share/pfSense
+	${MKDIR} ${STAGEDIR}${PREFIX}/share/Kontrol
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade \
 		${STAGEDIR}${PREFIX}/libexec/Kontrol-upgrade
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade.wrapper \
