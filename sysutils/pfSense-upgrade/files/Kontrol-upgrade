@@ -446,6 +446,10 @@ pkg_update() {
 }
 
 pkg_upgrade_repo() {
+	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+		return
+	fi
+
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
 		pkg_unlock pkg
@@ -913,6 +917,12 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "2" ]; then
+		if [ -n "${is_pkg_locked}" ]; then
+			export IGNORE_OSVERSION=yes
+		fi
+
+		pkg_update force
+
 		pkg_lock "${pkg_prefix}*"
 		unlock_additional_pkgs=1
 
@@ -938,6 +948,9 @@ pkg_upgrade() {
 		if upgrade_available; then
 			delete_annotation=1
 			if [ -n "${is_pkg_locked}" ]; then
+				_exec "pkg-static bootstrap -f" \
+				    "Bootstrapping pkg for major upgrade" mute
+
 				# Upgrade pkg
 				pkg_unlock pkg
 				_pkg annotate -q -D ${kernel_pkg} new_major
@@ -1006,6 +1019,12 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "3" ]; then
+		if [ -n "${is_pkg_locked}" ]; then
+			export IGNORE_OSVERSION=yes
+		fi
+
+		pkg_update force
+
 		if upgrade_available; then
 			delete_annotation=1
 			_exec "pkg-static upgrade${dont_update}" \
@@ -1561,8 +1580,12 @@ fi
 product_version=$(cat /etc/version)
 do_not_send_uniqueid=$(read_xml_tag.sh boolean system/do_not_send_uniqueid)
 if [ "${do_not_send_uniqueid}" != "true" ]; then
-	uniqueid=$(gnid)
-	export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
+	if command -v gnid >/dev/null 2>&1; then
+		uniqueid=$(gnid)
+		export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
+	else
+		export HTTP_USER_AGENT="${product}/${product_version}"
+	fi
 else
 	export HTTP_USER_AGENT="${product}/${product_version}"
 fi
