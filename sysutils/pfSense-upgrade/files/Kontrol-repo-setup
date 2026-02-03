@@ -127,6 +127,23 @@ product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
 validate_repo_conf
 abi_setup
 
+repo_state_file="/var/run/${product}_repo_conf_path"
+repo_conf_path="/usr/local/etc/pkg/repos/${product}.conf"
+current_repo_conf="$(readlink ${repo_conf_path} 2>/dev/null)"
+if [ -z "${current_repo_conf}" -a -f "${repo_conf_path}" ]; then
+	current_repo_conf="${repo_conf_path}"
+fi
+if [ -n "${current_repo_conf}" ]; then
+	if [ -f "${repo_state_file}" ]; then
+		previous_repo_conf="$(cat "${repo_state_file}")"
+		if [ "${previous_repo_conf}" != "${current_repo_conf}" ]; then
+			rm -f "/var/run/${product}_version" \
+			    "/var/run/${product}_version.rc"
+		fi
+	fi
+	echo "${current_repo_conf}" > "${repo_state_file}"
+fi
+
 if [ -z "${dont_update}" ]; then
 	/usr/local/bin/php -r 'require_once("pkg-utils.inc");update_repos();'
 	/usr/local/sbin/pkg-static update -f >/dev/null 2>&1

@@ -446,6 +446,10 @@ pkg_update() {
 }
 
 pkg_upgrade_repo() {
+	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+		return
+	fi
+
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
 		pkg_unlock pkg
