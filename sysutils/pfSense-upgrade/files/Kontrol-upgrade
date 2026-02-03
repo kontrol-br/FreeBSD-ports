@@ -917,6 +917,10 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "2" ]; then
+		if [ -n "${is_pkg_locked}" ]; then
+			export IGNORE_OSVERSION=yes
+		fi
+
 		pkg_update force
 
 		pkg_lock "${pkg_prefix}*"
@@ -1015,6 +1019,10 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "3" ]; then
+		if [ -n "${is_pkg_locked}" ]; then
+			export IGNORE_OSVERSION=yes
+		fi
+
 		pkg_update force
 
 		if upgrade_available; then
