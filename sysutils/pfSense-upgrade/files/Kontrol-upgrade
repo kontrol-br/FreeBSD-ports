@@ -271,11 +271,22 @@ repo_is_plus_upgrade() {
 
 abi_setup() {
 	local _freebsd_version=$(uname -r)
-	local _osversion=$(sysctl -n kern.osreldate 2>/dev/null)
 	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
 
 	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
-	CUR_OSVERSION="${_osversion}"
+	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
+
+	if [ "${arch}" = "armv6" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${arch}:32:el:eabi:hardfp"
+	elif [ "${arch}" = "armv7" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${arch}:32:el:eabi:softfp"
+	elif [ "${arch}" = "aarch64" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${arch}:64"
+	elif [ "${arch}" = "i386" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:x86:32"
+	else
+		CUR_ALTABI="${CUR_ALTABI}:x86:64"
+	fi
 
 	if [ ! -e ${_pkg_repo_conf} ]; then
 		validate_repo_conf
@@ -289,15 +300,15 @@ abi_setup() {
 		ABI=${CUR_ABI}
 	fi
 
-	if [ -f ${_repo_abi_file%%.conf}.osversion ]; then
-		OSVERSION=$(cat ${_repo_abi_file%%.conf}.osversion)
+	if [ -f ${_repo_abi_file%%.conf}.altabi ]; then
+		ALTABI=$(cat ${_repo_abi_file%%.conf}.altabi)
 	else
-		OSVERSION=${CUR_OSVERSION}
+		ALTABI=${CUR_ALTABI}
 	fi
 
 	# Make sure pkg.conf is set properly so GUI can work
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
+	echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
@@ -330,14 +341,14 @@ EOF
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" ] ; then
+	if [ "${CUR_ABI}" = "${ABI}" -o "${CUR_ABI}" = "${ALTABI}" ] ; then
 		NEW_MAJOR=""
 	else
 		NEW_MAJOR=1
 		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_OSVERSION ABI OSVERSION NEW_MAJOR
+	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
 }
 
 get_pkg_repo_url() {
@@ -394,27 +405,8 @@ pkg_update() {
 
 	_exec "pkg-static update${_force}" "Updating repositories metadata" \
 	    ${_mute} "" do_not_exit
-	local _update_rc=$?
 
-	if [ ${_update_rc} -ne 0 -a -n "${booting}" ]; then
-		local _retry_max=6
-		local _retry_wait=10
-		local _retry=1
-		while [ ${_retry} -le ${_retry_max} ]; do
-			_echo "Repository update failed during boot." \
-			    "Retrying in ${_retry_wait}s" \
-			    "(${_retry}/${_retry_max})..."
-			sleep ${_retry_wait}
-			_exec "pkg-static update${_force}" \
-			    "Updating repositories metadata" ${_mute} "" \
-			    do_not_exit
-			_update_rc=$?
-			[ ${_update_rc} -eq 0 ] && break
-			_retry=$(( _retry + 1 ))
-		done
-	fi
-
-	if [ ${_update_rc} -ne 0 -a -z "${_do_not_bootstrap}" ]; then
+	if [ $? -ne 0 -a -z "${_do_not_bootstrap}" ]; then
 		# Since pkg version 1.13 it moved to use repository metadata
 		# version 2, which cannot be processed by older pkg binaries
 		#
@@ -454,10 +446,6 @@ pkg_update() {
 }
 
 pkg_upgrade_repo() {
-	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
-		return
-	fi
-
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
 		pkg_unlock pkg
@@ -925,12 +913,6 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "2" ]; then
-		if [ -n "${is_pkg_locked}" ]; then
-			export IGNORE_OSVERSION=yes
-		fi
-
-		pkg_update force
-
 		pkg_lock "${pkg_prefix}*"
 		unlock_additional_pkgs=1
 
@@ -956,9 +938,6 @@ pkg_upgrade() {
 		if upgrade_available; then
 			delete_annotation=1
 			if [ -n "${is_pkg_locked}" ]; then
-				_exec "pkg-static bootstrap -f" \
-				    "Bootstrapping pkg for major upgrade" mute
-
 				# Upgrade pkg
 				pkg_unlock pkg
 				_pkg annotate -q -D ${kernel_pkg} new_major
@@ -1027,12 +1006,6 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "3" ]; then
-		if [ -n "${is_pkg_locked}" ]; then
-			export IGNORE_OSVERSION=yes
-		fi
-
-		pkg_update force
-
 		if upgrade_available; then
 			delete_annotation=1
 			_exec "pkg-static upgrade${dont_update}" \
@@ -1123,13 +1096,12 @@ get_repo_abi_major() {
 get_repo_abi_values() {
 	local _repo_conf="${1}"
 	local _abi_file="${_repo_conf%%.conf}.abi"
-	local _osversion_file="${_repo_conf%%.conf}.osversion"
+	local _altabi_file="${_repo_conf%%.conf}.altabi"
 
 	REPO_ABI="${CUR_ABI}"
-	REPO_OSVERSION="${CUR_OSVERSION}"
+	REPO_ALTABI="${CUR_ALTABI}"
 	[ -f "${_abi_file}" ] && REPO_ABI=$(cat "${_abi_file}")
-	[ -f "${_osversion_file}" ] \
-	    && REPO_OSVERSION=$(cat "${_osversion_file}")
+	[ -f "${_altabi_file}" ] && REPO_ALTABI=$(cat "${_altabi_file}")
 }
 
 prepare_repo_override_dir() {
@@ -1151,7 +1123,7 @@ compare_pkg_version_repo() {
 	local _pkg_name="${1}"
 	local _repo_dir="${2}"
 	local _abi="${3}"
-	local _osversion="${4}"
+	local _altabi="${4}"
 
 	if [ -z "${_pkg_name}" ]; then
 		echo '!'
@@ -1172,11 +1144,11 @@ compare_pkg_version_repo() {
 	fi
 
 	local _rver=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-	    -o ABI=${_abi} -o OSVERSION=${_osversion} rquery -U %v ${_pkg_name})
+	    -o ABI=${_abi} -o ALTABI=${_altabi} rquery -U %v ${_pkg_name})
 
 	if [ -z "${_rver}" ]; then
 		_rver=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-		    -o ABI=${_abi} -o OSVERSION=${_osversion} rquery %v ${_pkg_name})
+		    -o ABI=${_abi} -o ALTABI=${_altabi} rquery %v ${_pkg_name})
 	fi
 
 	if [ -z "${_rver}" ]; then
@@ -1247,12 +1219,12 @@ check_upgrade_repo_override() {
 
 	if [ -z "${_skip_update}" -a -z "${dont_update}" ]; then
 		pkg-static -o REPOS_DIR=${_repo_dir} -o ABI=${REPO_ABI} \
-		    -o OSVERSION=${REPO_OSVERSION} update -f >/dev/null 2>&1
+		    -o ALTABI=${REPO_ALTABI} update -f >/dev/null 2>&1
 	fi
 
 	for _package in ${_meta_pkg} ${_core_pkgs}; do
 		local _version_compare=$(compare_pkg_version_repo ${_package} \
-		    ${_repo_dir} ${REPO_ABI} ${REPO_OSVERSION})
+		    ${_repo_dir} ${REPO_ABI} ${REPO_ALTABI})
 
 		case "${_version_compare}" in
 			=|'>')
@@ -1261,12 +1233,12 @@ check_upgrade_repo_override() {
 		esac
 
 		local _new_version=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-		    -o ABI=${REPO_ABI} -o OSVERSION=${REPO_OSVERSION} \
+		    -o ABI=${REPO_ABI} -o ALTABI=${REPO_ALTABI} \
 		    rquery -U %v ${_package})
 
 		if [ -z "${_new_version}" ]; then
 			_new_version=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-			    -o ABI=${REPO_ABI} -o OSVERSION=${REPO_OSVERSION} \
+			    -o ABI=${REPO_ABI} -o ALTABI=${REPO_ALTABI} \
 			    rquery %v ${_package})
 		fi
 
@@ -1589,12 +1561,8 @@ fi
 product_version=$(cat /etc/version)
 do_not_send_uniqueid=$(read_xml_tag.sh boolean system/do_not_send_uniqueid)
 if [ "${do_not_send_uniqueid}" != "true" ]; then
-	if command -v gnid >/dev/null 2>&1; then
-		uniqueid=$(gnid)
-		export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
-	else
-		export HTTP_USER_AGENT="${product}/${product_version}"
-	fi
+	uniqueid=$(gnid)
+	export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
 else
 	export HTTP_USER_AGENT="${product}/${product_version}"
 fi
