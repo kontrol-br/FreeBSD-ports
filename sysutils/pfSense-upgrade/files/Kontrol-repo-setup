@@ -2,151 +2,293 @@
 #
 # Kontrol-repo-setup
 #
-# Setup repository configuration and pkg ABI for Kontrol/pfSense systems.
+# part of pfSense (https://www.pfsense.org)
+# Copyright (c) 2015-2023 Rubicon Communications, LLC (Netgate)
+# All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 usage() {
 	me=$(basename $0)
-	cat << EOD >&2
-Usage: ${me} [-U]
-	-U          - Do not update repository information
+        cat << EOD >&2
+Usage: $(basename "$0") [-hU] [<destdir> <conf>]
+	-h		- this help text
+	-U		- do not update the repository settings
+
+	<destdir> overrides the destination for the pkg.conf file and repos directory
+	<conf> overrides system/pkg_repo_conf_path in the config
 EOD
 }
 
-repo_is_custom() {
-	local _pkg_repo_conf_path="${1}"
+_pkg() {
+	/usr/local/sbin/pkg-static "$@" 2>/dev/null
+	return $?
+}
 
-	if [ -n "$(echo ${_pkg_repo_conf_path} | grep ${product}-repo-custom)" ]; then
-		return 0
+get_default_repo() {
+	local _pkg_repo_files="${PLUS_CERT_BASE}/${PRODUCT}-repo-*.name"
+	for file in ${_pkg_repo_files}; do
+
+		repo_path="${file%.name}"
+		if [ -f "${repo_path}.default" ]; then
+			echo "${repo_path}.conf"
+			return
+		fi
+	done
+	echo ""
+}
+
+get_repo_name() {
+	local _repo_conf="${1}"
+	repo_path="${_repo_conf%.conf}"
+	repo_name="${repo_path}.name"
+	if [ ! -f "${repo_name}" ]; then
+		echo -n ""
+		return
 	fi
-	return 1
+	/bin/cat "${repo_name}"
 }
 
 validate_repo_conf() {
-	local _repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
-	local _default="/usr/local/share/${product}/pkg/repos/${product}-repo.conf"
+	local default_file=$(ls -1 ${PLUS_CERT_BASE}/*.default 2>/dev/null | tail -n 1)
+	local default="${PLUS_CERT_BASE}/${PRODUCT}-repo-stable.conf"
+	local repo_name=$(get_repo_name "${PKG_REPO_CONF_PATH}")
+	local pkg_repo_conf=""
 
-	pkg_repo_conf_path=$(read_xml_tag.sh string system/pkg_repo_conf_path)
-	if [ -z "${pkg_repo_conf_path}" -o ! -f "${pkg_repo_conf_path}" ]; then
-		pkg_repo_conf_path="${_default}"
+	if [ -n "${default_file}" ] && [ -f "${default_file}" ]; then
+		default="${default_file%%.default}.conf"
 	fi
 
-	mkdir -p /usr/local/etc/pkg/repos
-
-	if [ -e "${_repo_conf}" -a ! -L "${_repo_conf}" ]; then
-		rm -f ${_repo_conf}
+	if [ -n "${PKG_REPO_CONF_PATH}" ] && [ -f "${PKG_REPO_CONF_PATH}" ]; then
+		pkg_repo_conf="${PKG_REPO_CONF_PATH}"
+	elif [ -n "${repo_name}" ]; then
+		pkg_repo_conf="${PLUS_CERT_BASE}/${PRODUCT}-repo-${repo_name}.conf"
 	fi
 
-	if [ "$(readlink ${_repo_conf} 2>/dev/null)" != \
-	    "${pkg_repo_conf_path}" ]; then
-		ln -sf ${pkg_repo_conf_path} ${_repo_conf}
+	# Use the default config if pkg_repo_conf points to an invalid file, unless
+	# invoked with destdir and conf arguments as indicated by a non-null string
+	# in dbdir. In this case, abort with an error rather than do something
+	# unexpected for this mode of operation.
+	if [ -z "${pkg_repo_conf}" ] || [ ! -f "${pkg_repo_conf}" ]; then
+		if [ -n "${dbdir}" ]; then
+			echo "No such file ${pkg_repo_conf}"
+			exit 1
+		fi
+		if [ -f "${default}" ]; then
+			pkg_repo_conf=${default}
+		else
+			echo "No such file ${pkg_repo_conf}"
+			exit 1
+		fi
+	fi
+
+	if [ -f "${pkg_repo_conf}" ]; then
+		mkdir -p $(dirname "${PFSENSE_REPO_CONF}")
+		if [ -e "${PFSENSE_REPO_CONF}" -a ! -L "${PFSENSE_REPO_CONF}" ]; then
+			rm -f ${PFSENSE_REPO_CONF}
+			ln -sf ${pkg_repo_conf} ${PFSENSE_REPO_CONF}
+		fi
+
+		if [ "$(readlink ${PFSENSE_REPO_CONF})" != \
+		    "${pkg_repo_conf}" ]; then
+			mkdir -p $(dirname "${PFSENSE_REPO_CONF}")
+			ln -sf ${pkg_repo_conf} ${PFSENSE_REPO_CONF}
+		fi
+		export PKG_REPO_CONF_PATH="${pkg_repo_conf}"
 	fi
 }
 
 abi_setup() {
-	local _freebsd_version=$(uname -r)
-	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
+	local _arch="$(uname -p)"
+	local _freebsd_version="$(uname -r)"
+	local _repo_conf_file="$(readlink ${PFSENSE_REPO_CONF})"
 
-	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
+	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${_arch}"
 	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
 
-	if [ "${arch}" = "armv6" ]; then
-		CUR_ALTABI="${CUR_ALTABI}:${arch}:32:el:eabi:hardfp"
-	elif [ "${arch}" = "armv7" ]; then
-		CUR_ALTABI="${CUR_ALTABI}:${arch}:32:el:eabi:softfp"
-	elif [ "${arch}" = "aarch64" ]; then
-		CUR_ALTABI="${CUR_ALTABI}:${arch}:64"
-	elif [ "${arch}" = "i386" ]; then
+	if [ "${_arch}" = "armv6" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${_arch}:32:el:eabi:hardfp"
+	elif [ "${_arch}" = "armv7" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${_arch}:32:el:eabi:softfp"
+	elif [ "${_arch}" = "aarch64" ]; then
+		CUR_ALTABI="${CUR_ALTABI}:${_arch}:64"
+	elif [ "${_arch}" = "i386" ]; then
 		CUR_ALTABI="${CUR_ALTABI}:x86:32"
 	else
 		CUR_ALTABI="${CUR_ALTABI}:x86:64"
 	fi
 
-	if [ ! -e ${_pkg_repo_conf} ]; then
-		validate_repo_conf
-	fi
-
-	local _repo_abi_file=$(readlink ${_pkg_repo_conf})
-
-	if [ -f ${_repo_abi_file%%.conf}.abi ]; then
-		ABI=$(cat ${_repo_abi_file%%.conf}.abi)
+	if [ -f ${_repo_conf_file%%.conf}.abi ]; then
+		ABI=$(cat ${_repo_conf_file%%.conf}.abi)
 	else
 		ABI=${CUR_ABI}
 	fi
 
-	if [ -f ${_repo_abi_file%%.conf}.altabi ]; then
-		ALTABI=$(cat ${_repo_abi_file%%.conf}.altabi)
+	if [ -f ${_repo_conf_file%%.conf}.altabi ]; then
+		ALTABI=$(cat ${_repo_conf_file%%.conf}.altabi)
 	else
 		ALTABI=${CUR_ALTABI}
 	fi
 
-	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-	echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+	# Make sure pkg.conf is set properly so GUI can work
+	cat << EOF > "${PKG_CONF}"
+ABI=${ABI}
+ALTABI=${ALTABI}
+EOF
+	if [ -n "${dbdir}" ] && [ -n "${reposdir}" ]; then
+			cat << EOF >> ${PKG_CONF}""
+PKG_DBDIR=${dbdir}
+REPOS_DIR=[${reposdir}]
+EOF
+	fi
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
-	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
-	AUTH_KEY="/etc/ssl/pfSense-repo-custom.key"
-	if repo_is_custom "${pkg_repo_conf_path}" -a -f "${AUTH_CA}" \
-	    -a -f "${AUTH_CERT}" -a -f "${AUTH_KEY}" ; then
-		cat << EOF >> /usr/local/etc/pkg.conf
+	REPO_NAME=$(get_repo_name "${PKG_REPO_CONF_PATH}")
+	PLUS_REPO_CONF="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_NAME}.conf"
+	PLUS_CERT="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_NAME}-cert.pem"
+	PLUS_KEY="${PLUS_CERT_BASE}/${PRODUCT}-repo-${REPO_NAME}-key.pem"
+	if [ -f "${PLUS_REPO_CONF}" ] && \
+	   [ "${PLUS_REPO_CONF}" != "$(realpath "${PFSENSE_REPO_CONF}")" ]; then
+		rm -f "${PFSENSE_REPO_CONF}"
+		ln -s "${PLUS_REPO_CONF}" "${PFSENSE_REPO_CONF}"
+	fi
+	if [ -f "${AUTH_CA}" -a -f "${PLUS_CERT}" -a -f "${PLUS_KEY}" ]; then
+		cat << EOF >> "${PKG_CONF}"
 PKG_ENV {
 	SSL_CA_CERT_FILE=${AUTH_CA}
-	SSL_CLIENT_CERT_FILE=${AUTH_CERT}
-	SSL_CLIENT_KEY_FILE=${AUTH_KEY}
+	SSL_CLIENT_CERT_FILE=${PLUS_CERT}
+	SSL_CLIENT_KEY_FILE=${PLUS_KEY}
 }
 EOF
 	fi
 
-	if [ "${arch}" = "aarch64" ]; then
-		cat << EOF >> /usr/local/etc/pkg.conf
-PKG_ENV {
-	OPENSSL_CONF=/etc/thoth/openssl.cnf
-	SSL_CA_CERT_FILE=/etc/thoth/ca.pem
-	SSL_CLIENT_CERT_FILE=/etc/thoth/device.pem
-	SSL_CLIENT_KEY_FILE=/etc/thoth/key.pem
-}
-EOF
+	err=0
+
+	local _pkg_abi=$(_pkg query %q pkg)
+	if [ "${CUR_ABI}" != "${_pkg_abi}" ] && [ "${_pkg_abi}" != "${ABI}" ]; then
+		# Upgrade pkg
+		err=11
 	fi
+
+	if [ "${CUR_ABI}" != "${ABI}" ] && [ "${CUR_ABI}" != "${ALTABI}" ]; then
+		# Set NEW_MAJOR
+		if [ "${err}" -eq 11 ]; then
+			err=13
+		else
+			err=12
+		fi
+	fi
+
+	return $err
 }
 
-dont_update=""
-while getopts "U" opt; do
+
+pfSense_repo_setup() {
+
+	validate_repo_conf
+	[ -e "${PFSENSE_REPO_CONF}" ] || exit 1
+
+	local _old_repo_conf=""
+	if [ -L "${PFSENSE_REPO_CONF}" ]; then
+		_old_repo_conf=$(readlink "${PFSENSE_REPO_CONF}")
+	fi
+
+	cp "${PFSENSE_REPO_CONF}" "/tmp/${PRODUCT}.conf.copy"
+
+	if [ -z "${NOUPDATE}" ]; then
+		/usr/local/bin/php -r \
+		    'require_once("pkg-utils.inc");update_repos();'
+	fi
+	if [ -z "${NOUPDATE}" ] || [ "${_old_repo_conf}" != "$(readlink "${PFSENSE_REPO_CONF}")" ]; then
+		/usr/local/sbin/pkg-static update -f >/dev/null 2>&1
+	fi
+
+	# Validate the new settings
+	validate_repo_conf
+
+	# Setup the repository.
+	abi_setup
+	err=$?
+
+	# If conf differs, may need force a pkg update
+	if ! cmp -s "${PFSENSE_REPO_CONF}" "/tmp/${PRODUCT}.conf.copy" && \
+	    [ "${err}" -eq 0 ]; then
+		err=14
+	fi
+	rm -f "/tmp/${PRODUCT}.conf.copy"
+
+	return $err
+}
+
+
+#
+# main()
+#
+
+PHP="/usr/local/bin/php"
+READ_XML_TAG="/usr/local/sbin/read_xml_tag.sh"
+export PRODUCT="$("${PHP}" -n /usr/local/sbin/read_global_var product_name Kontrol)"
+[ -n "${PRODUCT}" ] || PRODUCT="Kontrol"
+export PLUS_CERT_BASE="$("${PHP}" -n /usr/local/sbin/read_global_var pkg_repos_path ${PRODUCT})"
+[ -n "${PLUS_CERT_BASE}" ] || PLUS_CERT_BASE="/usr/local/share/${PRODUCT}/pkg/repos"
+export PFSENSE_REPO_CONF="/usr/local/etc/pkg/repos/${PRODUCT}.conf"
+export PKG_CONF="/usr/local/etc/pkg.conf"
+export PKG_REPO_CONF_PATH="$("${READ_XML_TAG}" string system/pkg_repo_conf_path)"
+
+# If no branch is saved on the XML configuration, use the default repo.
+if [ -z "${PKG_REPO_CONF_PATH}" ]; then
+	export PKG_REPO_CONF_PATH="$(get_default_repo)"
+fi
+
+unset NOUPDATE
+while getopts hU opt; do
 	case ${opt} in
-		U)
-			dont_update=1
-			;;
-		*)
-			usage
-			exit 1
-			;;
+	h)
+		usage
+		exit 0
+		;;
+	U)
+		NOUPDATE=1
+		;;
+	*)
+		usage
+		exit 1
+		;;
 	esac
 done
 
-arch=$(uname -p)
-product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
-
-validate_repo_conf
-abi_setup
-
-repo_state_file="/var/run/${product}_repo_conf_path"
-repo_conf_path="/usr/local/etc/pkg/repos/${product}.conf"
-current_repo_conf="$(readlink ${repo_conf_path} 2>/dev/null)"
-if [ -z "${current_repo_conf}" -a -f "${repo_conf_path}" ]; then
-	current_repo_conf="${repo_conf_path}"
-fi
-if [ -n "${current_repo_conf}" ]; then
-	if [ -f "${repo_state_file}" ]; then
-		previous_repo_conf="$(cat "${repo_state_file}")"
-		if [ "${previous_repo_conf}" != "${current_repo_conf}" ]; then
-			rm -f "/var/run/${product}_version" \
-			    "/var/run/${product}_version.rc"
-		fi
+shift $((${OPTIND}-1))
+if [ $# != 0 ]; then
+	if [ $# != 2 ]; then
+		usage
+		exit 1
 	fi
-	echo "${current_repo_conf}" > "${repo_state_file}"
+	dbdir="${1}/db"
+	reposdir="${1}/repos"
+	export PKG_CONF="${1}/pkg.conf"
+	export PFSENSE_REPO_CONF="${reposdir}/${PRODUCT}.conf"
+	export PKG_REPO_CONF_PATH=$2
 fi
 
-if [ -z "${dont_update}" ]; then
-	/usr/local/bin/php -r 'require_once("pkg-utils.inc");update_repos();'
-	/usr/local/sbin/pkg-static update -f >/dev/null 2>&1
-fi
+# Fetch the repository data and setup the repository access.
+pfSense_repo_setup
+err=$?
 
-exit 0
+# Exit codes:
+# 0 = okay
+# 1 = error
+# 11 = update pkg
+# 12 = new major
+# 13 = update pkg + new major
+# 14 = conf changed, check pkg version
+exit $err
