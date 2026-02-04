@@ -394,8 +394,27 @@ pkg_update() {
 
 	_exec "pkg-static update${_force}" "Updating repositories metadata" \
 	    ${_mute} "" do_not_exit
+	local _update_rc=$?
 
-	if [ $? -ne 0 -a -z "${_do_not_bootstrap}" ]; then
+	if [ ${_update_rc} -ne 0 -a -n "${booting}" ]; then
+		local _retry_max=6
+		local _retry_wait=10
+		local _retry=1
+		while [ ${_retry} -le ${_retry_max} ]; do
+			_echo "Repository update failed during boot." \
+			    "Retrying in ${_retry_wait}s" \
+			    "(${_retry}/${_retry_max})..."
+			sleep ${_retry_wait}
+			_exec "pkg-static update${_force}" \
+			    "Updating repositories metadata" ${_mute} "" \
+			    do_not_exit
+			_update_rc=$?
+			[ ${_update_rc} -eq 0 ] && break
+			_retry=$(( _retry + 1 ))
+		done
+	fi
+
+	if [ ${_update_rc} -ne 0 -a -z "${_do_not_bootstrap}" ]; then
 		# Since pkg version 1.13 it moved to use repository metadata
 		# version 2, which cannot be processed by older pkg binaries
 		#
