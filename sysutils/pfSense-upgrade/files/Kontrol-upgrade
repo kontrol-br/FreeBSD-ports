@@ -407,6 +407,13 @@ pkg_update() {
 	    ${_mute} "" do_not_exit
 
 	if [ $? -ne 0 -a -z "${_do_not_bootstrap}" ]; then
+		if [ -n "${NEW_MAJOR}" ]; then
+			_exec "${_pkg_binary} bootstrap -f" \
+			    "Bootstrap pkg due to major OS upgrade"
+			pkg_update "${force}" "${_mute}" _do_not_bootstrap
+			return
+		fi
+
 		# Since pkg version 1.13 it moved to use repository metadata
 		# version 2, which cannot be processed by older pkg binaries
 		#
