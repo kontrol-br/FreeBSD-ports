@@ -306,9 +306,12 @@ abi_setup() {
 		ALTABI=${CUR_ALTABI}
 	fi
 
+	local _osversion=$(sysctl -n kern.osreldate)
+
 	# Make sure pkg.conf is set properly so GUI can work
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
 	echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+	echo "OSVERSION=${_osversion}" >> /usr/local/etc/pkg.conf
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
