@@ -1,7 +1,8 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-upgrade
-PORTVERSION=	1.3.25
+PORTVERSION=	1.3.26
+PORTREVISION=	# empty
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -16,8 +17,8 @@ NO_MTREE=	yes
 NO_BUILD=	yes
 
 PLIST_FILES=	libexec/Kontrol-upgrade \
-		sbin/Kontrol-repo-setup \
-		sbin/Kontrol-upgrade
+		sbin/Kontrol-upgrade \
+		sbin/Kontrol-repo-setup
 
 do-extract:
 	@${MKDIR} ${WRKSRC}
