@@ -1,6 +1,6 @@
 # $FreeBSD$
 
-PORTNAME=	pfSense-upgrade
+PORTNAME=	Kontrol-upgrade
 PORTVERSION=	1.2.5
 PORTREVISION=	# empty
 CATEGORIES=	sysutils
@@ -9,7 +9,7 @@ DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
 
 MAINTAINER=	coreteam@pfsense.org
-COMMENT=	pfSense upgrade script
+COMMENT=	Kontrol upgrade script
 
 LICENSE=	APACHE20
 
@@ -27,7 +27,7 @@ do-extract:
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/sbin
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
-	${MKDIR} ${STAGEDIR}${PREFIX}/share/pfSense
+	${MKDIR} ${STAGEDIR}${PREFIX}/share/Kontrol
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade \
 		${STAGEDIR}${PREFIX}/libexec/Kontrol-upgrade
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade.wrapper \
