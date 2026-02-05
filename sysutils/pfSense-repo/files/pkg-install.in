@@ -20,6 +20,29 @@ fi
 
 REPO_PATH=/usr/local/etc/pkg/repos
 REPO_CONF=${REPO_PATH}/%%PRODUCT_NAME%%.conf
+REPO_SHARE_DIR=/usr/local/share/%%PRODUCT_NAME%%/pkg/repos
+
+if [ -d "${REPO_SHARE_DIR}" ]; then
+	for repo_file in "${REPO_SHARE_DIR}"/*; do
+		[ -e "${repo_file}" ] || continue
+		base=$(basename "${repo_file}")
+		case "${base}" in
+			*.conf|*.descr|*.abi|*.altabi)
+				repo_name="${base%.*}"
+				keep_repo=""
+				for allowed_repo in %%REPO_FILES%%; do
+					if [ "${repo_name}" = "${allowed_repo}" ]; then
+						keep_repo=1
+						break
+					fi
+				done
+				if [ -z "${keep_repo}" ]; then
+					rm -f "${repo_file}"
+				fi
+				;;
+		esac
+	done
+fi
 
 if [ ! -f "%%DEFAULT_REPO%%" ]; then
 	echo "===> ERROR: Default repo conf not found!"
