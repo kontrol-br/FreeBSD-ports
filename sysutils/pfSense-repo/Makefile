@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.8.1
-PORTREVISION=	1
+PORTREVISION=	# empty
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -30,7 +30,7 @@ PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
 .include <bsd.port.pre.mk>
 
 MIRROR_TYPE?=	none
-PFSENSE_REPOS?=	pfSense-repo pfSense-repo-previous pfSense-repo-devel
+PFSENSE_REPOS?=	pfSense-repo pfSense-repo-previous
 PFSENSE_REPOS_${ARCH}?=	${PFSENSE_REPOS}
 PFSENSE_DEFAULT_REPO?=	pfSense-repo-devel
 PFSENSE_DEFAULT_REPO_${ARCH}?=	${PFSENSE_DEFAULT_REPO}
