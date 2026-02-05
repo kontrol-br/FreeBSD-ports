@@ -79,7 +79,9 @@ abi_setup() {
 		ALTABI=${CUR_ALTABI}
 	fi
 
+	OSVERSION=$(sysctl -n kern.osreldate)
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
+	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
