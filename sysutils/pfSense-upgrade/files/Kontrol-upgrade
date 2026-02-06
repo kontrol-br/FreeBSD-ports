@@ -458,6 +458,16 @@ pkg_upgrade_repo() {
 
 	local _repo_pkg="${product}-repo"
 
+	if ! is_pkg_installed ${_repo_pkg}; then
+		_exec "pkg-static install${dont_update} ${_repo_pkg}" \
+		    "Installing ${_repo_pkg}" mute "" do_not_exit
+		if [ $? -ne 0 ]; then
+			_echo "WARNING: Unable to install ${_repo_pkg};" \
+			    "skipping repository package upgrade"
+			return
+		fi
+	fi
+
 	case "$(compare_pkg_version ${_repo_pkg})" in
 		"<")
 			local _force=""
