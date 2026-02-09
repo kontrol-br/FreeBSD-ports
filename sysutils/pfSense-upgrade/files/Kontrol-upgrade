@@ -394,7 +394,8 @@ EOF
 		NEW_MAJOR=1
 	fi
 
-	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" -a \
+	    "${action}" != "check" ]; then
 		ABI="${CUR_ABI}"
 		ALTABI="${CUR_ALTABI}"
 	else
@@ -406,7 +407,7 @@ EOF
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
 	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
 
-	_debug "abi_setup pkg_abi=${_pkg_abi} reinstall_pkg=${reinstall_pkg:-0} NEW_MAJOR=${NEW_MAJOR:-0} OSVERSION=${OSVERSION}"
+	_debug "abi_setup pkg_abi=${_pkg_abi} reinstall_pkg=${reinstall_pkg:-0} NEW_MAJOR=${NEW_MAJOR:-0} OSVERSION=${OSVERSION} IGNORE_OSVERSION=${IGNORE_OSVERSION:-}"
 	_debug_file "/usr/local/etc/pkg.conf"
 
 	export CUR_ABI CUR_ALTABI ABI NEW_MAJOR
