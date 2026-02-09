@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-upgrade
-PORTVERSION=	1.3.41
+PORTVERSION=	1.3.42
 PORTREVISION=	# empty
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
