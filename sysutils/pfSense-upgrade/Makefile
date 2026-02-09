@@ -16,6 +16,10 @@ LICENSE=	APACHE20
 NO_MTREE=	yes
 NO_BUILD=	yes
 
+OPTIONS_DEFINE=	DEBUG
+DEBUG_DESC=	Enable verbose debug logging by default
+OPTIONS_DEFAULT=DEBUG
+
 PLIST_FILES=	libexec/Kontrol-upgrade \
 		sbin/Kontrol-upgrade \
 		sbin/Kontrol-repo-setup
@@ -23,6 +27,12 @@ PLIST_FILES=	libexec/Kontrol-upgrade \
 do-extract:
 	@${MKDIR} ${WRKSRC}
 	${CP} -r ${FILESDIR}/* ${WRKSRC}
+
+post-patch:
+.if ${PORT_OPTIONS:MDEBUG}
+	${REINPLACE_CMD} 's/^DEBUG_DEFAULT=0/DEBUG_DEFAULT=1/' \
+		${WRKSRC}/Kontrol-upgrade
+.endif
 
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/sbin
