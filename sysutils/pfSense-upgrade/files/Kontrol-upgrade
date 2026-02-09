@@ -293,18 +293,19 @@ abi_setup() {
 	fi
 
 	local _repo_abi_file=$(readlink ${_pkg_repo_conf})
+	local _repo_abi="${CUR_ABI}"
+	local _repo_altabi="${CUR_ALTABI}"
 
 	if [ -f ${_repo_abi_file%%.conf}.abi ]; then
-		ABI=$(cat ${_repo_abi_file%%.conf}.abi)
-	else
-		ABI=${CUR_ABI}
+		_repo_abi=$(cat ${_repo_abi_file%%.conf}.abi)
 	fi
 
 	if [ -f ${_repo_abi_file%%.conf}.altabi ]; then
-		ALTABI=$(cat ${_repo_abi_file%%.conf}.altabi)
-	else
-		ALTABI=${CUR_ALTABI}
+		_repo_altabi=$(cat ${_repo_abi_file%%.conf}.altabi)
 	fi
+
+	ABI="${_repo_abi}"
+	ALTABI="${_repo_altabi}"
 
 	# Make sure pkg.conf is set properly so GUI can work
 	OSVERSION=$(sysctl -n kern.osreldate)
@@ -342,11 +343,17 @@ EOF
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" -o "${CUR_ABI}" = "${ALTABI}" ] ; then
+	if [ "${CUR_ABI}" = "${_repo_abi}" -o "${CUR_ABI}" = "${_repo_altabi}" ] ; then
 		NEW_MAJOR=""
 	else
 		NEW_MAJOR=1
-		export IGNORE_OSVERSION=yes
+	fi
+
+	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+		ABI="${CUR_ABI}"
+		ALTABI="${CUR_ALTABI}"
+	else
+		[ -n "${NEW_MAJOR}" ] && export IGNORE_OSVERSION=yes
 	fi
 
 	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
