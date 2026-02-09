@@ -293,23 +293,19 @@ abi_setup() {
 	fi
 
 	local _repo_abi_file=$(readlink ${_pkg_repo_conf})
+	local _repo_abi="${CUR_ABI}"
+	local _repo_altabi="${CUR_ALTABI}"
 
 	if [ -f ${_repo_abi_file%%.conf}.abi ]; then
-		ABI=$(cat ${_repo_abi_file%%.conf}.abi)
-	else
-		ABI=${CUR_ABI}
+		_repo_abi=$(cat ${_repo_abi_file%%.conf}.abi)
 	fi
 
 	if [ -f ${_repo_abi_file%%.conf}.altabi ]; then
-		ALTABI=$(cat ${_repo_abi_file%%.conf}.altabi)
-	else
-		ALTABI=${CUR_ALTABI}
+		_repo_altabi=$(cat ${_repo_abi_file%%.conf}.altabi)
 	fi
 
-	# Make sure pkg.conf is set properly so GUI can work
-	OSVERSION=$(sysctl -n kern.osreldate)
-	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
+	ABI="${_repo_abi}"
+	ALTABI="${_repo_altabi}"
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
@@ -342,14 +338,25 @@ EOF
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" -o "${CUR_ABI}" = "${ALTABI}" ] ; then
+	if [ "${CUR_ABI}" = "${_repo_abi}" -o "${CUR_ABI}" = "${_repo_altabi}" ] ; then
 		NEW_MAJOR=""
 	else
 		NEW_MAJOR=1
-		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
+	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+		ABI="${CUR_ABI}"
+		ALTABI="${CUR_ALTABI}"
+	else
+		[ -n "${NEW_MAJOR}" ] && export IGNORE_OSVERSION=yes
+	fi
+
+	# Make sure pkg.conf is set properly so GUI can work
+	OSVERSION=$(sysctl -n kern.osreldate)
+	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
+	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
+
+	export CUR_ABI CUR_ALTABI ABI NEW_MAJOR
 }
 
 get_pkg_repo_url() {
@@ -1134,7 +1141,6 @@ compare_pkg_version_repo() {
 	local _pkg_name="${1}"
 	local _repo_dir="${2}"
 	local _abi="${3}"
-	local _altabi="${4}"
 
 	if [ -z "${_pkg_name}" ]; then
 		echo '!'
@@ -1154,12 +1160,20 @@ compare_pkg_version_repo() {
 		_exit 1
 	fi
 
-	local _rver=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-	    -o ABI=${_abi} -o ALTABI=${_altabi} rquery -U %v ${_pkg_name})
+	local _repo_cache="${_repo_dir}/cache"
+	local _repo_db="${_repo_dir}/db"
+	mkdir -p "${_repo_cache}" "${_repo_db}"
+
+	local _rver=$(env -u ABI -u ALTABI -u OSVERSION \
+	    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} \
+	    -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} \
+	    rquery -U %v ${_pkg_name})
 
 	if [ -z "${_rver}" ]; then
-		_rver=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-		    -o ABI=${_abi} -o ALTABI=${_altabi} rquery %v ${_pkg_name})
+		_rver=$(env -u ABI -u ALTABI -u OSVERSION \
+		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} \
+		    -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} \
+		    rquery %v ${_pkg_name})
 	fi
 
 	if [ -z "${_rver}" ]; then
@@ -1229,8 +1243,10 @@ check_upgrade_repo_override() {
 	fi
 
 	if [ -z "${_skip_update}" -a -z "${dont_update}" ]; then
-		pkg-static -o REPOS_DIR=${_repo_dir} -o ABI=${REPO_ABI} \
-		    -o ALTABI=${REPO_ALTABI} update -f >/dev/null 2>&1
+		env -u ABI -u ALTABI -u OSVERSION \
+		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
+		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
+		    update -f >/dev/null 2>&1
 	fi
 
 	for _package in ${_meta_pkg} ${_core_pkgs}; do
@@ -1243,15 +1259,88 @@ check_upgrade_repo_override() {
 				;;
 		esac
 
-		local _new_version=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-		    -o ABI=${REPO_ABI} -o ALTABI=${REPO_ALTABI} \
+		local _new_version=$(env -u ABI -u ALTABI -u OSVERSION \
+		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
+		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
 		    rquery -U %v ${_package})
 
 		if [ -z "${_new_version}" ]; then
-			_new_version=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-			    -o ABI=${REPO_ABI} -o ALTABI=${REPO_ALTABI} \
+			_new_version=$(env -u ABI -u ALTABI -u OSVERSION \
+			    pkg-static -o REPOS_DIR=${_repo_dir} \
+			    -o PKG_DBDIR=${_repo_dir}/db \
+			    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
 			    rquery %v ${_package})
 		fi
+
+		[ -z "${_new_version}" ] && continue
+
+		[ -z "${_mute}" ] \
+		    && _echo \
+		    "${_new_version} version of ${product} is available"
+		cleanup_repo_override_dir "${_repo_dir}"
+		return 2
+	done
+
+	cleanup_repo_override_dir "${_repo_dir}"
+	return 1
+}
+
+check_upgrade_current_repo_override() {
+	local _mute="${1}"
+	local _skip_update="${2}"
+	local _meta_pkg="${3}"
+	local _core_pkgs="${4}"
+	local _current_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
+	local _current_repo_target=""
+
+	if [ -L "${_current_repo_conf}" ]; then
+		_current_repo_target=$(readlink ${_current_repo_conf})
+	elif [ -f "${_current_repo_conf}" ]; then
+		_current_repo_target="${_current_repo_conf}"
+	fi
+
+	if [ -z "${_current_repo_target}" ]; then
+		return 1
+	fi
+
+	get_repo_abi_values "${_current_repo_target}"
+
+	local _repo_dir=$(prepare_repo_override_dir "${_current_repo_target}")
+	if [ -z "${_repo_dir}" ]; then
+		return 1
+	fi
+
+	if [ -z "${_skip_update}" -a -z "${dont_update}" ]; then
+		env -u ABI -u ALTABI -u OSVERSION \
+		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
+		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
+		    update -f >/dev/null 2>&1
+	fi
+
+	for _package in ${_meta_pkg} ${_core_pkgs}; do
+		local _version_compare=$(compare_pkg_version_repo ${_package} \
+		    ${_repo_dir} ${REPO_ABI} ${REPO_ALTABI})
+
+		case "${_version_compare}" in
+			=|'>')
+				continue
+				;;
+		esac
+
+		local _new_version=$(env -u ABI -u ALTABI -u OSVERSION \
+		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
+		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
+		    rquery -U %v ${_package})
+
+		if [ -z "${_new_version}" ]; then
+			_new_version=$(env -u ABI -u ALTABI -u OSVERSION \
+			    pkg-static -o REPOS_DIR=${_repo_dir} \
+			    -o PKG_DBDIR=${_repo_dir}/db \
+			    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
+			    rquery %v ${_package})
+		fi
+
+		[ -z "${_new_version}" ] && continue
 
 		[ -z "${_mute}" ] \
 		    && _echo \
@@ -1271,6 +1360,18 @@ check_upgrade() {
 	local _core_pkgs=$(pkg-static query -e \
 	    "%n ~ ${product}-kernel-* || %n ~ ${product}-base*" %n 2>/dev/null)
 	local _repo_behind=""
+
+	check_upgrade_current_repo_override "${_mute}" "${_skip_update}" \
+	    "${_meta_pkg}" "${_core_pkgs}"
+	if [ $? -eq 2 ]; then
+		return 2
+	fi
+
+	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+		[ -z "${_mute}" ] \
+		    && _echo "Your system is up to date"
+		return 0
+	fi
 
 	# Do not upgrade while wg interfaces are assigned
 	if sed '/<interfaces>/,/<\/interfaces>/!d' /cf/conf/config.xml \
