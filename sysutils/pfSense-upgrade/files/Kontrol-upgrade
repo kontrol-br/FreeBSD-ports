@@ -355,9 +355,8 @@ EOF
 	OSVERSION=$(sysctl -n kern.osreldate)
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
 	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
-	[ -n "${ALTABI}" ] && echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
 
-	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
+	export CUR_ABI CUR_ALTABI ABI NEW_MAJOR
 }
 
 get_pkg_repo_url() {
@@ -1362,12 +1361,13 @@ check_upgrade() {
 	    "%n ~ ${product}-kernel-* || %n ~ ${product}-base*" %n 2>/dev/null)
 	local _repo_behind=""
 
+	check_upgrade_current_repo_override "${_mute}" "${_skip_update}" \
+	    "${_meta_pkg}" "${_core_pkgs}"
+	if [ $? -eq 2 ]; then
+		return 2
+	fi
+
 	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
-		check_upgrade_current_repo_override "${_mute}" "${_skip_update}" \
-		    "${_meta_pkg}" "${_core_pkgs}"
-		if [ $? -eq 2 ]; then
-			return 2
-		fi
 		[ -z "${_mute}" ] \
 		    && _echo "Your system is up to date"
 		return 0
