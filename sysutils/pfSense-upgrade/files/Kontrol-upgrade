@@ -90,8 +90,10 @@ _debug_file() {
 
 	_echo "DEBUG ${_ts} file=${_file} (begin)"
 	while IFS= read -r _line; do
+		_ts=$(date "+%Y-%m-%d %H:%M:%S")
 		_echo "DEBUG ${_ts} file=${_file}: ${_line}"
 	done < "${_file}"
+	_ts=$(date "+%Y-%m-%d %H:%M:%S")
 	_echo "DEBUG ${_ts} file=${_file} (end)"
 }
 
@@ -352,6 +354,8 @@ abi_setup() {
 	_debug "abi_setup freebsd_version=${_freebsd_version} arch=${arch} CUR_ABI=${CUR_ABI} CUR_ALTABI=${CUR_ALTABI}"
 	_debug "abi_setup repo_conf=${_pkg_repo_conf} repo_target=${_repo_abi_file} ABI=${ABI} ALTABI=${ALTABI}"
 	_debug "abi_setup repo_dir=/usr/local/share/${product}/pkg/repos"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo.conf"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo-previous.conf"
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
@@ -497,6 +501,18 @@ pkg_update() {
 		if [ $? -ne 0 ]; then
 			_debug "pkg_update failed to get repo url"
 			return
+		fi
+		_debug "pkg_update repo_url=${_url}"
+
+		if [ -n "${debug_enabled}" ]; then
+			local _meta_file
+			_meta_file=$(mktemp /tmp/pkg.meta.conf.XXXXXX) || _meta_file=""
+			if [ -n "${_meta_file}" ]; then
+				${_fetch_env} fetch ${_fetch_args} -o "${_meta_file}" \
+				    ${_url}/meta.conf >/dev/null 2>&1
+				_debug_file "${_meta_file}"
+				rm -f "${_meta_file}"
+			fi
 		fi
 
 		${_fetch_env} fetch ${_fetch_args} -o /dev/null \
@@ -727,9 +743,7 @@ pkg_upgrade() {
 	need_reboot=1
 	# First upgrade stage
 	if [ -z "${next_stage}" ]; then
-		if [ -f "${logfile}" ]; then
-			rm -f ${logfile}
-		fi
+		# Preserve existing logfile; do not delete
 
 		pkg_update force
 
@@ -1734,6 +1748,8 @@ validate_repo_conf() {
 	_debug "validate_repo_conf repo_conf_path=${pkg_repo_conf_path} repo_conf=${pkg_repo_conf}"
 	_debug "validate_repo_conf repo_dir=/usr/local/share/${product}/pkg/repos"
 	_debug_file "${pkg_repo_conf_path}"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo.conf"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo-previous.conf"
 }
 
 export LANG=C
@@ -1965,9 +1981,7 @@ if [ -n "${booting}" ]; then
 	export REPO_AUTOUPDATE=false
 fi
 
-if [ "${action}" != "upgrade" -a -f "${logfile}" ]; then
-	rm -f ${logfile}
-fi
+# Preserve existing logfile; do not delete
 
 progress_file=${logfile%.*}.json
 
