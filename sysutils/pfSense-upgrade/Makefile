@@ -29,7 +29,7 @@ do-extract:
 	${CP} -r ${FILESDIR}/* ${WRKSRC}
 
 post-patch:
-.if ${PORT_OPTIONS:MDEBUG}
+.if defined(PORT_OPTIONS) && ${PORT_OPTIONS:MDEBUG}
 	${REINPLACE_CMD} 's/^DEBUG_DEFAULT=0/DEBUG_DEFAULT=1/' \
 		${WRKSRC}/Kontrol-upgrade
 .endif
