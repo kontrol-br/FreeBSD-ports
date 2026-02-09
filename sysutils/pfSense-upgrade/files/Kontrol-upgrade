@@ -1367,6 +1367,28 @@ check_upgrade() {
 		return 2
 	fi
 
+	if [ -n "${NEW_MAJOR}" -a "${action}" = "check" ]; then
+		_exec "pkg-static bootstrap -f" \
+		    "Bootstrapping pkg due to ABI change" mute \
+		    ignore_result do_not_exit
+
+		check_upgrade_current_repo_override "${_mute}" "${_skip_update}" \
+		    "${_meta_pkg}" "${_core_pkgs}"
+		if [ $? -eq 2 ]; then
+			return 2
+		fi
+
+		check_upgrade_repo_override "${_mute}" "${_skip_update}" \
+		    "${_meta_pkg}" "${_core_pkgs}"
+		if [ $? -eq 2 ]; then
+			return 2
+		fi
+
+		[ -z "${_mute}" ] \
+		    && _echo "Your system is up to date"
+		return 0
+	fi
+
 	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
 		[ -z "${_mute}" ] \
 		    && _echo "Your system is up to date"
