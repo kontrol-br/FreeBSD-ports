@@ -69,6 +69,32 @@ _debug() {
 	_echo "DEBUG ${_ts} ${*}"
 }
 
+_debug_file() {
+	if [ -z "${debug_enabled}" ]; then
+		return 0
+	fi
+
+	local _file="${1}"
+	local _ts
+	_ts=$(date "+%Y-%m-%d %H:%M:%S")
+
+	if [ -z "${_file}" ]; then
+		_echo "DEBUG ${_ts} file=(empty)"
+		return 0
+	fi
+
+	if [ ! -f "${_file}" ]; then
+		_echo "DEBUG ${_ts} file=${_file} (not found)"
+		return 0
+	fi
+
+	_echo "DEBUG ${_ts} file=${_file} (begin)"
+	while IFS= read -r _line; do
+		_echo "DEBUG ${_ts} file=${_file}: ${_line}"
+	done < "${_file}"
+	_echo "DEBUG ${_ts} file=${_file} (end)"
+}
+
 _exec() {
 	local _cmd="${1}"
 	local _msg="${2}"
@@ -325,6 +351,7 @@ abi_setup() {
 
 	_debug "abi_setup freebsd_version=${_freebsd_version} arch=${arch} CUR_ABI=${CUR_ABI} CUR_ALTABI=${CUR_ALTABI}"
 	_debug "abi_setup repo_conf=${_pkg_repo_conf} repo_target=${_repo_abi_file} ABI=${ABI} ALTABI=${ALTABI}"
+	_debug "abi_setup repo_dir=/usr/local/share/${product}/pkg/repos"
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
@@ -376,6 +403,7 @@ EOF
 	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
 
 	_debug "abi_setup pkg_abi=${_pkg_abi} reinstall_pkg=${reinstall_pkg:-0} NEW_MAJOR=${NEW_MAJOR:-0} OSVERSION=${OSVERSION}"
+	_debug_file "/usr/local/etc/pkg.conf"
 
 	export CUR_ABI CUR_ALTABI ABI NEW_MAJOR
 }
@@ -1216,6 +1244,7 @@ compare_pkg_version_repo() {
 	fi
 
 	_debug "compare_pkg_version_repo pkg=${_pkg_name} local=${_lver} remote=${_rver} abi=${_abi}"
+	_debug "compare_pkg_version_repo rquery_cmd=env -u ABI -u ALTABI -u OSVERSION pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} rquery -U %v ${_pkg_name}"
 	local _version=$(_pkg version -t ${_lver} ${_rver})
 
 	if [ $? -ne 0 ]; then
@@ -1274,6 +1303,7 @@ check_upgrade_repo_override() {
 	get_repo_abi_values "${_best_conf}"
 
 	_debug "check_upgrade_repo_override using best_conf=${_best_conf} REPO_ABI=${REPO_ABI} REPO_ALTABI=${REPO_ALTABI}"
+	_debug_file "${_best_conf}"
 
 	local _repo_dir=$(prepare_repo_override_dir "${_best_conf}")
 	if [ -z "${_repo_dir}" ]; then
@@ -1346,6 +1376,7 @@ check_upgrade_current_repo_override() {
 	get_repo_abi_values "${_current_repo_target}"
 
 	_debug "check_upgrade_current_repo_override repo_conf=${_current_repo_target} REPO_ABI=${REPO_ABI} REPO_ALTABI=${REPO_ALTABI}"
+	_debug_file "${_current_repo_target}"
 
 	local _repo_dir=$(prepare_repo_override_dir "${_current_repo_target}")
 	if [ -z "${_repo_dir}" ]; then
@@ -1546,6 +1577,7 @@ compare_pkg_version() {
 	fi
 
 	_debug "compare_pkg_version pkg=${_pkg_name} local=${_lver} remote=${_rver}"
+	_debug "compare_pkg_version rquery_cmd=pkg-static rquery -U %v ${_pkg_name}"
 	local _version=$(_pkg version -t ${_lver} ${_rver})
 
 	if [ $? -ne 0 ]; then
@@ -1700,6 +1732,8 @@ validate_repo_conf() {
 	fi
 
 	_debug "validate_repo_conf repo_conf_path=${pkg_repo_conf_path} repo_conf=${pkg_repo_conf}"
+	_debug "validate_repo_conf repo_dir=/usr/local/share/${product}/pkg/repos"
+	_debug_file "${pkg_repo_conf_path}"
 }
 
 export LANG=C
