@@ -1593,8 +1593,10 @@ compare_pkg_version() {
 		_exit 1
 	fi
 
+	local _pkg_ver=$(_pkg query %v pkg 2>/dev/null)
 	_debug "compare_pkg_version pkg=${_pkg_name} local=${_lver} remote=${_rver}"
 	_debug "compare_pkg_version rquery_cmd=pkg-static rquery -U %v ${_pkg_name}"
+	_debug "compare_pkg_version env ABI=${ABI} ALTABI=${ALTABI} OSVERSION=${OSVERSION} IGNORE_OSVERSION=${IGNORE_OSVERSION:-} PKG_VERSION=${_pkg_ver}"
 	local _version=$(_pkg version -t ${_lver} ${_rver})
 
 	if [ $? -ne 0 ]; then
