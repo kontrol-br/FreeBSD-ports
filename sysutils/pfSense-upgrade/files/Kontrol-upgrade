@@ -2021,7 +2021,11 @@ else
 fi
 
 if [ "${action}" = "install" ]; then
-	pkg_upgrade_repo
+	if [ "${action_pkg}" = "${product}-upgrade" ]; then
+		_debug "install action for ${action_pkg}; skipping pkg_upgrade_repo to avoid premature pkg upgrade"
+	else
+		pkg_upgrade_repo
+	fi
 
 	new_php_pkg=$(_pkg rquery -U %dn $(get_meta_pkg_name) \
 	    | egrep '^php[0-9]{2}$')
