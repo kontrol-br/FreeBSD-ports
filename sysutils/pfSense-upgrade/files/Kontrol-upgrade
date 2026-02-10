@@ -18,6 +18,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+DEBUG_DEFAULT=0
+
 usage() {
 	me=$(basename $0)
 	cat << EOD >&2
@@ -57,6 +59,44 @@ _echo() {
 	echo ${_n} "${@}" | tee -a ${logfile}
 }
 
+_debug() {
+	if [ -z "${debug_enabled}" ]; then
+		return 0
+	fi
+
+	local _ts
+	_ts=$(date "+%Y-%m-%d %H:%M:%S")
+	_echo "DEBUG ${_ts} ${*}"
+}
+
+_debug_file() {
+	if [ -z "${debug_enabled}" ]; then
+		return 0
+	fi
+
+	local _file="${1}"
+	local _ts
+	_ts=$(date "+%Y-%m-%d %H:%M:%S")
+
+	if [ -z "${_file}" ]; then
+		_echo "DEBUG ${_ts} file=(empty)"
+		return 0
+	fi
+
+	if [ ! -f "${_file}" ]; then
+		_echo "DEBUG ${_ts} file=${_file} (not found)"
+		return 0
+	fi
+
+	_echo "DEBUG ${_ts} file=${_file} (begin)"
+	while IFS= read -r _line; do
+		_ts=$(date "+%Y-%m-%d %H:%M:%S")
+		_echo "DEBUG ${_ts} file=${_file}: ${_line}"
+	done < "${_file}"
+	_ts=$(date "+%Y-%m-%d %H:%M:%S")
+	_echo "DEBUG ${_ts} file=${_file} (end)"
+}
+
 _exec() {
 	local _cmd="${1}"
 	local _msg="${2}"
@@ -73,6 +113,8 @@ _exec() {
 	if [ "${_mute}" != "mute" ]; then
 		_stdout=''
 	fi
+
+	_debug "exec cmd='${_cmd}' msg='${_msg}' mute='${_mute}'"
 
 	[ -n "${_msg}" ] \
 	    && _echo -n ">>> ${_msg}... "
@@ -100,10 +142,12 @@ _exec() {
 	if [ ${_result} -eq 0 -o -n "${_ignore_result}" ]; then
 		[ -n "${_stdout}" -a -n "${_msg}" ] \
 		    && _echo "done."
+		_debug "exec result=success code=${_result}"
 		return 0
 	else
 		[ -n "${_stdout}" -a -n "${_msg}" ] \
 		    && _echo "failed."
+		_debug "exec result=failure code=${_result}"
 		[ -n "${_do_not_exit}" ] \
 		    && return 1 \
 		    || _exit 1
@@ -307,6 +351,12 @@ abi_setup() {
 	ABI="${_repo_abi}"
 	ALTABI="${_repo_altabi}"
 
+	_debug "abi_setup freebsd_version=${_freebsd_version} arch=${arch} CUR_ABI=${CUR_ABI} CUR_ALTABI=${CUR_ALTABI}"
+	_debug "abi_setup repo_conf=${_pkg_repo_conf} repo_target=${_repo_abi_file} ABI=${ABI} ALTABI=${ALTABI}"
+	_debug "abi_setup repo_dir=/usr/local/share/${product}/pkg/repos"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo.conf"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo-previous.conf"
+
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
 	AUTH_KEY="/etc/ssl/pfSense-repo-custom.key"
@@ -344,7 +394,8 @@ EOF
 		NEW_MAJOR=1
 	fi
 
-	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" -a \
+	    "${action}" != "check" ]; then
 		ABI="${CUR_ABI}"
 		ALTABI="${CUR_ALTABI}"
 	else
@@ -355,6 +406,9 @@ EOF
 	OSVERSION=$(sysctl -n kern.osreldate)
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
 	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
+
+	_debug "abi_setup pkg_abi=${_pkg_abi} reinstall_pkg=${reinstall_pkg:-0} NEW_MAJOR=${NEW_MAJOR:-0} OSVERSION=${OSVERSION} IGNORE_OSVERSION=${IGNORE_OSVERSION:-}"
+	_debug_file "/usr/local/etc/pkg.conf"
 
 	export CUR_ABI CUR_ALTABI ABI NEW_MAJOR
 }
@@ -378,6 +432,7 @@ get_pkg_repo_url() {
 	if [ -n "${_srv}" ]; then
 		local _n=$(host -t SRV _https._tcp.${_host} 2>/dev/null | wc -l)
 		if [ ${_n} -eq 0 ]; then
+			_debug "get_pkg_repo_url srv lookup failed host=${_host}"
 			return 1
 		fi
 
@@ -388,6 +443,7 @@ get_pkg_repo_url() {
 		_url=$(echo "${_url}" | sed "s,${_host},${_real_host},")
 	fi
 
+	_debug "get_pkg_repo_url url=${_url}"
 	echo "${_url}"
 }
 
@@ -402,6 +458,7 @@ pkg_update() {
 	    && _force=" -f"
 
 	if [ -z "${_force}" -a -n "${dont_update}" ]; then
+		_debug "pkg_update skipping due to dont_update"
 		return 0
 	fi
 
@@ -410,6 +467,8 @@ pkg_update() {
 
 	/usr/local/bin/php -r 'require_once("pkg-utils.inc");update_repos();'
 	abi_setup
+
+	_debug "pkg_update force='${_force}' mute='${_mute}' do_not_bootstrap='${_do_not_bootstrap}'"
 
 	_exec "pkg-static update${_force}" "Updating repositories metadata" \
 	    ${_mute} "" do_not_exit
@@ -423,6 +482,7 @@ pkg_update() {
 		# force to bootstrap pkg on local system
 		local _ver=$(_pkg query %v pkg)
 		local _cmp=$(_pkg version -t ${_ver} "1.13")
+		_debug "pkg_update bootstrap check pkg_version=${_ver} compare=${_cmp}"
 		if [ "${_cmp}" != "<" ]; then
 			return
 		fi
@@ -440,12 +500,26 @@ pkg_update() {
 
 		local _url=$(get_pkg_repo_url)
 		if [ $? -ne 0 ]; then
+			_debug "pkg_update failed to get repo url"
 			return
+		fi
+		_debug "pkg_update repo_url=${_url}"
+
+		if [ -n "${debug_enabled}" ]; then
+			local _meta_file
+			_meta_file=$(mktemp /tmp/pkg.meta.conf.XXXXXX) || _meta_file=""
+			if [ -n "${_meta_file}" ]; then
+				${_fetch_env} fetch ${_fetch_args} -o "${_meta_file}" \
+				    ${_url}/meta.conf >/dev/null 2>&1
+				_debug_file "${_meta_file}"
+				rm -f "${_meta_file}"
+			fi
 		fi
 
 		${_fetch_env} fetch ${_fetch_args} -o /dev/null \
 		    ${_url}/meta.conf >/dev/null 2>&1
 		if [ $? -eq 0 ]; then
+			_debug "pkg_update meta.conf detected, bootstrapping pkg"
 			_exec "${_pkg_binary} bootstrap -f" \
 			    "Bootstrap pkg due to meta version change"
 			pkg_update "${force}" "${_mute}" _do_not_bootstrap
@@ -456,6 +530,7 @@ pkg_update() {
 pkg_upgrade_repo() {
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
+		_debug "pkg_upgrade_repo upgrading pkg reinstall_pkg=${reinstall_pkg:-0} NEW_MAJOR=${NEW_MAJOR:-0}"
 		pkg_unlock pkg
 		_exec "pkg-static upgrade${dont_update} pkg" "Upgrading pkg" \
 		    mute
@@ -466,6 +541,7 @@ pkg_upgrade_repo() {
 	local _repo_pkg="${product}-repo"
 
 	if ! is_pkg_installed ${_repo_pkg}; then
+		_debug "pkg_upgrade_repo installing ${_repo_pkg}"
 		_exec "pkg-static install${dont_update} ${_repo_pkg}" \
 		    "Installing ${_repo_pkg}" mute "" do_not_exit
 		if [ $? -ne 0 ]; then
@@ -494,6 +570,7 @@ pkg_upgrade_repo() {
 
 	cp /usr/local/etc/pkg/repos/${product}.conf /tmp/${product}.conf.copy
 	if !(is_ce && repo_is_plus_upgrade) ; then
+		_debug "pkg_upgrade_repo upgrading ${_repo_pkg} force='${_force}'"
 		_exec "pkg-static upgrade${dont_update}${_force} ${_repo_pkg}" \
 		    "Upgrading ${_repo_pkg}" mute
 	fi
@@ -519,6 +596,7 @@ upgrade_available() {
 	    | sed -e '/^$/d; /is locked and may not be modified/d' \
 	    | wc -l)
 
+	_debug "upgrade_available packages='${*}' lines=${_lines}"
 	test ${_lines} -gt 0
 	return $?
 }
@@ -666,9 +744,7 @@ pkg_upgrade() {
 	need_reboot=1
 	# First upgrade stage
 	if [ -z "${next_stage}" ]; then
-		if [ -f "${logfile}" ]; then
-			rm -f ${logfile}
-		fi
+		# Preserve existing logfile; do not delete
 
 		pkg_update force
 
@@ -1182,6 +1258,8 @@ compare_pkg_version_repo() {
 		_exit 1
 	fi
 
+	_debug "compare_pkg_version_repo pkg=${_pkg_name} local=${_lver} remote=${_rver} abi=${_abi}"
+	_debug "compare_pkg_version_repo rquery_cmd=env -u ABI -u ALTABI -u OSVERSION pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} rquery -U %v ${_pkg_name}"
 	local _version=$(_pkg version -t ${_lver} ${_rver})
 
 	if [ $? -ne 0 ]; then
@@ -1228,14 +1306,19 @@ check_upgrade_repo_override() {
 	done
 
 	if [ -z "${_best_conf}" ]; then
+		_debug "check_upgrade_repo_override no repo override conf found"
 		return 1
 	fi
 
 	if [ -n "${_current_major}" -a "${_best_major}" -le "${_current_major}" ]; then
+		_debug "check_upgrade_repo_override best_major=${_best_major} current_major=${_current_major} skipping"
 		return 1
 	fi
 
 	get_repo_abi_values "${_best_conf}"
+
+	_debug "check_upgrade_repo_override using best_conf=${_best_conf} REPO_ABI=${REPO_ABI} REPO_ALTABI=${REPO_ALTABI}"
+	_debug_file "${_best_conf}"
 
 	local _repo_dir=$(prepare_repo_override_dir "${_best_conf}")
 	if [ -z "${_repo_dir}" ]; then
@@ -1274,6 +1357,7 @@ check_upgrade_repo_override() {
 
 		[ -z "${_new_version}" ] && continue
 
+		_debug "check_upgrade_repo_override package=${_package} new_version=${_new_version}"
 		[ -z "${_mute}" ] \
 		    && _echo \
 		    "${_new_version} version of ${product} is available"
@@ -1300,10 +1384,14 @@ check_upgrade_current_repo_override() {
 	fi
 
 	if [ -z "${_current_repo_target}" ]; then
+		_debug "check_upgrade_current_repo_override missing repo target"
 		return 1
 	fi
 
 	get_repo_abi_values "${_current_repo_target}"
+
+	_debug "check_upgrade_current_repo_override repo_conf=${_current_repo_target} REPO_ABI=${REPO_ABI} REPO_ALTABI=${REPO_ALTABI}"
+	_debug_file "${_current_repo_target}"
 
 	local _repo_dir=$(prepare_repo_override_dir "${_current_repo_target}")
 	if [ -z "${_repo_dir}" ]; then
@@ -1342,6 +1430,7 @@ check_upgrade_current_repo_override() {
 
 		[ -z "${_new_version}" ] && continue
 
+		_debug "check_upgrade_current_repo_override package=${_package} new_version=${_new_version}"
 		[ -z "${_mute}" ] \
 		    && _echo \
 		    "${_new_version} version of ${product} is available"
@@ -1361,9 +1450,11 @@ check_upgrade() {
 	    "%n ~ ${product}-kernel-* || %n ~ ${product}-base*" %n 2>/dev/null)
 	local _repo_behind=""
 
+	_debug "check_upgrade meta_pkg=${_meta_pkg} core_pkgs='${_core_pkgs}' NEW_MAJOR=${NEW_MAJOR:-0} action=${action}"
 	check_upgrade_current_repo_override "${_mute}" "${_skip_update}" \
 	    "${_meta_pkg}" "${_core_pkgs}"
 	if [ $? -eq 2 ]; then
+		_debug "check_upgrade current repo override has upgrade"
 		return 2
 	fi
 
@@ -1371,16 +1462,20 @@ check_upgrade() {
 		_exec "pkg-static bootstrap -f" \
 		    "Bootstrapping pkg due to ABI change" mute \
 		    ignore_result do_not_exit
+		_debug "check_upgrade bootstrap complete, forcing repo metadata refresh"
+		pkg_update force mute _do_not_bootstrap
 
 		check_upgrade_current_repo_override "${_mute}" "${_skip_update}" \
 		    "${_meta_pkg}" "${_core_pkgs}"
 		if [ $? -eq 2 ]; then
+			_debug "check_upgrade current repo override has upgrade after bootstrap"
 			return 2
 		fi
 
 		check_upgrade_repo_override "${_mute}" "${_skip_update}" \
 		    "${_meta_pkg}" "${_core_pkgs}"
 		if [ $? -eq 2 ]; then
+			_debug "check_upgrade repo override has upgrade"
 			return 2
 		fi
 
@@ -1390,6 +1485,7 @@ check_upgrade() {
 	fi
 
 	if [ -n "${NEW_MAJOR}" -a "${action}" != "upgrade" ]; then
+		_debug "check_upgrade NEW_MAJOR set and action not upgrade; returning up to date"
 		[ -z "${_mute}" ] \
 		    && _echo "Your system is up to date"
 		return 0
@@ -1419,15 +1515,18 @@ check_upgrade() {
 		_version_compare=$(compare_pkg_version ${_package})
 		case "${_version_compare}" in
 			=)
+				_debug "check_upgrade package=${_package} local=remote"
 				continue
 				;;
 			'>')
+				_debug "check_upgrade package=${_package} local newer"
 				_repo_behind=1
 				continue
 				;;
 		esac
 
 		local _new_version=$(_pkg rquery -U %v ${_package})
+		_debug "check_upgrade package=${_package} new_version=${_new_version}"
 		[ -z "${_mute}" ] \
 		    && _echo \
 		    "${_new_version} version of ${product} is available"
@@ -1437,6 +1536,7 @@ check_upgrade() {
 	check_upgrade_repo_override "${_mute}" "${_skip_update}" \
 	    "${_meta_pkg}" "${_core_pkgs}"
 	if [ $? -eq 2 ]; then
+		_debug "check_upgrade repo override has upgrade"
 		return 2
 	fi
 
@@ -1493,6 +1593,10 @@ compare_pkg_version() {
 		_exit 1
 	fi
 
+	local _pkg_ver=$(_pkg query %v pkg 2>/dev/null)
+	_debug "compare_pkg_version pkg=${_pkg_name} local=${_lver} remote=${_rver}"
+	_debug "compare_pkg_version rquery_cmd=pkg-static rquery -U %v ${_pkg_name}"
+	_debug "compare_pkg_version env ABI=${ABI} ALTABI=${ALTABI} OSVERSION=${OSVERSION} IGNORE_OSVERSION=${IGNORE_OSVERSION:-} PKG_VERSION=${_pkg_ver}"
 	local _version=$(_pkg version -t ${_lver} ${_rver})
 
 	if [ $? -ne 0 ]; then
@@ -1645,6 +1749,12 @@ validate_repo_conf() {
 			ln -sf ${pkg_repo_conf_path} ${pkg_repo_conf}
 		fi
 	fi
+
+	_debug "validate_repo_conf repo_conf_path=${pkg_repo_conf_path} repo_conf=${pkg_repo_conf}"
+	_debug "validate_repo_conf repo_dir=/usr/local/share/${product}/pkg/repos"
+	_debug_file "${pkg_repo_conf_path}"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo.conf"
+	_debug_file "/usr/local/share/${product}/pkg/repos/${product}-repo-previous.conf"
 }
 
 export LANG=C
@@ -1755,7 +1865,8 @@ while getopts 46b:cdfi:hp:l:nr:RuUy opt; do
 		c)
 			action="check"
 			;;
-		d)
+	d)
+			debug_enabled=1
 			stdout=''
 			;;
 		f)
@@ -1827,6 +1938,11 @@ elif [ -n "${force_ipv6}" ]; then
 	export IP_VERSION="6"
 fi
 
+if [ "${DEBUG_DEFAULT}" = "1" ]; then
+	debug_enabled=1
+	stdout=''
+fi
+
 # Flags used to determine if all packages must be reinstalled
 pkg_set_version="/usr/local/share/${product}/next_pkg_set_version"
 running_pkg_set_version="/usr/local/share/${product}/running_pkg_set_version"
@@ -1838,8 +1954,10 @@ if [ ! -f ${running_pkg_set_version} ]; then
 fi
 
 # Force debug if /cf/conf/upgrade_debug is present
-[ -f "/cf/conf/upgrade_debug" ] \
-    && stdout=''
+if [ -f "/cf/conf/upgrade_debug" ]; then
+	debug_enabled=1
+	stdout=''
+fi
 
 # Set default action when no parameter is set
 : ${action:="upgrade"}
@@ -1868,9 +1986,7 @@ if [ -n "${booting}" ]; then
 	export REPO_AUTOUPDATE=false
 fi
 
-if [ "${action}" != "upgrade" -a -f "${logfile}" ]; then
-	rm -f ${logfile}
-fi
+# Preserve existing logfile; do not delete
 
 progress_file=${logfile%.*}.json
 
