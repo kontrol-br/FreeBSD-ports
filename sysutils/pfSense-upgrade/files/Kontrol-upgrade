@@ -1462,6 +1462,8 @@ check_upgrade() {
 		_exec "pkg-static bootstrap -f" \
 		    "Bootstrapping pkg due to ABI change" mute \
 		    ignore_result do_not_exit
+		_debug "check_upgrade bootstrap complete, forcing repo metadata refresh"
+		pkg_update force mute _do_not_bootstrap
 
 		check_upgrade_current_repo_override "${_mute}" "${_skip_update}" \
 		    "${_meta_pkg}" "${_core_pkgs}"
