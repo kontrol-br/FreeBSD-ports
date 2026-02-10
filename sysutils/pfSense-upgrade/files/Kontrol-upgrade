@@ -1240,13 +1240,13 @@ compare_pkg_version_repo() {
 	local _repo_db="${_repo_dir}/db"
 	mkdir -p "${_repo_cache}" "${_repo_db}"
 
-	local _rver=$(env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+	local _rver=$(env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 	    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} \
 	    -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} \
 	    rquery -U %v ${_pkg_name})
 
 	if [ -z "${_rver}" ]; then
-		_rver=$(env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+		_rver=$(env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} \
 		    -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} \
 		    rquery %v ${_pkg_name})
@@ -1259,7 +1259,7 @@ compare_pkg_version_repo() {
 	fi
 
 	_debug "compare_pkg_version_repo pkg=${_pkg_name} local=${_lver} remote=${_rver} abi=${_abi}"
-	_debug "compare_pkg_version_repo rquery_cmd=env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} rquery -U %v ${_pkg_name}"
+	_debug "compare_pkg_version_repo rquery_cmd=env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_db} -o REPO_CACHEDIR=${_repo_cache} -o ABI=${_abi} rquery -U %v ${_pkg_name}"
 	local _version=$(_pkg version -t ${_lver} ${_rver})
 
 	if [ $? -ne 0 ]; then
@@ -1326,7 +1326,7 @@ check_upgrade_repo_override() {
 	fi
 
 	if [ -z "${_skip_update}" -a -z "${dont_update}" ]; then
-		env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+		env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
 		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
 		    update -f >/dev/null 2>&1
@@ -1342,13 +1342,13 @@ check_upgrade_repo_override() {
 				;;
 		esac
 
-		local _new_version=$(env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+		local _new_version=$(env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
 		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
 		    rquery -U %v ${_package})
 
 		if [ -z "${_new_version}" ]; then
-			_new_version=$(env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+			_new_version=$(env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 			    pkg-static -o REPOS_DIR=${_repo_dir} \
 			    -o PKG_DBDIR=${_repo_dir}/db \
 			    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
@@ -1399,7 +1399,7 @@ check_upgrade_current_repo_override() {
 	fi
 
 	if [ -z "${_skip_update}" -a -z "${dont_update}" ]; then
-		env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+		env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
 		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
 		    update -f >/dev/null 2>&1
@@ -1415,13 +1415,13 @@ check_upgrade_current_repo_override() {
 				;;
 		esac
 
-		local _new_version=$(env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+		local _new_version=$(env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 		    pkg-static -o REPOS_DIR=${_repo_dir} -o PKG_DBDIR=${_repo_dir}/db \
 		    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
 		    rquery -U %v ${_package})
 
 		if [ -z "${_new_version}" ]; then
-			_new_version=$(env IGNORE_OSVERSION=yes -u ABI -u ALTABI -u OSVERSION \
+			_new_version=$(env -u ABI -u ALTABI -u OSVERSION IGNORE_OSVERSION=yes \
 			    pkg-static -o REPOS_DIR=${_repo_dir} \
 			    -o PKG_DBDIR=${_repo_dir}/db \
 			    -o REPO_CACHEDIR=${_repo_dir}/cache -o ABI=${REPO_ABI} \
