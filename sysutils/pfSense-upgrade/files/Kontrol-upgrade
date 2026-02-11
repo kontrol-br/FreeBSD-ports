@@ -531,6 +531,39 @@ pkg_update() {
 	return ${_update_rc}
 }
 
+wait_for_pkg_repo() {
+	local _tries="${1:-12}"
+	local _sleep="${2:-5}"
+	local _url="$(get_pkg_repo_url)"
+
+	if [ -z "${_url}" ]; then
+		_debug "wait_for_pkg_repo failed to get repo url"
+		return 1
+	fi
+
+	# Make fetch to work with thoth
+	local _fetch_env=""
+	local _fetch_args="-T 5"
+	if [ "${arch}" = "aarch64" ]; then
+		_fetch_env="env OPENSSL_CONF=/etc/thoth/openssl.cnf"
+		_fetch_args="${_fetch_args} --cert=/etc/thoth/device.pem"
+		_fetch_args="${_fetch_args} --key=/etc/thoth/key.pem"
+		_fetch_args="${_fetch_args} --ca-cert=/etc/thoth/ca.pem"
+	fi
+
+	local _try=1
+	while [ ${_try} -le ${_tries} ]; do
+		${_fetch_env} fetch ${_fetch_args} -o /dev/null \
+		    ${_url}/meta.conf >/dev/null 2>&1 && return 0
+
+		_debug "wait_for_pkg_repo try ${_try}/${_tries} failed url=${_url}"
+		sleep ${_sleep}
+		_try=$((_try + 1))
+	done
+
+	return 1
+}
+
 pkg_upgrade_repo() {
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
@@ -1016,25 +1049,50 @@ pkg_upgrade() {
 			# so repository metadata can be read using the new ABI/tooling.
 			pkg_unlock pkg
 			_pkg annotate -q -D ${kernel_pkg} new_major
-			_exec "pkg-static install -f pkg" \
-			    "Reinstalling pkg due to ABI change"
 
-			# Refresh repository metadata with the new pkg binary before
-			# trying to upgrade any other package in stage 2.
-			local _pkg_update_ok=""
-			local _pkg_update_try=1
-			while [ ${_pkg_update_try} -le 3 ]; do
-				pkg_update force
+			# During boot-triggered stage 2 runs, network services may not be
+			# ready yet. Wait briefly for repository reachability before
+			# bootstrapping pkg.
+			if [ -n "${booting}" ]; then
+				wait_for_pkg_repo 24 5
+				if [ $? -ne 0 ]; then
+					_echo "WARNING: Repository is still unreachable after reboot; postponing stage 2 upgrade"
+					_exit 0
+				fi
+			fi
+
+			# Bootstrap pkg at phase 2 start so ABI/repository metadata
+			# changes are accepted before remaining upgrades.
+			local _bootstrap_try=1
+			local _bootstrap_ok=""
+			while [ ${_bootstrap_try} -le 6 ]; do
+				_exec "pkg-static bootstrap -f" \
+				    "Bootstrapping pkg due to ABI change" mute \
+				    ignore_result do_not_exit
 				if [ $? -eq 0 ]; then
-					_pkg_update_ok=1
+					_bootstrap_ok=1
 					break
 				fi
-				_debug "stage2 pkg_update attempt ${_pkg_update_try}/3 failed"
-				sleep 2
-				_pkg_update_try=$((_pkg_update_try + 1))
+				_debug "stage2 pkg bootstrap attempt ${_bootstrap_try}/6 failed"
+				sleep 5
+				_bootstrap_try=$((_bootstrap_try + 1))
 			done
-			if [ -z "${_pkg_update_ok}" ]; then
-				_echo "ERROR: Unable to update repository metadata after pkg upgrade"
+			if [ -z "${_bootstrap_ok}" ]; then
+				if [ -n "${booting}" ]; then
+					_echo "WARNING: Unable to bootstrap pkg during boot; postponing stage 2 upgrade"
+					_exit 0
+				fi
+				_echo "ERROR: Unable to bootstrap pkg at stage 2"
+				_exit 1
+			fi
+
+			pkg_update force
+			if [ $? -ne 0 ]; then
+				if [ -n "${booting}" ]; then
+					_echo "WARNING: Unable to update repository metadata during boot; postponing stage 2 upgrade"
+					_exit 0
+				fi
+				_echo "ERROR: Unable to update repository metadata after pkg bootstrap"
 				_exit 1
 			fi
 		fi
