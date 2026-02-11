@@ -1056,8 +1056,8 @@ pkg_upgrade() {
 			if [ -n "${booting}" ]; then
 				wait_for_pkg_repo 24 5
 				if [ $? -ne 0 ]; then
-					_echo "ERROR: Repository is unreachable after reboot; cannot continue stage 2 upgrade"
-					_exit 1
+					_echo "WARNING: Repository is still unreachable after reboot; postponing stage 2 upgrade"
+					_exit 0
 				fi
 			fi
 
@@ -1078,12 +1078,20 @@ pkg_upgrade() {
 				_bootstrap_try=$((_bootstrap_try + 1))
 			done
 			if [ -z "${_bootstrap_ok}" ]; then
+				if [ -n "${booting}" ]; then
+					_echo "WARNING: Unable to bootstrap pkg during boot; postponing stage 2 upgrade"
+					_exit 0
+				fi
 				_echo "ERROR: Unable to bootstrap pkg at stage 2"
 				_exit 1
 			fi
 
 			pkg_update force
 			if [ $? -ne 0 ]; then
+				if [ -n "${booting}" ]; then
+					_echo "WARNING: Unable to update repository metadata during boot; postponing stage 2 upgrade"
+					_exit 0
+				fi
 				_echo "ERROR: Unable to update repository metadata after pkg bootstrap"
 				_exit 1
 			fi
