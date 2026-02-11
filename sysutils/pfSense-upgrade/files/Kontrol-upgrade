@@ -531,6 +531,39 @@ pkg_update() {
 	return ${_update_rc}
 }
 
+wait_for_pkg_repo() {
+	local _tries="${1:-12}"
+	local _sleep="${2:-5}"
+	local _url="$(get_pkg_repo_url)"
+
+	if [ -z "${_url}" ]; then
+		_debug "wait_for_pkg_repo failed to get repo url"
+		return 1
+	fi
+
+	# Make fetch to work with thoth
+	local _fetch_env=""
+	local _fetch_args="-T 5"
+	if [ "${arch}" = "aarch64" ]; then
+		_fetch_env="env OPENSSL_CONF=/etc/thoth/openssl.cnf"
+		_fetch_args="${_fetch_args} --cert=/etc/thoth/device.pem"
+		_fetch_args="${_fetch_args} --key=/etc/thoth/key.pem"
+		_fetch_args="${_fetch_args} --ca-cert=/etc/thoth/ca.pem"
+	fi
+
+	local _try=1
+	while [ ${_try} -le ${_tries} ]; do
+		${_fetch_env} fetch ${_fetch_args} -o /dev/null \
+		    ${_url}/meta.conf >/dev/null 2>&1 && return 0
+
+		_debug "wait_for_pkg_repo try ${_try}/${_tries} failed url=${_url}"
+		sleep ${_sleep}
+		_try=$((_try + 1))
+	done
+
+	return 1
+}
+
 pkg_upgrade_repo() {
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
