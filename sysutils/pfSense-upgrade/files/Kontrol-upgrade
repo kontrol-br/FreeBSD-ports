@@ -454,77 +454,81 @@ pkg_update() {
 
 	local _pkg_binary="/usr/sbin/pkg"
 
-	[ "${1}" = "force" ] \
-	    && _force=" -f"
+	[ "${1}" = "force" ] 	    && _force=" -f"
 
 	if [ -z "${_force}" -a -n "${dont_update}" ]; then
 		_debug "pkg_update skipping due to dont_update"
 		return 0
 	fi
 
-	[ "${2}" = "mute" ] \
-	    && _mute="mute"
+	[ "${2}" = "mute" ] 	    && _mute="mute"
 
 	/usr/local/bin/php -r 'require_once("pkg-utils.inc");update_repos();'
 	abi_setup
 
 	_debug "pkg_update force='${_force}' mute='${_mute}' do_not_bootstrap='${_do_not_bootstrap}'"
 
-	_exec "pkg-static update${_force}" "Updating repositories metadata" \
-	    ${_mute} "" do_not_exit
+	_exec "pkg-static update${_force}" "Updating repositories metadata" 	    ${_mute} "" do_not_exit
 
-	if [ $? -ne 0 -a -z "${_do_not_bootstrap}" ]; then
-		# Since pkg version 1.13 it moved to use repository metadata
-		# version 2, which cannot be processed by older pkg binaries
-		#
-		# Detect if remote repository has a meta.conf file available,
-		# what indicates it is using meta version 2, and in this case
-		# force to bootstrap pkg on local system
-		local _ver=$(_pkg query %v pkg)
-		local _cmp=$(_pkg version -t ${_ver} "1.13")
-		_debug "pkg_update bootstrap check pkg_version=${_ver} compare=${_cmp}"
-		if [ "${_cmp}" != "<" ]; then
-			return
-		fi
+	local _update_rc=$?
+	if [ ${_update_rc} -eq 0 ]; then
+		return 0
+	fi
 
-		# Make fetch to work with thoth
-		local _fetch_env=""
-		local _fetch_args=""
-		if [ "${arch}" = "aarch64" ]; then
-			_fetch_env="env OPENSSL_CONF=/etc/thoth/openssl.cnf"
-			_fetch_args="--cert=/etc/thoth/device.pem"
-			_fetch_args="${_fetch_args} --key=/etc/thoth/key.pem"
-			_fetch_args="${_fetch_args} --ca-cert=/etc/thoth/ca.pem"
-			_pkg_binary="/usr/local/sbin/pkg-static"
-		fi
+	if [ -n "${_do_not_bootstrap}" ]; then
+		return ${_update_rc}
+	fi
 
-		local _url=$(get_pkg_repo_url)
-		if [ $? -ne 0 ]; then
-			_debug "pkg_update failed to get repo url"
-			return
-		fi
-		_debug "pkg_update repo_url=${_url}"
+	# Since pkg version 1.13 it moved to use repository metadata
+	# version 2, which cannot be processed by older pkg binaries
+	#
+	# Detect if remote repository has a meta.conf file available,
+	# what indicates it is using meta version 2, and in this case
+	# force to bootstrap pkg on local system
+	local _ver=$(_pkg query %v pkg)
+	local _cmp=$(_pkg version -t ${_ver} "1.13")
+	_debug "pkg_update bootstrap check pkg_version=${_ver} compare=${_cmp}"
+	if [ "${_cmp}" != "<" ]; then
+		return ${_update_rc}
+	fi
 
-		if [ -n "${debug_enabled}" ]; then
-			local _meta_file
-			_meta_file=$(mktemp /tmp/pkg.meta.conf.XXXXXX) || _meta_file=""
-			if [ -n "${_meta_file}" ]; then
-				${_fetch_env} fetch ${_fetch_args} -o "${_meta_file}" \
-				    ${_url}/meta.conf >/dev/null 2>&1
-				_debug_file "${_meta_file}"
-				rm -f "${_meta_file}"
-			fi
-		fi
+	# Make fetch to work with thoth
+	local _fetch_env=""
+	local _fetch_args=""
+	if [ "${arch}" = "aarch64" ]; then
+		_fetch_env="env OPENSSL_CONF=/etc/thoth/openssl.cnf"
+		_fetch_args="--cert=/etc/thoth/device.pem"
+		_fetch_args="${_fetch_args} --key=/etc/thoth/key.pem"
+		_fetch_args="${_fetch_args} --ca-cert=/etc/thoth/ca.pem"
+		_pkg_binary="/usr/local/sbin/pkg-static"
+	fi
 
-		${_fetch_env} fetch ${_fetch_args} -o /dev/null \
-		    ${_url}/meta.conf >/dev/null 2>&1
-		if [ $? -eq 0 ]; then
-			_debug "pkg_update meta.conf detected, bootstrapping pkg"
-			_exec "${_pkg_binary} bootstrap -f" \
-			    "Bootstrap pkg due to meta version change"
-			pkg_update "${force}" "${_mute}" _do_not_bootstrap
+	local _url=$(get_pkg_repo_url)
+	if [ $? -ne 0 ]; then
+		_debug "pkg_update failed to get repo url"
+		return ${_update_rc}
+	fi
+	_debug "pkg_update repo_url=${_url}"
+
+	if [ -n "${debug_enabled}" ]; then
+		local _meta_file
+		_meta_file=$(mktemp /tmp/pkg.meta.conf.XXXXXX) || _meta_file=""
+		if [ -n "${_meta_file}" ]; then
+			${_fetch_env} fetch ${_fetch_args} -o "${_meta_file}" 			    ${_url}/meta.conf >/dev/null 2>&1
+			_debug_file "${_meta_file}"
+			rm -f "${_meta_file}"
 		fi
 	fi
+
+	${_fetch_env} fetch ${_fetch_args} -o /dev/null 	    ${_url}/meta.conf >/dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		_debug "pkg_update meta.conf detected, bootstrapping pkg"
+		_exec "${_pkg_binary} bootstrap -f" 		    "Bootstrap pkg due to meta version change"
+		pkg_update "${force}" "${_mute}" _do_not_bootstrap
+		return $?
+	fi
+
+	return ${_update_rc}
 }
 
 pkg_upgrade_repo() {
@@ -1040,7 +1044,22 @@ pkg_upgrade() {
 
 				# Refresh repository metadata with the new pkg binary
 				# before trying to upgrade core packages on stage 2.
-				pkg_update force
+				local _pkg_update_ok=""
+				local _pkg_update_try=1
+				while [ ${_pkg_update_try} -le 3 ]; do
+					pkg_update force
+					if [ $? -eq 0 ]; then
+						_pkg_update_ok=1
+						break
+					fi
+					_debug "stage2 pkg_update attempt ${_pkg_update_try}/3 failed"
+					sleep 2
+					_pkg_update_try=$((_pkg_update_try + 1))
+				done
+				if [ -z "${_pkg_update_ok}" ]; then
+					_echo "ERROR: Unable to update repository metadata after pkg upgrade"
+					_exit 1
+				fi
 
 				# Upgrade core packages
 				_exec "pkg-static upgrade -r ${product}-core" \
