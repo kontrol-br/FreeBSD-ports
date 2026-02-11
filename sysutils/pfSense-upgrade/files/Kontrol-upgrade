@@ -1016,27 +1016,12 @@ pkg_upgrade() {
 			# so repository metadata can be read using the new ABI/tooling.
 			pkg_unlock pkg
 			_pkg annotate -q -D ${kernel_pkg} new_major
-			_exec "pkg-static install -f pkg" \
-			    "Reinstalling pkg due to ABI change"
 
-			# Refresh repository metadata with the new pkg binary before
-			# trying to upgrade any other package in stage 2.
-			local _pkg_update_ok=""
-			local _pkg_update_try=1
-			while [ ${_pkg_update_try} -le 3 ]; do
-				pkg_update force
-				if [ $? -eq 0 ]; then
-					_pkg_update_ok=1
-					break
-				fi
-				_debug "stage2 pkg_update attempt ${_pkg_update_try}/3 failed"
-				sleep 2
-				_pkg_update_try=$((_pkg_update_try + 1))
-			done
-			if [ -z "${_pkg_update_ok}" ]; then
-				_echo "ERROR: Unable to update repository metadata after pkg upgrade"
-				_exit 1
-			fi
+			# Bootstrap pkg at phase 2 start so ABI/repository metadata
+			# changes are accepted before remaining upgrades.
+			_exec "pkg-static bootstrap -f" \
+			    "Bootstrapping pkg due to ABI change"
+			pkg_update force
 		fi
 
 		pkg_lock "${pkg_prefix}*"
