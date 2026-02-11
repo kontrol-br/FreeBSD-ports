@@ -1,0 +1,27 @@
+#!/bin/sh
+# PROVIDE: kontrol_upgrade
+# REQUIRE: FILESYSTEMS NETWORKING
+# BEFORE: LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="kontrol_upgrade"
+rcvar="${name}_enable"
+command="/usr/local/sbin/Kontrol-upgrade"
+start_cmd="kontrol_upgrade_start"
+
+: ${kontrol_upgrade_enable:="YES"}
+
+kontrol_upgrade_start()
+{
+	state_file="/var/lib/kontrol-upgrade/state.json"
+	[ -f "${state_file}" ] || return 0
+	cur_state=$(/usr/local/bin/php -r '$s=@json_decode(@file_get_contents($argv[1]),true);echo $s["current_state"] ?? "";' "${state_file}" 2>/dev/null)
+	[ "${cur_state}" = "REBOOT_PENDING" ] || return 0
+	boot_token=$(sysctl -n kern.boottime 2>/dev/null | awk -F'[ ,}]+' '/sec =/{print $4}')
+	${command} resume --boot-token "${boot_token}" --assume-yes >> /var/log/kontrol-upgrade.log 2>&1
+}
+
+load_rc_config $name
+run_rc_command "$1"
