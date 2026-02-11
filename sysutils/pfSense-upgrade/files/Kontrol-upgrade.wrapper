@@ -43,6 +43,9 @@ EX_SOFTWARE=70	# The command did not exit normally, but may have been signaled
 # be called again to make sure latest version is running
 EX_UPGRADE=99
 
+max_upgrade_retries=3
+upgrade_retries=0
+
 while true; do
 	unset run_again
 	/usr/bin/lockf -s -t 5 ${lockfile} ${pfsense_upgrade} "$@"
@@ -67,6 +70,11 @@ while true; do
 			error=$EX_SOFTWARE
 			;;
 		${EX_UPGRADE})
+			upgrade_retries=$((upgrade_retries + 1))
+			if [ ${upgrade_retries} -gt ${max_upgrade_retries} ]; then
+				echo "ERROR: upgrade restart loop detected (${upgrade_retries} retries)"
+				exit ${EX_SOFTWARE}
+			fi
 			run_again=1
 			;;
 	esac
