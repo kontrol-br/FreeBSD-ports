@@ -1038,6 +1038,10 @@ pkg_upgrade() {
 				_exec "pkg-static install -f pkg" \
 				    "Reinstalling pkg due to ABI change"
 
+				# Refresh repository metadata with the new pkg binary
+				# before trying to upgrade core packages on stage 2.
+				pkg_update force
+
 				# Upgrade core packages
 				_exec "pkg-static upgrade -r ${product}-core" \
 				    "Upgrading necessary core packages"
