@@ -1082,182 +1082,12 @@ get_meta_pkg_name() {
 	fi
 }
 
-get_repo_abi_major() {
-	local _repo_conf="${1}"
-	local _abi_file="${_repo_conf%%.conf}.abi"
-	local _abi="${CUR_ABI}"
-
-	[ -f "${_abi_file}" ] && _abi=$(cat "${_abi_file}")
-	echo "${_abi}" | awk -F: '{print $2}'
-}
-
-get_repo_abi_values() {
-	local _repo_conf="${1}"
-	local _abi_file="${_repo_conf%%.conf}.abi"
-	local _altabi_file="${_repo_conf%%.conf}.altabi"
-
-	REPO_ABI="${CUR_ABI}"
-	REPO_ALTABI="${CUR_ALTABI}"
-	[ -f "${_abi_file}" ] && REPO_ABI=$(cat "${_abi_file}")
-	[ -f "${_altabi_file}" ] && REPO_ALTABI=$(cat "${_altabi_file}")
-}
-
-prepare_repo_override_dir() {
-	local _repo_conf="${1}"
-	local _tmp_dir=""
-
-	_tmp_dir=$(mktemp -d "/tmp/${product}.repo.XXXXXX") || return 1
-	cp -f "${_repo_conf}" "${_tmp_dir}/${product}.conf"
-	echo "${_tmp_dir}"
-}
-
-cleanup_repo_override_dir() {
-	local _repo_dir="${1}"
-
-	[ -n "${_repo_dir}" -a -d "${_repo_dir}" ] && rm -rf "${_repo_dir}"
-}
-
-compare_pkg_version_repo() {
-	local _pkg_name="${1}"
-	local _repo_dir="${2}"
-	local _abi="${3}"
-	local _altabi="${4}"
-
-	if [ -z "${_pkg_name}" ]; then
-		echo '!'
-		return 1
-	fi
-
-	if ! is_pkg_installed ${_pkg_name}; then
-		echo '!'
-		return 1
-	fi
-
-	local _lver=$(_pkg query %v ${_pkg_name})
-
-	if [ -z "${_lver}" ]; then
-		_echo "ERROR: It was not possible to determine ${_pkg_name}" \
-		    "local version"
-		_exit 1
-	fi
-
-	local _rver=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-	    -o ABI=${_abi} -o ALTABI=${_altabi} rquery -U %v ${_pkg_name})
-
-	if [ -z "${_rver}" ]; then
-		_rver=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-		    -o ABI=${_abi} -o ALTABI=${_altabi} rquery %v ${_pkg_name})
-	fi
-
-	if [ -z "${_rver}" ]; then
-		_echo "ERROR: It was not possible to determine ${_pkg_name}" \
-		    "remote version"
-		_exit 1
-	fi
-
-	local _version=$(_pkg version -t ${_lver} ${_rver})
-
-	if [ $? -ne 0 ]; then
-		_echo "ERROR: Error comparing ${_pkg_name} local and remote" \
-		    "versions"
-		_exit 1
-	fi
-
-	echo ${_version}
-	return 0
-}
-
-check_upgrade_repo_override() {
-	local _mute="${1}"
-	local _skip_update="${2}"
-	local _meta_pkg="${3}"
-	local _core_pkgs="${4}"
-	local _current_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
-	local _current_repo_target=""
-	local _current_major=""
-	local _best_conf=""
-	local _best_major=""
-
-	if [ -L "${_current_repo_conf}" ]; then
-		_current_repo_target=$(readlink ${_current_repo_conf})
-	elif [ -f "${_current_repo_conf}" ]; then
-		_current_repo_target="${_current_repo_conf}"
-	fi
-
-	if [ -n "${_current_repo_target}" ]; then
-		_current_major=$(get_repo_abi_major "${_current_repo_target}")
-	fi
-
-	for _conf in /usr/local/share/${product}/pkg/repos/${product}-repo*.conf;
-	do
-		[ -f "${_conf}" ] || continue
-		local _major=$(get_repo_abi_major "${_conf}")
-		[ -z "${_major}" ] && continue
-
-		if [ -z "${_best_major}" ] || [ "${_major}" -gt "${_best_major}" ]; then
-			_best_major="${_major}"
-			_best_conf="${_conf}"
-		fi
-	done
-
-	if [ -z "${_best_conf}" ]; then
-		return 1
-	fi
-
-	if [ -n "${_current_major}" -a "${_best_major}" -le "${_current_major}" ]; then
-		return 1
-	fi
-
-	get_repo_abi_values "${_best_conf}"
-
-	local _repo_dir=$(prepare_repo_override_dir "${_best_conf}")
-	if [ -z "${_repo_dir}" ]; then
-		return 1
-	fi
-
-	if [ -z "${_skip_update}" -a -z "${dont_update}" ]; then
-		pkg-static -o REPOS_DIR=${_repo_dir} -o ABI=${REPO_ABI} \
-		    -o ALTABI=${REPO_ALTABI} update -f >/dev/null 2>&1
-	fi
-
-	for _package in ${_meta_pkg} ${_core_pkgs}; do
-		local _version_compare=$(compare_pkg_version_repo ${_package} \
-		    ${_repo_dir} ${REPO_ABI} ${REPO_ALTABI})
-
-		case "${_version_compare}" in
-			=|'>')
-				continue
-				;;
-		esac
-
-		local _new_version=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-		    -o ABI=${REPO_ABI} -o ALTABI=${REPO_ALTABI} \
-		    rquery -U %v ${_package})
-
-		if [ -z "${_new_version}" ]; then
-			_new_version=$(pkg-static -o REPOS_DIR=${_repo_dir} \
-			    -o ABI=${REPO_ABI} -o ALTABI=${REPO_ALTABI} \
-			    rquery %v ${_package})
-		fi
-
-		[ -z "${_mute}" ] \
-		    && _echo \
-		    "${_new_version} version of ${product} is available"
-		cleanup_repo_override_dir "${_repo_dir}"
-		return 2
-	done
-
-	cleanup_repo_override_dir "${_repo_dir}"
-	return 1
-}
-
 check_upgrade() {
 	local _mute="$1"
 	local _skip_update="$2"
 	local _meta_pkg=$(get_meta_pkg_name)
 	local _core_pkgs=$(pkg-static query -e \
 	    "%n ~ ${product}-kernel-* || %n ~ ${product}-base*" %n 2>/dev/null)
-	local _repo_behind=""
 
 	# Do not upgrade while wg interfaces are assigned
 	if sed '/<interfaces>/,/<\/interfaces>/!d' /cf/conf/config.xml \
@@ -1286,8 +1116,9 @@ check_upgrade() {
 				continue
 				;;
 			'>')
-				_repo_behind=1
-				continue
+				[ -z "${_mute}" ] \
+				    && _echo "Your system is on a newer version"
+				return 0
 				;;
 		esac
 
@@ -1297,18 +1128,6 @@ check_upgrade() {
 		    "${_new_version} version of ${product} is available"
 		return 2
 	done
-
-	check_upgrade_repo_override "${_mute}" "${_skip_update}" \
-	    "${_meta_pkg}" "${_core_pkgs}"
-	if [ $? -eq 2 ]; then
-		return 2
-	fi
-
-	if [ -n "${_repo_behind}" ]; then
-		[ -z "${_mute}" ] \
-		    && _echo "Your system is on a newer version"
-		return 0
-	fi
 
 	[ -z "${_mute}" ] \
 	    && _echo "Your system is up to date"
