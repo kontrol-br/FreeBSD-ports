@@ -56,7 +56,10 @@ EX_UPGRADE=99
 while true; do
 	unset run_again
 	wrapper_debug "invoking lockf target=${pfsense_upgrade} args=$*"
-	/usr/bin/lockf -s -t 5 ${lockfile} ${pfsense_upgrade} "$@"
+	# The orchestrator also supports self-locking when called directly. Mark the
+	# process as already locked so it will not try to acquire the same lock file
+	# a second time after wrapper lockf succeeds.
+	KONTROL_UPGRADE_LOCKED=1 /usr/bin/lockf -s -t 5 ${lockfile} ${pfsense_upgrade} "$@"
 	rc=$?
 	wrapper_debug "lockf return code=${rc}"
 
