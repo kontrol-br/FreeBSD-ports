@@ -1,0 +1,37 @@
+#!/bin/sh
+# PROVIDE: kontrol_upgrade_stage
+# REQUIRE: LOGIN FILESYSTEMS
+# BEFORE:  DAEMON
+
+. /etc/rc.subr
+
+name=kontrol_upgrade_stage
+rcvar=kontrol_upgrade_stage_enable
+command=/usr/local/sbin/Kontrol-upgrade
+pidfile=/var/run/Kontrol-upgrade-stage.pid
+
+: ${kontrol_upgrade_stage_enable:=YES}
+: ${kontrol_upgrade_stage_timeout:=7200}
+
+start_cmd="${name}_start"
+
+kontrol_upgrade_stage_start()
+{
+	state_file="/var/db/Kontrol/upgrade/state"
+	[ -f "${state_file}" ] || return 0
+
+	pending_stage=$(awk -F= '$1=="stage" {print $2}' "${state_file}" | tail -n1)
+	case "${pending_stage}" in
+		stage2|stage3|stage4)
+			echo "Running pending Kontrol upgrade stage: ${pending_stage}"
+			/usr/bin/timeout "${kontrol_upgrade_stage_timeout}" \
+				"${command}" -b "${pending_stage}"
+			;;
+		*)
+			return 0
+			;;
+	esac
+}
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,1635 +1,390 @@
 #!/bin/sh
 #
-# pfSense-upgrade
+# Kontrol/pfSense-upgrade - transactional staged upgrade orchestrator
+# Backward-compatible CLI flags consumed by pfSense code paths.
 #
-# part of pfSense (https://www.pfsense.org)
-# Copyright (c) 2015-2022 Rubicon Communications, LLC (Netgate)
-# All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+
+set -eu
+
+script_name=$(basename "$0")
+default_product=${script_name%-upgrade}
+[ -n "${default_product}" ] || default_product="Kontrol"
+
+PRODUCT_NAME=${PRODUCT_NAME:-${default_product}}
+UPGRADE_NAME="${PRODUCT_NAME}-upgrade"
+STATE_DIR=${STATE_DIR:-/var/db/${PRODUCT_NAME}/upgrade}
+STATE_FILE="${STATE_DIR}/state"
+JOURNAL_FILE="${STATE_DIR}/journal.log"
+LOCK_FILE=${LOCK_FILE:-/tmp/${UPGRADE_NAME}.lock}
+CACHE_ROOT=${CACHE_ROOT:-/var/cache/${PRODUCT_NAME}-upgrade}
+LOG_FILE=${LOG_FILE:-/cf/conf/upgrade_log.txt}
+JSON_PROGRESS=${JSON_PROGRESS:-${LOG_FILE%.*}.json}
+MANIFEST_FILE=""
+TXID=""
+CURRENT_STAGE=""
+
+ABI_FILE=${ABI_FILE:-/usr/local/share/${PRODUCT_NAME}/pkg/repos/${PRODUCT_NAME}-repo.abi}
+ALTABI_FILE=${ALTABI_FILE:-/usr/local/share/${PRODUCT_NAME}/pkg/repos/${PRODUCT_NAME}-repo.altabi}
+PKG_REPO_CONF=${PKG_REPO_CONF:-/usr/local/etc/pkg/repos/${PRODUCT_NAME}.conf}
+
+ASSUME_ALWAYS_YES=${ASSUME_ALWAYS_YES:-yes}
+export ASSUME_ALWAYS_YES
 
 usage() {
-	me=$(basename $0)
-	cat << EOD >&2
-Usage: ${me} [-46bdfhnRUy] [-l logfile] [-p socket] [-c|-u|[-i|-d] pkg_name]
-	-4          - Force IPv4
-	-6          - Force IPv6
-	-b          - Platform is booting
-	-d          - Turn on debug
-	-f          - Force package installation
-	-h          - Show this usage help
-	-l logfile  - Logfile path (defaults to /cf/conf/upgrade_log.txt)
-	-n          - Dry run
-	-p socket   - Write pkg progress to socket
-	-R          - Do not reboot (this can be dangerous)
-	-U          - Do not update repository information
-	-y          - Assume yes as the answer to any possible interaction
-
-The following parameters are mutually exclusive:
-	-c          - Check if upgrade is necessary
-	-i pkg_name - Install package PKG_NAME
-	-r pkg_name - Remove package PKG_NAME
-	-u          - Update repository information
+	cat <<EOD
+Usage: ${UPGRADE_NAME} [-46bdfhnRUy] [-l logfile] [-p socket] [-c|-u|[-i|-r] pkg_name]
+Compatibility flags:
+  -4          Force IPv4 for pkg/fetch traffic
+  -6          Force IPv6 for pkg/fetch traffic
+  -b          Boot orchestration mode (optionally accepts stage as next arg)
+  -d          Debug mode (set -x)
+  -f          Force package operation
+  -h          Show this usage
+  -l logfile  Override text log path
+  -n          Dry-run mode
+  -p socket   Progress socket path (accepted for compatibility)
+  -R          No reboot (compatibility no-op in this orchestrator)
+  -U          Do not update repository metadata before actions
+  -y          Assume yes
+Mutually exclusive:
+  -c          Check if upgrade is available (exit 2 when available)
+  -i pkg      Install package
+  -r pkg      Remove package
+  -u          Update repository metadata only
+Extended:
+  -s stage    Execute explicit stage (stage0..stage4)
 EOD
 }
 
-_echo() {
-	local _n=""
-	if [ "${1}" = "-n" ]; then
-		shift
-		_n="-n"
-	fi
-
-	if [ -z "${logfile}" ]; then
-		logfile=/dev/null
-	fi
-
-	echo ${_n} "${@}" | tee -a ${logfile}
+log() {
+	mkdir -p "$(dirname "${LOG_FILE}")" "${STATE_DIR}"
+	echo "$(date -u +%FT%TZ) $*" | tee -a "${LOG_FILE}"
 }
 
-_exec() {
-	local _cmd="${1}"
-	local _msg="${2}"
-	local _mute="${3}"
-	local _ignore_result="${4}"
-	local _do_not_exit="${5}"
+log_json() {
+	stage=${1}
+	status=${2}
+	msg=${3}
+	mkdir -p "$(dirname "${JSON_PROGRESS}")"
+	printf '{"ts":"%s","stage":"%s","status":"%s","message":"%s"}\n' \
+		"$(date -u +%FT%TZ)" "${stage}" "${status}" "${msg}" >> "${JSON_PROGRESS}"
+}
 
-	local _stdout="${stdout}"
+state_get() {
+	_key=$1
+	[ -f "${STATE_FILE}" ] || return 1
+	awk -F= -v k="${_key}" '$1==k {print substr($0, index($0,"=")+1)}' "${STATE_FILE}" | tail -n 1
+}
 
-	if [ -z "${_cmd}" ]; then
+state_set() {
+	_key=$1
+	_val=$2
+	mkdir -p "${STATE_DIR}"
+	touch "${STATE_FILE}"
+	if grep -q "^${_key}=" "${STATE_FILE}"; then
+		sed -i '' "s|^${_key}=.*|${_key}=${_val}|" "${STATE_FILE}" 2>/dev/null || \
+			sed -i "s|^${_key}=.*|${_key}=${_val}|" "${STATE_FILE}"
+	else
+		echo "${_key}=${_val}" >> "${STATE_FILE}"
+	fi
+}
+
+state_checksum() {
+	[ -f "${STATE_FILE}" ] || return 0
+	sha256 -q "${STATE_FILE}" 2>/dev/null || sha256sum "${STATE_FILE}" | awk '{print $1}'
+}
+
+journal() {
+	mkdir -p "${STATE_DIR}"
+	echo "$(date -u +%FT%TZ) txid=${TXID:-none} stage=${CURRENT_STAGE:-none} $*" >> "${JOURNAL_FILE}"
+}
+
+retry_cmd() {
+	_retries=${1}; shift
+	_delay=2
+	_i=1
+	while :; do
+		if "$@"; then
+			return 0
+		fi
+		[ ${_i} -ge ${_retries} ] && return 1
+		sleep ${_delay}
+		_delay=$((_delay * 2))
+		_i=$((_i + 1))
+	done
+}
+
+ensure_tx() {
+	TXID=$(state_get txid 2>/dev/null || true)
+	if [ -z "${TXID}" ]; then
+		TXID=$(date +%Y%m%d%H%M%S)-$$
+		state_set txid "${TXID}"
+	fi
+	MANIFEST_FILE="${CACHE_ROOT}/${TXID}/manifest.txt"
+}
+
+current_abi() {
+	pkg -vv | awk -F': ' '/ABI/ {print $2; exit}'
+}
+
+target_abi() {
+	if [ -f "${ABI_FILE}" ]; then
+		head -n1 "${ABI_FILE}"
+	elif [ -f "${ALTABI_FILE}" ]; then
+		head -n1 "${ALTABI_FILE}"
+	else
+		current_abi
+	fi
+}
+
+validate_repo_trust() {
+	[ -f "${PKG_REPO_CONF}" ] || { log "ERROR: missing repo config ${PKG_REPO_CONF}"; return 1; }
+	grep -Eq 'fingerprints|signature_type' "${PKG_REPO_CONF}" || {
+		log "ERROR: repository signature configuration not found in ${PKG_REPO_CONF}"
 		return 1
-	fi
-
-	if [ "${_mute}" != "mute" ]; then
-		_stdout=''
-	fi
-
-	[ -n "${_msg}" ] \
-	    && _echo -n ">>> ${_msg}... "
-	if [ -z "${_stdout}" ]; then
-		_echo ""
-		# Ref. https://stackoverflow.com/a/30658405
-		exec 4>&1
-		# XXX locked packages message should be printed on stderr by pkg
-		local _result=$( \
-		    { { ${_cmd} 2>&1 3>&-; printf $? 1>&3; } 4>&- \
-		    | tee -a ${logfile} 1>&4; } 3>&1 \
-		)
-		exec 4>&-
-	else
-		# Ref. https://stackoverflow.com/a/30658405
-		exec 4>&1
-		# XXX locked packages message should be printed on stderr by pkg
-		local _result=$( \
-		    { { ${_cmd} >${_stdout} 2>&1 3>&-; printf $? 1>&3; } 4>&- \
-		    | tee -a ${logfile} 1>&4; } 3>&1 \
-		)
-		exec 4>&-
-	fi
-
-	if [ ${_result} -eq 0 -o -n "${_ignore_result}" ]; then
-		[ -n "${_stdout}" -a -n "${_msg}" ] \
-		    && _echo "done."
-		return 0
-	else
-		[ -n "${_stdout}" -a -n "${_msg}" ] \
-		    && _echo "failed."
-		[ -n "${_do_not_exit}" ] \
-		    && return 1 \
-		    || _exit 1
-	fi
+	}
 }
 
-_pkg() {
-	pkg-static "$@" 2>/dev/null
-	return $?
+refresh_repo() {
+	retry_cmd 3 pkg-static update -f
 }
 
-_exit() {
-	trap "-" 1 2 15 EXIT
-
-	if [ -n "${delete_pid}" -a -f "${pid_file}" ]; then
-		rm -f ${pid_file}
-	fi
-
-	if [ -n "${nc_pid}" ] && ps -p ${nc_pid} >/dev/null 2>&1; then
-		kill ${nc_pid}
-	fi
-
-	if [ -n "${delete_annotation}" ]; then
-		_pkg annotate -q -D ${kernel_pkg} next_stage
-	fi
-
-	if [ -n "${unlock_pkg}" ]; then
-		pkg_unlock pkg
-	fi
-
-	if [ -n "${unlock_additional_pkgs}" ]; then
-		pkg_unlock "${pkg_prefix}*"
-	fi
-
-	local _rc=${1:-"0"}
-
-	# If EVENT_PIPE is defined, GUI is calling
-	if [ -n "${progress_socket}" ]; then
-		local _need_reboot_str=""
-		[ -n "${need_reboot}" ] \
-		    && _need_reboot_str=" __REBOOT_AFTER=${reboot_after}"
-		_echo "__RC=${_rc}${_need_reboot_str}"
-	fi
-
-	exit ${_rc}
-}
-
-notice() {
-	msg="$@"
-
-	/usr/local/bin/php -r \
-	    "require_once('notices.inc'); \
-	    file_notice('${product}-Upgrade', '${msg}', 'Upgrade', '', 1, true);"
-}
-
-pkg_with_pb() {
-	local _event_pipe=""
-	local _cmd="${1}"
-	local _msg="${2}"
-
-	if [ -n "${progress_socket}" ]; then
-		if [ -e "${progress_socket}" ]; then
-			rm -f ${progress_socket}
-		fi
-
-		_event_pipe="-o EVENT_PIPE=${progress_socket}"
-
-		nc -lU ${progress_socket} >> ${progress_file} &
-		nc_pid=$!
-
-		while [ ! -e "${progress_socket}" ]; do
-			sleep 0.1
-		done
-	fi
-
-	_exec "pkg-static ${_event_pipe} ${_cmd}" "${_msg}"
-	nc_pid=""
-}
-
-fetch_upgrade_packages() {
-	pkg_with_pb "upgrade -F ${1}" "Downloading upgrade packages"
-
-	# Workaround for pkg bug https://github.com/freebsd/pkg/issues/1613
-	# *ALWAYS* download pkg itself to avoid being bitten by it again
-	pkg_with_pb "fetch -yU pkg" "Downloading pkg"
-}
-
-pkg_lock() {
-	local _pkgs="$@"
-
-	if [ -z "${_pkgs}" ]; then
-		return
-	fi
-
-	for _package in ${_pkgs}; do
-		for _pkg_name in $(_pkg query -g %n "${_package}"); do
-			_locked=$(_pkg query %k ${_pkg_name})
-			if [ "${_locked}" != "0" ]; then
-				continue
-			fi
-			_exec "pkg-static lock ${_pkg_name}" \
-			    "Locking package ${_pkg_name}" mute
-		done
-	done
-}
-
-pkg_unlock() {
-	local _pkgs="$@"
-
-	if [ -z "${_pkgs}" ]; then
-		return
-	fi
-
-	for _package in ${_pkgs}; do
-		for _pkg_name in $(_pkg query -g %n "${_package}"); do
-			_locked=$(_pkg query %k ${_pkg_name})
-			if [ "${_locked}" != "1" ]; then
-				continue
-			fi
-			_exec "pkg-static unlock ${_pkg_name}" \
-			    "Unlocking package ${_pkg_name}" mute
-		done
-	done
-}
-
-set_vital_flag() {
-	for _package in "$@"; do
-		local _vflag=$(pkg-static query %V ${_package} 2>/dev/null)
-
-		[ "${_vflag}" != "0" ] \
-		    && continue
-
-		_exec "pkg-static set -y -v 1 ${_package}" \
-		    "Setting vital flag on ${_package}" mute
-	done
-}
-
-unset_vital_flag() {
-	for _package in "$@"; do
-		local _vflag=$(pkg-static query %V ${_package} 2>/dev/null)
-
-		[ "${_vflag}" = "0" ] \
-		    && continue
-
-		_exec "pkg-static set -y -v 0 ${_package}" \
-		    "Removing vital flag from ${_package}" mute
-	done
-}
-
-is_ce() {
-	if [ "${product_label}" == "pfSense" ]; then
-		return 0
-	fi
-	return 1
-}
-
-repo_is_plus_upgrade() {
-	pkg_repo_conf_path=$(read_xml_tag.sh string system/pkg_repo_conf_path)
-
-	if [ -n "$(echo $pkg_repo_conf_path | grep ${product}-repo-custom)" ]; then
-		return 0
-	fi
-	return 1
-}
-
-abi_setup() {
-	local _freebsd_version=$(uname -r)
-	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
-
-	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
-	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
-
-	if [ "${arch}" = "armv6" ]; then
-		CUR_ALTABI="${CUR_ALTABI}:${arch}:32:el:eabi:hardfp"
-	elif [ "${arch}" = "armv7" ]; then
-		CUR_ALTABI="${CUR_ALTABI}:${arch}:32:el:eabi:softfp"
-	elif [ "${arch}" = "aarch64" ]; then
-		CUR_ALTABI="${CUR_ALTABI}:${arch}:64"
-	elif [ "${arch}" = "i386" ]; then
-		CUR_ALTABI="${CUR_ALTABI}:x86:32"
-	else
-		CUR_ALTABI="${CUR_ALTABI}:x86:64"
-	fi
-
-	if [ ! -e ${_pkg_repo_conf} ]; then
-		validate_repo_conf
-	fi
-
-	local _repo_abi_file=$(readlink ${_pkg_repo_conf})
-
-	if [ -f ${_repo_abi_file%%.conf}.abi ]; then
-		ABI=$(cat ${_repo_abi_file%%.conf}.abi)
-	else
-		ABI=${CUR_ABI}
-	fi
-
-	if [ -f ${_repo_abi_file%%.conf}.altabi ]; then
-		ALTABI=$(cat ${_repo_abi_file%%.conf}.altabi)
-	else
-		ALTABI=${CUR_ALTABI}
-	fi
-
-	# Make sure pkg.conf is set properly so GUI can work
-	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-	echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
-
-	AUTH_CA="/etc/ssl/netgate-ca.pem"
-	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
-	AUTH_KEY="/etc/ssl/pfSense-repo-custom.key"
-	if repo_is_plus_upgrade -a -f "${AUTH_CA}" -a -f "${AUTH_CERT}" -a \
-	     -f "${AUTH_KEY}" ; then
-		cat << EOF >> /usr/local/etc/pkg.conf
-PKG_ENV {
-	SSL_CA_CERT_FILE=${AUTH_CA}
-	SSL_CLIENT_CERT_FILE=${AUTH_CERT}
-	SSL_CLIENT_KEY_FILE=${AUTH_KEY}
-}
-EOF
-	fi
-
-	# XXX Replace it by a function that detect thoth hardware
-	if [ "${arch}" = "aarch64" ]; then
-		cat << EOF >> /usr/local/etc/pkg.conf
-PKG_ENV {
-	OPENSSL_CONF=/etc/thoth/openssl.cnf
-	SSL_CA_CERT_FILE=/etc/thoth/ca.pem
-	SSL_CLIENT_CERT_FILE=/etc/thoth/device.pem
-	SSL_CLIENT_KEY_FILE=/etc/thoth/key.pem
-}
-EOF
-	fi
-
-	local _pkg_abi=$(_pkg query %q pkg)
-	if [ "${CUR_ABI}" != "${_pkg_abi}" -a "${_pkg_abi}" != "${ABI}" ]; then
-		reinstall_pkg=1
-	fi
-
-	if [ "${CUR_ABI}" = "${ABI}" -o "${CUR_ABI}" = "${ALTABI}" ] ; then
-		NEW_MAJOR=""
-	else
-		NEW_MAJOR=1
-		export IGNORE_OSVERSION=yes
-	fi
-
-	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
-}
-
-get_pkg_repo_url() {
-	local _url=$(_pkg -vv 2>&1 | \
-	    sed -e "/^ *${product}: *{/,/^ *}/!d" \
-		-e '/^ *url *:/!d' \
-		-e 's/^[^"]*"\(.*\)".*/\1/')
-
-	local _srv=""
-	if [ "${_url##pkg+}" != "${_url}" ]; then
-		_srv=1
-		_url=${_url##pkg+}
-	fi
-
-	local _host=${_url##https://}
-	_host=${_host##http://}
-	_host=${_host%%/*}
-
-	if [ -n "${_srv}" ]; then
-		local _n=$(host -t SRV _https._tcp.${_host} 2>/dev/null | wc -l)
-		if [ ${_n} -eq 0 ]; then
-			return 1
-		fi
-
-		local _real_host=$(host -t SRV _https._tcp.${_host} \
-		    2>/dev/null | sed -e "$(jot -r 1 1 ${_n})!d" \
-		    -e 's/^.* //; s/\.$//')
-
-		_url=$(echo "${_url}" | sed "s,${_host},${_real_host},")
-	fi
-
-	echo "${_url}"
-}
-
-pkg_update() {
-	local _force=""
-	local _mute="off"
-	local _do_not_bootstrap="${3}"
-
-	local _pkg_binary="/usr/sbin/pkg"
-
-	[ "${1}" = "force" ] \
-	    && _force=" -f"
-
-	if [ -z "${_force}" -a -n "${dont_update}" ]; then
-		return 0
-	fi
-
-	[ "${2}" = "mute" ] \
-	    && _mute="mute"
-
-	/usr/local/bin/php -r 'require_once("pkg-utils.inc");update_repos();'
-	abi_setup
-
-	_exec "pkg-static update${_force}" "Updating repositories metadata" \
-	    ${_mute} "" do_not_exit
-
-	if [ $? -ne 0 -a -z "${_do_not_bootstrap}" ]; then
-		# Since pkg version 1.13 it moved to use repository metadata
-		# version 2, which cannot be processed by older pkg binaries
-		#
-		# Detect if remote repository has a meta.conf file available,
-		# what indicates it is using meta version 2, and in this case
-		# force to bootstrap pkg on local system
-		local _ver=$(_pkg query %v pkg)
-		local _cmp=$(_pkg version -t ${_ver} "1.13")
-		if [ "${_cmp}" != "<" ]; then
-			return
-		fi
-
-		# Make fetch to work with thoth
-		local _fetch_env=""
-		local _fetch_args=""
-		if [ "${arch}" = "aarch64" ]; then
-			_fetch_env="env OPENSSL_CONF=/etc/thoth/openssl.cnf"
-			_fetch_args="--cert=/etc/thoth/device.pem"
-			_fetch_args="${_fetch_args} --key=/etc/thoth/key.pem"
-			_fetch_args="${_fetch_args} --ca-cert=/etc/thoth/ca.pem"
-			_pkg_binary="/usr/local/sbin/pkg-static"
-		fi
-
-		local _url=$(get_pkg_repo_url)
-		if [ $? -ne 0 ]; then
-			return
-		fi
-
-		${_fetch_env} fetch ${_fetch_args} -o /dev/null \
-		    ${_url}/meta.conf >/dev/null 2>&1
-		if [ $? -eq 0 ]; then
-			_exec "${_pkg_binary} bootstrap -f" \
-			    "Bootstrap pkg due to meta version change"
-			pkg_update "${force}" "${_mute}" _do_not_bootstrap
-		fi
-	fi
-}
-
-pkg_upgrade_repo() {
-	if [ -n "${reinstall_pkg}" ] \
-	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
-		pkg_unlock pkg
-		_exec "pkg-static upgrade${dont_update} pkg" "Upgrading pkg" \
-		    mute
-		reinstall_pkg=""
-		pkg_update force
-	fi
-
-	local _repo_pkg="${product}-repo"
-
-	case "$(compare_pkg_version ${_repo_pkg})" in
-		"<")
-			local _force=""
-			;;
-		">")
-			local _force=" -f"
-			;;
-		"=")
-			return
-			;;
-		*)
-			_echo "ERROR: Unable to compare version of ${_repo_pkg}"
-			_exit 1
-	esac
-
-	cp /usr/local/etc/pkg/repos/${product}.conf /tmp/${product}.conf.copy
-	if !(is_ce && repo_is_plus_upgrade) ; then
-		_exec "pkg-static upgrade${dont_update}${_force} ${_repo_pkg}" \
-		    "Upgrading ${_repo_pkg}" mute
-	fi
-	abi_setup
-	# If conf differs, for an update
-	if ! cmp -s /usr/local/etc/pkg/repos/${product}.conf \
-	    /tmp/${product}.conf.copy; then
-		pkg_update force
-
-		# New repo may contain newer pkg
-		if [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]
-		then
-			_exec "pkg-static upgrade pkg" "Upgrading pkg" mute
-			pkg_update force
-		fi
-	fi
-	rm -f /tmp/${product}.conf.copy
-}
-
-upgrade_available() {
-	# XXX locked packages message should be printed on stderr by pkg?
-	local _lines=$(pkg-static upgrade${dont_update} -nq "$@" 2>/dev/null \
-	    | sed -e '/^$/d; /is locked and may not be modified/d' \
-	    | wc -l)
-
-	test ${_lines} -gt 0
-	return $?
-}
-
-pkg_set_origin() {
-	local _source="$1"
-	local _target="$2"
-
-	local _pkg_source=""
-	local _pkg_target=""
-
-	local _pkg_list=$(_pkg query -g %n "${_source}-*")
-	_pkg_list="${_pkg_list} $(_pkg query -g %n "*-${_source}")"
-	for _pkg_source in ${_pkg_list}; do
-		_pkg_target=$(echo ${_pkg_source} \
-		    | sed "s/${_source}/${_target}/g")
-		_origin_source=$(_pkg query %o ${_pkg_source})
-		_origin_target=$(_pkg rquery -U %o ${_pkg_target})
-
-		# Don't try to change it when target package is not present
-		# anymore
-		if [ -z "${_origin_target}" ]; then
-			_exec "pkg-static set -A 1 ${_pkg_source}" \
-			    "Scheduling package ${_pkg_source} for removal"
-			continue
-		fi
-
-		_exec "pkg-static set -o ${_origin_source}:${_origin_target} \
-		    ${_pkg_source}" \
-		    "Update origin ${_origin_source} -> ${_origin_target}" \
-		    mute
-		_exec "pkg-static set -n ${_pkg_source}:${_pkg_target} \
-		    ${_pkg_source}" \
-		    "Update name ${_pkg_source} -> ${_pkg_target}" \
-		    mute
-	done
-}
-
-pkg_upgrade() {
-	# figure out which kernel variant is running
-	export kernel_pkg=$(_pkg query %n $(_pkg info \
-	    ${product}-kernel-\* | grep -v -- -debug-))
-
-	# Netgate 3100 kernel was renamed
-	if [ "${kernel_pkg}" = "pfSense-kernel-pfSense-SG-3100" ]; then
-		pkg_set_origin pfSense-kernel-pfSense-SG-3100 \
-		    pfSense-kernel-pfSense-3100
-
-		kernel_pkg="pfSense-kernel-pfSense-3100"
-	fi
-
-	local _model=$(/bin/kenv -q smbios.system.product 2>/dev/null)
-
-	SYSTEM=""
-	if [ "${_model}" = "mvebu_armada-37xx" -o "${_model}" = "SG-2100" ]
-	then
-		_type=$(/usr/sbin/ofwdump -P model -R / 2>/dev/null)
-		if [ "${_type}" == "Netgate SG-1100" -o "${_type}" == "Netgate 1100" ]; then
-			SYSTEM="1100"
-		elif [ "${_type}" = "Netgate SG-2100" -o "${_type}" == "Netgate 2100" ]; then
-			SYSTEM="2100"
-		fi
-	fi
-
-	# Rename uboot packages accordingly
-	local _ub_model
-	for _ub_model in 1100 2100 3100; do
-		if is_pkg_installed ${product}-u-boot-sg${_ub_model}; then
-			pkg_set_origin ${product}-u-boot-sg${_ub_model} \
-			    ${product}-u-boot-${_ub_model}
-		fi
-	done
-
-	# Detect if has u-boot package installed
-	unset uboot_bin
-	unset uboot_pkg
-	unset uboot_mntp
-	unset uboot_update
-	if is_pkg_installed ${product}-u-boot-ufw\*; then
-		export uboot_pkg=$(_pkg query %n $(_pkg info \
-		    ${product}-u-boot-ufw\*))
-		export uboot_mntp=/boot/msdos
-		export uboot_bin=u-boot.img
-		export \
-		    uboot_update=/usr/local/share/u-boot/ufw/u-boot-update.sh
-	elif [ "${SYSTEM}" = "1100" ] && \
-	    is_pkg_installed ${product}-u-boot-1100\*; then
-		export uboot_pkg=$(_pkg query %n $(_pkg info \
-		    ${product}-u-boot-1100\*))
-		export \
-		    uboot_update=/usr/local/share/u-boot/1100/u-boot-update.sh
-	elif is_pkg_installed ${product}-u-boot-3100\*; then
-		export uboot_pkg=$(_pkg query %n $(_pkg info \
-		    ${product}-u-boot-3100\*))
-		export uboot_mntp=/boot/u-boot
-		export uboot_bin=u-boot.bin
-		export \
-		    uboot_update=/usr/local/share/u-boot/3100/u-boot-update.sh
-	elif [ "${SYSTEM}" = "2100" ] && \
-	    is_pkg_installed ${product}-u-boot-2100\*; then
-		export uboot_pkg=$(_pkg query %n $(_pkg info \
-		    ${product}-u-boot-2100\*))
-		export \
-		    uboot_update=/usr/local/share/u-boot/2100/u-boot-update.sh
-	fi
-
-	if [ -n "${uboot_pkg}" -a -n "${uboot_mntp}" -a \
-	    "$(compare_pkg_version ${uboot_pkg})" = "<" ]; then
-		if [ ! -f ${uboot_mntp}/${uboot_bin} ]; then
-			# Try to mount /boot/msdos
-			mount ${uboot_mntp} >/dev/null 2>&1
-		fi
-
-		if [ ! -f ${uboot_mntp}/${uboot_bin} ]; then
-			_echo "ERROR: u-boot partition (${uboot_mntp}) is not" \
-			    "properly mounted"
-			_exit 1
-		fi
-	fi
-
-	if [ -z "${kernel_pkg}" ]; then
-		_echo "ERROR: It was not possible to identify which" \
-		    "${product} kernel is installed"
-		_exit 1
-	fi
-
-	export next_stage=$(_pkg annotate -q -S ${kernel_pkg} next_stage)
-	export is_pkg_locked=$(_pkg annotate -q -S ${kernel_pkg} new_major)
-
-	if [ -n "${next_stage}" -a -n "${booting}" -a -n "${boot_stage}" ]; then
-		if [ ${boot_stage} != ${next_stage} ]; then
-			_exit 0
-		fi
-	fi
-
-	# If it's booting and first stage didn't run, just exit
-	if [ -n "${booting}" -a -z "${next_stage}" ]; then
-		_exit 0
-	fi
-
-	if [ -n "${booting}" -a -x /usr/local/sbin/${product}-led.sh ]; then
-		/usr/local/sbin/${product}-led.sh updating
-	fi
-
-	need_reboot=1
-	# First upgrade stage
-	if [ -z "${next_stage}" ]; then
-		if [ -f "${logfile}" ]; then
-			rm -f ${logfile}
-		fi
-
-		pkg_update force
-
-		# Lock pkg to avoid having pkg binary for version N+1 installed
-		# on N
-		if [ -n "${NEW_MAJOR}" ]; then
-			pkg_lock pkg
-			unlock_pkg=1
-		fi
-
-		# Before 2.4.5, pfSense-repo used to depend of pfSense-upgrade
-		# and then it is upgraded to latest version in pkg_upgrade_repo
-		# call below.  Detect when a new version is available early on
-		# old versions and make it to exit returning code 99
-		local _new_pfsense_upgrade=""
-		if [ "$(compare_pkg_version ${product}-upgrade)" != "=" ]; then
-			_new_pfsense_upgrade=1
-		fi
-
-		pkg_upgrade_repo
-
-		# If a new version of pfSense-upgrade is available, upgrade it
-		# and return a special code 99 used by wrapper to run newer
-		# version again using the same parameters
-		if [ "$(compare_pkg_version ${product}-upgrade)" != "=" ]; then
-			_exec "pkg-static upgrade${dont_update} -f \
-			    ${product}-upgrade" "Upgrading ${product}-upgrade" \
-			    mute
-			_exit 99
-		fi
-
-		# If a new version of pfSense-upgrade was detected early and
-		# was upgraded together with pfSense-repo, exit 99
-		if [ -n "${_new_pfsense_upgrade}" ]; then
-			_exit 99
-		fi
-
-		# Do not upgrade while wg interfaces are assigned
-		if sed '/<interfaces>/,/<\/interfaces>/!d' /cf/conf/config.xml \
-		    | grep -q '<if>wg'; then
-		notice "ERROR: Remove all assigned WireGuard tunnel" \
-		    "interfaces and all WireGuard tunnels before upgrading."
-			notice "ERROR: Remove all assigned WireGuard tunnel" \
-			    "interfaces before upgrading."
-			_echo "ERROR: Remove all assigned WireGuard tunnel" \
-			    "interfaces before upgrading."
-			_exit 1
-		fi
-
-		# Do not upgrade if there are enabled WireGuard tunnels on config
-		if sed -e '/<installedpackages>/,/<\/installedpackages>/d' \
-		    -e '/<wireguard>/,/<\/wireguard>/!d' /cf/conf/config.xml \
-		    | grep -q '<enabled>yes'; then
-			notice "ERROR: Remove all WireGuard tunnels before" \
-			    "upgrading."
-			_echo "ERROR: Remove all WireGuard tunnels before" \
-			    "upgrading."
-			_exit 1
-		fi
-
-		# Old versions used to lock kernel and uboot, make sure we
-		# get it reverted
-		if pkg-static lock -l 2>&1 | grep -q "kernel"; then
-			pkg_unlock ${kernel_pkg}
-		fi
-		if [ -n "${uboot_pkg}" ] && \
-		    pkg-static lock -l 2>&1 | grep -q "u-boot"; then
-			pkg_unlock ${uboot_pkg}
-		fi
-
-		# Always make sure important packages are set as vital
-		set_vital_flag pkg ${kernel_pkg} ${product} ${product}-rc \
-		    ${product}-base ${uboot_pkg}
-
-		check_upgrade mute skip_update
-		case "$?" in
-			0)
-				_echo "Your packages are up to date"
-				_exit 0
-				;;
-			3)
-				_echo "Your system is on a newer version"
-				_exit 0
-				;;
-		esac
-
-		if [ -n "${dry_run}" ]; then
-			_exec "pkg-static upgrade${dont_update} -nq" "" nomute \
-			    ignore_result do_not_exit
-			_exit 0
-		fi
-
-		local _meta_pkg=$(get_meta_pkg_name)
-		if [ "${platform}" = "nanobsd" ]; then
-			_echo "**** WARNING ****"
-			_echo ""
-			_echo "NanoBSD platform is no longer supported."
-			_echo ""
-			_echo "You can find instructions on how to convert it"
-			    "to Full Installation at http://bit.ly/2wDinm8"
-			_exit 1
-		fi
-
-		# ZFS panics with reroot, do not use it in this case
-		# https://redmine.pfsense.org/issues/6045
-		if ! kldstat -qm zfs; then
-			# If kernel is not going to be upgraded, reroot
-			if ! upgrade_available ${kernel_pkg}; then
-				reboot_params="-r"
-			fi
-		fi
-
-		local _force=""
-		if ! cmp -s ${pkg_set_version} ${running_pkg_set_version}; then
-			_force=" -f"
-		fi
-
-		if [ -z "${yes}" ]; then
-			# Show user which packages are going to be upgraded
-			_exec "pkg-static upgrade${dont_update}${_force} -nq" \
-			    "" nomute ignore_result do_not_exit
-
-			_echo ""
-			_echo "**** WARNING ****"
-			_echo "Reboot will be required!!"
-			_echo -n "Proceed with upgrade? (y/N) "
-			read answer
-			if [ "${answer}" != "y" ]; then
-				_echo "Aborting..."
-				_exit 0
-			fi
-		fi
-
-		# Detect the move from suricata to suricata4
-		if is_pkg_installed ${product}-pkg-suricata \
-		    && _pkg rquery -U %n ${product}-pkg-suricata4 \
-		    >/dev/null 2>&1; then
-			pkg_set_origin ${product}-pkg-suricata \
-			    ${product}-pkg-suricata4
-			pkg_set_origin suricata suricata4
-		elif is_pkg_installed ${product}-pkg-suricata4 \
-		    && _pkg rquery -U %n ${product}-pkg-suricata \
-		    >/dev/null 2>&1; then
-			pkg_set_origin ${product}-pkg-suricata4 \
-			    ${product}-pkg-suricata
-			pkg_set_origin suricata4 suricata
-		fi
-
-		# Help users to fix fstab before risk moving to FreeBSD 11
-		if grep -q -E '/dev/ad[[:digit:]]' /etc/fstab; then
-			_exec "/usr/local/sbin/ufslabels.sh commit" \
-			    "Fixing bad /etc/fstab" mute ignore_result
-		fi
-
-		# Remove main PHP package vital flag
-		unset_vital_flag ${cur_php_pkg}
-
-		# Unlock pkg to make sure it's downloaded
-		if [ -n "${NEW_MAJOR}" ]; then
-			pkg_unlock pkg
-			unlock_pkg=""
-		fi
-
-		# Download all upgrade packages first
-		fetch_upgrade_packages ${_force}
-
-		# Then lock it again
-		if [ -n "${NEW_MAJOR}" ]; then
-			pkg_lock pkg
-			unlock_pkg=1
-		fi
-
-		if upgrade_available ${kernel_pkg}; then
-			# pfSense-SG-3100 is obsolete and must be removed
-			# before upgrade kernel / rc and preserve
-			# loader.rc.local just to be extra safe
-			if is_pkg_installed ${product}-SG-3100; then
-				rm -f /tmp/loader.rc.local >/dev/null 2>&1
-				[ -f /boot/loader.rc.local ] \
-				    && cp /boot/loader.rc.local /tmp 2>/dev/null
-				_exec "pkg-static delete ${product}-SG-3100" \
-				    "Removing ${product}-SG-3100" mute \
-				    ignore_result
-				[ -f /tmp/loader.rc.local ] \
-				    && cp /tmp/loader.rc.local /boot 2>/dev/null
-			fi
-			# Force upgrade pfSense-rc together with kernel. It's
-			# failing for some reason on armv[67] even with the
-			# proper dependency version registered
-			if upgrade_available ${product}-rc; then
-				_exec "pkg-static upgrade -U ${product}-rc" \
-				    "Upgrading ${product}-rc"
-			fi
-			# In the past /boot/loader.conf was part of kernel pkg
-			# and now it's an orphan file.  Check if current
-			# installation has it registered on kernel pkg and make
-			# a copy to preserve file across upgrade process
-			local _restore_loaderconf=""
-			if _pkg which -q /boot/loader.conf; then
-				_restore_loaderconf=1
-				cp -fp /boot/loader.conf /tmp/loader.conf.backup
-			fi
-			_exec "pkg-static upgrade -U ${kernel_pkg}" \
-			    "Upgrading ${product} kernel"
-			if [ -n "${_restore_loaderconf}" ]; then
-				cp -fp /tmp/loader.conf.backup /boot/loader.conf
-			fi
-			if [ "${SYSTEM}" = "1100" ]; then
-				# Mount /boot/msdos and update the DTB in FAT
-				# slice.
-				mount /boot/msdos >/dev/null 2>&1
-				cp /boot/dtb/armada-3720-netgate-1100.dtb /boot/msdos
-				umount /boot/msdos >/dev/null 2>&1
-			fi
-			if [ "${SYSTEM}" = "2100" ]; then
-				# Mount /boot/msdos and update the DTB in FAT
-				# slice.
-				mount /boot/msdos >/dev/null 2>&1
-				cp /boot/dtb/armada-3720-netgate-2100.dtb /boot/msdos
-				umount /boot/msdos >/dev/null 2>&1
-			fi
-		fi
-
-		# Do not upgrade u-boot when a new FreeBSD major version is
-		# available.  It requires new kernel and base to be in place.
-		if [ -z "${NEW_MAJOR}" -a -n "${uboot_pkg}" ] &&
-		    upgrade_available ${uboot_pkg}; then
-			_exec "pkg-static upgrade -U ${uboot_pkg}" \
-			    "Upgrading ${product} u-boot"
-			if [ -n "${uboot_update}" -a -x ${uboot_update} ]; then
-				${uboot_update}
-			fi
-		fi
-
-		if is_pkg_installed ${pkg_prefix}\*; then
-			for _package in $(_pkg query %n $(_pkg info -E -g \
-			    ${pkg_prefix}\*)); do
-				_pkg rquery -U -r ${product} %v \
-				    ${_package} >/dev/null && continue
-
-				# This package was removed from remote repo
-				# Make sure it's uninstalled
-				_exec "pkg-static set -A 1 ${_package}" \
-				    "Scheduling package ${_package} for removal"
-			done
-		fi
-
-		_exec "pkg-static autoremove" "Removing unnecessary packages" \
-		    mute ignore_result
-
-		if [ -n "${NEW_MAJOR}" ]; then
-			_pkg annotate -q -M ${kernel_pkg} new_major 1
-		fi
-
-		_pkg annotate -q -M ${kernel_pkg} next_stage 2
-		next_stage=2
-
-		do_reboot
-		_exit 0
-	fi
-
-	if [ "${next_stage}" = "2" ]; then
-		pkg_lock "${pkg_prefix}*"
-		unlock_additional_pkgs=1
-
-		# XXX: Workaround to upgrade strongswan
-		# If those symlinks are present, pkg exit because it expects
-		# them to be a directory
-		if upgrade_available strongswan; then
-			[ -L /usr/local/etc/ipsec.d ] \
-			    && rm -f /usr/local/etc/ipsec.d
-			[ -L /usr/local/etc/ipsec.conf ] \
-			    && rm -f /usr/local/etc/ipsec.conf
-			[ -L /usr/local/etc/strongswan.d ] \
-			    && rm -f /usr/local/etc/strongswan.d
-			[ -L /usr/local/etc/strongswan.conf ] \
-			    && rm -f /usr/local/etc/strongswan.conf
-		fi
-
-		local _force=""
-		if ! cmp -s ${pkg_set_version} ${running_pkg_set_version}; then
-			_force=" -f"
-		fi
-
-		if upgrade_available; then
-			delete_annotation=1
-			if [ -n "${is_pkg_locked}" ]; then
-				# Upgrade pkg
-				pkg_unlock pkg
-				_pkg annotate -q -D ${kernel_pkg} new_major
-				_exec "pkg-static install -f pkg" \
-				    "Reinstalling pkg due to ABI change"
-
-				# Upgrade core packages
-				_exec "pkg-static upgrade -r ${product}-core" \
-				    "Upgrading necessary core packages"
-
-				# Update the U-boot at stage 2 if it was not
-				# updated at the first stage because of a
-				# $MAJOR update.
-				if [ -n "${uboot_pkg}" ] &&
-				    upgrade_available ${uboot_pkg}; then
-					_exec "pkg-static upgrade -U ${uboot_pkg}" \
-					    "Upgrading ${product} u-boot"
-					if [ -n "${uboot_update}" -a \
-					    -x ${uboot_update} ]; then
-						${uboot_update}
-					fi
-				fi
-
-				# Make sure PHP setup is fine
-				/etc/rc.php_ini_setup >/dev/null 2>&1
-			else
-				# Upgrade core packages
-				_exec "pkg-static upgrade -r ${product}-core" \
-				    "Upgrading necessary core packages"
-			fi
-
-			_exec "/etc/rc.d/ldconfig onestart" \
-			    "Updating ldconfig" mute ignore_result
-
-			_exec "pkg-static upgrade${dont_update}${_force} -r ${product}" \
-			    "Upgrading necessary packages"
-			delete_annotation=""
-
-			# Always make sure important packages are set as vital
-			set_vital_flag pkg ${kernel_pkg} ${product} \
-			    ${product}-rc ${product}-base ${uboot_pkg}
-
-			# Register that system is running latest pkg_set_version
-			cp -f ${pkg_set_version} ${running_pkg_set_version}
-
-			# Cleanup possible crash report from PHP upgrade
-			rm -f /tmp/PHP_errors.log
-		fi
-
-		_pkg annotate -q -M ${kernel_pkg} next_stage 3
-		next_stage=3
-
-		pkg_unlock "${pkg_prefix}*"
-		unlock_additional_pkgs=""
-
-		# 2nd reboot during new major version upgrade
-		if [ -n "${is_pkg_locked}" ]; then
-			# Reboot immediately
-			do_reboot now
-			_exit 0
-		fi
-
-		if [ -n "${booting}" ]; then
-			_exit 0
-		fi
-	fi
-
-	if [ "${next_stage}" = "3" ]; then
-		if upgrade_available; then
-			delete_annotation=1
-			_exec "pkg-static upgrade${dont_update}" \
-			    "Upgrading necessary packages"
-			delete_annotation=""
-		fi
-
-		# Cleanup a possible crash report created during PHP upgrade
-		rm -f /tmp/PHP_errors.log
-
-		_pkg annotate -q -D ${kernel_pkg} next_stage
-
-		# cleanup caches
-		_exec "pkg-static autoremove" "Removing unnecessary packages" \
-		    mute ignore_result
-		_exec "pkg-static clean" "Cleanup pkg cache" mute ignore_result
-	fi
-
-	gitsync=$(read_xml_tag.sh boolean system/gitsync/synconupgrade)
-	if [ "${gitsync}" = "true" ]; then
-		repository_url=$(read_xml_tag.sh string \
-		    system/gitsync/repositoryurl)
-		branch=$(read_xml_tag.sh string system/gitsync/branch)
-
-		minimal=$(read_xml_tag.sh boolean system/gitsync/minimal)
-		diff=$(read_xml_tag.sh boolean system/gitsync/diff)
-		show_files=$(read_xml_tag.sh boolean system/gitsync/show_files)
-		show_command=$(read_xml_tag.sh boolean \
-		    system/gitsync/show_command)
-		dryrun=$(read_xml_tag.sh boolean system/gitsync/dryrun)
-
-		mute='mute'
-		options=''
-		if [ "${minimal}" = "true" ]; then
-			options=${options}' --minimal'
-		fi
-		if [ "${diff}" = "true" ]; then
-			options=${options}' --diff'
-		fi
-		if [ "${show_files}" = "true" ]; then
-			options=${options}' --show-files'
-			mute='off'
-		fi
-		if [ "${show_command}" = "true" ]; then
-			options=${options}' --show-command'
-			mute='off'
-		fi
-		if [ "${dryrun}" = "true" ]; then
-			options=${options}' --dry-run'
-		fi
-
-		# Repository URL is not mandatory
-		if [ -n "${branch}" ]; then
-			_exec "pfSsh.php playback gitsync ${repositoryurl} \
-			    ${branch} ${options} --upgrading" \
-			    "Running gitsync" ${mute} ignore_result
-		fi
-	fi
-
-	# Save a copy of latest finished upgrade process
-	cp -f ${logfile} ${upgrade_logfile}
-}
-
-get_meta_pkg_name() {
-	# figure out main meta package name
-	if is_pkg_installed ${product}-vmware; then
-		echo "${product}-vmware"
-	elif is_pkg_installed ${product}-php72; then
-		echo "${product}-php72"
-	elif is_pkg_installed ${product}; then
-		echo "${product}"
-	else
-		_echo "ERROR: It was not possible to identify which" \
-		    "${product} meta package is installed"
-		_exit 1
-	fi
-}
-
-check_upgrade() {
-	local _mute="$1"
-	local _skip_update="$2"
-	local _meta_pkg=$(get_meta_pkg_name)
-	local _core_pkgs=$(pkg-static query -e \
-	    "%n ~ ${product}-kernel-* || %n ~ ${product}-base*" %n 2>/dev/null)
-
-	# Do not upgrade while wg interfaces are assigned
-	if sed '/<interfaces>/,/<\/interfaces>/!d' /cf/conf/config.xml \
-	    | grep -q '<if>wg'; then
-		notice "ERROR: Remove all assigned WireGuard tunnel" \
-		    "interfaces and all WireGuard tunnels before upgrading."
-	fi
-	# Do not upgrade if there are enabled WireGuard tunnels on config
-	if sed -e '/<installedpackages>/,/<\/installedpackages>/d' \
-	    -e '/<wireguard>/,/<\/wireguard>/!d' /cf/conf/config.xml \
-	    | grep -q '<enabled>yes'; then
-		notice "ERROR: Remove all WireGuard tunnels before" \
-		    "upgrading."
-	fi
-
-	[ -z "${_skip_update}" ] \
-	    && pkg_update "" mute
-
-	pkg_upgrade_repo
-
-	local _version_compare=""
-	for _package in ${_meta_pkg} ${_core_pkgs}; do
-		_version_compare=$(compare_pkg_version ${_package})
-		case "${_version_compare}" in
-			=)
-				continue
-				;;
-			'>')
-				[ -z "${_mute}" ] \
-				    && _echo "Your system is on a newer version"
-				return 0
-				;;
-		esac
-
-		local _new_version=$(_pkg rquery -U %v ${_package})
-		[ -z "${_mute}" ] \
-		    && _echo \
-		    "${_new_version} version of ${product} is available"
+discover_upgrade() {
+	log "Running stage0 discovery"
+	CURRENT_STAGE=stage0
+	log_json stage0 running "discovering available updates"
+	if pkg-static upgrade -nq | grep -q '^Installed packages to be UPGRADED:'; then
+		log_json stage0 ok "upgrade available"
 		return 2
-	done
-
-	[ -z "${_mute}" ] \
-	    && _echo "Your system is up to date"
+	fi
+	log_json stage0 ok "already up to date"
 	return 0
 }
 
-is_pkg_installed() {
-	local _pkg_name="${1}"
+run_stage1() {
+	CURRENT_STAGE=stage1
+	ensure_tx
+	mkdir -p "${CACHE_ROOT}/${TXID}"
+	journal "begin"
+	log_json stage1 running "preparing transaction ${TXID}"
 
-	pkg-static info -e ${_pkg_name} 2>/dev/null
-	return $?
-}
+	validate_repo_trust
+	[ "${SKIP_REPO_UPDATE}" -eq 1 ] || refresh_repo
 
-compare_pkg_version() {
-	local _pkg_name="${1}"
-
-	if [ -z "${_pkg_name}" ]; then
-		echo '!'
-		return 1
-	fi
-
-	if ! is_pkg_installed ${_pkg_name}; then
-		echo '!'
-		return 1
-	fi
-
-	local _lver=$(_pkg query %v ${_pkg_name})
-
-	if [ -z "${_lver}" ]; then
-		_echo "ERROR: It was not possible to determine ${_pkg_name}" \
-		    "local version"
-		_exit 1
-	fi
-
-	local _rver=$(_pkg rquery -U %v ${_pkg_name})
-
-	# Maybe we need fresh metadata, lets try to obtain it respecting
-	# dont_update variable
-	if [ -z "${_rver}" ]; then
-		_rver=$(_pkg rquery ${dont_update} %v ${_pkg_name})
-	fi
-
-	if [ -z "${_rver}" ]; then
-		_echo "ERROR: It was not possible to determine ${_pkg_name}" \
-		    "remote version"
-		_exit 1
-	fi
-
-	local _version=$(_pkg version -t ${_lver} ${_rver})
-
-	if [ $? -ne 0 ]; then
-		_echo "ERROR: Error comparing ${_pkg_name} local and remote" \
-		    "versions"
-		_exit 1
-	fi
-
-	echo ${_version}
-	return 0
-}
-
-pkg_install() {
-	local _pkg_name="${1}"
-
-	local _force=""
-	if [ -n "${2}" ]; then
-		_force="-f"
-	fi
-
-	if [ -z "${_pkg_name}" ]; then
-		_echo "ERROR: Blank package name"
-		_exit 1
-	fi
-
-	if is_pkg_installed ${_pkg_name}; then
-		local _cversion=$(compare_pkg_version ${_pkg_name})
-
-		if [ -z "${_force}" ]; then
-			if [ "${_cversion}" = "=" ]; then
-				_echo "Package ${_pkg_name} is up to date"
-				_exit 0
-			elif [ "${_cversion}" = ">" ]; then
-				_echo "Installed ${_pkg_name} version is" \
-				    "newer than remote"
-				_exit 0
-			fi
-		fi
-		local _cmd="upgrade ${_force}"
-		local _msg="Upgrading"
+	cabi=$(current_abi)
+	tabi=$(target_abi)
+	state_set current_abi "${cabi}"
+	state_set target_abi "${tabi}"
+	if [ "${cabi}" != "${tabi}" ]; then
+		state_set cross_major yes
+		export IGNORE_OSVERSION=yes
+		journal "cross-major abi transition ${cabi} -> ${tabi}"
 	else
-		local _cmd="install"
-		local _msg="Installing"
+		state_set cross_major no
 	fi
 
-	pkg_with_pb "${_cmd}${dry_run:+ }${dry_run} ${_pkg_name}" \
-	    "${_msg} ${_pkg_name}"
-	_exec "pkg-static clean" "Cleaning up cache" mute ignore_result
+	pkg-static upgrade -Fqy || return 1
+	pkg-static fetch -yU pkg || return 1
+
+	pkg query '%n %v %R %sh' > "${MANIFEST_FILE}.installed" || true
+	pkg rquery -a '%n %v %R %sh' > "${MANIFEST_FILE}.remote" || true
+	cat "${MANIFEST_FILE}.installed" "${MANIFEST_FILE}.remote" > "${MANIFEST_FILE}" 2>/dev/null || true
+
+	state_set stage stage2
+	state_set state_checksum "$(state_checksum)"
+	log_json stage1 ok "prepared and downloaded packages"
+	journal "complete"
 }
 
-# Reinstall every pfSense-pkg-* package
-pkg_reinstall_all() {
-	for _package in $(_pkg query -e '%a == 0' %n); do
-		case ${_package} in "${pkg_prefix}"* )
-			_echo "Reinstalling ${_package}"
-			pkg_install ${_package} 1
-			;;
-		esac
-	done
+run_stage2() {
+	CURRENT_STAGE=stage2
+	ensure_tx
+	journal "begin"
+	log_json stage2 running "applying core upgrade"
+
+	cross_major=$(state_get cross_major 2>/dev/null || echo no)
+	if [ "${cross_major}" = "yes" ]; then
+		export IGNORE_OSVERSION=yes
+		pkg-static install -fy pkg || return 1
+	fi
+
+	pkg-static upgrade -fy || return 1
+	pkg check -Bdsya || return 1
+
+	state_set stage stage3
+	state_set state_checksum "$(state_checksum)"
+	log_json stage2 ok "core packages applied"
+	journal "complete"
 }
 
-pkg_delete() {
-	local _pkg_name="${1}"
+run_stage3() {
+	CURRENT_STAGE=stage3
+	ensure_tx
+	journal "begin"
+	log_json stage3 running "post-validation"
 
-	if [ -z "${_pkg_name}" ]; then
-		_echo "ERROR: Blank package name"
-		_exit 1
-	fi
+	pkg check -Bdsya || return 1
+	service sshd onestatus >/dev/null 2>&1 || true
+	service filterlog onestatus >/dev/null 2>&1 || true
 
-	if ! is_pkg_installed ${_pkg_name}; then
-		_echo "ERROR: Package ${_pkg_name} is not installed"
-		_exit 1
-	fi
-
-	pkg_with_pb "delete${dry_run:+ }${dry_run} ${_pkg_name}" \
-	    "Removing ${_pkg_name}"
-	_exec "pkg-static autoremove" "Removing stale packages" mute \
-	    ignore_result
+	state_set stage stage4
+	log_json stage3 ok "validation complete"
+	journal "complete"
 }
 
-# Delete every pfSense-pkg-* package
-pkg_delete_all() {
-	for _package in $(pkg-static query -e '%a == 0' %n); do
-		case ${_package} in "${pkg_prefix}"* )
-			_echo "Removing ${_package}"
-			pkg_delete ${_package}
-			;;
-		esac
-	done
+run_stage4() {
+	CURRENT_STAGE=stage4
+	ensure_tx
+	journal "begin"
+	log_json stage4 running "cleanup/finalize"
+
+	pkg-static autoremove -y || true
+	pkg-static clean -ay || true
+	cp -f "${LOG_FILE}" /cf/conf/upgrade_log.latest.txt 2>/dev/null || true
+
+	state_set stage done
+	state_set finished_at "$(date -u +%FT%TZ)"
+	log_json stage4 ok "transaction finalized"
+	journal "complete"
 }
 
-do_reboot() {
-	local _now="$1"
-
-	local _msg=""
-	if [ "${_now}" = "now" ]; then
-		_msg="now."
-	else
-		_msg="in ${reboot_after} seconds."
+rollback_stage() {
+	stage=${1}
+	log "ERROR: failure at ${stage}, starting rollback guardrails"
+	log_json "${stage}" error "rollback guardrails invoked"
+	journal "rollback begin"
+	if [ -f "${PKG_REPO_CONF}.bak" ]; then
+		cp -f "${PKG_REPO_CONF}.bak" "${PKG_REPO_CONF}" || true
 	fi
-
-	local _complete="System is going to be upgraded"
-	if [ -z "${dont_reboot}" ]; then
-		_echo "${_complete}.  Rebooting ${_msg}"
-		echo "${_complete}.  Rebooting ${_msg}" | wall
-		/etc/rc.notify_message -e -m \
-		    "${_complete}.  Rebooting ${_msg}" >/dev/null 2>&1
-		if [ "${_now}" = "now" ]; then
-			/etc/rc.reboot ${reboot_params}
-		else
-			(sleep ${reboot_after} \
-			    && /etc/rc.reboot ${reboot_params}) &
-		fi
-	else
-		_echo "Upgrade is complete."
-		echo "Upgrade is complete." | wall
-		/etc/rc.notify_message -e -m "Upgrade is complete." \
-		    >/dev/null 2>&1
-	fi
+	state_set stage rollback_needed
+	journal "rollback end"
 }
 
-validate_repo_conf() {
-	# Make sure to use default repo conf when it doesn't exist
-	pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
-
-	default_path="/usr/local/share/${product}/pkg/repos"
-	default_file=$(ls -1 ${default_path}/*.default 2>/dev/null | tail -n 1)
-
-	if [ -n "${default_file}" -a -f "${default_file}" ]; then
-		default="${default_file%%.default}"
-	else
-		default="${default_path}/${product}-repo.conf"
-	fi
-
-	pkg_repo_conf_path=$(read_xml_tag.sh string system/pkg_repo_conf_path)
-
-	if [ -z "${pkg_repo_conf_path}" -o ! -f "${pkg_repo_conf_path}" ]; then
-		pkg_repo_conf_path=${default}
-	fi
-
-	if [ -f "${pkg_repo_conf_path}" ]; then
-		if [ -e "${pkg_repo_conf}" -a ! -L "${pkg_repo_conf}" ]; then
-			rm -f ${pkg_repo_conf}
-			ln -sf ${pkg_repo_conf_path} ${pkg_repo_conf}
-		fi
-
-		if [ "$(readlink ${pkg_repo_conf})" != \
-		    "${pkg_repo_conf_path}" ]; then
-			mkdir -p /usr/local/etc/pkg/repos
-			ln -sf ${pkg_repo_conf_path} ${pkg_repo_conf}
-		fi
-	fi
+run_stage() {
+	stage=$1
+	case "${stage}" in
+		stage0) discover_upgrade ;;
+		stage1) run_stage1 ;;
+		stage2) run_stage2 ;;
+		stage3) run_stage3 ;;
+		stage4) run_stage4 ;;
+		*) log "ERROR: invalid stage ${stage}"; return 64 ;;
+	esac
 }
 
-export LANG=C
+run_pending_stage() {
+	pending=$(state_get stage 2>/dev/null || echo stage1)
+	case "${pending}" in
+		stage1|stage2|stage3|stage4) run_stage "${pending}" ;;
+		done) log "No pending stage" ;;
+		*) log "Unknown pending state ${pending}, starting at stage1"; run_stage stage1 ;;
+	esac
+}
 
-pid_file="/var/run/$(basename $0).pid"
-logfile="/cf/conf/upgrade_log.txt"
-upgrade_logfile="/cf/conf/upgrade_log.latest.txt"
-stdout='/dev/null'
+run_install() {
+	[ -n "${PKG_NAME}" ] || { log "ERROR: -i requires package name"; return 64; }
+	flags="-y"
+	[ "${FORCE_OPS}" -eq 1 ] && flags="${flags}f"
+	pkg-static install ${flags} "${PKG_NAME}"
+}
 
-# Export necessary PATH
-export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+run_remove() {
+	[ -n "${PKG_NAME}" ] || { log "ERROR: -r requires package name"; return 64; }
+	flags="-y"
+	[ "${FORCE_OPS}" -eq 1 ] && flags="${flags}f"
+	pkg-static delete ${flags} "${PKG_NAME}"
+}
 
-# Setup proxy settings
-HTTP_PROXY=$(read_xml_tag.sh string system/proxyurl)
-if [ -n "${HTTP_PROXY}" ]; then
-	HTTP_PROXY_PORT=$(read_xml_tag.sh string system/proxyport)
-	if [ -n "${HTTP_PROXY_PORT}" ]; then
-		HTTP_PROXY="${HTTP_PROXY}:${HTTP_PROXY_PORT}"
-	fi
-	export HTTP_PROXY
+DRYRUN=0
+MODE=run
+EXPLICIT_STAGE=""
+BOOT_MODE=0
+BOOT_STAGE=""
+SKIP_REPO_UPDATE=0
+FORCE_OPS=0
+PKG_NAME=""
+PROGRESS_SOCKET=""
+MUTEX_MODE=""
 
-	HTTP_PROXY_USER=$(read_xml_tag.sh string system/proxyuser)
-	HTTP_PROXY_PASS=$(read_xml_tag.sh string system/proxypass)
-	if [ -n "${HTTP_PROXY_USER}" -a -n "${HTTP_PROXY_PASS}" ]; then
-		HTTP_PROXY_AUTH="${HTTP_PROXY_USER}:${HTTP_PROXY_PASS}"
-		HTTP_PROXY_AUTH="basic:*:${HTTP_PROXY_AUTH}"
-		export HTTP_PROXY_AUTH
-	fi
-fi
-
-# pkg should not ask for confirmations
-export ASSUME_ALWAYS_YES=true
-export FETCH_TIMEOUT=5
-export FETCH_RETRY=2
-
-export product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
-export product_label=$(php -n /usr/local/sbin/read_global_var product_label Kontrol)
-export pkg_prefix=$(php -n /usr/local/sbin/read_global_var pkg_prefix \
-    Kontrol-pkg-)
-export platform=$(cat /etc/platform)
-
-USE_MFS_TMPVAR=$(read_xml_tag.sh boolean system/use_mfs_tmpvar)
-if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
-	export PKG_DBDIR=/root/var/db/pkg
-	export PKG_CACHEDIR=/root/var/cache/pkg
-fi
-
-product_version=$(cat /etc/version)
-do_not_send_uniqueid=$(read_xml_tag.sh boolean system/do_not_send_uniqueid)
-if [ "${do_not_send_uniqueid}" != "true" ]; then
-	uniqueid=$(gnid)
-	export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
-else
-	export HTTP_USER_AGENT="${product}/${product_version}"
-fi
-
-validate_repo_conf
-
-# Flags used in _exit
-export delete_annotation=""
-export unlock_additional_pkgs=""
-export unlock_pkg=""
-export reinstall_pkg=""
-export delete_pid=""
-
-# Save nc_pid to be able to kill it
-export nc_pid=""
-
-# Reboot after 10 seconds
-export reboot_after=10
-
-# Used to set -r and reroot
-export reboot_params=""
-
-unset dry_run
-unset dont_reboot
-unset dont_update
-unset booting
-unset boot_stage
-unset force
-unset yes
-unset progress_file
-unset progress_socket
-unset action
-unset action_pkg
-unset force_ipv4
-unset force_ipv6
-while getopts 46b:cdfi:hp:l:nr:RuUy opt; do
-	case ${opt} in
-		4)
-			if [ -n "${force_ipv6}" ]; then
-				usage
-				exit 1
-			fi
-			force_ipv4=1
-			;;
-		6)
-			if [ -n "${force_ipv4}" ]; then
-				usage
-				exit 1
-			fi
-			force_ipv6=1
-			;;
-		b)
-			booting=1
-			boot_stage="${OPTARG}"
-			;;
-		c)
-			action="check"
-			;;
-		d)
-			stdout=''
-			;;
-		f)
-			force=1
-			;;
-		i)
-			if [ -n "${action}" ]; then
-				usage
-				exit 1
-			fi
-			action="install"
-			action_pkg="${OPTARG}"
-			;;
-		h)
-			usage
-			exit 0
-			;;
-		l)
-			logfile="${OPTARG}"
-			if [ -z "${logfile}" ]; then
-				usage
-				exit 1
-			fi
-			;;
-		n)
-			dry_run="-n"
-			;;
-		p)
-			progress_socket="${OPTARG}"
-			if [ -z "${progress_socket}" ]; then
-				usage
-				exit 1
-			fi
-			;;
-		r)
-			if [ -n "${action}" ]; then
-				usage
-				exit 1
-			fi
-			action="delete"
-			action_pkg="${OPTARG}"
-			;;
-		R)
-			dont_reboot=1
-			;;
-		u)
-			if [ -n "${action}" ]; then
-				usage
-				exit 1
-			fi
-			action="update"
-			;;
-		U)
-			dont_update=" -U"
-			;;
-		y)
-			yes=1
-			;;
-		*)
-			usage
-			exit 1
-			;;
+while getopts "46bcdfhi:l:np:r:Rs:uUy" opt; do
+	case "$opt" in
+		4) export FETCH_BIND_ADDRESS="0.0.0.0" ;;
+		6) export FETCH_BIND_ADDRESS="::" ;;
+		b) BOOT_MODE=1 ;;
+		c) MUTEX_MODE=check ;;
+		d) set -x ;;
+		f) FORCE_OPS=1 ;;
+		h) usage; exit 0 ;;
+		i) MUTEX_MODE=install; PKG_NAME="$OPTARG" ;;
+		l) LOG_FILE="$OPTARG" ;;
+		n) DRYRUN=1 ;;
+		p) PROGRESS_SOCKET="$OPTARG" ;;
+		r) MUTEX_MODE=remove; PKG_NAME="$OPTARG" ;;
+		R) : ;;
+		s) MODE=stage; EXPLICIT_STAGE="$OPTARG" ;;
+		u) MUTEX_MODE=update ;;
+		U) SKIP_REPO_UPDATE=1 ;;
+		y) ASSUME_ALWAYS_YES=yes; export ASSUME_ALWAYS_YES ;;
+		*) usage; exit 64 ;;
 	esac
 done
-
-if [ -n "${force_ipv4}" ]; then
-	export IP_VERSION="4"
-elif [ -n "${force_ipv6}" ]; then
-	export IP_VERSION="6"
+if [ "${BOOT_MODE}" -eq 1 ]; then
+	MODE=boot
+	eval "next_arg=\${$OPTIND:-}"
+	if [ -n "${next_arg}" ] && [ "${next_arg#-}" = "${next_arg}" ]; then
+		BOOT_STAGE="${next_arg}"
+	fi
+elif [ -n "${MUTEX_MODE}" ]; then
+	MODE=${MUTEX_MODE}
 fi
 
-# Flags used to determine if all packages must be reinstalled
-pkg_set_version="/usr/local/share/${product}/next_pkg_set_version"
-running_pkg_set_version="/usr/local/share/${product}/running_pkg_set_version"
-export pkg_set_version running_pkg_set_version
-
-# Initialize running pkg_set_version with zero first time
-if [ ! -f ${running_pkg_set_version} ]; then
-	cp -f /etc/version ${running_pkg_set_version}
+if [ -n "${PROGRESS_SOCKET}" ]; then
+	log "Progress socket provided via -p (${PROGRESS_SOCKET})"
 fi
 
-# Force debug if /cf/conf/upgrade_debug is present
-[ -f "/cf/conf/upgrade_debug" ] \
-    && stdout=''
-
-# Set default action when no parameter is set
-: ${action:="upgrade"}
-
-if pgrep -qF ${pid_file} >/dev/null 2>&1; then
-	echo "Another instance is already running... Aborting!"
-	exit 1
+if [ "${MODE}" != "boot" ]; then
+	if [ "${KONTROL_UPGRADE_LOCKED:-0}" != "1" ]; then
+		export KONTROL_UPGRADE_LOCKED=1
+		exec lockf -k -t 0 "${LOCK_FILE}" "$0" "$@"
+	fi
 fi
 
-echo $$ > ${pid_file}
-
-# Since this point it's safe to remove pid_file
-delete_pid=1
-
-trap _exit 1 2 15 EXIT
-
-block_external_services=$(read_xml_tag.sh boolean \
-    system/block_external_services)
-
-if [ "${block_external_services}" = "true" ]; then
-	echo "Aborted due to block_external_services flag"
+if [ "${DRYRUN}" -eq 1 ]; then
+	log "Dry-run enabled; no mutating operations will run"
 	exit 0
 fi
 
-if [ -n "${booting}" ]; then
-	export REPO_AUTOUPDATE=false
-fi
-
-if [ "${action}" != "upgrade" -a -f "${logfile}" ]; then
-	rm -f ${logfile}
-fi
-
-progress_file=${logfile%.*}.json
-
-if [ -e "${progress_file}" ]; then
-	rm -f ${progress_file}
-fi
-
-arch=$(uname -p)
-
-# Initialize the Thoth certificates on ARM64
-if [ "${arch}" = "aarch64" ]; then
-	/usr/local/bin/ping-auth.sh > /dev/null
-fi
-
-abi_setup
-
-# Set itself as vital to prevent users ending up without upgrade script
-set_vital_flag ${product}-upgrade
-
-# figure out which PHP major version is running
-cur_php_pkg=$(_pkg query -x %n '^php[0-9]{2}-[0-9]')
-if [ -n "${booting}" ]; then
-	unset_vital_flag ${cur_php_pkg}
-else
-	set_vital_flag ${cur_php_pkg}
-fi
-
-if [ "${action}" = "install" ]; then
-	pkg_upgrade_repo
-
-	new_php_pkg=$(_pkg rquery -U %dn $(get_meta_pkg_name) \
-	    | egrep '^php[0-9]{2}$')
-
-	if [ "${cur_php_pkg}" != "${new_php_pkg}" ]; then
-		_echo "WARNING: Current pkg repository has a new PHP major"
-		_echo "         version. ${product} should be upgraded before"
-		_echo "         installing any new package."
-		_exit 1
-	fi
-fi
-
-if [ -n "${NEW_MAJOR}" -a "${action}" = "install" ]; then
-	_echo "WARNING: Current pkg repository has a new OS major version."
-	_echo "         ${product} should be upgraded before doing any other"
-	_echo "         operation"
-	_exit 1
-fi
-
-case "${action}" in
+case "${MODE}" in
 	check)
-		check_upgrade
-		_exit $?
-		;;
-	upgrade)
-		pkg_upgrade
+		discover_upgrade
+		exit $?
 		;;
 	update)
-		pkg_update force
+		validate_repo_trust
+		refresh_repo
+		log "Repository metadata updated"
 		;;
 	install)
-		if [ ${action_pkg} = "ALL_PACKAGES" ] && [ -n ${force} ]; then
-			pkg_reinstall_all
+		[ "${SKIP_REPO_UPDATE}" -eq 1 ] || refresh_repo
+		run_install
+		;;
+	remove)
+		run_remove
+		;;
+	boot)
+		if [ -n "${BOOT_STAGE}" ]; then
+			run_stage "${BOOT_STAGE}" || { rollback_stage "${BOOT_STAGE}"; exit 1; }
 		else
-			pkg_install ${action_pkg} ${force}
+			run_pending_stage || { rollback_stage "boot-pending"; exit 1; }
 		fi
 		;;
-	delete)
-		if [ ${action_pkg} = "ALL_PACKAGES" ] && [ -n ${force} ]; then
-			pkg_delete_all
-		else
-			pkg_delete ${action_pkg}
-		fi
+	stage)
+		run_stage "${EXPLICIT_STAGE}" || { rollback_stage "${EXPLICIT_STAGE}"; exit 1; }
 		;;
-	*)
-		_echo "ERROR: Invalid action!"
-		_exit 1
+	run)
+		run_stage stage1 || { rollback_stage stage1; exit 1; }
+		log "Stage1 complete; reboot required to continue with stage2"
+		;;
 esac
 
-_exit 0
+exit 0
