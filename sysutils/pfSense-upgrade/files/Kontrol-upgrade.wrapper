@@ -21,6 +21,16 @@
 pfsense_upgrade=$(realpath -q $(dirname $0)/../libexec/$(basename $0))
 lockfile="/tmp/$(basename $0).lock"
 
+DEBUG_LOG_FILE=${DEBUG_LOG_FILE:-/cf/conf/upgrade_log.debug.log}
+DEBUG_ENABLED=${DEBUG_ENABLED:-1}
+
+wrapper_debug() {
+	[ "${DEBUG_ENABLED}" = "1" ] || return 0
+	mkdir -p "$(dirname "${DEBUG_LOG_FILE}")"
+	printf '%s [DEBUG][wrapper] pid=%s %s\n' "$(date -u +%FT%TZ)" "$$" "$*" >> "${DEBUG_LOG_FILE}"
+}
+
+wrapper_debug "resolved pfsense_upgrade=${pfsense_upgrade} lockfile=${lockfile}"
 if [ ! -f ${pfsense_upgrade} ]; then
 	echo "ERROR: Unable to find ${pfsense_upgrade}"
 	exit 1
@@ -45,8 +55,10 @@ EX_UPGRADE=99
 
 while true; do
 	unset run_again
+	wrapper_debug "invoking lockf target=${pfsense_upgrade} args=$*"
 	/usr/bin/lockf -s -t 5 ${lockfile} ${pfsense_upgrade} "$@"
 	rc=$?
+	wrapper_debug "lockf return code=${rc}"
 
 	unset error
 	case "$rc" in
@@ -73,6 +85,7 @@ while true; do
 
 	[ -f "${lockfile}" ] \
 		&& rm -f ${lockfile}
+	wrapper_debug "lockfile cleanup done"
 
 	[ -n "${error}" ] \
 		&& exit $error
@@ -80,5 +93,6 @@ while true; do
 	[ -n "${run_again}" ] \
 		&& continue
 
+	wrapper_debug "wrapper exiting rc=${rc}"
 	exit $rc
 done
