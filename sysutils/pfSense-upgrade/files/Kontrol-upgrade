@@ -92,6 +92,91 @@ run_cmd() {
 	return ${_rc}
 }
 
+
+run_cmd_capture() {
+	_label=$1
+	shift
+	debug "running command (captured) label=${_label}: $*"
+	_cmd_output=$("$@" 2>&1)
+	_rc=$?
+	debug "command (captured) label=${_label} rc=${_rc}"
+	if [ -n "${_cmd_output}" ]; then
+		printf '%s\n' "${_cmd_output}" | sed "s/^/[DEBUG][${_label}] /" >> "${DEBUG_LOG_FILE}"
+	else
+		debug "command (captured) label=${_label} output=<empty>"
+	fi
+	printf '%s\n' "${_cmd_output}"
+	return ${_rc}
+}
+
+extract_major_from_abi() {
+	_abi=$1
+	printf '%s\n' "${_abi}" | awk -F: 'NF>=2 {print $2}' | awk -F: '{print $1}' | awk -F. '{print $1}'
+}
+
+current_os_major() {
+	uname -r | awk -F. '{print $1}'
+}
+
+repo_url_from_conf() {
+	[ -f "${PKG_REPO_CONF}" ] || return 0
+	awk -F'"' '/url[[:space:]]*:/ {print $2; exit}' "${PKG_REPO_CONF}"
+}
+
+debug_repo_context() {
+	debug "debug_repo_context start"
+	_conf_url=$(repo_url_from_conf || true)
+	debug_kv "repo.conf_file" "${PKG_REPO_CONF}"
+	debug_kv "repo.url_from_conf" "${_conf_url:-<not-found>}"
+
+	if _pkgvv=$(pkg -vv 2>&1); then
+		debug "pkg -vv rc=0"
+		printf '%s\n' "${_pkgvv}" | sed 's/^/[DEBUG][pkg-vv] /' >> "${DEBUG_LOG_FILE}"
+		_repo_url=$(printf '%s\n' "${_pkgvv}" | awk -F'"' '/url[[:space:]]*:/ {print $2; exit}')
+		_abi_runtime=$(printf '%s\n' "${_pkgvv}" | awk -F': ' '/ABI/ {print $2; exit}')
+		debug_kv "repo.url_from_pkgvv" "${_repo_url:-<not-found>}"
+		debug_kv "runtime.abi_from_pkgvv" "${_abi_runtime:-<not-found>}"
+	else
+		_rc=$?
+		debug "pkg -vv rc=${_rc}"
+		printf '%s\n' "${_pkgvv}" | sed 's/^/[DEBUG][pkg-vv] /' >> "${DEBUG_LOG_FILE}"
+	fi
+}
+
+configure_osversion_compat() {
+	cabi=$1
+	tabi=$2
+	current_major=$(current_os_major)
+	target_major=$(extract_major_from_abi "${tabi}")
+	current_abi_major=$(extract_major_from_abi "${cabi}")
+
+	debug_kv "os.current_major" "${current_major:-unknown}"
+	debug_kv "os.current_abi_major" "${current_abi_major:-unknown}"
+	debug_kv "os.target_major" "${target_major:-unknown}"
+	debug_kv "os.current_abi" "${cabi}"
+	debug_kv "os.target_abi" "${tabi}"
+
+	current_compare_major=${current_abi_major:-${current_major}}
+	debug_kv "os.current_compare_major" "${current_compare_major:-unknown}"
+
+	if [ -n "${target_major}" ] && [ -n "${current_compare_major}" ] && [ "${target_major}" -gt "${current_compare_major}" ]; then
+		export IGNORE_OSVERSION=yes
+		debug "IGNORE_OSVERSION enabled: target_major (${target_major}) > current_compare_major (${current_compare_major})"
+		state_set ignore_osversion yes
+		return 0
+	fi
+
+	if [ "${cabi}" != "${tabi}" ]; then
+		export IGNORE_OSVERSION=yes
+		debug "IGNORE_OSVERSION enabled: ABI mismatch ${cabi} -> ${tabi}"
+		state_set ignore_osversion yes
+		return 0
+	fi
+
+	state_set ignore_osversion no
+	debug "IGNORE_OSVERSION not required"
+}
+
 log_json() {
 	stage=${1}
 	status=${2}
@@ -187,7 +272,8 @@ validate_repo_trust() {
 
 refresh_repo() {
 	debug "refresh_repo start"
-	retry_cmd 3 pkg-static update -f
+	run_cmd_capture pkg-update pkg-static update -f >/dev/null || return 1
+	return 0
 }
 
 discover_upgrade() {
@@ -195,12 +281,29 @@ discover_upgrade() {
 	CURRENT_STAGE=stage0
 	debug "discover_upgrade start"
 	log_json stage0 running "discovering available updates"
-	_discovery_output=$(pkg-static upgrade -nq 2>&1 || true)
-	debug "stage0 raw output begin"
-	printf '%s\n' "${_discovery_output}" | sed 's/^/[DEBUG][stage0] /' >> "${DEBUG_LOG_FILE}"
-	debug "stage0 raw output end"
+	debug_repo_context
+
+	cabi=$(current_abi)
+	tabi=$(target_abi)
+	configure_osversion_compat "${cabi}" "${tabi}"
+
+	if _discovery_output=$(run_cmd_capture stage0-upgrade-check pkg-static upgrade -nq); then
+		_discovery_rc=0
+	else
+		_discovery_rc=$?
+	fi
+	debug_kv "stage0.pkg_upgrade_rc" "${_discovery_rc}"
+
+	if [ "${_discovery_rc}" -ne 0 ]; then
+		if printf '%s\n' "${_discovery_output}" | grep -Eqi 'wrong architecture|requires OS version|IGNORE_OSVERSION'; then
+			debug "stage0 detected OSVERSION/ABI related failure"
+		fi
+		log_json stage0 error "pkg-static upgrade -nq failed rc=${_discovery_rc}"
+		return ${_discovery_rc}
+	fi
+
 	if printf '%s\n' "${_discovery_output}" | grep -q '^Installed packages to be UPGRADED:'; then
-		_new_version=$(printf '%s\n' "${_discovery_output}" | awk '/^\s+[[:alnum:]][^ ]* [^ ]+ -> / {print $3; exit}')
+		_new_version=$(printf '%s\n' "${_discovery_output}" | awk '/^[[:space:]]+[[:alnum:]][^ ]* [^ ]+ -> / {for (i=1; i<=NF; i++) if ($i=="->") {print $(i+1); exit}}')
 		[ -n "${_new_version}" ] && printf '%s\n' "${_new_version}"
 		log_json stage0 ok "upgrade available"
 		debug_kv "stage0.upgrade_available" "yes"
@@ -210,6 +313,7 @@ discover_upgrade() {
 	debug_kv "stage0.upgrade_available" "no"
 	return 0
 }
+
 
 run_stage1() {
 	CURRENT_STAGE=stage1
@@ -225,13 +329,14 @@ run_stage1() {
 	tabi=$(target_abi)
 	state_set current_abi "${cabi}"
 	state_set target_abi "${tabi}"
+	debug_repo_context
 	if [ "${cabi}" != "${tabi}" ]; then
 		state_set cross_major yes
-		export IGNORE_OSVERSION=yes
 		journal "cross-major abi transition ${cabi} -> ${tabi}"
 	else
 		state_set cross_major no
 	fi
+	configure_osversion_compat "${cabi}" "${tabi}"
 
 	run_cmd pkg-static upgrade -Fqy || return 1
 	run_cmd pkg-static fetch -yU pkg || return 1
@@ -431,6 +536,7 @@ case "${MODE}" in
 		;;
 	update)
 		validate_repo_trust
+		debug_repo_context
 		refresh_repo
 		log "Repository metadata updated"
 		debug "mode update completed"
