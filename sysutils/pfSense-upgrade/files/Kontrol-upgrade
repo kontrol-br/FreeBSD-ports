@@ -19,6 +19,8 @@ LOCK_FILE=${LOCK_FILE:-/tmp/${UPGRADE_NAME}.lock}
 CACHE_ROOT=${CACHE_ROOT:-/var/cache/${PRODUCT_NAME}-upgrade}
 LOG_FILE=${LOG_FILE:-/cf/conf/upgrade_log.txt}
 JSON_PROGRESS=${JSON_PROGRESS:-${LOG_FILE%.*}.json}
+DEBUG_LOG_FILE=${DEBUG_LOG_FILE:-${LOG_FILE%.*}.debug.log}
+DEBUG_ENABLED=${DEBUG_ENABLED:-1}
 MANIFEST_FILE=""
 TXID=""
 CURRENT_STAGE=""
@@ -61,6 +63,120 @@ log() {
 	echo "$(date -u +%FT%TZ) $*" | tee -a "${LOG_FILE}"
 }
 
+debug() {
+	[ "${DEBUG_ENABLED}" = "1" ] || return 0
+	mkdir -p "$(dirname "${DEBUG_LOG_FILE}")" "${STATE_DIR}"
+	printf '%s [DEBUG] stage=%s txid=%s pid=%s mode=%s %s\n' \
+		"$(date -u +%FT%TZ)" \
+		"${CURRENT_STAGE:-none}" \
+		"${TXID:-none}" \
+		"$$" \
+		"${MODE:-bootstrap}" \
+		"$*" >> "${DEBUG_LOG_FILE}"
+}
+
+debug_kv() {
+	_key=$1
+	_val=$2
+	debug "${_key}=${_val}"
+}
+
+run_cmd() {
+	debug "running command: $*"
+	if "$@"; then
+		debug "command succeeded: $*"
+		return 0
+	fi
+	_rc=$?
+	debug "command failed rc=${_rc}: $*"
+	return ${_rc}
+}
+
+
+run_cmd_capture() {
+	_label=$1
+	shift
+	debug "running command (captured) label=${_label}: $*"
+	_cmd_output=$("$@" 2>&1)
+	_rc=$?
+	debug "command (captured) label=${_label} rc=${_rc}"
+	if [ -n "${_cmd_output}" ]; then
+		printf '%s\n' "${_cmd_output}" | sed "s/^/[DEBUG][${_label}] /" >> "${DEBUG_LOG_FILE}"
+	else
+		debug "command (captured) label=${_label} output=<empty>"
+	fi
+	printf '%s\n' "${_cmd_output}"
+	return ${_rc}
+}
+
+extract_major_from_abi() {
+	_abi=$1
+	printf '%s\n' "${_abi}" | awk -F: 'NF>=2 {print $2}' | awk -F: '{print $1}' | awk -F. '{print $1}'
+}
+
+current_os_major() {
+	uname -r | awk -F. '{print $1}'
+}
+
+repo_url_from_conf() {
+	[ -f "${PKG_REPO_CONF}" ] || return 0
+	awk -F'"' '/url[[:space:]]*:/ {print $2; exit}' "${PKG_REPO_CONF}"
+}
+
+debug_repo_context() {
+	debug "debug_repo_context start"
+	_conf_url=$(repo_url_from_conf || true)
+	debug_kv "repo.conf_file" "${PKG_REPO_CONF}"
+	debug_kv "repo.url_from_conf" "${_conf_url:-<not-found>}"
+
+	if _pkgvv=$(pkg -vv 2>&1); then
+		debug "pkg -vv rc=0"
+		printf '%s\n' "${_pkgvv}" | sed 's/^/[DEBUG][pkg-vv] /' >> "${DEBUG_LOG_FILE}"
+		_repo_url=$(printf '%s\n' "${_pkgvv}" | awk -F'"' '/url[[:space:]]*:/ {print $2; exit}')
+		_abi_runtime=$(printf '%s\n' "${_pkgvv}" | awk -F': ' '/ABI/ {print $2; exit}')
+		debug_kv "repo.url_from_pkgvv" "${_repo_url:-<not-found>}"
+		debug_kv "runtime.abi_from_pkgvv" "${_abi_runtime:-<not-found>}"
+	else
+		_rc=$?
+		debug "pkg -vv rc=${_rc}"
+		printf '%s\n' "${_pkgvv}" | sed 's/^/[DEBUG][pkg-vv] /' >> "${DEBUG_LOG_FILE}"
+	fi
+}
+
+configure_osversion_compat() {
+	cabi=$1
+	tabi=$2
+	current_major=$(current_os_major)
+	target_major=$(extract_major_from_abi "${tabi}")
+	current_abi_major=$(extract_major_from_abi "${cabi}")
+
+	debug_kv "os.current_major" "${current_major:-unknown}"
+	debug_kv "os.current_abi_major" "${current_abi_major:-unknown}"
+	debug_kv "os.target_major" "${target_major:-unknown}"
+	debug_kv "os.current_abi" "${cabi}"
+	debug_kv "os.target_abi" "${tabi}"
+
+	current_compare_major=${current_abi_major:-${current_major}}
+	debug_kv "os.current_compare_major" "${current_compare_major:-unknown}"
+
+	if [ -n "${target_major}" ] && [ -n "${current_compare_major}" ] && [ "${target_major}" -gt "${current_compare_major}" ]; then
+		export IGNORE_OSVERSION=yes
+		debug "IGNORE_OSVERSION enabled: target_major (${target_major}) > current_compare_major (${current_compare_major})"
+		state_set ignore_osversion yes
+		return 0
+	fi
+
+	if [ "${cabi}" != "${tabi}" ]; then
+		export IGNORE_OSVERSION=yes
+		debug "IGNORE_OSVERSION enabled: ABI mismatch ${cabi} -> ${tabi}"
+		state_set ignore_osversion yes
+		return 0
+	fi
+
+	state_set ignore_osversion no
+	debug "IGNORE_OSVERSION not required"
+}
+
 log_json() {
 	stage=${1}
 	status=${2}
@@ -73,7 +189,9 @@ log_json() {
 state_get() {
 	_key=$1
 	[ -f "${STATE_FILE}" ] || return 1
-	awk -F= -v k="${_key}" '$1==k {print substr($0, index($0,"=")+1)}' "${STATE_FILE}" | tail -n 1
+	_val=$(awk -F= -v k="${_key}" '$1==k {print substr($0, index($0,"=")+1)}' "${STATE_FILE}" | tail -n 1)
+	debug_kv "state_get.${_key}" "${_val:-<unset>}"
+	printf '%s\n' "${_val}"
 }
 
 state_set() {
@@ -87,6 +205,7 @@ state_set() {
 	else
 		echo "${_key}=${_val}" >> "${STATE_FILE}"
 	fi
+	debug_kv "state_set.${_key}" "${_val}"
 }
 
 state_checksum() {
@@ -104,10 +223,12 @@ retry_cmd() {
 	_delay=2
 	_i=1
 	while :; do
-		if "$@"; then
+		debug "retry_cmd attempt=${_i}/${_retries} command=$*"
+		if run_cmd "$@"; then
 			return 0
 		fi
 		[ ${_i} -ge ${_retries} ] && return 1
+		debug "retry_cmd sleeping ${_delay}s before retry"
 		sleep ${_delay}
 		_delay=$((_delay * 2))
 		_i=$((_i + 1))
@@ -115,12 +236,14 @@ retry_cmd() {
 }
 
 ensure_tx() {
+	debug "ensure_tx start"
 	TXID=$(state_get txid 2>/dev/null || true)
 	if [ -z "${TXID}" ]; then
 		TXID=$(date +%Y%m%d%H%M%S)-$$
 		state_set txid "${TXID}"
 	fi
 	MANIFEST_FILE="${CACHE_ROOT}/${TXID}/manifest.txt"
+	debug_kv "manifest_file" "${MANIFEST_FILE}"
 }
 
 current_abi() {
@@ -138,28 +261,59 @@ target_abi() {
 }
 
 validate_repo_trust() {
+	debug "validate_repo_trust using ${PKG_REPO_CONF}"
 	[ -f "${PKG_REPO_CONF}" ] || { log "ERROR: missing repo config ${PKG_REPO_CONF}"; return 1; }
 	grep -Eq 'fingerprints|signature_type' "${PKG_REPO_CONF}" || {
 		log "ERROR: repository signature configuration not found in ${PKG_REPO_CONF}"
 		return 1
 	}
+	debug "validate_repo_trust succeeded"
 }
 
 refresh_repo() {
-	retry_cmd 3 pkg-static update -f
+	debug "refresh_repo start"
+	run_cmd_capture pkg-update pkg-static update -f >/dev/null || return 1
+	return 0
 }
 
 discover_upgrade() {
 	log "Running stage0 discovery"
 	CURRENT_STAGE=stage0
+	debug "discover_upgrade start"
 	log_json stage0 running "discovering available updates"
-	if pkg-static upgrade -nq | grep -q '^Installed packages to be UPGRADED:'; then
+	debug_repo_context
+
+	cabi=$(current_abi)
+	tabi=$(target_abi)
+	configure_osversion_compat "${cabi}" "${tabi}"
+
+	if _discovery_output=$(run_cmd_capture stage0-upgrade-check pkg-static upgrade -nq); then
+		_discovery_rc=0
+	else
+		_discovery_rc=$?
+	fi
+	debug_kv "stage0.pkg_upgrade_rc" "${_discovery_rc}"
+
+	if [ "${_discovery_rc}" -ne 0 ]; then
+		if printf '%s\n' "${_discovery_output}" | grep -Eqi 'wrong architecture|requires OS version|IGNORE_OSVERSION'; then
+			debug "stage0 detected OSVERSION/ABI related failure"
+		fi
+		log_json stage0 error "pkg-static upgrade -nq failed rc=${_discovery_rc}"
+		return ${_discovery_rc}
+	fi
+
+	if printf '%s\n' "${_discovery_output}" | grep -q '^Installed packages to be UPGRADED:'; then
+		_new_version=$(printf '%s\n' "${_discovery_output}" | awk '/^[[:space:]]+[[:alnum:]][^ ]* [^ ]+ -> / {for (i=1; i<=NF; i++) if ($i=="->") {print $(i+1); exit}}')
+		[ -n "${_new_version}" ] && printf '%s\n' "${_new_version}"
 		log_json stage0 ok "upgrade available"
+		debug_kv "stage0.upgrade_available" "yes"
 		return 2
 	fi
 	log_json stage0 ok "already up to date"
+	debug_kv "stage0.upgrade_available" "no"
 	return 0
 }
+
 
 run_stage1() {
 	CURRENT_STAGE=stage1
@@ -175,20 +329,22 @@ run_stage1() {
 	tabi=$(target_abi)
 	state_set current_abi "${cabi}"
 	state_set target_abi "${tabi}"
+	debug_repo_context
 	if [ "${cabi}" != "${tabi}" ]; then
 		state_set cross_major yes
-		export IGNORE_OSVERSION=yes
 		journal "cross-major abi transition ${cabi} -> ${tabi}"
 	else
 		state_set cross_major no
 	fi
+	configure_osversion_compat "${cabi}" "${tabi}"
 
-	pkg-static upgrade -Fqy || return 1
-	pkg-static fetch -yU pkg || return 1
+	run_cmd pkg-static upgrade -Fqy || return 1
+	run_cmd pkg-static fetch -yU pkg || return 1
 
-	pkg query '%n %v %R %sh' > "${MANIFEST_FILE}.installed" || true
-	pkg rquery -a '%n %v %R %sh' > "${MANIFEST_FILE}.remote" || true
+	run_cmd pkg query '%n %v %R %sh' > "${MANIFEST_FILE}.installed" || true
+	run_cmd pkg rquery -a '%n %v %R %sh' > "${MANIFEST_FILE}.remote" || true
 	cat "${MANIFEST_FILE}.installed" "${MANIFEST_FILE}.remote" > "${MANIFEST_FILE}" 2>/dev/null || true
+	debug "stage1 manifest generated: ${MANIFEST_FILE}"
 
 	state_set stage stage2
 	state_set state_checksum "$(state_checksum)"
@@ -205,11 +361,11 @@ run_stage2() {
 	cross_major=$(state_get cross_major 2>/dev/null || echo no)
 	if [ "${cross_major}" = "yes" ]; then
 		export IGNORE_OSVERSION=yes
-		pkg-static install -fy pkg || return 1
+		run_cmd pkg-static install -fy pkg || return 1
 	fi
 
-	pkg-static upgrade -fy || return 1
-	pkg check -Bdsya || return 1
+	run_cmd pkg-static upgrade -fy || return 1
+	run_cmd pkg check -Bdsya || return 1
 
 	state_set stage stage3
 	state_set state_checksum "$(state_checksum)"
@@ -223,9 +379,9 @@ run_stage3() {
 	journal "begin"
 	log_json stage3 running "post-validation"
 
-	pkg check -Bdsya || return 1
-	service sshd onestatus >/dev/null 2>&1 || true
-	service filterlog onestatus >/dev/null 2>&1 || true
+	run_cmd pkg check -Bdsya || return 1
+	run_cmd service sshd onestatus >/dev/null 2>&1 || true
+	run_cmd service filterlog onestatus >/dev/null 2>&1 || true
 
 	state_set stage stage4
 	log_json stage3 ok "validation complete"
@@ -238,8 +394,8 @@ run_stage4() {
 	journal "begin"
 	log_json stage4 running "cleanup/finalize"
 
-	pkg-static autoremove -y || true
-	pkg-static clean -ay || true
+	run_cmd pkg-static autoremove -y || true
+	run_cmd pkg-static clean -ay || true
 	cp -f "${LOG_FILE}" /cf/conf/upgrade_log.latest.txt 2>/dev/null || true
 
 	state_set stage done
@@ -250,6 +406,7 @@ run_stage4() {
 
 rollback_stage() {
 	stage=${1}
+	debug "rollback_stage start for ${stage}"
 	log "ERROR: failure at ${stage}, starting rollback guardrails"
 	log_json "${stage}" error "rollback guardrails invoked"
 	journal "rollback begin"
@@ -262,6 +419,7 @@ rollback_stage() {
 
 run_stage() {
 	stage=$1
+	debug "run_stage selected=${stage}"
 	case "${stage}" in
 		stage0) discover_upgrade ;;
 		stage1) run_stage1 ;;
@@ -274,6 +432,7 @@ run_stage() {
 
 run_pending_stage() {
 	pending=$(state_get stage 2>/dev/null || echo stage1)
+	debug "run_pending_stage pending=${pending}"
 	case "${pending}" in
 		stage1|stage2|stage3|stage4) run_stage "${pending}" ;;
 		done) log "No pending stage" ;;
@@ -285,14 +444,16 @@ run_install() {
 	[ -n "${PKG_NAME}" ] || { log "ERROR: -i requires package name"; return 64; }
 	flags="-y"
 	[ "${FORCE_OPS}" -eq 1 ] && flags="${flags}f"
-	pkg-static install ${flags} "${PKG_NAME}"
+	debug "run_install pkg=${PKG_NAME} flags=${flags}"
+	run_cmd pkg-static install ${flags} "${PKG_NAME}"
 }
 
 run_remove() {
 	[ -n "${PKG_NAME}" ] || { log "ERROR: -r requires package name"; return 64; }
 	flags="-y"
 	[ "${FORCE_OPS}" -eq 1 ] && flags="${flags}f"
-	pkg-static delete ${flags} "${PKG_NAME}"
+	debug "run_remove pkg=${PKG_NAME} flags=${flags}"
+	run_cmd pkg-static delete ${flags} "${PKG_NAME}"
 }
 
 DRYRUN=0
@@ -328,6 +489,16 @@ while getopts "46bcdfhi:l:np:r:Rs:uUy" opt; do
 		*) usage; exit 64 ;;
 	esac
 done
+
+debug "parsed options mode=${MODE} boot_mode=${BOOT_MODE} boot_stage=${BOOT_STAGE:-none} explicit_stage=${EXPLICIT_STAGE:-none} dryrun=${DRYRUN} skip_repo_update=${SKIP_REPO_UPDATE} force_ops=${FORCE_OPS} progress_socket=${PROGRESS_SOCKET:-none}"
+debug_kv "default_product" "${default_product}"
+debug_kv "product_name" "${PRODUCT_NAME}"
+debug_kv "state_dir" "${STATE_DIR}"
+debug_kv "cache_root" "${CACHE_ROOT}"
+debug_kv "log_file" "${LOG_FILE}"
+debug_kv "json_progress" "${JSON_PROGRESS}"
+debug_kv "debug_log_file" "${DEBUG_LOG_FILE}"
+
 if [ "${BOOT_MODE}" -eq 1 ]; then
 	MODE=boot
 	eval "next_arg=\${$OPTIND:-}"
@@ -340,20 +511,24 @@ fi
 
 if [ -n "${PROGRESS_SOCKET}" ]; then
 	log "Progress socket provided via -p (${PROGRESS_SOCKET})"
+	debug "progress socket compatibility parameter received"
 fi
 
 if [ "${MODE}" != "boot" ]; then
 	if [ "${KONTROL_UPGRADE_LOCKED:-0}" != "1" ]; then
 		export KONTROL_UPGRADE_LOCKED=1
+		debug "acquiring lock via lockf file=${LOCK_FILE}"
 		exec lockf -k -t 0 "${LOCK_FILE}" "$0" "$@"
 	fi
 fi
 
 if [ "${DRYRUN}" -eq 1 ]; then
 	log "Dry-run enabled; no mutating operations will run"
+	debug "dry-run exit"
 	exit 0
 fi
 
+debug "starting mode handler: ${MODE}"
 case "${MODE}" in
 	check)
 		discover_upgrade
@@ -361,8 +536,10 @@ case "${MODE}" in
 		;;
 	update)
 		validate_repo_trust
+		debug_repo_context
 		refresh_repo
 		log "Repository metadata updated"
+		debug "mode update completed"
 		;;
 	install)
 		[ "${SKIP_REPO_UPDATE}" -eq 1 ] || refresh_repo
@@ -384,7 +561,9 @@ case "${MODE}" in
 	run)
 		run_stage stage1 || { rollback_stage stage1; exit 1; }
 		log "Stage1 complete; reboot required to continue with stage2"
+		debug "mode run completed stage1"
 		;;
 esac
 
+debug "script completed successfully"
 exit 0
