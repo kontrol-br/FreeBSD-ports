@@ -133,7 +133,7 @@ debug_repo_context() {
 		debug "pkg -vv rc=0"
 		printf '%s\n' "${_pkgvv}" | sed 's/^/[DEBUG][pkg-vv] /' >> "${DEBUG_LOG_FILE}"
 		_repo_url=$(printf '%s\n' "${_pkgvv}" | awk -F'"' '/url[[:space:]]*:/ {print $2; exit}')
-		_abi_runtime=$(printf '%s\n' "${_pkgvv}" | awk -F': ' '/ABI/ {print $2; exit}')
+		_abi_runtime=$(printf '%s\n' "${_pkgvv}" | awk -F'"' '/^[[:space:]]*ABI[[:space:]]*=/ {print $2; exit}')
 		debug_kv "repo.url_from_pkgvv" "${_repo_url:-<not-found>}"
 		debug_kv "runtime.abi_from_pkgvv" "${_abi_runtime:-<not-found>}"
 	else
@@ -247,7 +247,7 @@ ensure_tx() {
 }
 
 current_abi() {
-	pkg -vv | awk -F': ' '/ABI/ {print $2; exit}'
+	pkg -vv | awk -F'"' '/^[[:space:]]*ABI[[:space:]]*=/ {print $2; exit}'
 }
 
 target_abi() {
@@ -287,10 +287,21 @@ discover_upgrade() {
 	tabi=$(target_abi)
 	configure_osversion_compat "${cabi}" "${tabi}"
 
-	if _discovery_output=$(run_cmd_capture stage0-upgrade-check pkg-static upgrade -nq); then
+	if _discovery_output=$(run_cmd_capture stage0-upgrade-check pkg-static upgrade -n); then
 		_discovery_rc=0
 	else
 		_discovery_rc=$?
+	fi
+
+	if [ "${_discovery_rc}" -ne 0 ] &&
+		printf '%s\n' "${_discovery_output}" | grep -Eqi 'Major OS version upgrade detected|pkg bootstrap -f recommended'; then
+		debug "stage0 running pkg-static bootstrap -f due major OS warning"
+		run_cmd_capture stage0-bootstrap pkg-static bootstrap -f >/dev/null || true
+		if _discovery_output=$(run_cmd_capture stage0-upgrade-check-retry pkg-static upgrade -n); then
+			_discovery_rc=0
+		else
+			_discovery_rc=$?
+		fi
 	fi
 	debug_kv "stage0.pkg_upgrade_rc" "${_discovery_rc}"
 
@@ -298,7 +309,7 @@ discover_upgrade() {
 		if printf '%s\n' "${_discovery_output}" | grep -Eqi 'wrong architecture|requires OS version|IGNORE_OSVERSION'; then
 			debug "stage0 detected OSVERSION/ABI related failure"
 		fi
-		log_json stage0 error "pkg-static upgrade -nq failed rc=${_discovery_rc}"
+		log_json stage0 error "pkg-static upgrade -n failed rc=${_discovery_rc}"
 		return ${_discovery_rc}
 	fi
 
