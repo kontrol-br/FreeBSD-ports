@@ -27,7 +27,7 @@ CURRENT_STAGE=""
 
 ABI_FILE=${ABI_FILE:-/usr/local/share/${PRODUCT_NAME}/pkg/repos/${PRODUCT_NAME}-repo.abi}
 ALTABI_FILE=${ALTABI_FILE:-/usr/local/share/${PRODUCT_NAME}/pkg/repos/${PRODUCT_NAME}-repo.altabi}
-PKG_REPO_CONF=${PKG_REPO_CONF:-/usr/local/etc/pkg/repos/${PRODUCT_NAME}.conf}
+PKG_REPO_CONF=${PKG_REPO_CONF:-/usr/local/share/${PRODUCT_NAME}/pkg/repos/${PRODUCT_NAME}-repo.conf}
 
 ASSUME_ALWAYS_YES=${ASSUME_ALWAYS_YES:-yes}
 export ASSUME_ALWAYS_YES
@@ -118,6 +118,25 @@ current_os_major() {
 	uname -r | awk -F. '{print $1}'
 }
 
+resolve_repo_conf() {
+	if [ -f "${PKG_REPO_CONF}" ]; then
+		return 0
+	fi
+
+	for _candidate in \
+		"/usr/local/share/${PRODUCT_NAME}/pkg/repos/${PRODUCT_NAME}-repo.conf" \
+		"/usr/local/etc/pkg/repos/${PRODUCT_NAME}.conf"; do
+		if [ -f "${_candidate}" ]; then
+			PKG_REPO_CONF="${_candidate}"
+			debug "resolved repo config fallback: ${PKG_REPO_CONF}"
+			return 0
+		fi
+	done
+
+	debug "repo config not found in known locations; keeping configured path ${PKG_REPO_CONF}"
+	return 1
+}
+
 repo_url_from_conf() {
 	[ -f "${PKG_REPO_CONF}" ] || return 0
 	awk -F'"' '/url[[:space:]]*:/ {print $2; exit}' "${PKG_REPO_CONF}"
@@ -125,6 +144,7 @@ repo_url_from_conf() {
 
 debug_repo_context() {
 	debug "debug_repo_context start"
+	resolve_repo_conf || true
 	_conf_url=$(repo_url_from_conf || true)
 	debug_kv "repo.conf_file" "${PKG_REPO_CONF}"
 	debug_kv "repo.url_from_conf" "${_conf_url:-<not-found>}"
@@ -264,6 +284,7 @@ target_abi() {
 }
 
 validate_repo_trust() {
+	resolve_repo_conf || true
 	debug "validate_repo_trust using ${PKG_REPO_CONF}"
 	[ -f "${PKG_REPO_CONF}" ] || { log "ERROR: missing repo config ${PKG_REPO_CONF}"; return 1; }
 	grep -Eq 'fingerprints|signature_type' "${PKG_REPO_CONF}" || {
@@ -277,6 +298,27 @@ refresh_repo() {
 	debug "refresh_repo start"
 	run_cmd_capture pkg-update pkg-static update -f >/dev/null || return 1
 	return 0
+}
+
+safe_bootstrap_pkg() {
+	resolve_repo_conf || true
+	repo_dir=$(dirname "${PKG_REPO_CONF}")
+	debug "safe_bootstrap_pkg start repo_conf=${PKG_REPO_CONF} repo_dir=${repo_dir} abi_file=${ABI_FILE}"
+
+	if [ ! -f "${PKG_REPO_CONF}" ]; then
+		debug "safe_bootstrap_pkg skipped: missing repo conf"
+		return 1
+	fi
+
+	if ! grep -Eqi 'kontrol|pkg\.kontrol\.com\.br' "${PKG_REPO_CONF}"; then
+		debug "safe_bootstrap_pkg skipped: repo conf does not look like Kontrol"
+		return 1
+	fi
+
+	run_cmd_capture stage0-bootstrap pkg-static \
+		-o REPOS_DIR="${repo_dir}" \
+		-o ABI_FILE="${ABI_FILE}" \
+		bootstrap -f >/dev/null
 }
 
 discover_upgrade() {
@@ -298,7 +340,16 @@ discover_upgrade() {
 
 	if [ "${_discovery_rc}" -ne 0 ] &&
 		printf '%s\n' "${_discovery_output}" | grep -Eqi 'Major OS version upgrade detected|pkg bootstrap -f recommended'; then
-		debug "stage0 detected major OS warning; automatic bootstrap is disabled to avoid fetching pkg from non-Kontrol repositories"
+		debug "stage0 major OS warning detected; attempting safe bootstrap with Kontrol repo configuration"
+		if safe_bootstrap_pkg; then
+			if _discovery_output=$(run_cmd_capture stage0-upgrade-check-retry pkg-static upgrade -n); then
+				_discovery_rc=0
+			else
+				_discovery_rc=$?
+			fi
+		else
+			debug "stage0 safe bootstrap failed or was skipped"
+		fi
 	fi
 	debug_kv "stage0.pkg_upgrade_rc" "${_discovery_rc}"
 
