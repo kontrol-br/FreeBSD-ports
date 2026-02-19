@@ -315,10 +315,18 @@ safe_bootstrap_pkg() {
 		return 1
 	fi
 
-	run_cmd_capture stage0-bootstrap pkg-static \
+	debug "safe_bootstrap_pkg forcing pkg installation from configured Kontrol repositories"
+	run_cmd_capture stage0-pkg-update pkg-static \
 		-o REPOS_DIR="${repo_dir}" \
 		-o ABI_FILE="${ABI_FILE}" \
-		bootstrap -f >/dev/null
+		-o IGNORE_OSVERSION=yes \
+		update -f >/dev/null || true
+
+	run_cmd_capture stage0-pkg-install pkg-static \
+		-o REPOS_DIR="${repo_dir}" \
+		-o ABI_FILE="${ABI_FILE}" \
+		-o IGNORE_OSVERSION=yes \
+		install -fy pkg >/dev/null
 }
 
 discover_upgrade() {
@@ -340,7 +348,7 @@ discover_upgrade() {
 
 	if [ "${_discovery_rc}" -ne 0 ] &&
 		printf '%s\n' "${_discovery_output}" | grep -Eqi 'Major OS version upgrade detected|pkg bootstrap -f recommended'; then
-		debug "stage0 major OS warning detected; attempting safe bootstrap with Kontrol repo configuration"
+		debug "stage0 major OS warning detected; attempting safe pkg reinstall from Kontrol repo configuration"
 		if safe_bootstrap_pkg; then
 			if _discovery_output=$(run_cmd_capture stage0-upgrade-check-retry pkg-static upgrade -n); then
 				_discovery_rc=0
