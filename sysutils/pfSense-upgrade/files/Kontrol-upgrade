@@ -156,7 +156,10 @@ configure_osversion_compat() {
 	debug_kv "os.current_abi" "${cabi}"
 	debug_kv "os.target_abi" "${tabi}"
 
-	current_compare_major=${current_abi_major:-${current_major}}
+	current_compare_major=${current_major}
+	if [ -n "${current_abi_major}" ] && [ "${current_abi_major}" -lt "${current_major}" ]; then
+		current_compare_major=${current_abi_major}
+	fi
 	debug_kv "os.current_compare_major" "${current_compare_major:-unknown}"
 
 	if [ -n "${target_major}" ] && [ -n "${current_compare_major}" ] && [ "${target_major}" -gt "${current_compare_major}" ]; then
@@ -295,13 +298,7 @@ discover_upgrade() {
 
 	if [ "${_discovery_rc}" -ne 0 ] &&
 		printf '%s\n' "${_discovery_output}" | grep -Eqi 'Major OS version upgrade detected|pkg bootstrap -f recommended'; then
-		debug "stage0 running pkg-static bootstrap -f due major OS warning"
-		run_cmd_capture stage0-bootstrap pkg-static bootstrap -f >/dev/null || true
-		if _discovery_output=$(run_cmd_capture stage0-upgrade-check-retry pkg-static upgrade -n); then
-			_discovery_rc=0
-		else
-			_discovery_rc=$?
-		fi
+		debug "stage0 detected major OS warning; automatic bootstrap is disabled to avoid fetching pkg from non-Kontrol repositories"
 	fi
 	debug_kv "stage0.pkg_upgrade_rc" "${_discovery_rc}"
 
