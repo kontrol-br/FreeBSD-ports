@@ -272,7 +272,7 @@ repo_is_plus_upgrade() {
 abi_setup() {
 	local _freebsd_version=$(uname -r)
 	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
-	local _cur_osversion=$(sysctl -n kern.osreldate)
+	local _cur_osmajor="${_freebsd_version%%.*}"
 
 	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
 	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
@@ -301,10 +301,15 @@ abi_setup() {
 		ABI=${CUR_ABI}
 	fi
 
+	local _target_osmajor=$(echo "${ABI}" | \
+	    awk -F: 'tolower($1)=="freebsd" { print $2 }')
+
 	if [ -f ${_repo_abi_file%%.conf}.osversion ]; then
 		OSVERSION=$(cat ${_repo_abi_file%%.conf}.osversion)
+	elif [ -n "${_target_osmajor}" ]; then
+		OSVERSION="${_target_osmajor}000000"
 	else
-		OSVERSION=${_cur_osversion}
+		OSVERSION=$(sysctl -n kern.osreldate)
 	fi
 
 	# Make sure pkg.conf is set properly so GUI can work
@@ -342,7 +347,7 @@ EOF
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" -o "${_cur_osversion}" = "${OSVERSION}" ] ; then
+	if [ "${CUR_ABI}" = "${ABI}" -o "${_cur_osmajor}" = "${_target_osmajor}" ] ; then
 		NEW_MAJOR=""
 	else
 		NEW_MAJOR=1
