@@ -272,6 +272,7 @@ repo_is_plus_upgrade() {
 abi_setup() {
 	local _freebsd_version=$(uname -r)
 	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
+	local _cur_osversion=$(sysctl -n kern.osreldate)
 
 	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
 	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
@@ -300,15 +301,15 @@ abi_setup() {
 		ABI=${CUR_ABI}
 	fi
 
-	if [ -f ${_repo_abi_file%%.conf}.altabi ]; then
-		ALTABI=$(cat ${_repo_abi_file%%.conf}.altabi)
+	if [ -f ${_repo_abi_file%%.conf}.osversion ]; then
+		OSVERSION=$(cat ${_repo_abi_file%%.conf}.osversion)
 	else
-		ALTABI=${CUR_ALTABI}
+		OSVERSION=${_cur_osversion}
 	fi
 
 	# Make sure pkg.conf is set properly so GUI can work
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-	echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
@@ -341,14 +342,14 @@ EOF
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" -o "${CUR_ABI}" = "${ALTABI}" ] ; then
+	if [ "${CUR_ABI}" = "${ABI}" -o "${_cur_osversion}" = "${OSVERSION}" ] ; then
 		NEW_MAJOR=""
 	else
 		NEW_MAJOR=1
 		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
+	export CUR_ABI CUR_ALTABI ABI OSVERSION NEW_MAJOR
 }
 
 get_pkg_repo_url() {
