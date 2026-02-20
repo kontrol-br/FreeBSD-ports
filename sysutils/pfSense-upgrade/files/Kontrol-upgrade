@@ -307,7 +307,8 @@ abi_setup() {
 	if [ -f ${_repo_abi_file%%.conf}.osversion ]; then
 		OSVERSION=$(cat ${_repo_abi_file%%.conf}.osversion)
 	elif [ -n "${_target_osmajor}" ]; then
-		OSVERSION="${_target_osmajor}000000"
+		# FreeBSD kern.osreldate format for major fallback (e.g. 14 -> 1400000)
+		OSVERSION="${_target_osmajor}00000"
 	else
 		OSVERSION=$(sysctl -n kern.osreldate)
 	fi
