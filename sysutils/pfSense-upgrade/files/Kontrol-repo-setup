@@ -186,11 +186,17 @@ pfSense_repo_setup() {
 	cp "${PFSENSE_REPO_CONF}" "/tmp/${PRODUCT}.conf.copy"
 
 	if [ -z "${NOUPDATE}" ]; then
-		# Fetch the repository settings.
-		if ! /usr/local/sbin/${PRODUCT}-repoc-static; then
-			echo "failed to update the repository settings!!!"
-			rm -f "/tmp/${PRODUCT}.conf.copy"
-			exit 1
+		# Fetch the repository settings when available.
+		if [ "${NO_REPOC}" = "1" ]; then
+			echo "NO_REPOC=1 set, skipping repository metadata refresh"
+		elif [ -x "/usr/local/sbin/${PRODUCT}-repoc-static" ]; then
+			if ! /usr/local/sbin/${PRODUCT}-repoc-static; then
+				echo "failed to update the repository settings!!!"
+				rm -f "/tmp/${PRODUCT}.conf.copy"
+				exit 1
+			fi
+		else
+			echo "warning: /usr/local/sbin/${PRODUCT}-repoc-static not found; skipping repository metadata refresh"
 		fi
 	fi
 
