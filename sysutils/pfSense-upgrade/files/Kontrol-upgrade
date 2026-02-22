@@ -1011,6 +1011,12 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "3" ]; then
+		# Stage 2 keeps additional packages locked while base system and
+		# core packages are upgraded. Refresh metadata before the final
+		# pass so package upgrades pending only for add-on packages are
+		# not skipped when this stage is executed with -U during boot.
+		pkg_update force mute
+
 		if upgrade_available; then
 			delete_annotation=1
 			_exec "pkg-static upgrade${dont_update}" \
