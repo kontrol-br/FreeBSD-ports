@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.4.10
-PORTREVISION=	1
+PORTREVISION=	3
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -32,7 +32,7 @@ CONFIGURE_ARGS=	--with-logdir=/var/log \
 OPTIONS_RADIO=	AV
 OPTIONS_RADIO_AV=AVAST CLAMD KAV
 OPTIONS_DEFINE=	CLISCAN ICAP NTLM DNS EMAIL DEBUG DOCS SSL_MITM
-OPTIONS_DEFAULT=CLAMD DNS ICAP NTLM SSL_MITM
+OPTIONS_DEFAULT=CLAMD DNS ICAP NTLM SSL_MITM DEBUG
 OPTIONS_SUB=	yes
 
 CLISCAN_DESC=	Enable support for CLI content scanners
@@ -60,6 +60,11 @@ DNS_CONFIGURE_ENABLE=		dnsauth
 EMAIL_CONFIGURE_ENABLE=		email
 DEBUG_CONFIGURE_OFF=		--with-e2debug=off --with-newdebug=off
 DEBUG_CONFIGURE_ON=		--with-e2debug=on --with-newdebug=on
+
+# Flags de debug reabilitadas para troubleshooting
+DEBUG_CFLAGS=		-g -O0 -fno-omit-frame-pointer
+DEBUG_CXXFLAGS=		-g -O0 -fno-omit-frame-pointer
+DEBUG_VARS=		STRIP=
 
 #SSL_MITM_USES=                 ssl
 SSL_MITM_CONFIGURE_ENABLE=      sslmitm
