@@ -581,11 +581,9 @@ function e2g_watchdog_script($wpid, $wcmd, $winfo){
 	$wlog = "/var/log/e2guardian/start.log";
 	$wscript = <<<EOF
 # watchdog script for {$winfo}
-	if [ -f {$wpid} ]; then
-		wpid_number="\$(cat {$wpid} 2>/dev/null)"
-		if [ -n "\${wpid_number}" ] && kill -0 "\${wpid_number}" 2>/dev/null; then
-			:
-		else
+	if [ -f {$wpid} ];then
+		cat {$wpid} | xargs ps
+		if [ $? -ne 0 ]; then
 			{$wcmd}
 			echo "`date +'%a %b %d %T %Y'` {$winfo} start" >> {$wlog}
 		fi
@@ -2196,9 +2194,8 @@ EOF;
 
 	//watchdog script;
 	$cron_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
-	$watchdog_cmd = "/bin/sh $cron_cmd";
 	if ($e2guardian['watchdog'] == "on") {
-		e2g_check_cron($watchdog_cmd, "create");
+		e2g_check_cron("/bin/sh $cron_cmd", "create");
 		if ($e2guardian['parentmode'] == 'local') {
 			//e2g parent
 			$parent_pid = "/var/run/squid/e2gsquid.pid";
@@ -2219,19 +2216,13 @@ EOF;
 			}
 		}
 		$watchdog  =  "#!/bin/sh\n";
-		$watchdog .= "LOCK_FILE=/var/run/e2g_watchdog.lock\n";
-		$watchdog .= "/usr/bin/lockf -s -t 0 \${LOCK_FILE} /bin/sh -c '\n";
 		$watchdog .= "for a in 00 10 20 30 40 50\ndo\n";
 		$watchdog .= "\t{$watchdog_e2g}\n\t{$watchdog_parent}\n\t{$watchdog_squid}\n";
 		$watchdog .= "\tsleep 10\ndone\n";
-		$watchdog .= "'\n";
 		file_put_contents($cron_cmd, $watchdog, LOCK_EX);
-		chmod($cron_cmd, 0755);
 	} else {
 		file_put_contents($cron_cmd, "", LOCK_EX);
-		e2g_check_cron($watchdog_cmd, "remove");
-		mwexec("/usr/bin/pkill -f " . escapeshellarg($cron_cmd));
-		mwexec("/usr/bin/pkill -f " . escapeshellarg('/bin/sh ' . $cron_cmd));
+		e2g_check_cron("/bin/sh $cron_cmd", "remove");
 	}
 
 	// Check acl schedules
