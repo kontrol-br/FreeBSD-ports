@@ -1,15 +1,15 @@
---- gpu/command_buffer/service/webgpu_decoder_impl.cc.orig	2025-12-06 13:30:52 UTC
+--- gpu/command_buffer/service/webgpu_decoder_impl.cc.orig	2026-02-15 10:01:45 UTC
 +++ gpu/command_buffer/service/webgpu_decoder_impl.cc
-@@ -1758,7 +1758,7 @@ wgpu::Adapter WebGPUDecoderImpl::CreatePreferredAdapte
+@@ -1764,7 +1764,7 @@ wgpu::Adapter WebGPUDecoderImpl::CreatePreferredAdapte
        backend_types = {wgpu::BackendType::D3D12};
  #elif BUILDFLAG(IS_APPLE)
        backend_types = {wgpu::BackendType::Metal};
 -#elif BUILDFLAG(IS_LINUX)
 +#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
        if (shared_context_state_->GrContextIsVulkan() ||
+           webgpu_on_vk_gl_interop_ ||
            shared_context_state_->IsGraphiteDawnVulkan()) {
-         backend_types = {wgpu::BackendType::Vulkan};
-@@ -2003,7 +2003,7 @@ WebGPUDecoderImpl::AssociateMailboxDawn(
+@@ -2082,7 +2082,7 @@ WebGPUDecoderImpl::AssociateMailboxDawn(
    }
  
  #if !BUILDFLAG(IS_WIN) && !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_APPLE) && \

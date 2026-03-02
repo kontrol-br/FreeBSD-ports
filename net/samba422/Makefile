@@ -1,6 +1,5 @@
 PORTNAME=			samba422
-DISTVERSION=			4.22.6
-PORTREVISION=			6
+DISTVERSION=			4.22.7
 CATEGORIES?=			net
 MASTER_SITES=			SAMBA/samba/stable SAMBA/samba/rc
 DISTNAME=			samba-${DISTVERSION:S|.p|pre|:S|.r|rc|:S|.t|tp|:S|.a|alpha|}
@@ -124,6 +123,7 @@ CFLAGS+=			${_CFLAGS_${CHOSEN_COMPILER_TYPE}}
 _CFLAGS_clang=			-fno-color-diagnostics
 .endif
 CONFIGURE_ENV+=			NOCOLOR=yes WAF_LOG_FORMAT='%(c1)s%(zone)s%(c2)s %(message)s'
+FORTIFY_UNSAFE=			yes
 MAKE_ENV+=			NOCOLOR=yes WAF_LOG_FORMAT='%(c1)s%(zone)s%(c2)s %(message)s'
 # for libexecinfo: (so that __builtin_frame_address() finds the top of the stack)
 CFLAGS_amd64+=			-fno-omit-frame-pointer
@@ -286,7 +286,7 @@ DEVELOPER_VARS=			_SHARED_MODULES+="auth_skel pdb_test gpext_security gpext_regi
 DEVELOPER_VARS_OFF=		_GDB_CMD=true
 
 # https://bugzilla.samba.org/show_bug.cgi?id=9545
-FAM_USES=			fam
+FAM_LIB_DEPENDS=		libfam.so.0:devel/gamin
 FAM_CONFIGURE_WITH=		fam
 
 FRUIT_PREVENTS=			ZEROCONF_NONE

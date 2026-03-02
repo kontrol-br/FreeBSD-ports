@@ -1,6 +1,6 @@
---- third_party/blink/renderer/core/xml/xslt_processor.h.orig	2025-11-01 06:40:37 UTC
+--- third_party/blink/renderer/core/xml/xslt_processor.h.orig	2026-02-15 10:01:45 UTC
 +++ third_party/blink/renderer/core/xml/xslt_processor.h
-@@ -82,7 +82,11 @@ class XSLTProcessor final : public ScriptWrappable {
+@@ -93,7 +93,11 @@ class XSLTProcessor final : public ScriptWrappable {
  
    void reset();
  

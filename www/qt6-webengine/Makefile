@@ -33,14 +33,15 @@ LIB_DEPENDS=	libfreetype.so:print/freetype2 \
 USES=		cmake compiler:c++20-lang gl localbase:ldflags ninja:build \
 		pkgconfig python:build qt-dist:6,webengine
 USE_GL=		opengl
+USE_LDCONFIG=	${PREFIX}/${QT_LIBDIR_REL}
 USE_QT=		base declarative tools
 USE_XORG=	x11 xcb xcomposite xcursor xdamage xext xfixes xi xkbfile \
 		xrandr xrender xscrnsaver xshmfence xtst
 
+CONFIGURE_ENV=	NODEJS_EXECUTABLE="${LOCALBASE}/bin/node"
+
 CMAKE_ON=	QT_FEATURE_webengine_system_ffmpeg \
 		QT_FEATURE_webengine_proprietary_codecs
-
-USE_LDCONFIG=	${PREFIX}/${QT_LIBDIR_REL}
 
 .if defined(BUILD_QTPDF)
 CMAKE_ON+=	QT_FEATURE_qtpdf_build
@@ -55,7 +56,6 @@ LIB_DEPENDS+=	libabsl_base.so:devel/abseil \
 		libdbus-1.so:devel/dbus \
 		libdrm.so:graphics/libdrm \
 		libepoll-shim.so:devel/libepoll-shim \
-		libevent.so:devel/libevent \
 		libexpat.so:textproc/expat2 \
 		libfontconfig.so:x11-fonts/fontconfig \
 		libharfbuzz.so:print/harfbuzz \
@@ -84,7 +84,7 @@ CMAKE_OFF+=	QT_FEATURE_qtpdf_build
 
 CXXFLAGS+=	-I${LOCALBASE}/include/libepoll-shim
 
-SYS_LIBS=	freetype harfbuzz-ng libdrm libevent libpng libxml libxslt openh264 opus
+SYS_LIBS=	freetype harfbuzz-ng libdrm libpng libxml libxslt openh264 opus
 .endif
 
 # The build system reads the environment variable $NINJA_PATH to decide whether
@@ -157,6 +157,7 @@ post-extract:
 	@${MKDIR} ${WRKSRC}/src/3rdparty/chromium/media/audio/sndio \
 		${WRKSRC}/src/3rdparty/chromium/sandbox/policy/freebsd \
 		${WRKSRC}/src/3rdparty/chromium/sandbox/policy/openbsd
+	(cd ${WRKSRC}/src/3rdparty/chromium/third_party/libdrm/src/include && ${CP} drm/drm.h .)
 
 post-patch:
 	@${REINPLACE_CMD} -e 's|%%CPPFLAGS%%|${CPPFLAGS}|;s|%%CXXFLAGS%%|${CXXFLAGS}|;s|%%LDFLAGS%%|${LDFLAGS}|' \

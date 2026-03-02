@@ -1,8 +1,10 @@
 PORTNAME=	gatus
 DISTVERSIONPREFIX=	v
-DISTVERSION=	5.33.1
+DISTVERSION=	5.35.0
 CATEGORIES=	www
 MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/
+# For instructions on how to create assets:
+#   https://github.com/DtxdF/port-assets-makejails/tree/main/gatus
 DISTFILES=	${PORTNAME}-${DISTVERSIONPREFIX}${DISTVERSION}.vendor${EXTRACT_SUFX}
 
 MAINTAINER=	dtxdf@FreeBSD.org

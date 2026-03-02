@@ -1,6 +1,5 @@
 PORTNAME=	base
 DISTVERSION=	${QT6_VERSION}
-PORTREVISION=	2
 CATEGORIES=	devel
 PKGNAMEPREFIX=	qt6-
 
@@ -31,7 +30,6 @@ LIB_DEPENDS=	libatk-1.0.so:accessibility/at-spi2-core \
 		libpng16.so:graphics/png \
 		libudev.so:devel/libudev-devd \
 		libvulkan.so:graphics/vulkan-loader \
-		libwayland-client.so:graphics/wayland \
 		libxkbcommon.so:x11/libxkbcommon \
 		libzstd.so:archivers/zstd
 
@@ -54,7 +52,8 @@ CMAKE_ON=	CMAKE_DISABLE_FIND_PACKAGE_LTTngUST \
 		QT_FIND_ALL_PACKAGES_ALWAYS \
 		QT_FEATURE_openssl_linked
 CMAKE_OFF=	QT_FEATURE_eglfs \
-		QT_FEATURE_gssapi
+		QT_FEATURE_gssapi \
+		QT_FEATURE_reduce_relocations
 # sql drivers are handled in the databases/qt6-base_sqldriver port
 CMAKE_OFF+=	FEATURE_sql_mysql \
 		FEATURE_sql_odbc \
@@ -64,12 +63,16 @@ CMAKE_OFF+=	FEATURE_sql_mysql \
 # zstd from base fails to compress files during the build (error 11: unsupported argument)
 BINARY_ALIAS=	zstd=${LOCALBASE}/bin/zstd
 
-OPTIONS_DEFINE=		CUPS X11
-OPTIONS_DEFAULT=	CUPS X11
+OPTIONS_DEFINE=		CUPS WAYLAND X11
+OPTIONS_DEFAULT=	CUPS WAYLAND X11
 OPTIONS_SUB=		yes
 
 CUPS_LIB_DEPENDS=	libcups.so:print/cups
 CUPS_CMAKE_BOOL=	FEATURE_cups
+
+WAYLAND_LIB_DEPENDS=	libwayland-client.so:graphics/wayland
+WAYLAND_CMAKE_BOOL=	FEATURE_qtwaylandscanner \
+			FEATURE_wayland
 
 X11_LIB_DEPENDS=	libxcb-cursor.so:x11/xcb-util-cursor \
 			libxcb-icccm.so:x11/xcb-util-wm \

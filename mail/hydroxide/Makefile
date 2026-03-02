@@ -1,10 +1,10 @@
 PORTNAME=	hydroxide
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.2.30
-PORTREVISION=	6
+DISTVERSION=	0.2.31
+PORTREVISION=	2
 CATEGORIES=	mail
 
-MAINTAINER=	nxjoseph@protonmail.com
+MAINTAINER=	nxjoseph@FreeBSD.org
 COMMENT=	Free ProtonMail bridge for using with any email client you prefer
 WWW=		https://github.com/emersion/hydroxide
 

@@ -90,6 +90,7 @@
     SUBDIR += darknet
     SUBDIR += dartsim
     SUBDIR += ddate
+    SUBDIR += deark
     SUBDIR += deco
     SUBDIR += dejagnu
     SUBDIR += delay
@@ -109,6 +110,7 @@
     SUBDIR += edflib
     SUBDIR += elki
     SUBDIR += elscreen
+    SUBDIR += emacs-libvterm
     SUBDIR += estic
     SUBDIR += exercism
     SUBDIR += explosions
@@ -319,8 +321,6 @@
     SUBDIR += opencyc
     SUBDIR += openhab
     SUBDIR += openhab-addons
-    SUBDIR += openhab2
-    SUBDIR += openhab2-addons
     SUBDIR += openhantek
     SUBDIR += openhmd
     SUBDIR += openmvg
@@ -410,7 +410,6 @@
     SUBDIR += pecl-timezonedb
     SUBDIR += perkeep
     SUBDIR += pfm
-    SUBDIR += php81-calendar
     SUBDIR += php82-calendar
     SUBDIR += php83-calendar
     SUBDIR += php84-calendar
@@ -423,6 +422,7 @@
     SUBDIR += pspresent
     SUBDIR += ptsort
     SUBDIR += pubs
+    SUBDIR += py-NATTEN
     SUBDIR += py-PyUserInput
     SUBDIR += py-PyWavefront
     SUBDIR += py-QSpectrumAnalyzer
@@ -455,6 +455,7 @@
     SUBDIR += py-eemeter
     SUBDIR += py-einops
     SUBDIR += py-emoji
+    SUBDIR += py-equinox
     SUBDIR += py-ezc3d
     SUBDIR += py-facenet-pytorch
     SUBDIR += py-fast-histogram
@@ -489,7 +490,9 @@
     SUBDIR += py-langchain-openai
     SUBDIR += py-langchain-tests
     SUBDIR += py-langchain-text-splitters
+    SUBDIR += py-langgraph
     SUBDIR += py-langgraph-checkpoint
+    SUBDIR += py-langgraph-prebuilt
     SUBDIR += py-langgraph-sdk
     SUBDIR += py-langsmith
     SUBDIR += py-laspy
@@ -515,7 +518,6 @@
     SUBDIR += py-molequeue
     SUBDIR += py-napari
     SUBDIR += py-napari-svg
-    SUBDIR += py-natten
     SUBDIR += py-npTDMS
     SUBDIR += py-npe2
     SUBDIR += py-numcodecs
@@ -538,6 +540,7 @@
     SUBDIR += py-pkbar
     SUBDIR += py-placekey
     SUBDIR += py-polars
+    SUBDIR += py-polars-runtime
     SUBDIR += py-posthog
     SUBDIR += py-powerline-status
     SUBDIR += py-progressbar
@@ -721,7 +724,6 @@
     SUBDIR += urh
     SUBDIR += usbids
     SUBDIR += usbrh-libusb
-    SUBDIR += usd
     SUBDIR += utftools
     SUBDIR += utouch-kmod
     SUBDIR += valentina

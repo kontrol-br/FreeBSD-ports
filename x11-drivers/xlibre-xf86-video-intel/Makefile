@@ -1,8 +1,9 @@
 PORTNAME=	xlibre-xf86-video-intel
-PORTVERSION=	3.0.0.5
+PORTVERSION=	25.0.1
+PORTREVISION=	1
 CATEGORIES=	x11-drivers
 
-MAINTAINER=	b-aazbsd@proton.me
+MAINTAINER=	xlibre@FreeBSD.org
 COMMENT=	XLibre legacy driver for Intel integrated graphics chipsets
 WWW=		https://01.org/linuxgraphics/xf86-video-intel/
 
@@ -15,12 +16,12 @@ ONLY_FOR_ARCHS_REASON=	only Intel integrated GPUs on x86 are supported
 LIB_DEPENDS=	libdrm_intel.so:graphics/libdrm \
 		libxcb-util.so:x11/xcb-util libXvMC.so:x11/libXvMC
 
-CONFLICTS_INSTALL=	xf86-video-intel
-
 USES=		localbase xlibre xlibre-cat:driver,meson
 USE_XORG=	pciaccess pixman x11 xcb xinerama xrandr xdamage xcursor xtst xfixes xrender xscrnsaver xext xv
 CONFIGURE_ENV=	ac_cv_header_sys_sysinfo_h=no # XXX ports/242236
 TEST_TARGET=	check
+
+GH_TAGNAME=	497585a
 
 # XXX bug 214593: SNA crashes on pre-SandyBridge hardware
 MESON_ARGS+=-Ddefault-accel=uxa -Dbacklight-helper=false

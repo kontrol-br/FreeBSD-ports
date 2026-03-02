@@ -1,5 +1,7 @@
 PORTNAME=	github-copilot-cli
-DISTVERSION=	0.0.366
+DISTVERSION=	0.0.394 # do not update until https://github.com/github/copilot-cli/issues/1320 is fixed
+PORTREVISION=	1
+PORTEPOCH=	1
 CATEGORIES=	misc # machine-learning
 DISTFILES=	${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX} \
 		${NODE_HEADERS}${EXTRACT_SUFX}
@@ -18,6 +20,7 @@ BUILD_DEPENDS=	npm:www/npm \
 		libsecret>0:security/libsecret \
 		vips>=8.17.2:graphics/vips
 RUN_DEPENDS=	libsecret>0:security/libsecret \
+		rg:textproc/ripgrep \
 		vips>=8.17.2:graphics/vips
 
 USES=		nodejs:run pkgconfig python:build
@@ -93,6 +96,12 @@ post-extract:
 		${WRKDIR}/${dep_node_addon_api_npm_name}-${dep_node_addon_api_version}/node_modules/${dep_node_addon_api_npm_name} \
 		${WRKDIR}/${dep_sharp_npm_name}-${dep_sharp_version}/node_modules/${dep_sharp_npm_name}/node_modules/node-addon-api
 
+post-patch:
+	# set version
+	${REINPLACE_CMD} -i '' \
+		-e 's|qg.default.createElement(U,{color:e.MUTED},"v",t)|qg.default.createElement(U,{color:e.MUTED},"v","${PORTVERSION}")|g' \
+		${WRKSRC}/node_modules/@github/copilot/index.js
+
 do-build:
 	# Create directory for FreeBSD prebuilds
 	@${MKDIR} ${WRKSRC}/node_modules/${PACKAGE_NAME}/prebuilds/freebsd-x64
@@ -134,7 +143,7 @@ do-install:
 		-e "s|#!/usr/bin/env node|#!${PREFIX}/bin/node|" \
 		${STAGEDIR}${PREFIX}/lib/node_modules/${PACKAGE_NAME}/index.js
 	# set exec bit
-	@${CHMOD} +x ${STAGEDIR}${PREFIX}/lib/node_modules/${PACKAGE_NAME}/index.js
+	@${CHMOD} +x ${STAGEDIR}${PREFIX}/lib/node_modules/${PACKAGE_NAME}/npm-loader.js
 	# create symlink in bin
 	@${RLN} -s ${STAGEDIR}${PREFIX}/lib/node_modules/.bin/copilot ${STAGEDIR}${PREFIX}/bin/copilot
 	# strip binaries

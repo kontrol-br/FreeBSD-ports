@@ -1,6 +1,6 @@
---- chrome/browser/global_features.cc.orig	2025-12-05 10:12:50 UTC
+--- chrome/browser/global_features.cc.orig	2026-02-11 09:05:39 UTC
 +++ chrome/browser/global_features.cc
-@@ -27,7 +27,7 @@
+@@ -36,7 +36,7 @@
  #include "chrome/browser/glic/public/glic_enabling.h"               // nogncheck
  #endif
  
@@ -8,17 +8,17 @@
 +#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
  // This causes a gn error on Android builds, because gn does not understand
  // buildflags, so we include it only on platforms where it is used.
- #include "chrome/browser/ui/webui/whats_new/whats_new_registrar.h"
-@@ -73,7 +73,7 @@ void GlobalFeatures::ReplaceGlobalFeaturesForTesting(
+ #include "chrome/browser/default_browser/default_browser_manager.h"
+@@ -140,7 +140,7 @@ void GlobalFeatures::PreBrowserProcessInitCore() {
  
- void GlobalFeatures::Init() {
+ void GlobalFeatures::PostBrowserProcessInitCore() {
    system_permissions_platform_handle_ = CreateSystemPermissionsPlatformHandle();
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // TODO(crbug.com/463742800): Migrate WhatsNewRegistry (and other non-core
+   // features) to Init().
    whats_new_registry_ = CreateWhatsNewRegistry();
- #endif
- 
-@@ -134,7 +134,7 @@ GlobalFeatures::CreateSystemPermissionsPlatformHandle(
+@@ -218,7 +218,7 @@ GlobalFeatures::CreateSystemPermissionsPlatformHandle(
    return system_permission_settings::PlatformHandle::Create();
  }
  

@@ -61,6 +61,7 @@
     SUBDIR += bjumblr-lv2
     SUBDIR += bliss
     SUBDIR += blop
+    SUBDIR += blucli
     SUBDIR += boca
     SUBDIR += boops-lv2
     SUBDIR += bristol
@@ -428,11 +429,6 @@
     SUBDIR += liquidsfz
     SUBDIR += listener
     SUBDIR += littlefly-lv2
-    SUBDIR += logitechmediaserver
-    SUBDIR += logitechmediaserver-dynamicplaylist
-    SUBDIR += logitechmediaserver-lazysearch
-    SUBDIR += logitechmediaserver-sqlplaylist
-    SUBDIR += logitechmediaserver-trackstat
     SUBDIR += lollypop
     SUBDIR += lpcnet
     SUBDIR += lsp-plugins-lv2
@@ -443,6 +439,7 @@
     SUBDIR += lv2lint
     SUBDIR += lv2proc
     SUBDIR += lvtk
+    SUBDIR += lyrionmusicserver
     SUBDIR += mac
     SUBDIR += madfufw
     SUBDIR += madplay
@@ -518,6 +515,7 @@
     SUBDIR += ncspot
     SUBDIR += netease-music-tui
     SUBDIR += neuralrack-lv2
+    SUBDIR += noctavox
     SUBDIR += noise-repellent-lv2
     SUBDIR += noise-suppression-for-voice-lv2
     SUBDIR += normalize
@@ -587,7 +585,6 @@
     SUBDIR += pavucontrol
     SUBDIR += pavucontrol-qt
     SUBDIR += pavumeter
-    SUBDIR += pc-mixer
     SUBDIR += pcaudiolib
     SUBDIR += pd
     SUBDIR += pd-cyclone
@@ -781,6 +778,7 @@
     SUBDIR += streamtranscoder
     SUBDIR += string-machine-lv2
     SUBDIR += stymulator
+    SUBDIR += subtui
     SUBDIR += suil
     SUBDIR += supercollider
     SUBDIR += surge-synthesizer-lv2
@@ -814,7 +812,6 @@
     SUBDIR += tkeca
     SUBDIR += toccata-lv2
     SUBDIR += tosha
-    SUBDIR += traverso
     SUBDIR += triceratops-lv2
     SUBDIR += tse3
     SUBDIR += tta
@@ -851,6 +848,7 @@
     SUBDIR += wasabi
     SUBDIR += wavbreaker
     SUBDIR += wavegain
+    SUBDIR += waves
     SUBDIR += wavetral
     SUBDIR += wavpack
     SUBDIR += wavplay

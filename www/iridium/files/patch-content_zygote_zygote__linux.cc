@@ -1,4 +1,4 @@
---- content/zygote/zygote_linux.cc.orig	2025-12-10 15:04:57 UTC
+--- content/zygote/zygote_linux.cc.orig	2026-02-16 10:45:29 UTC
 +++ content/zygote/zygote_linux.cc
 @@ -1,6 +1,7 @@
  // Copyright 2012 The Chromium Authors

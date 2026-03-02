@@ -1,6 +1,6 @@
 PORTNAME=	tools
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.39.0
+DISTVERSION=	0.42.0
 PORTREVISION=	1
 PORTEPOCH=	1
 CATEGORIES=	devel
@@ -13,7 +13,7 @@ WWW=		https://godoc.org/golang.org/x/tools
 LICENSE=	BSD3CLAUSE
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
-USES=		go:modules,1.24
+USES=		go:1.24+,modules
 GO_MODULE=	golang.org/x/tools
 GO_TARGET=	./cmd/bisect \
 		./cmd/bundle \

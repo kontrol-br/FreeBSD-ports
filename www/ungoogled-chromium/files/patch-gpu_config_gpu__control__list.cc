@@ -1,6 +1,6 @@
---- gpu/config/gpu_control_list.cc.orig	2025-10-21 16:57:35 UTC
+--- gpu/config/gpu_control_list.cc.orig	2026-02-15 10:01:45 UTC
 +++ gpu/config/gpu_control_list.cc
-@@ -846,7 +846,7 @@ GpuControlList::OsType GpuControlList::GetOsType() {
+@@ -854,7 +854,7 @@ GpuControlList::OsType GpuControlList::GetOsType() {
    return kOsAndroid;
  #elif BUILDFLAG(IS_FUCHSIA)
    return kOsFuchsia;

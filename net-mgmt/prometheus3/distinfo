@@ -1,7 +1,7 @@
-TIMESTAMP = 1766047343
-SHA256 (go/net-mgmt_prometheus3/prometheus-prometheus-v3.8.1_GH0/go.mod) = 4279801dddde027a0f1fd5b4f89ed595aa20c306d8d987d6ece23641c7950a50
-SIZE (go/net-mgmt_prometheus3/prometheus-prometheus-v3.8.1_GH0/go.mod) = 11980
-SHA256 (go/net-mgmt_prometheus3/prometheus-prometheus-v3.8.1_GH0/prometheus-web-ui-3.8.1.tar.gz) = 903bd29c9b31c492613305d022e5371d3223264984b035ab7e1ae18a43ad1acf
-SIZE (go/net-mgmt_prometheus3/prometheus-prometheus-v3.8.1_GH0/prometheus-web-ui-3.8.1.tar.gz) = 3209274
-SHA256 (go/net-mgmt_prometheus3/prometheus-prometheus-v3.8.1_GH0/prometheus-prometheus-v3.8.1_GH0.tar.gz) = 4745c45427a297a8736d5796297721dfa467f3c5af6422d4ac22360580e0f0fb
-SIZE (go/net-mgmt_prometheus3/prometheus-prometheus-v3.8.1_GH0/prometheus-prometheus-v3.8.1_GH0.tar.gz) = 5412258
+TIMESTAMP = 1772278465
+SHA256 (go/net-mgmt_prometheus3/prometheus-prometheus-v3.10.0_GH0/go.mod) = 02a1eb90166397bff462e9cb899591fa8ff9a5486667992084428c8837e33240
+SIZE (go/net-mgmt_prometheus3/prometheus-prometheus-v3.10.0_GH0/go.mod) = 13104
+SHA256 (go/net-mgmt_prometheus3/prometheus-prometheus-v3.10.0_GH0/prometheus-web-ui-3.10.0.tar.gz) = f5ff10c517fcee50f4562f69c5be629860a365201b67c27dc4004168ce45f96a
+SIZE (go/net-mgmt_prometheus3/prometheus-prometheus-v3.10.0_GH0/prometheus-web-ui-3.10.0.tar.gz) = 3222304
+SHA256 (go/net-mgmt_prometheus3/prometheus-prometheus-v3.10.0_GH0/prometheus-prometheus-v3.10.0_GH0.tar.gz) = a3d01efaf82edfd074f9fc48399969bcf22f22b8fb4353dfbbcc79cb2a03e579
+SIZE (go/net-mgmt_prometheus3/prometheus-prometheus-v3.10.0_GH0/prometheus-prometheus-v3.10.0_GH0.tar.gz) = 5683507

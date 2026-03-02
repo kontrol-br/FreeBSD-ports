@@ -1,9 +1,9 @@
 PORTNAME=	moor
 DISTVERSIONPREFIX=	v
-DISTVERSION=	2.9.6
+DISTVERSION=	2.11.0
 CATEGORIES=	textproc
 
-MAINTAINER=	nxjoseph@protonmail.com
+MAINTAINER=	nxjoseph@FreeBSD.org
 COMMENT=	Pager designed to do the right thing without any configuration
 WWW=		https://github.com/walles/moor
 
@@ -28,7 +28,7 @@ post-extract:
 		${LN} -s compressed.txt.zst compressed.txt.zstd
 
 post-patch:
-	@${REINPLACE_CMD} -e '24s,".*","${WRKSRC}/sample-files",g' \
+	@${REINPLACE_CMD} 's|../../sample-files|${WRKSRC}/sample-files|g' \
 		${WRKSRC}/internal/reader/reader_test.go
 
 post-install:

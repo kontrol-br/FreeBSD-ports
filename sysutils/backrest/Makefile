@@ -1,10 +1,11 @@
 PORTNAME=	backrest
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.10.1
-PORTREVISION=	2
+DISTVERSION=	1.12.0
 CATEGORIES=	sysutils
-MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/
-DISTFILES=	${PORTNAME}-${DISTVERSIONPREFIX}${DISTVERSION}.frontend${EXTRACT_SUFX}
+MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/:assets
+# For instructions on how to create assets:
+#   https://github.com/DtxdF/port-assets-makejails/tree/main/backrest
+DISTFILES=	${PORTNAME}-${DISTVERSIONPREFIX}${DISTVERSION}.frontend${EXTRACT_SUFX}:assets
 
 MAINTAINER=	dtxdf@FreeBSD.org
 COMMENT=	Web UI and orchestrator for restic backup
@@ -41,7 +42,7 @@ RCLONE_RUN_DEPENDS=	rclone>=0:net/rclone
 
 # Run 'git checkout ${DISTVERSIONPREFIX}${DISTVERSION} && git rev-parse HEAD'
 # in the Backrest repository to get the value of GITID.
-GITID=		7a5030bb00f113170e1c09c45a4f2034a13a2809
+GITID=		43577232d5050f11815c286e35a8e3f30fcfb371
 
 BUILD_DATE=	$$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 

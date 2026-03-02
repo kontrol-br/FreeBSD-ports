@@ -31,7 +31,6 @@
     SUBDIR += calindori
     SUBDIR += cartotheque
     SUBDIR += cfiles
-    SUBDIR += charmtimetracker
     SUBDIR += chart
     SUBDIR += cherrytree
     SUBDIR += clipit
@@ -53,6 +52,7 @@
     SUBDIR += dosage
     SUBDIR += dstask
     SUBDIR += easystroke
+    SUBDIR += ekphos
     SUBDIR += elementary-calendar
     SUBDIR += elementary-iconbrowser
     SUBDIR += fasd
@@ -132,6 +132,7 @@
     SUBDIR += itinerary
     SUBDIR += jjclient
     SUBDIR += jlj
+    SUBDIR += joplin-desktop
     SUBDIR += jot
     SUBDIR += just
     SUBDIR += kaddressbook
@@ -260,7 +261,6 @@
     SUBDIR += rubygem-taskjuggler
     SUBDIR += rwpspread
     SUBDIR += semantik
-    SUBDIR += showdown
     SUBDIR += sigi
     SUBDIR += simpleagenda
     SUBDIR += skim
@@ -304,9 +304,11 @@
     SUBDIR += xcalendar
     SUBDIR += xcbautolock
     SUBDIR += xchm
+    SUBDIR += xdgctl
     SUBDIR += xdg-desktop-portal
     SUBDIR += xdg-desktop-portal-lxqt
     SUBDIR += xdg-terminal-exec
+    SUBDIR += xdpi
     SUBDIR += xfce4-generic-slider
     SUBDIR += xfce4-notes-plugin
     SUBDIR += xfce4-notifyd
@@ -324,7 +326,6 @@
     SUBDIR += zanshin
     SUBDIR += zim
     SUBDIR += zk
-    SUBDIR += znotes
     SUBDIR += zorro
 
 .include <bsd.port.subdir.mk>

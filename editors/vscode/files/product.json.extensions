@@ -53,6 +53,9 @@
     "GitHub.vscode-pull-request-github"
   ],
   "extensionEnabledApiProposals": {
+    "mrleemurray.theme-2026": [
+      "css"
+    ],
     "ms-azuretools.vscode-containers": [
       "authenticationChallenges"
     ],
@@ -207,6 +210,7 @@
     ],
     "GitHub.vscode-pull-request-github": [
       "activeComment",
+      "chatContextProvider",
       "chatParticipantAdditions",
       "chatParticipantPrivate",
       "chatSessionsProvider",
@@ -215,6 +219,7 @@
       "commentingRangeHint",
       "commentReactor",
       "commentReveal",
+      "commentsDraftState",
       "commentThreadApplicability",
       "contribAccessibilityHelpContent",
       "contribCommentEditorActionsMenu",
@@ -230,6 +235,7 @@
       "quickDiffProvider",
       "remoteCodingAgents",
       "shareProvider",
+      "tabInputMultiDiff",
       "tabInputTextMerge",
       "tokenInformation",
       "treeItemMarkdownLabel",
@@ -252,7 +258,6 @@
       "chatParticipantAdditions",
       "defaultChatParticipant",
       "embeddings",
-      "chatEditing",
       "chatProvider",
       "mappedEditsProvider",
       "aiRelatedInformation",
@@ -268,6 +273,8 @@
       "contribCommentEditorActionsMenu",
       "contribCommentThreadAdditionalMenu",
       "contribCommentsViewThreadMenus",
+      "contribChatEditorInlineGutterMenu",
+      "extensionAffinity",
       "newSymbolNamesProvider",
       "findFiles2",
       "chatReferenceDiagnostic",
@@ -283,6 +290,7 @@
       "languageModelSystem",
       "languageModelCapabilities",
       "languageModelThinkingPart",
+      "languageModelToolSupportsModel",
       "chatStatusItem",
       "taskProblemMatcherStatus",
       "contribLanguageModelToolSets",
@@ -292,7 +300,12 @@
       "dataChannels",
       "chatSessionsProvider",
       "devDeviceId",
-      "contribEditorContentMenu"
+      "contribEditorContentMenu",
+      "tokenInformation",
+      "chatPromptFiles",
+      "mcpServerDefinitions",
+      "tabInputMultiDiff",
+      "workspaceTrust"
     ],
     "GitHub.remotehub": [
       "contribRemoteHelp",
@@ -311,7 +324,8 @@
     ],
     "ms-python.vscode-pylance": [
       "terminalShellEnv",
-      "portsAttributes"
+      "portsAttributes",
+      "codeActionAI"
     ],
     "ms-python.debugpy": [
       "contribViewsWelcome",

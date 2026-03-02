@@ -1,6 +1,6 @@
 PORTNAME=	octave-forge-tablicious
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.4.5
+DISTVERSION=	0.4.7
 CATEGORIES=	math
 
 MAINTAINER=	stephen@FreeBSD.org

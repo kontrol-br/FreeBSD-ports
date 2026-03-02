@@ -492,6 +492,7 @@
     SUBDIR += ltl2ba
     SUBDIR += m4ri
     SUBDIR += m4rie
+    SUBDIR += manifold
     SUBDIR += mate-calc
     SUBDIR += math77
     SUBDIR += mathex
@@ -555,6 +556,7 @@
     SUBDIR += octave
     SUBDIR += octave-forge
     SUBDIR += octave-forge-actuarial
+    SUBDIR += octave-forge-apa
     SUBDIR += octave-forge-audio
     SUBDIR += octave-forge-automatic-differentiation
     SUBDIR += octave-forge-base
@@ -599,6 +601,7 @@
     SUBDIR += octave-forge-ident
     SUBDIR += octave-forge-image
     SUBDIR += octave-forge-informationtheory
+    SUBDIR += octave-forge-instrument-control
     SUBDIR += octave-forge-integration
     SUBDIR += octave-forge-internal-fluid-flow
     SUBDIR += octave-forge-interval
@@ -713,7 +716,6 @@
     SUBDIR += p5-Algorithm-Combinatorics
     SUBDIR += p5-Algorithm-CurveFit
     SUBDIR += p5-Algorithm-Munkres
-    SUBDIR += p5-Alien-GSL
     SUBDIR += p5-Bit-ShiftReg
     SUBDIR += p5-Bit-Vector
     SUBDIR += p5-Bit-Vector-Minimal
@@ -758,6 +760,7 @@
     SUBDIR += p5-Math-GMPq
     SUBDIR += p5-Math-GMPz
     SUBDIR += p5-Math-GSL
+    SUBDIR += p5-Math-GSL-Alien
     SUBDIR += p5-Math-Geometry
     SUBDIR += p5-Math-Geometry-Planar
     SUBDIR += p5-Math-Geometry-Planar-GPC
@@ -894,8 +897,6 @@
     SUBDIR += petanque
     SUBDIR += petiga
     SUBDIR += pffft
-    SUBDIR += php81-bcmath
-    SUBDIR += php81-gmp
     SUBDIR += php82-bcmath
     SUBDIR += php82-gmp
     SUBDIR += php83-bcmath
@@ -1048,6 +1049,7 @@
     SUBDIR += py-munkres
     SUBDIR += py-narwhals
     SUBDIR += py-ndindex
+    SUBDIR += py-ndonnx
     SUBDIR += py-networkx
     SUBDIR += py-nevergrad
     SUBDIR += py-nlopt
@@ -1132,6 +1134,7 @@
     SUBDIR += py-splot
     SUBDIR += py-spopt
     SUBDIR += py-spot
+    SUBDIR += py-spox
     SUBDIR += py-spreg
     SUBDIR += py-squarify
     SUBDIR += py-ssm
@@ -1164,7 +1167,6 @@
     SUBDIR += qxfun
     SUBDIR += randlib
     SUBDIR += rankwidth
-    SUBDIR += rapid
     SUBDIR += readstat
     SUBDIR += reduce
     SUBDIR += reduce-psl
@@ -1178,6 +1180,7 @@
     SUBDIR += rubiks
     SUBDIR += rubygem-algebra
     SUBDIR += rubygem-bigdecimal
+    SUBDIR += rubygem-bigdecimal-gitlab
     SUBDIR += rubygem-cmath
     SUBDIR += rubygem-enumerable-statistics
     SUBDIR += rubygem-expression_parser
@@ -1190,7 +1193,6 @@
     SUBDIR += rubygem-numru-misc
     SUBDIR += rubygem-numru-units
     SUBDIR += rubygem-prime
-    SUBDIR += rubygem-rb-gsl
     SUBDIR += rumur
     SUBDIR += saga
     SUBDIR += savage
@@ -1287,6 +1289,7 @@
     SUBDIR += units
     SUBDIR += universal
     SUBDIR += unuran
+    SUBDIR += usearch
     SUBDIR += vampire
     SUBDIR += vdt
     SUBDIR += verdict
@@ -1297,6 +1300,7 @@
     SUBDIR += vtk9
     SUBDIR += wavelib
     SUBDIR += wcalc
+    SUBDIR += wide-integer
     SUBDIR += wxmaxima
     SUBDIR += xblas
     SUBDIR += xfce4-calculator-plugin

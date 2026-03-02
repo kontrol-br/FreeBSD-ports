@@ -1,6 +1,6 @@
 PORTNAME=	ilias
 DISTVERSIONPREFIX=	v
-DISTVERSION=	10.3
+DISTVERSION=	10.5
 CATEGORIES=	www education
 PKGNAMEPREFIX=	${PHP_PKGNAMEPREFIX}
 
@@ -28,7 +28,6 @@ USE_PHP=	curl dom gd ldap fileinfo iconv \
 		pdo_mysql session simplexml soap \
 		tokenizer xmlrpc xmlwriter xmlreader \
 		xsl zip zlib
-IGNORE_WITH_PHP=	81
 
 CONFLICTS=	ilias6
 

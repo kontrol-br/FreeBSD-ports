@@ -1,6 +1,6 @@
 PORTNAME=	fs2open
 DISTVERSIONPREFIX=	release_
-DISTVERSION=	24_2_0
+DISTVERSION=	25_0_0
 CATEGORIES=	games
 
 MAINTAINER=	pkubaj@FreeBSD.org
@@ -25,6 +25,7 @@ GH_TUPLE=	asarium:cmake-modules:7cef957:cmakemodules/cmake/external/rpavlik-cmak
 		asarium:libRocket:ae8a8d9:libRocket/lib/libRocket
 USE_SDL=	sdl2
 
+CMAKE_OFF=	FSO_BUILD_WITH_OPENXR
 LDFLAGS_i386=	-Wl,-znotext
 
 PLIST_FILES=	bin/fs2_open

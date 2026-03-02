@@ -60,6 +60,16 @@ SUB_PATCHES+=	extra-patch-src-nvidia_dev.c \
 SUB_PATCHES+=	extra-patch-src-nvidia_subr.c
 .endif
 
+# At commit 9562994a7aacee2baae6ddee1a7b558b48ae39ef on main,
+# Local sym resolution was disabled by default in kernel linker.
+# Explicitly export functions from nvidia.ko to make nvidia-drm-*-kmod
+# ports work after the commit. These symbols do not exist in legacy
+# versions prior to 580 series.
+
+.if ${NVVERSION} >= 580.00000
+SUB_PATCHES+=	extra-patch-src-Makefile-2
+.endif
+
 # Temporarily disable GSP firmware as it is known to cause
 # issues with suspend/resume
 .if ${NVVERSION} >= 565.00000
@@ -189,6 +199,13 @@ post-patch: .SILENT
 		${WRKSRC}/src/${NVSRC}/nv-freebsd.h
 	${REINPLACE_CMD} -e '/vm_offset_t address;/s,vm_offset_t ,void *,' \
 		${WRKSRC}/src/${NVSRC}/nvidia_subr.c
+.endif
+# Fix build with clang 21 for nvidia-modeset.ko
+.if ${NVVERSION:R} >= 390
+	${REINPLACE_CMD} -e 's/format (printf, 3, 4)/format (__printf__, 3, 4)/' \
+		${WRKSRC}/src/nvidia-modeset/nvidia-modeset-os-interface.h
+	${REINPLACE_CMD} -e 's/va_list ap);/va_list ap); __attribute__((format (__printf__, 3, 0)));/' \
+		${WRKSRC}/src/nvidia-modeset/nvidia-modeset-os-interface.h
 .endif
 # Fix a K&R prototype
 .if ${NVVERSION:R} >= 390

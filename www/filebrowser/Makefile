@@ -1,9 +1,11 @@
 PORTNAME=	filebrowser
 DISTVERSIONPREFIX=	v
-DISTVERSION=	2.52.0
+DISTVERSION=	2.59.0
 CATEGORIES=	www
-MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/
-DISTFILES=	${PORTNAME}-${DISTVERSIONPREFIX}${DISTVERSION}.frontend${EXTRACT_SUFX}
+MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/:assets
+# For instructions on how to create assets:
+#   https://github.com/DtxdF/port-assets-makejails/tree/main/filebrowser
+DISTFILES=	${PORTNAME}-${DISTVERSIONPREFIX}${DISTVERSION}.frontend${EXTRACT_SUFX}:assets
 
 MAINTAINER=	dtxdf@FreeBSD.org
 COMMENT=	Web File Browser
@@ -33,7 +35,7 @@ PLIST_SUB=	GROUP=${GROUPS:[1]} \
 
 # Run 'git checkout ${DISTVERSIONPREFIX}${DISTVERSION} && git rev-parse HEAD'
 # in the File Browser repository to get the value of GITID.
-GITID=		c11c986b7383a5c1f18d82ee7e6093dc0544cff9
+GITID=		95e6ed75a73a0dd0e98ab8984d873223b9594bed
 
 FILEBROWSER_USER=	${PORTNAME}
 FILEBROWSER_GROUP=	${FILEBROWSER_USER}

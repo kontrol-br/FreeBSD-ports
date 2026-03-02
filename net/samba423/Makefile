@@ -123,6 +123,7 @@ CFLAGS+=			${_CFLAGS_${CHOSEN_COMPILER_TYPE}}
 _CFLAGS_clang=			-fno-color-diagnostics
 .endif
 CONFIGURE_ENV+=			NOCOLOR=yes WAF_LOG_FORMAT='%(c1)s%(zone)s%(c2)s %(message)s'
+FORTIFY_UNSAFE=			yes
 MAKE_ENV+=			NOCOLOR=yes WAF_LOG_FORMAT='%(c1)s%(zone)s%(c2)s %(message)s'
 # for libexecinfo: (so that __builtin_frame_address() finds the top of the stack)
 CFLAGS_amd64+=			-fno-omit-frame-pointer
@@ -283,7 +284,7 @@ DEVELOPER_VARS=			_SHARED_MODULES+="auth_skel pdb_test gpext_security gpext_regi
 DEVELOPER_VARS_OFF=		_GDB_CMD=true
 
 # https://bugzilla.samba.org/show_bug.cgi?id=9545
-FAM_USES=			fam
+FAM_LIB_DEPENDS=		libfam.so.0:devel/gamin
 FAM_CONFIGURE_WITH=		fam
 
 FRUIT_PREVENTS=			ZEROCONF_NONE
@@ -303,7 +304,7 @@ GPGME_CONFIGURE_WITH=		gpgme
 GSSAPI_BUILTIN_USES=		bison
 
 GSSAPI_MIT_USES=		bison gssapi:mit
-GSSAPI_MIT_CONFIGURE_ON=	--with-system-mitkrb5 ${GSSAPIBASEDIR} \
+GSSAPI_MIT_CONFIGURE_ON=	--with-system-mitkrb5 \
 				--with-system-mitkdc=${GSSAPIBASEDIR}/sbin/krb5kdc \
 				--with-experimental-mit-ad-dc
 GSSAPI_MIT_PLIST_FILES=		${SAMBA_MODULESDIR}/krb5/winbind_krb5_localauth.so \

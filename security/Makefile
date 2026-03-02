@@ -188,6 +188,7 @@
     SUBDIR += gnupg
     SUBDIR += gnupg-pkcs11-scd
     SUBDIR += gnupg1
+    SUBDIR += gnupg25
     SUBDIR += gnutls
     SUBDIR += go-cve-dictionary
     SUBDIR += go-tuf
@@ -224,6 +225,7 @@
     SUBDIR += hexl
     SUBDIR += hidden-lake
     SUBDIR += highwayhash
+    SUBDIR += himitsu
     SUBDIR += hitch
     SUBDIR += hockeypuck
     SUBDIR += honeytrap
@@ -254,6 +256,7 @@
     SUBDIR += kc
     SUBDIR += kdbxviewer
     SUBDIR += keepass
+    SUBDIR += keepass-diff
     SUBDIR += keepass-plugin-keepassrpc
     SUBDIR += keepassxc
     SUBDIR += keepassxc276
@@ -273,7 +276,6 @@
     SUBDIR += kpkpass
     SUBDIR += kpmenu
     SUBDIR += krb5
-    SUBDIR += krb5-120
     SUBDIR += krb5-121
     SUBDIR += krb5-122
     SUBDIR += krb5-devel
@@ -383,6 +385,7 @@
     SUBDIR += masscan
     SUBDIR += mate-pam-helper
     SUBDIR += mbedtls3
+    SUBDIR += mbedtls4
     SUBDIR += mcrypt
     SUBDIR += md5deep
     SUBDIR += medusa
@@ -405,7 +408,6 @@
     SUBDIR += netbird
     SUBDIR += nettle
     SUBDIR += nextcloud-end_to_end_encryption
-    SUBDIR += nextcloud-passman
     SUBDIR += nextcloud-twofactor_admin
     SUBDIR += nextcloud-twofactor_webauthn
     SUBDIR += nflib
@@ -450,7 +452,6 @@
     SUBDIR += openssl
     SUBDIR += openssl-agent
     SUBDIR += openssl-oqsprovider
-    SUBDIR += openssl-quictls
     SUBDIR += openssl-unsafe
     SUBDIR += openssl111
     SUBDIR += openssl33
@@ -479,7 +480,6 @@
     SUBDIR += osslsigncode
     SUBDIR += osv-scanner
     SUBDIR += otpw
-    SUBDIR += owasp-dependency-check
     SUBDIR += p11-kit
     SUBDIR += p5-Alt-Crypt-RSA-BigInt
     SUBDIR += p5-Apache-Htpasswd
@@ -690,6 +690,7 @@
     SUBDIR += p5-Digest-SHA1
     SUBDIR += p5-Digest-SHA3
     SUBDIR += p5-Digest-SV1
+    SUBDIR += p5-Digest-SipHash
     SUBDIR += p5-Digest-Tiger
     SUBDIR += p5-Digest-Whirlpool
     SUBDIR += p5-File-KeePass
@@ -775,6 +776,7 @@
     SUBDIR += pam_search_list
     SUBDIR += pam_ssh_agent_auth
     SUBDIR += pam_u2f
+    SUBDIR += pam_worker
     SUBDIR += pam_yubico
     SUBDIR += pamtester
     SUBDIR += paperkey
@@ -829,8 +831,6 @@
     SUBDIR += pgpdump
     SUBDIR += pgpgpg
     SUBDIR += pgpin
-    SUBDIR += php81-filter
-    SUBDIR += php81-sodium
     SUBDIR += php82-filter
     SUBDIR += php82-sodium
     SUBDIR += php83-filter
@@ -978,6 +978,7 @@
     SUBDIR += py-josepy
     SUBDIR += py-joserfc
     SUBDIR += py-jwcrypto
+    SUBDIR += py-k5test
     SUBDIR += py-keepkey
     SUBDIR += py-kerberos
     SUBDIR += py-keyring
@@ -1072,9 +1073,12 @@
     SUBDIR += py-scrypt
     SUBDIR += py-secure
     SUBDIR += py-securesystemslib
+    SUBDIR += py-serpico
     SUBDIR += py-service-identity
+    SUBDIR += py-shamir-mnemonic
     SUBDIR += py-signedjson
     SUBDIR += py-signxml
+    SUBDIR += py-slip10
     SUBDIR += py-social-auth-core
     SUBDIR += py-spake2
     SUBDIR += py-ssh-audit
@@ -1094,6 +1098,7 @@
     SUBDIR += py-tuf
     SUBDIR += py-txtorcon
     SUBDIR += py-uhashring
+    SUBDIR += py-unicode-show
     SUBDIR += py-vici
     SUBDIR += py-virustotal-api
     SUBDIR += py-volatility3
@@ -1125,7 +1130,6 @@
     SUBDIR += rhash
     SUBDIR += ridl
     SUBDIR += rifiuti2
-    SUBDIR += rkhunter
     SUBDIR += rndpassw
     SUBDIR += rnp
     SUBDIR += rotate
@@ -1221,6 +1225,7 @@
     SUBDIR += rubygem-openssl-ccm
     SUBDIR += rubygem-openssl-cmac
     SUBDIR += rubygem-openssl-signature_algorithm
+    SUBDIR += rubygem-openssl3
     SUBDIR += rubygem-openvas-omp
     SUBDIR += rubygem-origami
     SUBDIR += rubygem-pbkdf2-ruby
@@ -1376,7 +1381,6 @@
     SUBDIR += tinc
     SUBDIR += tinc-devel
     SUBDIR += tinyca
-    SUBDIR += tls-check
     SUBDIR += tlsc
     SUBDIR += tor
     SUBDIR += totp-cli
@@ -1409,6 +1413,7 @@
     SUBDIR += vigenere
     SUBDIR += vlock
     SUBDIR += vm-to-tor
+    SUBDIR += voa
     SUBDIR += vouch-proxy
     SUBDIR += vpnc
     SUBDIR += vuls

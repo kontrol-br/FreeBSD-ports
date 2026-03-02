@@ -1,4 +1,4 @@
---- components/feature_engagement/public/feature_constants.h.orig	2025-12-05 10:12:50 UTC
+--- components/feature_engagement/public/feature_constants.h.orig	2026-02-19 11:06:15 UTC
 +++ components/feature_engagement/public/feature_constants.h
 @@ -31,7 +31,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDemoMode);
  FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDummyFeature);
@@ -9,7 +9,7 @@
  #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
  FEATURE_CONSTANTS_DECLARE_FEATURE(kEsbDownloadRowPromoFeature);
  #endif
-@@ -385,7 +385,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSAIHubNewBadge
+@@ -398,7 +398,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSGeminiContext
  
  #endif  // BUILDFLAG(IS_IOS)
  
@@ -18,8 +18,8 @@
      BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
  FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHAutofillBnplAffirmOrZipSuggestionFeature);
  FEATURE_CONSTANTS_DECLARE_FEATURE(
-@@ -450,7 +450,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHScalableIphHelpA
- FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHScalableIphGamingFeature);
+@@ -431,7 +431,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHGoogleOneOfferNo
+ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHLauncherSearchHelpUiFeature);
  #endif
  
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

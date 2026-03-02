@@ -1,6 +1,6 @@
---- components/error_page/common/localized_error.cc.orig	2025-12-10 15:04:57 UTC
+--- components/error_page/common/localized_error.cc.orig	2026-02-16 10:45:29 UTC
 +++ components/error_page/common/localized_error.cc
-@@ -896,7 +896,7 @@ void AddSuggestionsDetails(int error_code,
+@@ -898,7 +898,7 @@ void AddSuggestionsDetails(int error_code,
    if (suggestions & SUGGEST_PROXY_CONFIG) {
      // Custom body string.
      std::u16string inner =

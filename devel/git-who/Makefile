@@ -1,10 +1,10 @@
 PORTNAME=	git-who
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.2
-PORTREVISION=	7
+DISTVERSION=	1.3
+PORTREVISION=	2
 CATEGORIES=	devel
 
-MAINTAINER=	nxjoseph@protonmail.com
+MAINTAINER=	nxjoseph@FreeBSD.org
 COMMENT=	Git blame for file trees
 WWW=		https://github.com/sinclairtarget/git-who
 

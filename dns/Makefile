@@ -86,6 +86,7 @@
     SUBDIR += kf6-kdnssd
     SUBDIR += knock
     SUBDIR += knot-resolver
+    SUBDIR += knot-resolver6
     SUBDIR += knot3
     SUBDIR += ldapdns
     SUBDIR += ldns
@@ -209,6 +210,7 @@
     SUBDIR += rbllookup
     SUBDIR += rbllookup-ng
     SUBDIR += rdap
+    SUBDIR += register-dnsclient
     SUBDIR += renewck
     SUBDIR += rpsl2acl
     SUBDIR += rubygem-dnsruby

@@ -1,6 +1,6 @@
---- chrome/browser/global_features.h.orig	2025-12-05 10:12:50 UTC
+--- chrome/browser/global_features.h.orig	2026-02-11 09:05:39 UTC
 +++ chrome/browser/global_features.h
-@@ -15,7 +15,7 @@
+@@ -17,7 +17,7 @@
  namespace system_permission_settings {
  class PlatformHandle;
  }  // namespace system_permission_settings
@@ -9,7 +9,7 @@
  namespace whats_new {
  class WhatsNewRegistry;
  }  // namespace whats_new
-@@ -71,7 +71,7 @@ class GlobalFeatures {
+@@ -118,7 +118,7 @@ class GlobalFeatures {
    system_permissions_platform_handle() {
      return system_permissions_platform_handle_.get();
    }
@@ -18,7 +18,7 @@
    whats_new::WhatsNewRegistry* whats_new_registry() {
      return whats_new_registry_.get();
    }
-@@ -121,7 +121,7 @@ class GlobalFeatures {
+@@ -187,7 +187,7 @@ class GlobalFeatures {
  
    virtual std::unique_ptr<system_permission_settings::PlatformHandle>
    CreateSystemPermissionsPlatformHandle();
@@ -27,12 +27,12 @@
    virtual std::unique_ptr<whats_new::WhatsNewRegistry> CreateWhatsNewRegistry();
  #endif
  
-@@ -131,7 +131,7 @@ class GlobalFeatures {
+@@ -199,7 +199,7 @@ class GlobalFeatures {
  
    std::unique_ptr<system_permission_settings::PlatformHandle>
        system_permissions_platform_handle_;
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
    std::unique_ptr<whats_new::WhatsNewRegistry> whats_new_registry_;
- #endif
  
+   std::unique_ptr<default_browser::DefaultBrowserManager>

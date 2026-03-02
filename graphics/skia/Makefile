@@ -1,9 +1,9 @@
 PORTNAME=	skia
 DISTVERSIONPREFIX=	chrome/m
-DISTVERSION=	140
+DISTVERSION=	144
 CATEGORIES=	graphics
 
-MAINTAINER=	me@svmhdvn.name
+MAINTAINER=	siva@FreeBSD.org
 COMMENT=	Complete 2D graphic library for drawing Text, Geometries, and Images
 WWW=		https://skia.org/
 
@@ -60,8 +60,8 @@ do-install:
 		ls -1 *.so | xargs -I% ${RLN} ${STAGEDIR}${PREFIX}/lib/%.${DISTVERSION} ${STAGEDIR}${PREFIX}/lib/%)
 	${INSTALL_DATA} ${BUILD_WRKSRC}/*.a ${STAGEDIR}${PREFIX}/lib
 	${INSTALL_DATA} ${WRKDIR}/skia.pc ${STAGEDIR}${PREFIX}/libdata/pkgconfig/
-	${MKDIR} ${STAGEDIR}${PREFIX}/include/skia/modules
-	(cd ${WRKSRC}/include && ${COPYTREE_SHARE} . ${STAGEDIR}${PREFIX}/include/skia '-name *.h')
+	${MKDIR} ${STAGEDIR}${PREFIX}/include/skia/include ${STAGEDIR}${PREFIX}/include/skia/modules
+	(cd ${WRKSRC}/include && ${COPYTREE_SHARE} . ${STAGEDIR}${PREFIX}/include/skia/include '-name *.h')
 	(cd ${WRKSRC}/modules && ${COPYTREE_SHARE} . ${STAGEDIR}${PREFIX}/include/skia/modules '-name *.h')
 
 .include <bsd.port.mk>

@@ -1,5 +1,6 @@
 PORTNAME=	FreeCAD
 DISTVERSION=	r${GIT_SRC_DATE}
+PORTREVISION=	1
 CATEGORIES=	cad
 PKGNAMESUFFIX=  -devel
 
@@ -18,6 +19,7 @@ BUILD_DEPENDS=	doxygen:devel/doxygen \
 		${PYTHON_PKGNAMEPREFIX}pyside6-tools>0:devel/pyside6-tools@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pivy>0:graphics/py-pivy@${PY_FLAVOR} \
 		${PYTHON_SITELIBDIR}/matplotlib/__init__.py:math/py-matplotlib@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}lark>0:devel/py-lark@${PY_FLAVOR} \
 		swig:devel/swig
 
 LIB_DEPENDS=	libexpat.so:textproc/expat2 \
@@ -36,7 +38,7 @@ LIB_DEPENDS=	libexpat.so:textproc/expat2 \
 		libboost_thread.so:devel/boost-libs \
 		libfontconfig.so:x11-fonts/fontconfig \
 		libfreeimage.so:graphics/freeimage \
-		libavutil.so.58:multimedia/ffmpeg \
+		libavutil.so.60:multimedia/ffmpeg \
 		libavformat.so.58:multimedia/ffmpeg4 \
 		libmed.so:french/med \
 		libshiboken6.abi3.so:devel/shiboken6@${PY_FLAVOR} \

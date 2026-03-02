@@ -1,6 +1,6 @@
---- chrome/browser/background/glic/glic_status_icon.cc.orig	2025-12-05 10:12:50 UTC
+--- chrome/browser/background/glic/glic_status_icon.cc.orig	2026-02-19 11:06:15 UTC
 +++ chrome/browser/background/glic/glic_status_icon.cc
-@@ -105,7 +105,7 @@ GlicStatusIcon::GlicStatusIcon(GlicController* control
+@@ -114,7 +114,7 @@ GlicStatusIcon::GlicStatusIcon(GlicController* control
      return;
    }
  
@@ -9,7 +9,7 @@
    // Set a vector icon for proper theming on Linux.
    status_icon_->SetIcon(
        GlicVectorIconManager::GetVectorIcon(IDR_GLIC_BUTTON_VECTOR_ICON));
-@@ -160,7 +160,7 @@ GlicStatusIcon::~GlicStatusIcon() {
+@@ -171,7 +171,7 @@ GlicStatusIcon::~GlicStatusIcon() {
  
    context_menu_ = nullptr;
    if (status_icon_) {
@@ -18,16 +18,16 @@
      status_icon_->RemoveObserver(this);
  #endif
      std::unique_ptr<StatusIcon> removed_icon =
-@@ -290,7 +290,7 @@ void GlicStatusIcon::UpdateHotkey(const ui::Accelerato
+@@ -311,7 +311,7 @@ void GlicStatusIcon::UpdateHotkey(const ui::Accelerato
  }
  
  void GlicStatusIcon::UpdateVisibilityOfExitInContextMenu() {
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
    if (context_menu_) {
-     const bool is_visible = BrowserList::GetInstance()->empty();
+     const bool is_visible = GlobalBrowserCollection::GetInstance()->IsEmpty();
      const std::optional<size_t> index =
-@@ -368,7 +368,7 @@ std::unique_ptr<StatusIconMenuModel> GlicStatusIcon::C
+@@ -394,7 +394,7 @@ std::unique_ptr<StatusIconMenuModel> GlicStatusIcon::C
    menu->AddItem(IDC_GLIC_STATUS_ICON_MENU_SETTINGS,
                  l10n_util::GetStringUTF16(IDS_GLIC_STATUS_ICON_MENU_SETTINGS));
  

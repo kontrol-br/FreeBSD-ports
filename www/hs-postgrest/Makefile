@@ -1,6 +1,6 @@
 PORTNAME=	postgrest
 DISTVERSIONPREFIX=	v
-DISTVERSION=	14.0
+DISTVERSION=	14.2
 CATEGORIES=	www databases haskell
 
 MAINTAINER=	haskell@FreeBSD.org
@@ -38,12 +38,6 @@ PLIST_FILES=	"@sample ${ETCDIR}/default.conf.sample" \
 PLIST_SUB=	ETCDIR=${ETCDIR} \
 		POSTGREST_GROUP=${POSTGREST_GROUP} \
 		POSTGREST_USER=${POSTGREST_USER}
-
-# This file includes the USE_CABAL. To regenerate it it's required to run:
-# 1) make cabal-extract
-# 2) make cabal-configure
-# 3) make make-use-cabal && paste the USE_CABAL section to Makefile.modules
-.include "Makefile.modules"
 
 POSTGREST_GROUP?=	postgrest
 POSTGREST_USER?=	postgrest

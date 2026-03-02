@@ -1,5 +1,5 @@
 PORTNAME=	rust
-PORTVERSION?=	1.92.0
+PORTVERSION?=	1.93.1
 PORTREVISION?=	0
 CATEGORIES=	lang
 MASTER_SITES=	https://static.rust-lang.org/dist/:src \
@@ -63,7 +63,7 @@ DOCS_VARS=		_RUST_BUILD_DOCS=true \
 			_COMPONENTS+="rust-docs-${_PACKAGE_VERS}-${_RUST_TARGET} rust-docs-json-${_PACKAGE_VERS}-${_RUST_TARGET}"
 DOCS_VARS_OFF=		_RUST_BUILD_DOCS=false
 GDB_RUN_DEPENDS=	${LOCALBASE}/bin/gdb:devel/gdb
-PORT_LLVM_USES=		llvm:min=${LLVM_VERSION},lib,noexport
+PORT_LLVM_USES=		llvm:min=${_LLVM_VERSION},lib,noexport
 PORT_LLVM_MAKE_ENV=	RUSTFLAGS="-Lnative=${LOCALBASE}/lib"
 SOURCES_VARS=		_COMPONENTS+=rust-src-${_PACKAGE_VERS} \
 			_RUST_TOOLS+=src
@@ -71,10 +71,11 @@ WASM_VARS=		_COMPONENTS+="rust-analysis-${_PACKAGE_VERS}-wasm32-unknown-unknown 
 			_RUST_TARGETS+=wasm32-unknown-unknown
 
 # See WRKSRC/src/stage0 for the date and version values
-BOOTSTRAPS_DATE?=		2025-10-30
-RUST_BOOTSTRAP_VERSION?=	1.91.0
+BOOTSTRAPS_DATE?=		2025-12-11
+LLVM_VERSION=			20
+RUST_BOOTSTRAP_VERSION?=	1.92.0
 
-LLVM_VERSION=	20
+_LLVM_VERSION=	20
 
 CARGO_VENDOR_DIR?=		${WRKSRC}/vendor
 
@@ -211,9 +212,9 @@ do-configure:
 # Rust doesn't call the system compiler with the full version of the target.
 # This makes powerpc miscompile due to the secure-plt ABI change.
 # Additionally, force using ld.bfd to work around a linking problem in rustc_mir
-	@${PRINTF} '#!/bin/sh\nexec ${CC} "$$@" --target=powerpc-unknown-freebsd13.2' > ${WRKDIR}/cc-wrapper
+	@${PRINTF} '#!/bin/sh\nexec ${CC} "$$@" --target=powerpc-unknown-freebsd13.5' > ${WRKDIR}/cc-wrapper
 	@${CHMOD} +x ${WRKDIR}/cc-wrapper
-	@${PRINTF} '#!/bin/sh\nexec ${CXX} "$$@" --target=powerpc-unknown-freebsd13.2' > ${WRKDIR}/cxx-wrapper
+	@${PRINTF} '#!/bin/sh\nexec ${CXX} "$$@" --target=powerpc-unknown-freebsd13.5' > ${WRKDIR}/cxx-wrapper
 	@${CHMOD} +x ${WRKDIR}/cxx-wrapper
 .endif
 .for _target in ${_RUST_TARGETS}
@@ -224,11 +225,17 @@ do-configure:
 	@${ECHO_CMD} 'cxx="${WRKDIR}/cxx-wrapper"' >> ${WRKSRC}/config.toml
 	@${ECHO_CMD} 'linker="${CC}"' >> ${WRKSRC}/config.toml
 .else
-# use the builtin clang
+# use the builtin clang when not using PORT_LLVM
 .if ${_target} == "wasm32-unknown-unknown"
+.if ${PORT_OPTIONS:MPORT_LLVM}
+	@${ECHO_CMD} 'cc="${LOCALBASE}/bin/clang${LLVM_VERSION}"' >> ${WRKSRC}/config.toml
+	@${ECHO_CMD} 'cxx="${LOCALBASE}/bin/clang++${LLVM_VERSION}"' >> ${WRKSRC}/config.toml
+	@${ECHO_CMD} 'linker="${LOCALBASE}/bin/clang${LLVM_VERSION}"' >> ${WRKSRC}/config.toml
+.else
 	@${ECHO_CMD} 'cc="${WRKDIR}/_build/${_RUST_TARGET}/llvm/bin/clang"' >> ${WRKSRC}/config.toml
 	@${ECHO_CMD} 'cxx="${WRKDIR}/_build/${_RUST_TARGET}/llvm/bin/clang++"' >> ${WRKSRC}/config.toml
 	@${ECHO_CMD} 'linker="${WRKDIR}/_build/${_RUST_TARGET}/llvm/bin/clang"' >> ${WRKSRC}/config.toml
+.endif
 .else
 	@${ECHO_CMD} 'cc="${CC}"' >> ${WRKSRC}/config.toml
 	@${ECHO_CMD} 'cxx="${CXX}"' >> ${WRKSRC}/config.toml

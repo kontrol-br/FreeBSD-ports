@@ -19,6 +19,7 @@
     SUBDIR += c
     SUBDIR += cairo
     SUBDIR += cbmbasic
+    SUBDIR += cbqn
     SUBDIR += ccl
     SUBDIR += ceylon
     SUBDIR += cfortran
@@ -42,7 +43,7 @@
     SUBDIR += crystal
     SUBDIR += csharp-mode.el
     SUBDIR += cython
-    SUBDIR += cython3
+    SUBDIR += cython0
     SUBDIR += dhall
     SUBDIR += dlang-tools
     SUBDIR += dotnet
@@ -105,12 +106,14 @@
     SUBDIR += ghc92
     SUBDIR += ghc94
     SUBDIR += ghc96
+    SUBDIR += ghc98
     SUBDIR += gir-to-d
     SUBDIR += gjs
     SUBDIR += gleam
     SUBDIR += gluon
     SUBDIR += gnat12
     SUBDIR += gnat13
+    SUBDIR += gnat14
     SUBDIR += gnatcross-binutils-aarch64
     SUBDIR += gnatcross-sysroot-aarch64
     SUBDIR += gnatdroid-binutils
@@ -121,13 +124,9 @@
     SUBDIR += gnu-cobol
     SUBDIR += gnustep-base
     SUBDIR += go
-    SUBDIR += go-devel
-    SUBDIR += go120
-    SUBDIR += go121
-    SUBDIR += go122
-    SUBDIR += go123
     SUBDIR += go124
     SUBDIR += go125
+    SUBDIR += go126
     SUBDIR += gomacro
     SUBDIR += gprolog
     SUBDIR += gptscript
@@ -166,6 +165,7 @@
     SUBDIR += kefir
     SUBDIR += kf5-kross
     SUBDIR += kotlin
+    SUBDIR += kotlin22
     SUBDIR += kturtle
     SUBDIR += lafontaine
     SUBDIR += lci
@@ -271,8 +271,6 @@
     SUBDIR += pfe
     SUBDIR += pharo
     SUBDIR += php-mode.el
-    SUBDIR += php81
-    SUBDIR += php81-extensions
     SUBDIR += php82
     SUBDIR += php82-extensions
     SUBDIR += php83
@@ -299,7 +297,6 @@
     SUBDIR += py-textX
     SUBDIR += python
     SUBDIR += python-doc-html
-    SUBDIR += python-doc-pdf-a4
     SUBDIR += python-doc-text
     SUBDIR += python-mode.el
     SUBDIR += python-tools
@@ -365,11 +362,9 @@
     SUBDIR += smlnj
     SUBDIR += snobol4
     SUBDIR += solidity
-    SUBDIR += spidermonkey102
     SUBDIR += spidermonkey115
     SUBDIR += spidermonkey128
     SUBDIR += spidermonkey140
-    SUBDIR += spidermonkey78
     SUBDIR += squeak
     SUBDIR += squirrel
     SUBDIR += starlark-rust

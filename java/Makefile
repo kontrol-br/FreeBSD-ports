@@ -65,7 +65,6 @@
     SUBDIR += jmf
     SUBDIR += jode
     SUBDIR += jrosetta
-    SUBDIR += jta
     SUBDIR += jtiger
     SUBDIR += jump
     SUBDIR += junit
@@ -82,8 +81,6 @@
     SUBDIR += openjdk11-jre
     SUBDIR += openjdk17
     SUBDIR += openjdk17-jre
-    SUBDIR += openjdk18
-    SUBDIR += openjdk19
     SUBDIR += openjdk20
     SUBDIR += openjdk21
     SUBDIR += openjdk21-jre
@@ -97,8 +94,6 @@
     SUBDIR += phpeclipse
     SUBDIR += proguard
     SUBDIR += sigar
-    SUBDIR += springframework
-    SUBDIR += springframework31
     SUBDIR += sqlitejdbc
     SUBDIR += trove4j
     SUBDIR += veditor

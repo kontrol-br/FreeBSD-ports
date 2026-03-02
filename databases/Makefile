@@ -31,8 +31,8 @@
     SUBDIR += cego
     SUBDIR += cegobridge
     SUBDIR += clickhouse
+    SUBDIR += clickhouse-cpp
     SUBDIR += closql
-    SUBDIR += cockroach
     SUBDIR += couchdb3
     SUBDIR += courier-authlib-mysql
     SUBDIR += courier-authlib-pgsql
@@ -43,6 +43,7 @@
     SUBDIR += credis
     SUBDIR += cutelyst-asql
     SUBDIR += dalmp
+    SUBDIR += datafusion-cli
     SUBDIR += db
     SUBDIR += db18
     SUBDIR += db5
@@ -196,6 +197,8 @@
     SUBDIR += mysql91-server
     SUBDIR += mysql94-client
     SUBDIR += mysql94-server
+    SUBDIR += mysql96-client
+    SUBDIR += mysql96-server
     SUBDIR += mysqlbackup
     SUBDIR += mysqldump-secure
     SUBDIR += mysqlreport
@@ -539,6 +542,8 @@
     SUBDIR += pg.el
     SUBDIR += pgFormatter
     SUBDIR += pg_activity
+    SUBDIR += pg_auto_failover
+    SUBDIR += pg_auto_failover-devel
     SUBDIR += pg_citus
     SUBDIR += pg_cron
     SUBDIR += pg_dirtyread
@@ -546,12 +551,14 @@
     SUBDIR += pg_filedump
     SUBDIR += pg_hashids
     SUBDIR += pg_incremental
+    SUBDIR += pg_net
     SUBDIR += pg_partman
     SUBDIR += pg_qualstats
     SUBDIR += pg_repack
     SUBDIR += pg_similarity
     SUBDIR += pg_stat_kcache
     SUBDIR += pg_store_plans
+    SUBDIR += pg_textsearch
     SUBDIR += pg_tileserv
     SUBDIR += pgaccess
     SUBDIR += pgactive
@@ -567,7 +574,6 @@
     SUBDIR += pglogical
     SUBDIR += pgmetrics
     SUBDIR += pgmodeler
-    SUBDIR += pgpool-II-42
     SUBDIR += pgpool-II-43
     SUBDIR += pgpool-II-44
     SUBDIR += pgpool-II-45
@@ -585,18 +591,6 @@
     SUBDIR += pgvector
     SUBDIR += php-tarantool
     SUBDIR += php-xapian
-    SUBDIR += php81-dba
-    SUBDIR += php81-mysqli
-    SUBDIR += php81-odbc
-    SUBDIR += php81-pdo
-    SUBDIR += php81-pdo_dblib
-    SUBDIR += php81-pdo_firebird
-    SUBDIR += php81-pdo_mysql
-    SUBDIR += php81-pdo_odbc
-    SUBDIR += php81-pdo_pgsql
-    SUBDIR += php81-pdo_sqlite
-    SUBDIR += php81-pgsql
-    SUBDIR += php81-sqlite3
     SUBDIR += php82-dba
     SUBDIR += php82-mysqli
     SUBDIR += php82-odbc
@@ -679,14 +673,6 @@
     SUBDIR += postgresql-tds_fdw
     SUBDIR += postgresql-wal2json
     SUBDIR += postgresql-zhparser
-    SUBDIR += postgresql13-client
-    SUBDIR += postgresql13-contrib
-    SUBDIR += postgresql13-docs
-    SUBDIR += postgresql13-pgtcl
-    SUBDIR += postgresql13-plperl
-    SUBDIR += postgresql13-plpython
-    SUBDIR += postgresql13-pltcl
-    SUBDIR += postgresql13-server
     SUBDIR += postgresql14-client
     SUBDIR += postgresql14-contrib
     SUBDIR += postgresql14-docs
@@ -787,6 +773,9 @@
     SUBDIR += py-flask-sqlalchemy30
     SUBDIR += py-gdbm
     SUBDIR += py-geoalchemy2
+    SUBDIR += py-harlequin
+    SUBDIR += py-harlequin-mysql
+    SUBDIR += py-harlequin-postgres
     SUBDIR += py-hiredis
     SUBDIR += py-influxdb
     SUBDIR += py-kyotocabinet
@@ -873,6 +862,7 @@
     SUBDIR += py-sqloxide
     SUBDIR += py-sqlparse
     SUBDIR += py-sqlrelay
+    SUBDIR += py-squall-sql
     SUBDIR += py-tableschema
     SUBDIR += py-tarantool
     SUBDIR += py-tiledb
@@ -898,6 +888,7 @@
     SUBDIR += qt5-sqldrivers-tds
     SUBDIR += qt6-base_sqldriver
     SUBDIR += quake
+    SUBDIR += rainfrog
     SUBDIR += recutils
     SUBDIR += redis
     SUBDIR += redis-devel
@@ -906,6 +897,7 @@
     SUBDIR += redis74
     SUBDIR += redis80
     SUBDIR += redis82
+    SUBDIR += redis84
     SUBDIR += redis_exporter
     SUBDIR += redisjson
     SUBDIR += retcl
@@ -1001,7 +993,6 @@
     SUBDIR += rubygem-familia
     SUBDIR += rubygem-flipper-active_record
     SUBDIR += rubygem-flipper-active_record-rails-gitlab
-    SUBDIR += rubygem-flipper-active_record-rails70
     SUBDIR += rubygem-gdbm
     SUBDIR += rubygem-globalid
     SUBDIR += rubygem-globalid-rails-gitlab
@@ -1024,6 +1015,7 @@
     SUBDIR += rubygem-influxdb
     SUBDIR += rubygem-jdbc-mysql
     SUBDIR += rubygem-leo_manager_client
+    SUBDIR += rubygem-lmdb
     SUBDIR += rubygem-marginalia
     SUBDIR += rubygem-mario-redis-lock
     SUBDIR += rubygem-memcache
@@ -1091,6 +1083,7 @@
     SUBDIR += rubygem-state_machines-activerecord08
     SUBDIR += rubygem-tarantool
     SUBDIR += rubygem-trilogy
+    SUBDIR += sabiql
     SUBDIR += sequeler
     SUBDIR += sfcgal
     SUBDIR += sharedance
@@ -1138,12 +1131,14 @@
     SUBDIR += tiledb
     SUBDIR += timescaledb
     SUBDIR += timescaledb-backup
+    SUBDIR += timescaledb-parallel-copy
     SUBDIR += timescaledb-tune
     SUBDIR += tinycdb
     SUBDIR += tkrzw
     SUBDIR += tkrzw-python
     SUBDIR += tokyocabinet
     SUBDIR += tokyotyrant
+    SUBDIR += tredis
     SUBDIR += trilogy
     SUBDIR += tuning-primer
     SUBDIR += twemproxy

@@ -1,8 +1,10 @@
 PORTNAME=	pocket-id
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.16.0
+DISTVERSION=	2.3.0
 CATEGORIES=	www
 MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/
+# For instructions on how to create assets:
+#   https://github.com/DtxdF/port-assets-makejails/tree/main/pocket-id
 DISTFILES=	${PORTNAME}-${DISTVERSIONPREFIX}${DISTVERSION}.frontend${EXTRACT_SUFX}
 
 MAINTAINER=	dtxdf@FreeBSD.org

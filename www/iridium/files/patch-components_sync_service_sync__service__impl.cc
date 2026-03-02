@@ -1,6 +1,6 @@
---- components/sync/service/sync_service_impl.cc.orig	2025-12-10 15:04:57 UTC
+--- components/sync/service/sync_service_impl.cc.orig	2026-02-16 10:45:29 UTC
 +++ components/sync/service/sync_service_impl.cc
-@@ -1384,7 +1384,7 @@ void SyncServiceImpl::ReconfigureDataTypesDueToCrypto(
+@@ -1433,7 +1433,7 @@ void SyncServiceImpl::ReconfigureDataTypesDueToCrypto(
  
  void SyncServiceImpl::PassphraseTypeChanged(PassphraseType passphrase_type) {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);

@@ -1,6 +1,6 @@
---- chrome/common/chrome_switches.h.orig	2025-12-06 13:30:52 UTC
+--- chrome/common/chrome_switches.h.orig	2026-02-15 10:01:45 UTC
 +++ chrome/common/chrome_switches.h
-@@ -284,7 +284,7 @@ extern const char kDebugPrint[];
+@@ -291,7 +291,7 @@ extern const char kDebugPrint[];
  #endif
  
  #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC) || \
@@ -9,8 +9,8 @@
  extern const char kEnableNewAppMenuIcon[];
  extern const char kGuest[];
  extern const char kForceNtpMobilePromo[];
-@@ -304,7 +304,7 @@ extern const char kGlicHostLogging[];
- extern const char kGlicAdminRedirectPatterns[];
+@@ -314,7 +314,7 @@ extern const char kGlicResetMultiInstanceEnabledByTier
+ extern const char kGlicForceG1StatusForMultiInstance[];
  #endif
  
 -#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)

@@ -79,7 +79,6 @@
     SUBDIR += elementary-terminal
     SUBDIR += emprint
     SUBDIR += erun
-    SUBDIR += eterm
     SUBDIR += evilvte
     SUBDIR += evtest
     SUBDIR += eww
@@ -94,6 +93,7 @@
     SUBDIR += fuzzel
     SUBDIR += gbsddialog
     SUBDIR += gdm
+    SUBDIR += ghostty
     SUBDIR += glcapsviewer
     SUBDIR += gmrun
     SUBDIR += gnome
@@ -128,18 +128,19 @@
     SUBDIR += habak
     SUBDIR += hamclock
     SUBDIR += hhpc
+    SUBDIR += histui
     SUBDIR += hs-xmobar
     SUBDIR += hsetroot
     SUBDIR += hybrid-bar
     SUBDIR += hyprcursor
     SUBDIR += hypridle
     SUBDIR += hyprland-guiutils
-    SUBDIR += hyprland-qtutils
     SUBDIR += hyprlauncher
     SUBDIR += hyprlock
     SUBDIR += hyprls
     SUBDIR += hyprpaper
     SUBDIR += hyprpicker
+    SUBDIR += hyprshutdown
     SUBDIR += hyprviz
     SUBDIR += i3bar-river
     SUBDIR += i3blocks
@@ -375,6 +376,7 @@
     SUBDIR += qt5-qev
     SUBDIR += qt5-x11extras
     SUBDIR += qterminal
+    SUBDIR += quickshell
     SUBDIR += remontoire
     SUBDIR += rendercheck
     SUBDIR += rgb
@@ -385,7 +387,6 @@
     SUBDIR += rofi-emoji
     SUBDIR += rofi-file-browser-extended
     SUBDIR += rofi-pass
-    SUBDIR += rofi-wayland
     SUBDIR += roxterm
     SUBDIR += rsibreak
     SUBDIR += rubygem-gnome
@@ -469,6 +470,7 @@
     SUBDIR += wallutils
     SUBDIR += wapanel
     SUBDIR += watershot
+    SUBDIR += waveterm
     SUBDIR += way-displays
     SUBDIR += waybar
     SUBDIR += waycheck
@@ -609,6 +611,7 @@
     SUBDIR += xkeywrap
     SUBDIR += xkill
     SUBDIR += xlibre
+    SUBDIR += xlibre-minimal
     SUBDIR += xload
     SUBDIR += xloadimage
     SUBDIR += xlockmore
@@ -687,7 +690,6 @@
     SUBDIR += xwatchwin
     SUBDIR += xwayland-run
     SUBDIR += xwayland-satellite
-    SUBDIR += xwaylandvideobridge
     SUBDIR += xwd
     SUBDIR += xwininfo
     SUBDIR += xwinwrap

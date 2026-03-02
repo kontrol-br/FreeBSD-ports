@@ -1,6 +1,6 @@
 PORTNAME=	playonbsd
 PORTVERSION=	4.2.10
-PORTREVISION=	16
+PORTREVISION=	18
 CATEGORIES=	emulators games
 
 MAINTAINER=	Clockwork6400@protonmail.com
@@ -30,6 +30,11 @@ USE_WX=		3.2
 WX_COMPS=	python:run
 SHEBANG_FILES=	bash/expert/* lib/*
 SHEBANG_GLOB=	*.py
+
+EXTRACT_AFTER_ARGS=	--exclude \
+			${GH_PROJECT_DEFAULT}-${GH_TAGNAME_EXTRACT}/python/*__pycache__* \
+			--no-same-owner --no-same-permissions
+
 NO_ARCH=	yes
 
 OPTIONS_DEFINE=		GECKO MONO NLS

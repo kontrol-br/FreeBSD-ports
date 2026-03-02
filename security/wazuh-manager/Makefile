@@ -1,8 +1,8 @@
 PORTNAME=	wazuh
 DISTVERSIONPREFIX=	v
-DISTVERSION=	4.14.1
+DISTVERSION=	4.14.3
 CATEGORIES=	security
-MASTER_SITES=	https://packages.wazuh.com/deps/47/libraries/sources/:wazuh_sources \
+MASTER_SITES=	https://packages.wazuh.com/deps/49/libraries/sources/:wazuh_sources \
 		LOCAL/acm/${PORTNAME}/:wazuh_cache
 PKGNAMESUFFIX=	-manager
 DISTFILES=	${EXTERNAL_DISTFILES} \
@@ -32,21 +32,23 @@ LIB_DEPENDS+=	libarrow.so:databases/arrow \
 		libopenblas.so:math/openblas
 RUN_DEPENDS=	bash>0:shells/bash
 
-USES=		cpe gmake perl5 python:3.11 readline shebangfix sqlite:3 uidfix
+USES=		cpe dos2unix gmake perl5 python:3.11 readline shebangfix sqlite:3 uidfix
 
 USE_GITHUB=	yes
-GH_TUPLE=	alonsobsd:wazuh-freebsd:${WAZUH_EXTRAFILE_TAGNAME}:wazuh
+GH_ACCOUNT=	alonsobsd
+GH_PROJECT=	wazuh-freebsd
+GH_TAGNAME=	dd9bd1bb551141e15cde1399a0000c6a392511ad
 
 USE_RC_SUBR=	${PORTNAME}${PKGNAMESUFFIX}
 
 MAKE_ARGS+=	TARGET=server INSTALLDIR=${WAZUHPREFIX} INSTALL_SHARED="${INSTALL_LIB}" PYTHON_SOURCE=yes OPTIMIZE_CPYTHON=no
 
-# WITH_CCACHE_BUILD=	yes
-# CCACHE_DIR=		/zdata/ccache
+DOS2UNIX_FILES=	${WRKSRC}/api/api/configuration/api.yaml
+
+#WITH_CCACHE_BUILD=	yes
+#CCACHE_DIR=		/zdata/ccache
 
 WAZUH_CACHEFILE=	${PORTNAME}-cache-any-${DISTVERSION}${EXTRACT_SUFX}
-WAZUH_EXTRAFILE=	alonsobsd-${PORTNAME}-freebsd-${WAZUH_EXTRAFILE_TAGNAME}_GH0${EXTRACT_SUFX}
-WAZUH_EXTRAFILE_TAGNAME=2f1307c
 
 EXTERNAL_DISTFILES=	audit-userspace.tar.gz:wazuh_sources \
 			benchmark.tar.gz:wazuh_sources \
@@ -81,7 +83,6 @@ OPTIONS_DEFINE=	INOTIFY PRELUDE ZEROMQ
 OPTIONS_GROUP_DATABASE=	MYSQL PGSQL
 OPTIONS_GROUP=		DATABASE
 
-INOTIFY_LIB_DEPENDS=	libinotify.so:devel/libinotify
 PRELUDE_LIB_DEPENDS=	libprelude.so:security/libprelude
 ZEROMQ_LIB_DEPENDS=	libczmq.so:net/czmq
 
@@ -91,8 +92,9 @@ ZEROMQ_DESC=	ZeroMQ support
 
 ZEROMQ_MAKE_ENV=	USE_ZEROMQ=yes
 PRELUDE_MAKE_ENV=	USE_PRELUDE=yes
-INOTIFY_MAKE_ENV=	USE_INOTIFY=yes
-INOTIFY_USES=	pkgconfig
+INOTIFY_MAKE_ENV=	USE_INOTIFY=yes \
+			INOTIFY_LIB=${INOTIFY_LIB}
+INOTIFY_USES=	pkgconfig inotify
 PGSQL_MAKE_ARGS=DATABASE=pgsql
 PGSQL_USES=	pgsql
 MYSQL_MAKE_ARGS=DATABASE=mysql
@@ -208,8 +210,6 @@ post-extract:
 	@cd ${WRKSRC}/src/external && ${EXTRACT_CMD} ${EXTRACT_BEFORE_ARGS} ${_DISTDIR}/${FILE:S/:wazuh_sources//:S/:wazuh_cache//} ${EXTRACT_AFTER_ARGS}
 .endif
 .endfor
-	@cd ${WRKDIR} && ${EXTRACT_CMD} ${EXTRACT_BEFORE_ARGS} ${_DISTDIR}/${WAZUH_EXTRAFILE} ${EXTRACT_AFTER_ARGS}
-	@${MV} ${WRKDIR}/${PORTNAME}-freebsd-${WAZUH_EXTRAFILE_TAGNAME} ${WRKDIR}/wazuh-freebsd
 
 	@cd ${WRKSRC}/src && ${EXTRACT_CMD} ${EXTRACT_BEFORE_ARGS} ${_DISTDIR}/${WAZUH_CACHEFILE} ${EXTRACT_AFTER_ARGS}
 	@cd ${WRKSRC}/src && ${EXTRACT_CMD} ${EXTRACT_BEFORE_ARGS} ${_DISTDIR}/${WAZUH_CACHENAME}${EXTRACT_SUFX} ${EXTRACT_AFTER_ARGS}
@@ -220,12 +220,7 @@ post-extract:
 .	endfor
 	@${RM} ${WRKSRC}/src/external/cpython/python ${WRKSRC}/src/external/cpython/libpython* ${WRKSRC}/src/external/cpython/Modules/*.o
 
-	@${MKDIR} ${WRKSRC}/ruleset/sca/freebsd
-	@cd ${WRKDIR}/wazuh-freebsd/var/ossec/ruleset/sca && ${CP} *.yml ${WRKSRC}/ruleset/sca/freebsd/
 	${FIND} ${WRKSRC}/ruleset/sca -type f -name "*.yml" -exec ${MV} "{}" "{}.disabled" \;
-
-	${CP} ${FILESDIR}/pthreads_portable.c ${WRKSRC}/src/shared/
-	${CP} ${FILESDIR}/pthreads_portable.h ${WRKSRC}/src/headers/
 
 post-patch:
 	${REINPLACE_CMD} -e 's|CC=|CC?=|g' -e 's|AR=|AR?=|g' ${WRKSRC}/src/external/bzip2/Makefile
@@ -234,12 +229,14 @@ post-patch:
 		${WRKSRC}/framework/wazuh/rbac/decorators.py
 
 do-build:
+	cd ${WRKSRC} && ${CC} ${CFLAGS} -o check_pid ${WRKSRC}/libexec/check_pid.c
 	cd ${WRKSRC}/src/ && ${SETENV} ${MAKE_ENV} STAGEDIR=${STAGEDIR} \
 		${MAKE_CMD} ${MAKE_ARGS}
 
 do-install:
 	${MKDIR} ${STAGEDIR}${WAZUHPREFIX}/bin
 	${MKDIR} ${STAGEDIR}${WAZUHPREFIX}/lib
+	${MKDIR} ${STAGEDIR}${WAZUHPREFIX}/libexec
 	${MKDIR} ${STAGEDIR}${WAZUHPREFIX}/tmp
 	${MKDIR} ${STAGEDIR}${WAZUHPREFIX}/templates
 	${MKDIR} ${STAGEDIR}${WAZUHPREFIX}/.ssh
@@ -255,6 +252,8 @@ do-install:
 .for DIRE in ${WAZUHMOD770}
 	${MKDIR} -m 0770 ${STAGEDIR}${WAZUHPREFIX}${DIRE}
 .endfor
+
+	${INSTALL_PROGRAM} ${WRKSRC}/check_pid ${STAGEDIR}${WAZUHPREFIX}/libexec/check_pid
 
 	${INSTALL_DATA} /dev/null ${STAGEDIR}${WAZUHPREFIX}/logs/ossec.log
 	${INSTALL_DATA} /dev/null ${STAGEDIR}${WAZUHPREFIX}/logs/ossec.json
@@ -288,11 +287,9 @@ do-install:
 
 # Install rules files
 	${INSTALL_DATA} ${WRKSRC}/ruleset/rules/*.xml ${STAGEDIR}${WAZUHPREFIX}/ruleset/rules
-	${INSTALL_DATA} ${WRKDIR}/wazuh-freebsd/var/ossec/ruleset/rules/*.xml ${STAGEDIR}${WAZUHPREFIX}/ruleset/rules
 
 # Install decoders files
 	${INSTALL_DATA} ${WRKSRC}/ruleset/decoders/*.xml ${STAGEDIR}${WAZUHPREFIX}/ruleset/decoders
-	${INSTALL_DATA} ${WRKDIR}/wazuh-freebsd/var/ossec/ruleset/decoders/*.xml ${STAGEDIR}${WAZUHPREFIX}/ruleset/decoders
 
 	${INSTALL_DATA} ${WRKSRC}/ruleset/rootcheck/db/*.txt ${STAGEDIR}${WAZUHPREFIX}/etc/rootcheck
 

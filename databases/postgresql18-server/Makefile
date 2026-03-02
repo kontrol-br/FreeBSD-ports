@@ -1,8 +1,8 @@
 PORTNAME?=	postgresql
-DISTVERSION?=	18.1
+DISTVERSION?=	18.3
 # PORTREVISION must be ?= otherwise, all slave ports get this PORTREVISION and
 # not their own.  Probably best to keep it at ?=0 when reset here too.
-PORTREVISION?=	1
+PORTREVISION?=	0
 CATEGORIES?=	databases
 MASTER_SITES=	PGSQL/source/v${DISTVERSION}
 PKGNAMESUFFIX?= ${PORTVERSION:R}${COMPONENT}
@@ -103,7 +103,7 @@ LLVM_DESC=		Build with support for JIT-compiling expressions
 LLVM_CONFIGURE_WITH=	llvm
 LLVM_CONFIGURE_ENV=	LLVM_CONFIG=${LLVM_CONFIG} \
 			CLANG=${LOCALBASE}/bin/clang${LLVM_VERSION}
-LLVM_USES=		llvm:min=11,lib
+LLVM_USES=		llvm:lib
 
 CONFIGURE_ARGS+=	--with-icu
 LIB_DEPENDS+=		libicudata.so:devel/icu
