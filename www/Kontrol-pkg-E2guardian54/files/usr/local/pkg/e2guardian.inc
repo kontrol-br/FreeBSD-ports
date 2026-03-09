@@ -2221,6 +2221,7 @@ EOF;
 		$watchdog .= "\tsleep 10\ndone\n";
 		file_put_contents($cron_cmd, $watchdog, LOCK_EX);
 	} else {
+		e2g_stop_watchdog_processes();
 		file_put_contents($cron_cmd, "", LOCK_EX);
 		e2g_check_cron("/bin/sh $cron_cmd", "remove");
 	}
@@ -2355,10 +2356,16 @@ function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*"
 
 	//Remove current job
 	install_cron_job ($cron_cmd, false);
+	install_cron_job ($cron_cmd . ' > /dev/null', false);
 	if ($action == "create") {
 		//Install a new job
 		install_cron_job ($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday , "root");
 	}
+}
+
+function e2g_stop_watchdog_processes() {
+	$watchdog_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
+	mwexec("/usr/bin/pgrep -f {$watchdog_cmd} | /usr/bin/xargs /bin/kill 2>/dev/null");
 }
 
 function e2guardian_check_config() {
