@@ -311,7 +311,7 @@ if ($_POST['e2g_import_settings'] == 'e2g_import_settings') {
 	$payload = trim((string)($_POST['e2g_import_payload'] ?? ''));
 
 	if ($payload === '') {
-		$input_errors[] = gettext('Paste the exported XML content in the import field.');
+		$input_errors[] = gettext('Choose a valid E2guardian XML export file before importing.');
 	} elseif (e2guardian_import_settings_xml($payload, $input_errors)) {
 		write_config('[E2guardian] Imported package settings');
 		sync_package_e2guardian();
