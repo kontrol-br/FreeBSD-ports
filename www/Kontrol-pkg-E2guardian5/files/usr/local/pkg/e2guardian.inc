@@ -2248,10 +2248,6 @@ function e2guardian_package_version() {
 	return '0.9.2';
 }
 
-function e2guardian_export_hmac_key() {
-	return hash('sha256', 'e2guardian-export|' . e2guardian_package_version());
-}
-
 function e2guardian_export_sections() {
 	return array(
 		'e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist',
@@ -2390,7 +2386,6 @@ function e2guardian_export_settings_xml() {
 	), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 	$root->appendChild($document->createElement('checksum_sha256', hash('sha256', $signature_payload)));
-	$root->appendChild($document->createElement('hmac_sha256', hash_hmac('sha256', $signature_payload, e2guardian_export_hmac_key())));
 
 	return $document->saveXML();
 }
@@ -2421,7 +2416,6 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 	$package_name = (string)($xml->package ?? '');
 	$package_version = (string)($xml->package_version ?? '');
 	$file_checksum = strtolower(trim((string)($xml->checksum_sha256 ?? '')));
-	$file_hmac = strtolower(trim((string)($xml->hmac_sha256 ?? '')));
 
 	if ($schema_version !== '1') {
 		$input_errors[] = sprintf(gettext('Unsupported schema version: %s.'), $schema_version);
@@ -2437,9 +2431,6 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 	}
 	if ($file_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $file_checksum)) {
 		$input_errors[] = gettext('Missing or invalid file checksum.');
-	}
-	if ($file_hmac === '' || !preg_match('/^[a-f0-9]{64}$/', $file_hmac)) {
-		$input_errors[] = gettext('Missing or invalid file HMAC.');
 	}
 	if (!empty($input_errors)) {
 		return false;
@@ -2504,15 +2495,10 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 		'checksums' => $signature_checksums
 	), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	$computed_file_checksum = hash('sha256', $signature_payload);
-	$computed_file_hmac = hash_hmac('sha256', $signature_payload, e2guardian_export_hmac_key());
 
 	if (!hash_equals($file_checksum, $computed_file_checksum)) {
 		$input_errors[] = gettext('File checksum mismatch. The import file is invalid or corrupted.');
 	}
-	if (!hash_equals($file_hmac, $computed_file_hmac)) {
-		$input_errors[] = gettext('File HMAC mismatch. The import file failed integrity validation.');
-	}
-
 	if (!empty($input_errors)) {
 		return false;
 	}

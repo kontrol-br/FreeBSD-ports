@@ -2819,10 +2819,6 @@ function e2guardian_package_version() {
 	return '0.9.2';
 }
 
-function e2guardian_export_hmac_key() {
-	return hash('sha256', 'e2guardian-export|' . e2guardian_package_version());
-}
-
 function e2guardian_export_sections() {
 	return array(
 		'e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist',
@@ -2830,6 +2826,89 @@ function e2guardian_export_sections() {
 		'e2guardianlimits', 'e2guardianlog', 'e2guardianphraseacl', 'e2guardianpicsacl', 'e2guardiansearchacl',
 		'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips'
 	);
+}
+
+function e2guardian_is_assoc_array(array $array) {
+	if (array() === $array) {
+		return false;
+	}
+
+	return array_keys($array) !== range(0, count($array) - 1);
+}
+
+function e2guardian_normalize_payload($value) {
+	if (!is_array($value)) {
+		return $value;
+	}
+
+	$normalized = array();
+	foreach ($value as $key => $item) {
+		$normalized[$key] = e2guardian_normalize_payload($item);
+	}
+
+	if (e2guardian_is_assoc_array($normalized)) {
+		ksort($normalized, SORT_NATURAL);
+	}
+
+	return $normalized;
+}
+
+function e2guardian_xml_append_item(DOMDocument $document, DOMElement $parent, $key, $value) {
+	$item = $document->createElement('item');
+	$item->setAttribute('key', (string)$key);
+
+	if (is_array($value)) {
+		$item->setAttribute('type', 'array');
+		foreach ($value as $subkey => $subvalue) {
+			e2guardian_xml_append_item($document, $item, $subkey, $subvalue);
+		}
+	} elseif (is_bool($value)) {
+		$item->setAttribute('type', 'bool');
+		$item->appendChild($document->createTextNode($value ? '1' : '0'));
+	} elseif (is_int($value)) {
+		$item->setAttribute('type', 'int');
+		$item->appendChild($document->createTextNode((string)$value));
+	} elseif (is_float($value)) {
+		$item->setAttribute('type', 'float');
+		$item->appendChild($document->createTextNode((string)$value));
+	} elseif (is_null($value)) {
+		$item->setAttribute('type', 'null');
+	} else {
+		$item->setAttribute('type', 'string');
+		$item->appendChild($document->createCDATASection((string)$value));
+	}
+
+	$parent->appendChild($item);
+}
+
+function e2guardian_xml_parse_item(SimpleXMLElement $item) {
+	$type = (string)($item['type'] ?? 'string');
+
+	if ($type === 'array') {
+		$data = array();
+		foreach ($item->item as $subitem) {
+			$key = (string)$subitem['key'];
+			$key = ctype_digit($key) ? intval($key) : $key;
+			$data[$key] = e2guardian_xml_parse_item($subitem);
+		}
+		return $data;
+	}
+
+	$value = (string)$item;
+	if ($type === 'bool') {
+		return in_array(strtolower($value), array('1', 'true', 'yes', 'on'), true);
+	}
+	if ($type === 'int') {
+		return (int)$value;
+	}
+	if ($type === 'float') {
+		return (float)$value;
+	}
+	if ($type === 'null') {
+		return null;
+	}
+
+	return $value;
 }
 
 function e2guardian_export_settings_xml() {
@@ -2849,30 +2928,35 @@ function e2guardian_export_settings_xml() {
 	$sections = $document->createElement('installedpackages_sections');
 	$root->appendChild($sections);
 
-	$checksums = array();
-	$serialized_sections = array();
-	foreach (e2guardian_export_sections() as $section) {
+	$signature_sections = array();
+	$signature_checksums = array();
+	foreach (e2guardian_export_sections() as $section_name) {
 		$section_node = $document->createElement('section');
-		$section_node->setAttribute('name', $section);
-		$payload = $config['installedpackages'][$section] ?? array();
-		$serialized_payload = serialize($payload);
-		$serialized_sections[$section] = $serialized_payload;
-		$section_checksum = hash('sha256', $serialized_payload);
-		$checksums[$section] = $section_checksum;
-		$section_node->setAttribute('checksum_sha256', $section_checksum);
-		$section_node->appendChild($document->createCDATASection(base64_encode($serialized_payload)));
+		$section_node->setAttribute('name', $section_name);
+
+		$payload = $config['installedpackages'][$section_name] ?? array();
+		$normalized = e2guardian_normalize_payload($payload);
+		$payload_checksum = hash('sha256', json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$section_node->setAttribute('checksum_sha256', $payload_checksum);
+
+		foreach ($payload as $key => $value) {
+			e2guardian_xml_append_item($document, $section_node, $key, $value);
+		}
+
 		$sections->appendChild($section_node);
+		$signature_sections[$section_name] = $normalized;
+		$signature_checksums[$section_name] = $payload_checksum;
 	}
 
-	$signature_payload = serialize(array(
+	$signature_payload = json_encode(array(
 		'schema_version' => '1',
 		'package' => 'e2guardian',
 		'package_version' => e2guardian_package_version(),
-		'sections' => $serialized_sections,
-		'checksums' => $checksums
-	));
+		'sections' => $signature_sections,
+		'checksums' => $signature_checksums
+	), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
 	$root->appendChild($document->createElement('checksum_sha256', hash('sha256', $signature_payload)));
-	$root->appendChild($document->createElement('hmac_sha256', hash_hmac('sha256', $signature_payload, e2guardian_export_hmac_key())));
 
 	return $document->saveXML();
 }
@@ -2903,7 +2987,6 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 	$package_name = (string)($xml->package ?? '');
 	$package_version = (string)($xml->package_version ?? '');
 	$file_checksum = strtolower(trim((string)($xml->checksum_sha256 ?? '')));
-	$file_hmac = strtolower(trim((string)($xml->hmac_sha256 ?? '')));
 
 	if ($schema_version !== '1') {
 		$input_errors[] = sprintf(gettext('Unsupported schema version: %s.'), $schema_version);
@@ -2920,18 +3003,15 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 	if ($file_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $file_checksum)) {
 		$input_errors[] = gettext('Missing or invalid file checksum.');
 	}
-	if ($file_hmac === '' || !preg_match('/^[a-f0-9]{64}$/', $file_hmac)) {
-		$input_errors[] = gettext('Missing or invalid file HMAC.');
-	}
 	if (!empty($input_errors)) {
 		return false;
 	}
 
 	$expected_sections = e2guardian_export_sections();
 	$pending_sections = array();
+	$signature_sections = array();
+	$signature_checksums = array();
 	$found_sections = array();
-	$serialized_sections = array();
-	$checksums = array();
 
 	foreach ($xml->installedpackages_sections->section as $section) {
 		$section_name = (string)$section['name'];
@@ -2944,33 +3024,33 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 			continue;
 		}
 
-		$decoded_payload = base64_decode((string)$section, true);
-		if ($decoded_payload === false) {
-			$input_errors[] = sprintf(gettext('Section %s has invalid base64 payload.'), $section_name);
-			continue;
+		$section_data = array();
+		foreach ($section->item as $item) {
+			$key = (string)$item['key'];
+			if ($key === '') {
+				$input_errors[] = sprintf(gettext('Section %s has an item without key.'), $section_name);
+				continue;
+			}
+			$key = ctype_digit($key) ? intval($key) : $key;
+			$section_data[$key] = e2guardian_xml_parse_item($item);
 		}
 
-		$section_checksum = strtolower(trim((string)($section['checksum_sha256'] ?? '')));
-		if ($section_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $section_checksum)) {
+		$normalized = e2guardian_normalize_payload($section_data);
+		$computed_checksum = hash('sha256', json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$stored_checksum = strtolower(trim((string)($section['checksum_sha256'] ?? '')));
+		if ($stored_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $stored_checksum)) {
 			$input_errors[] = sprintf(gettext('Section %s has missing or invalid checksum.'), $section_name);
 			continue;
 		}
-		$computed_section_checksum = hash('sha256', $decoded_payload);
-		if (!hash_equals($section_checksum, $computed_section_checksum)) {
+		if (!hash_equals($stored_checksum, $computed_checksum)) {
 			$input_errors[] = sprintf(gettext('Section %s checksum mismatch. The file may be corrupted or tampered.'), $section_name);
 			continue;
 		}
 
-		$data = @unserialize($decoded_payload, array('allowed_classes' => false));
-		if ($data === false && $decoded_payload !== serialize(false)) {
-			$input_errors[] = sprintf(gettext('Section %s payload cannot be deserialized.'), $section_name);
-			continue;
-		}
-
-		$pending_sections[$section_name] = is_array($data) ? $data : array();
+		$pending_sections[$section_name] = $section_data;
+		$signature_sections[$section_name] = $normalized;
+		$signature_checksums[$section_name] = $stored_checksum;
 		$found_sections[] = $section_name;
-		$serialized_sections[$section_name] = $decoded_payload;
-		$checksums[$section_name] = $section_checksum;
 	}
 
 	$missing_sections = array_diff($expected_sections, array_unique($found_sections));
@@ -2978,21 +3058,17 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 		$input_errors[] = sprintf(gettext('Import file is incomplete. Missing sections: %s.'), implode(', ', $missing_sections));
 	}
 
-	$signature_payload = serialize(array(
+	$signature_payload = json_encode(array(
 		'schema_version' => '1',
 		'package' => 'e2guardian',
 		'package_version' => $package_version,
-		'sections' => $serialized_sections,
-		'checksums' => $checksums
-	));
+		'sections' => $signature_sections,
+		'checksums' => $signature_checksums
+	), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 	$computed_file_checksum = hash('sha256', $signature_payload);
-	$computed_file_hmac = hash_hmac('sha256', $signature_payload, e2guardian_export_hmac_key());
 
 	if (!hash_equals($file_checksum, $computed_file_checksum)) {
 		$input_errors[] = gettext('File checksum mismatch. The import file is invalid or corrupted.');
-	}
-	if (!hash_equals($file_hmac, $computed_file_hmac)) {
-		$input_errors[] = gettext('File HMAC mismatch. The import file failed integrity validation.');
 	}
 
 	if (!empty($input_errors)) {
