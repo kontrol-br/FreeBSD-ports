@@ -295,6 +295,35 @@ if ($_POST['clear_cert_cache'] == 'clear_cert_cache') {
     }
 }
 
+if ($_POST['e2g_export_settings'] == 'e2g_export_settings') {
+	$export_name = 'e2guardian-config-' . date('Ymd-His') . '.xml';
+	$xml_payload = e2guardian_export_settings_xml();
+
+	header('Content-Type: application/xml');
+	header('Content-Disposition: attachment; filename="' . $export_name . '"');
+	header('Content-Length: ' . strlen($xml_payload));
+	echo $xml_payload;
+	exit;
+}
+
+if ($_POST['e2g_import_settings'] == 'e2g_import_settings') {
+	$input_errors = array();
+	$payload = trim((string)($_POST['e2g_import_payload'] ?? ''));
+
+	if ($payload === '') {
+		$input_errors[] = gettext('Choose a valid E2guardian XML export file before importing.');
+	} elseif (e2guardian_import_settings_xml($payload, $input_errors)) {
+		write_config('[E2guardian] Imported package settings');
+		sync_package_e2guardian();
+		e2guardian_start('yes');
+		file_notice('E2guardian', gettext('Import completed successfully.'), gettext('E2guardian settings were imported and applied.'), 'success');
+	}
+
+	foreach ($input_errors as $error) {
+		file_notice('E2guardian', $error, gettext('Failed to import E2guardian settings.'), 'danger');
+	}
+}
+
 function e2g_delTree($dir) {
     if (! is_dir($dir)) {
 	return false;
@@ -2786,6 +2815,197 @@ function e2guardian_php_deinstall_command() {
 	clear_subsystem_dirty('e2guardian');
 }
 
+function e2guardian_package_version() {
+	return '0.9.2';
+}
+
+function e2guardian_export_hmac_key() {
+	return hash('sha256', 'e2guardian-export|' . e2guardian_package_version());
+}
+
+function e2guardian_export_sections() {
+	return array(
+		'e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist',
+		'e2guardianldap', 'e2guardiancontentacl', 'e2guardianfileacl', 'e2guardiangroups', 'e2guardianheaderacl',
+		'e2guardianlimits', 'e2guardianlog', 'e2guardianphraseacl', 'e2guardianpicsacl', 'e2guardiansearchacl',
+		'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips'
+	);
+}
+
+function e2guardian_export_settings_xml() {
+	global $config;
+
+	$document = new DOMDocument('1.0', 'UTF-8');
+	$document->formatOutput = true;
+
+	$root = $document->createElement('e2guardian_export');
+	$root->setAttribute('schema_version', '1');
+	$document->appendChild($root);
+
+	$root->appendChild($document->createElement('package', 'e2guardian'));
+	$root->appendChild($document->createElement('package_version', e2guardian_package_version()));
+	$root->appendChild($document->createElement('created_at', date('c')));
+
+	$sections = $document->createElement('installedpackages_sections');
+	$root->appendChild($sections);
+
+	$checksums = array();
+	$serialized_sections = array();
+	foreach (e2guardian_export_sections() as $section) {
+		$section_node = $document->createElement('section');
+		$section_node->setAttribute('name', $section);
+		$payload = $config['installedpackages'][$section] ?? array();
+		$serialized_payload = serialize($payload);
+		$serialized_sections[$section] = $serialized_payload;
+		$section_checksum = hash('sha256', $serialized_payload);
+		$checksums[$section] = $section_checksum;
+		$section_node->setAttribute('checksum_sha256', $section_checksum);
+		$section_node->appendChild($document->createCDATASection(base64_encode($serialized_payload)));
+		$sections->appendChild($section_node);
+	}
+
+	$signature_payload = serialize(array(
+		'schema_version' => '1',
+		'package' => 'e2guardian',
+		'package_version' => e2guardian_package_version(),
+		'sections' => $serialized_sections,
+		'checksums' => $checksums
+	));
+	$root->appendChild($document->createElement('checksum_sha256', hash('sha256', $signature_payload)));
+	$root->appendChild($document->createElement('hmac_sha256', hash_hmac('sha256', $signature_payload, e2guardian_export_hmac_key())));
+
+	return $document->saveXML();
+}
+
+function e2guardian_import_settings_xml($xml_contents, &$input_errors = array()) {
+	global $config;
+
+	libxml_use_internal_errors(true);
+	$xml = simplexml_load_string((string)$xml_contents);
+	if ($xml === false) {
+		$input_errors[] = gettext('Invalid XML: unable to parse import file.');
+		foreach (libxml_get_errors() as $xml_error) {
+			$message = trim((string)$xml_error->message);
+			if ($message !== '') {
+				$input_errors[] = sprintf(gettext('XML parser error: %s'), $message);
+			}
+		}
+		libxml_clear_errors();
+		return false;
+	}
+
+	if ($xml->getName() !== 'e2guardian_export') {
+		$input_errors[] = gettext('Invalid import file: root element is not e2guardian_export.');
+		return false;
+	}
+
+	$schema_version = (string)($xml['schema_version'] ?? '');
+	$package_name = (string)($xml->package ?? '');
+	$package_version = (string)($xml->package_version ?? '');
+	$file_checksum = strtolower(trim((string)($xml->checksum_sha256 ?? '')));
+	$file_hmac = strtolower(trim((string)($xml->hmac_sha256 ?? '')));
+
+	if ($schema_version !== '1') {
+		$input_errors[] = sprintf(gettext('Unsupported schema version: %s.'), $schema_version);
+	}
+	if ($package_name !== 'e2guardian') {
+		$input_errors[] = gettext('Invalid import file: package marker is not e2guardian.');
+	}
+	if ($package_version !== e2guardian_package_version()) {
+		$input_errors[] = sprintf(gettext('Package version mismatch: expected %s, got %s.'), e2guardian_package_version(), $package_version);
+	}
+	if (!isset($xml->installedpackages_sections->section)) {
+		$input_errors[] = gettext('No valid installedpackages sections were found in the import file.');
+	}
+	if ($file_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $file_checksum)) {
+		$input_errors[] = gettext('Missing or invalid file checksum.');
+	}
+	if ($file_hmac === '' || !preg_match('/^[a-f0-9]{64}$/', $file_hmac)) {
+		$input_errors[] = gettext('Missing or invalid file HMAC.');
+	}
+	if (!empty($input_errors)) {
+		return false;
+	}
+
+	$expected_sections = e2guardian_export_sections();
+	$pending_sections = array();
+	$found_sections = array();
+	$serialized_sections = array();
+	$checksums = array();
+
+	foreach ($xml->installedpackages_sections->section as $section) {
+		$section_name = (string)$section['name'];
+		if ($section_name === '') {
+			$input_errors[] = gettext('Import file has a section without a name attribute.');
+			continue;
+		}
+		if (!in_array($section_name, $expected_sections, true)) {
+			$input_errors[] = sprintf(gettext('Unexpected section in import file: %s.'), $section_name);
+			continue;
+		}
+
+		$decoded_payload = base64_decode((string)$section, true);
+		if ($decoded_payload === false) {
+			$input_errors[] = sprintf(gettext('Section %s has invalid base64 payload.'), $section_name);
+			continue;
+		}
+
+		$section_checksum = strtolower(trim((string)($section['checksum_sha256'] ?? '')));
+		if ($section_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $section_checksum)) {
+			$input_errors[] = sprintf(gettext('Section %s has missing or invalid checksum.'), $section_name);
+			continue;
+		}
+		$computed_section_checksum = hash('sha256', $decoded_payload);
+		if (!hash_equals($section_checksum, $computed_section_checksum)) {
+			$input_errors[] = sprintf(gettext('Section %s checksum mismatch. The file may be corrupted or tampered.'), $section_name);
+			continue;
+		}
+
+		$data = @unserialize($decoded_payload, array('allowed_classes' => false));
+		if ($data === false && $decoded_payload !== serialize(false)) {
+			$input_errors[] = sprintf(gettext('Section %s payload cannot be deserialized.'), $section_name);
+			continue;
+		}
+
+		$pending_sections[$section_name] = is_array($data) ? $data : array();
+		$found_sections[] = $section_name;
+		$serialized_sections[$section_name] = $decoded_payload;
+		$checksums[$section_name] = $section_checksum;
+	}
+
+	$missing_sections = array_diff($expected_sections, array_unique($found_sections));
+	if (!empty($missing_sections)) {
+		$input_errors[] = sprintf(gettext('Import file is incomplete. Missing sections: %s.'), implode(', ', $missing_sections));
+	}
+
+	$signature_payload = serialize(array(
+		'schema_version' => '1',
+		'package' => 'e2guardian',
+		'package_version' => $package_version,
+		'sections' => $serialized_sections,
+		'checksums' => $checksums
+	));
+	$computed_file_checksum = hash('sha256', $signature_payload);
+	$computed_file_hmac = hash_hmac('sha256', $signature_payload, e2guardian_export_hmac_key());
+
+	if (!hash_equals($file_checksum, $computed_file_checksum)) {
+		$input_errors[] = gettext('File checksum mismatch. The import file is invalid or corrupted.');
+	}
+	if (!hash_equals($file_hmac, $computed_file_hmac)) {
+		$input_errors[] = gettext('File HMAC mismatch. The import file failed integrity validation.');
+	}
+
+	if (!empty($input_errors)) {
+		return false;
+	}
+
+	foreach ($expected_sections as $section_name) {
+		$config['installedpackages'][$section_name] = $pending_sections[$section_name] ?? array();
+	}
+
+	return true;
+}
+
 
 
 
@@ -2824,10 +3044,7 @@ function e2guardian_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $pa
 
 	 /* xml will hold the sections to sync */
         log_error("Include e2guardian config");
-	$elements = array('e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist', 'e2guardianblacklist',
-			'e2guardianldap', 'e2guardiancontentacl', 'e2guardianfileacl', 'e2guardiangroups', 'e2guardianheaderacl',
-			'e2guardianlimits', 'e2guardianlog', 'e2guardianphraseacl', 'e2guardianpicsacl', 'e2guardiansearchacl',
-			'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips');
+	$elements = e2guardian_export_sections();
 
         $xml = array();
 	foreach ($elements as $element) {
