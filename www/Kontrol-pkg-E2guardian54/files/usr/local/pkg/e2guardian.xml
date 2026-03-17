@@ -364,7 +364,7 @@
 			<advancedfield/>
 		</field>
 		<field>
-			<name>Advanced Features</name>
+			<name>Backup and Restore Features</name>
 			<type>listtopic</type>
 			<advancedfield/>
 		</field>
