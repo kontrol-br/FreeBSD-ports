@@ -295,6 +295,35 @@ if ($_POST['clear_cert_cache'] == 'clear_cert_cache') {
     }
 }
 
+if ($_POST['e2g_export_settings'] == 'e2g_export_settings') {
+	$export_name = 'e2guardian-config-' . date('Ymd-His') . '.xml';
+	$xml_payload = e2guardian_export_settings_xml();
+
+	header('Content-Type: application/xml');
+	header('Content-Disposition: attachment; filename="' . $export_name . '"');
+	header('Content-Length: ' . strlen($xml_payload));
+	echo $xml_payload;
+	exit;
+}
+
+if ($_POST['e2g_import_settings'] == 'e2g_import_settings') {
+	$input_errors = array();
+	$payload = trim((string)($_POST['e2g_import_payload'] ?? ''));
+
+	if ($payload === '') {
+		$input_errors[] = gettext('Choose a valid E2guardian XML export file before importing.');
+	} elseif (e2guardian_import_settings_xml($payload, $input_errors)) {
+		write_config('[E2guardian] Imported package settings');
+		sync_package_e2guardian();
+		e2guardian_start('yes');
+		file_notice('E2guardian', gettext('Import completed successfully.'), gettext('E2guardian settings were imported and applied.'), 'success');
+	}
+
+	foreach ($input_errors as $error) {
+		file_notice('E2guardian', $error, gettext('Failed to import E2guardian settings.'), 'danger');
+	}
+}
+
 function e2g_delTree($dir) {
     if (! is_dir($dir)) {
 	return false;
@@ -2221,6 +2250,7 @@ EOF;
 		$watchdog .= "\tsleep 10\ndone\n";
 		file_put_contents($cron_cmd, $watchdog, LOCK_EX);
 	} else {
+		e2g_stop_watchdog_processes();
 		file_put_contents($cron_cmd, "", LOCK_EX);
 		e2g_check_cron("/bin/sh $cron_cmd", "remove");
 	}
@@ -2355,10 +2385,16 @@ function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*"
 
 	//Remove current job
 	install_cron_job ($cron_cmd, false);
+	install_cron_job ($cron_cmd . ' > /dev/null', false);
 	if ($action == "create") {
 		//Install a new job
 		install_cron_job ($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday , "root");
 	}
+}
+
+function e2g_stop_watchdog_processes() {
+	$watchdog_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
+	mwexec("/usr/bin/pgrep -f {$watchdog_cmd} | /usr/bin/xargs /bin/kill 2>/dev/null");
 }
 
 function e2guardian_check_config() {
@@ -2779,6 +2815,273 @@ function e2guardian_php_deinstall_command() {
 	clear_subsystem_dirty('e2guardian');
 }
 
+function e2guardian_package_version() {
+	return '0.9.2';
+}
+
+function e2guardian_export_sections() {
+	return array(
+		'e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist',
+		'e2guardianldap', 'e2guardiancontentacl', 'e2guardianfileacl', 'e2guardiangroups', 'e2guardianheaderacl',
+		'e2guardianlimits', 'e2guardianlog', 'e2guardianphraseacl', 'e2guardianpicsacl', 'e2guardiansearchacl',
+		'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips'
+	);
+}
+
+function e2guardian_is_assoc_array(array $array) {
+	if (array() === $array) {
+		return false;
+	}
+
+	return array_keys($array) !== range(0, count($array) - 1);
+}
+
+function e2guardian_normalize_payload($value) {
+	if (!is_array($value)) {
+		return $value;
+	}
+
+	$normalized = array();
+	foreach ($value as $key => $item) {
+		$normalized[$key] = e2guardian_normalize_payload($item);
+	}
+
+	if (e2guardian_is_assoc_array($normalized)) {
+		ksort($normalized, SORT_NATURAL);
+	}
+
+	return $normalized;
+}
+
+function e2guardian_xml_append_item(DOMDocument $document, DOMElement $parent, $key, $value) {
+	$item = $document->createElement('item');
+	$item->setAttribute('key', (string)$key);
+
+	if (is_array($value)) {
+		$item->setAttribute('type', 'array');
+		foreach ($value as $subkey => $subvalue) {
+			e2guardian_xml_append_item($document, $item, $subkey, $subvalue);
+		}
+	} elseif (is_bool($value)) {
+		$item->setAttribute('type', 'bool');
+		$item->appendChild($document->createTextNode($value ? '1' : '0'));
+	} elseif (is_int($value)) {
+		$item->setAttribute('type', 'int');
+		$item->appendChild($document->createTextNode((string)$value));
+	} elseif (is_float($value)) {
+		$item->setAttribute('type', 'float');
+		$item->appendChild($document->createTextNode((string)$value));
+	} elseif (is_null($value)) {
+		$item->setAttribute('type', 'null');
+	} else {
+		$item->setAttribute('type', 'string');
+		$item->appendChild($document->createCDATASection((string)$value));
+	}
+
+	$parent->appendChild($item);
+}
+
+function e2guardian_xml_parse_item(SimpleXMLElement $item) {
+	$type = (string)($item['type'] ?? 'string');
+
+	if ($type === 'array') {
+		$data = array();
+		foreach ($item->item as $subitem) {
+			$key = (string)$subitem['key'];
+			$key = ctype_digit($key) ? intval($key) : $key;
+			$data[$key] = e2guardian_xml_parse_item($subitem);
+		}
+		return $data;
+	}
+
+	$value = (string)$item;
+	if ($type === 'bool') {
+		return in_array(strtolower($value), array('1', 'true', 'yes', 'on'), true);
+	}
+	if ($type === 'int') {
+		return (int)$value;
+	}
+	if ($type === 'float') {
+		return (float)$value;
+	}
+	if ($type === 'null') {
+		return null;
+	}
+
+	return $value;
+}
+
+function e2guardian_export_settings_xml() {
+	global $config;
+
+	$document = new DOMDocument('1.0', 'UTF-8');
+	$document->formatOutput = true;
+
+	$root = $document->createElement('e2guardian_export');
+	$root->setAttribute('schema_version', '1');
+	$document->appendChild($root);
+
+	$root->appendChild($document->createElement('package', 'e2guardian'));
+	$root->appendChild($document->createElement('package_version', e2guardian_package_version()));
+	$root->appendChild($document->createElement('created_at', date('c')));
+
+	$sections = $document->createElement('installedpackages_sections');
+	$root->appendChild($sections);
+
+	$signature_sections = array();
+	$signature_checksums = array();
+	foreach (e2guardian_export_sections() as $section_name) {
+		$section_node = $document->createElement('section');
+		$section_node->setAttribute('name', $section_name);
+
+		$payload = $config['installedpackages'][$section_name] ?? array();
+		$normalized = e2guardian_normalize_payload($payload);
+		$payload_checksum = hash('sha256', json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$section_node->setAttribute('checksum_sha256', $payload_checksum);
+
+		foreach ($payload as $key => $value) {
+			e2guardian_xml_append_item($document, $section_node, $key, $value);
+		}
+
+		$sections->appendChild($section_node);
+		$signature_sections[$section_name] = $normalized;
+		$signature_checksums[$section_name] = $payload_checksum;
+	}
+
+	$signature_payload = json_encode(array(
+		'schema_version' => '1',
+		'package' => 'e2guardian',
+		'package_version' => e2guardian_package_version(),
+		'sections' => $signature_sections,
+		'checksums' => $signature_checksums
+	), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+	$root->appendChild($document->createElement('checksum_sha256', hash('sha256', $signature_payload)));
+
+	return $document->saveXML();
+}
+
+function e2guardian_import_settings_xml($xml_contents, &$input_errors = array()) {
+	global $config;
+
+	libxml_use_internal_errors(true);
+	$xml = simplexml_load_string((string)$xml_contents);
+	if ($xml === false) {
+		$input_errors[] = gettext('Invalid XML: unable to parse import file.');
+		foreach (libxml_get_errors() as $xml_error) {
+			$message = trim((string)$xml_error->message);
+			if ($message !== '') {
+				$input_errors[] = sprintf(gettext('XML parser error: %s'), $message);
+			}
+		}
+		libxml_clear_errors();
+		return false;
+	}
+
+	if ($xml->getName() !== 'e2guardian_export') {
+		$input_errors[] = gettext('Invalid import file: root element is not e2guardian_export.');
+		return false;
+	}
+
+	$schema_version = (string)($xml['schema_version'] ?? '');
+	$package_name = (string)($xml->package ?? '');
+	$package_version = (string)($xml->package_version ?? '');
+	$file_checksum = strtolower(trim((string)($xml->checksum_sha256 ?? '')));
+
+	if ($schema_version !== '1') {
+		$input_errors[] = sprintf(gettext('Unsupported schema version: %s.'), $schema_version);
+	}
+	if ($package_name !== 'e2guardian') {
+		$input_errors[] = gettext('Invalid import file: package marker is not e2guardian.');
+	}
+	if ($package_version !== e2guardian_package_version()) {
+		$input_errors[] = sprintf(gettext('Package version mismatch: expected %s, got %s.'), e2guardian_package_version(), $package_version);
+	}
+	if (!isset($xml->installedpackages_sections->section)) {
+		$input_errors[] = gettext('No valid installedpackages sections were found in the import file.');
+	}
+	if ($file_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $file_checksum)) {
+		$input_errors[] = gettext('Missing or invalid file checksum.');
+	}
+	if (!empty($input_errors)) {
+		return false;
+	}
+
+	$expected_sections = e2guardian_export_sections();
+	$pending_sections = array();
+	$signature_sections = array();
+	$signature_checksums = array();
+	$found_sections = array();
+
+	foreach ($xml->installedpackages_sections->section as $section) {
+		$section_name = (string)$section['name'];
+		if ($section_name === '') {
+			$input_errors[] = gettext('Import file has a section without a name attribute.');
+			continue;
+		}
+		if (!in_array($section_name, $expected_sections, true)) {
+			$input_errors[] = sprintf(gettext('Unexpected section in import file: %s.'), $section_name);
+			continue;
+		}
+
+		$section_data = array();
+		foreach ($section->item as $item) {
+			$key = (string)$item['key'];
+			if ($key === '') {
+				$input_errors[] = sprintf(gettext('Section %s has an item without key.'), $section_name);
+				continue;
+			}
+			$key = ctype_digit($key) ? intval($key) : $key;
+			$section_data[$key] = e2guardian_xml_parse_item($item);
+		}
+
+		$normalized = e2guardian_normalize_payload($section_data);
+		$computed_checksum = hash('sha256', json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$stored_checksum = strtolower(trim((string)($section['checksum_sha256'] ?? '')));
+		if ($stored_checksum === '' || !preg_match('/^[a-f0-9]{64}$/', $stored_checksum)) {
+			$input_errors[] = sprintf(gettext('Section %s has missing or invalid checksum.'), $section_name);
+			continue;
+		}
+		if (!hash_equals($stored_checksum, $computed_checksum)) {
+			$input_errors[] = sprintf(gettext('Section %s checksum mismatch. The file may be corrupted or tampered.'), $section_name);
+			continue;
+		}
+
+		$pending_sections[$section_name] = $section_data;
+		$signature_sections[$section_name] = $normalized;
+		$signature_checksums[$section_name] = $stored_checksum;
+		$found_sections[] = $section_name;
+	}
+
+	$missing_sections = array_diff($expected_sections, array_unique($found_sections));
+	if (!empty($missing_sections)) {
+		$input_errors[] = sprintf(gettext('Import file is incomplete. Missing sections: %s.'), implode(', ', $missing_sections));
+	}
+
+	$signature_payload = json_encode(array(
+		'schema_version' => '1',
+		'package' => 'e2guardian',
+		'package_version' => $package_version,
+		'sections' => $signature_sections,
+		'checksums' => $signature_checksums
+	), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	$computed_file_checksum = hash('sha256', $signature_payload);
+
+	if (!hash_equals($file_checksum, $computed_file_checksum)) {
+		$input_errors[] = gettext('File checksum mismatch. The import file is invalid or corrupted.');
+	}
+
+	if (!empty($input_errors)) {
+		return false;
+	}
+
+	foreach ($expected_sections as $section_name) {
+		$config['installedpackages'][$section_name] = $pending_sections[$section_name] ?? array();
+	}
+
+	return true;
+}
+
 
 
 
@@ -2817,10 +3120,7 @@ function e2guardian_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $pa
 
 	 /* xml will hold the sections to sync */
         log_error("Include e2guardian config");
-	$elements = array('e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist', 'e2guardianblacklist',
-			'e2guardianldap', 'e2guardiancontentacl', 'e2guardianfileacl', 'e2guardiangroups', 'e2guardianheaderacl',
-			'e2guardianlimits', 'e2guardianlog', 'e2guardianphraseacl', 'e2guardianpicsacl', 'e2guardiansearchacl',
-			'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips');
+	$elements = e2guardian_export_sections();
 
         $xml = array();
 	foreach ($elements as $element) {
