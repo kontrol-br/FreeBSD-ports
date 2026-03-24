@@ -357,71 +357,10 @@
 			<advancedfield/>
 		</field>
 		<field>
-			<fielddescr>Watchdog</fielddescr>
-			<fieldname>watchdog</fieldname>
-			<type>checkbox</type>
-			<description><![CDATA[Check to enable E2guardian process watchdog and auto restart.]]></description>
-			<advancedfield/>
-		</field>
-		<field>
-			<name>Advanced Features</name>
-			<type>listtopic</type>
-			<advancedfield/>
-		</field>
-		<field>
-			<fielddescr>Export E2guardian settings</fielddescr>
-			<fieldname>e2g_export_settings_button</fieldname>
-			<description><![CDATA[Download an XML file containing only E2guardian package sections from installedpackages.<br/>
-				<button class="btn btn-primary btn-sm" name='e2g_export_settings' id='e2g_export_settings' type='submit' value='e2g_export_settings'>
-				<i class="fa fa-download icon-embed-btn"></i>Export E2guardian settings</button>]]></description>
-			<type>info</type>
-			<advancedfield/>
-		</field>
-		<field>
-			<fielddescr>Import E2guardian settings</fielddescr>
-			<fieldname>e2g_import_controls</fieldname>
-			<description><![CDATA[Choose the XML previously exported from another firewall and then click import.<br/>
-				<input class="form-control" type="file" id="e2g_import_file" accept=".xml,text/xml,application/xml" />
-				<div id="e2g_import_file_status" class="text-muted" style="margin-top:6px;">No file selected.</div>
-				<textarea name="e2g_import_payload" id="e2g_import_payload" style="display:none;"></textarea>
-				<button class="btn btn-success btn-sm" name='e2g_import_settings' id='e2g_import_settings' type='submit' value='e2g_import_settings'>
-				<i class="fa fa-upload icon-embed-btn"></i>Import E2guardian settings</button><br/>
-				<strong>Note:</strong> the import replaces only E2guardian package sections and immediately applies/restarts the service.
-				<script type="text/javascript">
-				(function() {
-					var fileInput = document.getElementById('e2g_import_file');
-					var payloadField = document.getElementById('e2g_import_payload');
-					var statusField = document.getElementById('e2g_import_file_status');
-
-					if (!fileInput || !payloadField || !statusField || typeof FileReader === 'undefined') {
-						return;
-					}
-
-					fileInput.addEventListener('change', function() {
-						if (!fileInput.files || fileInput.files.length === 0) {
-							payloadField.value = '';
-							statusField.className = 'text-muted';
-							statusField.textContent = 'No file selected.';
-							return;
-						}
-
-						var selectedFile = fileInput.files[0];
-						var reader = new FileReader();
-						reader.onload = function(event) {
-							payloadField.value = event.target && event.target.result ? event.target.result : '';
-							statusField.className = 'text-success';
-							statusField.textContent = 'Selected file: ' + selectedFile.name;
-						};
-						reader.onerror = function() {
-							payloadField.value = '';
-							statusField.className = 'text-danger';
-							statusField.textContent = 'Could not read the selected file. Please choose another file.';
-						};
-						reader.readAsText(selectedFile);
-					});
-				})();
-				</script>]]></description>
-			<type>info</type>
+                        <fielddescr>Watchdog</fielddescr>
+                        <fieldname>watchdog</fieldname>
+                        <type>checkbox</type>
+                        <description><![CDATA[Check to enable E2guardian process watchdog and auto restart.]]></description>
 			<advancedfield/>
 		</field>
 	</fields>
