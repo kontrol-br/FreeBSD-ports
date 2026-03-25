@@ -314,8 +314,13 @@ abi_setup() {
 	fi
 
 	# Make sure pkg.conf is set properly so GUI can work
-	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-	echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
+	if [ "${_target_osmajor}" -ge 15 ] 2>/dev/null; then
+		echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
+		echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
+	else
+		echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
+		echo "ALTABI=${CUR_ALTABI}" >> /usr/local/etc/pkg.conf
+	fi
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"

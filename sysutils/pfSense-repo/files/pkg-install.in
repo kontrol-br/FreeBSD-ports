@@ -61,10 +61,41 @@ PKG_CONF="/usr/local/etc/pkg.conf"
 REAL_CONF=$(readlink ${REPO_CONF})
 
 ABI_FILE="${REAL_CONF%%.conf}.abi"
-OSVERSION=$(/sbin/sysctl -n kern.osreldate)
+ALTABI_FILE="${REAL_CONF%%.conf}.altabi"
+OSVERSION_FILE="${REAL_CONF%%.conf}.osversion"
+TARGET_OSMAJOR=""
 
-echo "ABI_FILE=${ABI_FILE}" > ${PKG_CONF}
-echo "OSVERSION=${OSVERSION}" >> ${PKG_CONF}
+if [ -f "${ABI_FILE}" ]; then
+	ABI=$(/bin/cat "${ABI_FILE}")
+else
+	ABI="FreeBSD:$(/usr/bin/uname -r | /usr/bin/cut -d. -f1):$(/usr/bin/uname -p)"
+fi
+
+TARGET_OSMAJOR=$(/bin/echo "${ABI}" | /usr/bin/awk -F: 'tolower($1)=="freebsd" { print $2 }')
+
+if [ -f "${OSVERSION_FILE}" ]; then
+	OSVERSION=$(/bin/cat "${OSVERSION_FILE}")
+elif [ -n "${TARGET_OSMAJOR}" ]; then
+	OSVERSION="${TARGET_OSMAJOR}00000"
+else
+	OSVERSION=$(/sbin/sysctl -n kern.osreldate)
+fi
+
+if [ -f "${ALTABI_FILE}" ]; then
+	ALTABI=$(/bin/cat "${ALTABI_FILE}")
+else
+	ALTABI=""
+fi
+
+if [ "${TARGET_OSMAJOR}" -ge 15 ] 2>/dev/null; then
+	echo "ABI=${ABI}" > ${PKG_CONF}
+	echo "OSVERSION=${OSVERSION}" >> ${PKG_CONF}
+else
+	echo "ABI=${ABI}" > ${PKG_CONF}
+	if [ -n "${ALTABI}" ]; then
+		echo "ALTABI=${ALTABI}" >> ${PKG_CONF}
+	fi
+fi
 
 # Help users to fix fstab before risk moving to FreeBSD 11
 if /usr/bin/grep -q -E '/dev/ad[[:digit:]]' /etc/fstab; then
