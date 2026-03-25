@@ -233,7 +233,6 @@ function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = 
     }
 
     @chmod($target_path, 0640);
-    log_error("{$options['log_prefix']} Updated {$target_path} from sample " . basename($sample_path));
 
     return true;
 }
@@ -841,8 +840,6 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		log_error("[E2guardian] - Detected boot process pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
         log_error("[E2guardian] - Aborting config file generation");
 		return;
-	} else {
-		log_error("[E2guardian] - Save settings package call pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
 	}
 
 	// assign xml arrays
@@ -2212,7 +2209,6 @@ EOF;
 	//check blacklist download files
 	file_put_contents("/root/e2guardian_custom.script", base64_decode($e2guardian_blacklist['custom_script']), LOCK_EX);
 	if ($_POST["force_download"]) {
-		log_error("Blacklist update process started");
 		file_notice("E2guardian",$error,"E2guardian - " . gettext("Blacklist update process started"), "");
 		if ($e2guardian_blacklist['enable_custom_script']) {
 			mwexec_bg("/root/e2guardian_custom.script");
@@ -2403,13 +2399,11 @@ EOF;
 			chmod ($script, 0755);
 
 			if (file_exists('/var/run/e2guardian.pid') && is_process_running('clamd')) {
-				log_error('Stopping clamav-clamd');
 				mwexec("$script stop");
 			}
 			unlink_if_exists("/tmp/.dguardianipc");
 			unlink_if_exists("/tmp/.dguardianurlipc");
 			if (!is_process_running('clamd')) {
-				log_error('Starting clamav-clamd');
 				mwexec_bg("$script start");
 			}
 		}
@@ -2581,7 +2575,6 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 				break;
 			}
 			if (is_array($rs)) {
-				log_error("[E2guardian] xmlrpc sync is starting.");
 				foreach ($rs as $sh) {
 					if ($sh['syncdestinenable']) {
 						// Only sync enabled replication targets
@@ -2611,14 +2604,12 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 						} else {
 							log_error("[E2guardian] XMLRPC sync with '{$sync_to_ip}' aborted due to the following error(s): {$error}");
 						}
-
 					}
 				}
-				log_error("[E2guardian] xmlrpc sync is ending.");
+			}
 			}
 		}
 	}
-}
 
 function e2guardian_validate_input($post, &$input_errors) {
 	global $config;
@@ -3158,7 +3149,6 @@ function e2guardian_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $pa
 	$execcmd .= "e2guardian_start('yes');";
 
 	 /* xml will hold the sections to sync */
-        log_error("Include e2guardian config");
 	$elements = e2guardian_export_sections();
 
         $xml = array();
