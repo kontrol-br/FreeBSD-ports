@@ -1154,25 +1154,36 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	}
 
         $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
-	$ca_cert = lookup_ca($e2guardian["dca"]);
-	if ($ca_cert != false) {
-		if (base64_decode($ca_cert['prv'])) {
-			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", base64_decode($ca_cert['prv']));
-			$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
-		}
-		if (base64_decode($ca_cert['crt'])) {
-			$cert_hash = array();
-			file_put_contents("/etc/ssl/demoCA/cacert.pem", base64_decode($ca_cert['crt']));
-			exec("/usr/bin/openssl x509 -hash -noout -in /etc/ssl/demoCA/cacert.pem", $cert_hash);
-			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
-			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
-			$generatedcertpath= "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
-		}
-		$certprivatekeypath='/etc/ssl/demoCA/private/serverkey.pem';
+	$ca_pem = "";
+	$ca_pk = "";
+	$generatedcertpath = "";
+	$cert_key = "";
+	$certprivatekeypath = '/etc/ssl/demoCA/private/serverkey.pem';
+	$ca_pem_path = '/etc/ssl/demoCA/cacert.pem';
+	$ca_key_path = '/etc/ssl/demoCA/private/cakey.pem';
+	if ($enablessl === "on") {
+		$ca_pem = "cacertificatepath = '{$ca_pem_path}'";
+		$ca_pk = "caprivatekeypath = '{$ca_key_path}'";
+		$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
 		if (! file_exists($certprivatekeypath)) {
 			system("openssl genrsa 4096 > $certprivatekeypath");
 		}
 		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
+	}
+	$ca_cert = lookup_ca($e2guardian["dca"]);
+	if ($ca_cert != false) {
+		if (base64_decode($ca_cert['prv'])) {
+			file_put_contents($ca_key_path, base64_decode($ca_cert['prv']));
+			$ca_pk = "caprivatekeypath = '{$ca_key_path}'";
+		}
+		if (base64_decode($ca_cert['crt'])) {
+			$cert_hash = array();
+			file_put_contents($ca_pem_path, base64_decode($ca_cert['crt']));
+			exec("/usr/bin/openssl x509 -hash -noout -in {$ca_pem_path}", $cert_hash);
+			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
+			$ca_pem = "cacertificatepath = '{$ca_pem_path}'";
+			$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
+		}
 		/*
 		$svr_cert = lookup_cert($e2guardian_config["dcert"]);
 		if ($svr_cert != false) {
@@ -1182,6 +1193,39 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			}
 		}
 		*/
+	}
+	if ($enablessl === "on") {
+		$ca_found = (file_exists($ca_pem_path) && file_exists($ca_key_path));
+		if (!$ca_found && is_array($config['ca'])) {
+			foreach ($config['ca'] as $ca) {
+				if (stripos($ca['descr'], 'e2guardian') !== false && !empty($ca['crt']) && !empty($ca['prv'])) {
+					file_put_contents($ca_pem_path, base64_decode($ca['crt']));
+					file_put_contents($ca_key_path, base64_decode($ca['prv']));
+					$ca_found = true;
+					break;
+				}
+			}
+			if (!$ca_found) {
+				foreach ($config['ca'] as $ca) {
+					if (!empty($ca['crt']) && !empty($ca['prv'])) {
+						file_put_contents($ca_pem_path, base64_decode($ca['crt']));
+						file_put_contents($ca_key_path, base64_decode($ca['prv']));
+						$ca_found = true;
+						break;
+					}
+				}
+			}
+		}
+		if (!$ca_found) {
+			$subj = '/C=US/ST=State/L=Locality/O=e2guardian/CN=e2guardianCA';
+			exec("/usr/bin/openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -keyout {$ca_key_path} -out {$ca_pem_path} -subj \"{$subj}\"");
+			$ca_found = (file_exists($ca_pem_path) && file_exists($ca_key_path));
+		}
+		if ($ca_found) {
+			$ca_pem = "cacertificatepath = '{$ca_pem_path}'";
+			$ca_pk = "caprivatekeypath = '{$ca_key_path}'";
+			$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
+		}
 	}
 
 	//contentscanners preg_replace patterns
