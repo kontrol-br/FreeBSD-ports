@@ -2254,11 +2254,9 @@ EOF;
 
 
 	//log rotation script
-    	log_error("Checking log rotation");
 	$lrt_file = E2GUARDIAN_WWWDIR . "/e2guardian_logrotate.php";
 	$cron_cmd = E2GUARDIAN_BINDIR . "/php -q {$lrt_file}";
 	if ($logrotate == "on") {
-        log_error("Log rotate on");
 		e2g_check_cron($cron_cmd, "create", $cronminute, $cronhour);
 	} else {
 		file_put_contents($lrt_file, "", LOCK_EX);
@@ -2508,23 +2506,20 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
                 copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $script);
 		chmod ($script, 0755);
 		$max_threads = "sysctl kern.threads.max_threads_per_proc=20480";
-		if (is_process_running('e2guardian')) {
-			switch ($e2g_cfg['applyaction']){
-				case "rc.d":
-					log_error("Restarting e2g with rc.d script");
-					mwexec("$script stop");
-					sleep(2);
-                     			mwexec_bg("$script start");
-					break;
-				case "-r":
-					log_error("Sending USR1 to e2g processes");
-                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
-					break;
-				default:
-					log_error("Restarting e2g by sending -Q action to e2g binaries");
-                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
-					break;
-			}
+			if (is_process_running('e2guardian')) {
+				switch ($e2g_cfg['applyaction']){
+					case "rc.d":
+						mwexec("$script stop");
+						sleep(2);
+	                     			mwexec_bg("$script start");
+						break;
+					case "-r":
+	                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
+						break;
+					default:
+	                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
+						break;
+				}
 		} else {
 			//log_error('Starting E2guardian');
 			//mwexec("$script start");
