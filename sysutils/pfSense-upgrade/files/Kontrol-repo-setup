@@ -128,11 +128,28 @@ abi_setup() {
 		ALTABI=${CUR_ALTABI}
 	fi
 
+	_target_osmajor=$(echo "${ABI}" | /usr/bin/awk -F: 'tolower($1)=="freebsd" { print $2 }')
+	if [ -f ${_repo_conf_file%%.conf}.osversion ]; then
+		OSVERSION=$(cat ${_repo_conf_file%%.conf}.osversion)
+	elif [ -n "${_target_osmajor}" ]; then
+		# FreeBSD kern.osreldate format for major fallback (e.g. 15 -> 1500000)
+		OSVERSION="${_target_osmajor}00000"
+	else
+		OSVERSION=$(sysctl -n kern.osreldate)
+	fi
+
 	# Make sure pkg.conf is set properly so GUI can work
-	cat << EOF > "${PKG_CONF}"
+	if [ "${_target_osmajor}" -ge 15 ] 2>/dev/null; then
+		cat << EOF > "${PKG_CONF}"
+ABI=${ABI}
+OSVERSION=${OSVERSION}
+EOF
+	else
+		cat << EOF > "${PKG_CONF}"
 ABI=${ABI}
 ALTABI=${ALTABI}
 EOF
+	fi
 	if [ -n "${dbdir}" ] && [ -n "${reposdir}" ]; then
 			cat << EOF >> ${PKG_CONF}""
 PKG_DBDIR=${dbdir}
@@ -168,7 +185,16 @@ EOF
 		err=11
 	fi
 
-	if [ "${CUR_ABI}" != "${ABI}" ] && [ "${CUR_ABI}" != "${ALTABI}" ]; then
+	if [ "${_target_osmajor}" -ge 15 ] 2>/dev/null; then
+		if [ "${CUR_ABI}" != "${ABI}" ]; then
+			# Set NEW_MAJOR
+			if [ "${err}" -eq 11 ]; then
+				err=13
+			else
+				err=12
+			fi
+		fi
+	elif [ "${CUR_ABI}" != "${ABI}" ] && [ "${CUR_ABI}" != "${ALTABI}" ]; then
 		# Set NEW_MAJOR
 		if [ "${err}" -eq 11 ]; then
 			err=13
