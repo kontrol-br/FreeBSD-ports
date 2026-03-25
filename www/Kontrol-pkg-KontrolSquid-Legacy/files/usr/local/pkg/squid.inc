@@ -1625,7 +1625,7 @@ EOD;
 /* Proxy Server: Remote Proxy Settings configuration handler */
 function squid_resync_upstream() {
 	$conf = "\n#Remote proxies\n";
-	foreach (config_get_path('installedpackages/squidremote/config') as $settings) {
+	foreach (config_get_path('installedpackages/squidremote/config', []) as $settings) {
 		if ($settings['enable'] == 'on') {
 			$conf .= "cache_peer {$settings['proxyaddr']} {$settings['hierarchy']} {$settings['proxyport']} ";
 			if ($settings['icpport'] == '7') {
