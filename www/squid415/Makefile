@@ -15,6 +15,11 @@ LICENSE_FILE=	${WRKSRC}/COPYING
 
 USES=		compiler:c++11-lib cpe gmake localbase:ldflags perl5 \
 		shebangfix tar:xz
+# Force OpenSSL 1.1 for this legacy branch to avoid OpenSSL 3 API breakage
+DEFAULT_VERSIONS+=	ssl=openssl111
+# Squid 4.15 uses OpenSSL APIs deprecated in OpenSSL 3.0+;
+# keep deprecation diagnostics non-fatal in strict builder environments.
+CXXFLAGS+=	-Wno-error=deprecated-declarations
 CPE_VENDOR=	squid-cache
 USE_RC_SUBR=	squid
 
@@ -64,8 +69,10 @@ OPTIONS_DEFINE=		ARP_ACL CACHE_DIGESTS DEBUG DELAY_POOLS DOCS ECAP ESI \
 			SSL SSL_CRTD STACKTRACES TDB VIA_DB WCCP WCCPV2
 # Squid 4.15 legacy: keep NIS optional (not default) to avoid
 # configure failure in environments where NIS helper cannot be built.
+# OpenSSL from ports is incompatible with GSSAPI_BASE in this port;
+# prefer GSSAPI_MIT by default to avoid IGNORE conflicts.
 OPTIONS_DEFAULT=	ARP_ACL CACHE_DIGESTS DELAY_POOLS FOLLOW_XFF \
-			FS_AUFS FS_DISKD FS_ROCK GSSAPI_BASE HTCP ICAP ICMP \
+			FS_AUFS FS_DISKD FS_ROCK GSSAPI_MIT HTCP ICAP ICMP \
 			IDENT KQUEUE LARGEFILE LAX_HTTP SNMP SSL SSL_CRTD \
 			TP_IPFW VIA_DB WCCP WCCPV2
 OPTIONS_GROUP=		AUTH
