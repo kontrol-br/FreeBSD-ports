@@ -76,11 +76,11 @@ function squid_install_freshclam_cron($should_install) {
 			$hours = $antivirus_config['clamav_update'];
 			install_cron_job("{$freshclam_cmd}", true, "{$minutes}", "*/{$hours}", "*", "*", "*", "clamav");
 		} else {
-			log_error("[squid] Removing freshclam cronjob.");
+			syslog(LOG_NOTICE, "[squid] Removing freshclam cronjob.");
 			install_cron_job("{$freshclam_cmd}", false);
 		}
 	} else {
-		log_error("[squid] Removing freshclam cronjob.");
+		syslog(LOG_NOTICE, "[squid] Removing freshclam cronjob.");
 		install_cron_job("{$freshclam_cmd}", false);
 	}
 }
@@ -844,7 +844,7 @@ fi
 
 EOD;
 
-	log_error("[squid] Creating 'clamd.sh' rc script.");
+	syslog(LOG_NOTICE, "[squid] Creating 'clamd.sh' rc script.");
 	write_rcfile($rc);
 }
 
@@ -865,7 +865,7 @@ fi
 sleep 5
 /bin/rm -f {$cicap_pipe}
 EOF;
-	log_error("[squid] Creating '{$c_icap_rcfile}' rc script.");
+	syslog(LOG_NOTICE, "[squid] Creating '{$c_icap_rcfile}' rc script.");
 	write_rcfile(array(
 		"file" => "{$c_icap_rcfile}",
 		"start" => "{$cicap_start_cmd}",
@@ -935,7 +935,7 @@ function squid_restart_antivirus() {
 		}
 	} else {
 		// stop AV services and disable all C-ICAP/AV features
-		log_error("[squid] Antivirus features disabled.");
+		syslog(LOG_NOTICE, "[squid] Antivirus features disabled.");
 		squid_stop_antivirus();
 	}
 }

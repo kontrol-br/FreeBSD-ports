@@ -220,8 +220,8 @@ function squid_gen_extra_ca() {
 function squid_dash_z($cache_action = 'none') {
 	// We need cache configured after initial package install
 	if (!is_array(config_get_path('installedpackages/squidcache/config'))) {
-		log_error("[squid] 'Local Cache' not configured, disk cache will be disabled.");
-		log_error("[squid] Please, configure and save 'Local Cache' settings before enabling Squid proxy.");
+		syslog(LOG_NOTICE, "[squid] 'Local Cache' not configured, disk cache will be disabled.");
+		syslog(LOG_NOTICE, "[squid] Please, configure and save 'Local Cache' settings before enabling Squid proxy.");
 		return;
 	}
 
@@ -291,14 +291,14 @@ function squid_create_cachedir() {
 	$cachedir = ($cachesettings['harddisk_cache_location'] ? $cachesettings['harddisk_cache_location'] : '/var/squid/cache');
 
 	if (!is_dir($cachedir)) {
-		log_error("[squid] Creating cache dir '{$cachedir}' ...");
+		syslog(LOG_NOTICE, "[squid] Creating cache dir '{$cachedir}' ...");
 		safe_mkdir($cachedir, 0755);
 		@chown($cachedir, SQUID_UID);
 		@chgrp($cachedir, SQUID_GID);
 	}
 
 	if (!is_dir($cachedir . '/00')) {
-		log_error("[squid] Creating Squid cache subdirs in {$cachedir} ...");
+		syslog(LOG_NOTICE, "[squid] Creating Squid cache subdirs in {$cachedir} ...");
 		mwexec(SQUID_BASE. "/sbin/squid -z -f " . SQUID_CONFFILE);
 		// Double check permissions here, should be safe to recurse cache dir if it's small here.
 		squid_chown_recursive($cachedir, SQUID_UID, SQUID_GID);
@@ -332,11 +332,11 @@ function squid_install_cron($should_install) {
 	 */
 	$swapstate_cmd = "/usr/local/pkg/swapstate_check.php";
 	if (($should_install) && (squid_enabled())) {
-		log_error("[squid] Adding cronjobs ...");
+		syslog(LOG_NOTICE, "[squid] Adding cronjobs ...");
 		install_cron_job("{$cron_cmd}", $should_install, "0", "0", "*", "*", "*", "root");
 		install_cron_job("{$swapstate_cmd}", $should_install, "15", "0", "*", "*", "*", "root");
 	} else {
-		log_error("[squid] Removing cronjobs ...");
+		syslog(LOG_NOTICE, "[squid] Removing cronjobs ...");
 		install_cron_job("{$cron_cmd}", false);
 		install_cron_job("{$swapstate_cmd}", false);
 	}
@@ -386,7 +386,7 @@ EOD;
 function squid_start_monitor() {
 	if (squid_enabled()) {
 		if (!exec("/bin/ps auxw | /usr/bin/grep '[s]qpmon'")) {
-			log_error("[squid] Starting a proxy monitor script");
+			syslog(LOG_NOTICE, "[squid] Starting a proxy monitor script");
 			mwexec_bg("/usr/local/etc/rc.d/sqp_monitor.sh start");
 		}
 		sleep(1);
@@ -399,7 +399,7 @@ function squid_start_monitor() {
 function squid_stop_monitor() {
 	/* kill any running proxy alarm scripts */
 	if (exec("/bin/ps auxw | /usr/bin/grep '[s]qpmon'")) {
-		log_error("[squid] Stopping any running proxy monitors");
+		syslog(LOG_NOTICE, "[squid] Stopping any running proxy monitors");
 		mwexec("/usr/local/etc/rc.d/sqp_monitor.sh stop");
 	}
 	sleep(1);
@@ -448,10 +448,10 @@ function squid_restart_services() {
 			}
 		}
 		if (!is_service_running('squid')) {
-			log_error("[squid] Starting service...");
+			syslog(LOG_NOTICE, "[squid] Starting service...");
 			mwexec(SQUID_BASE . "/sbin/squid -f " . SQUID_CONFFILE);
 		} else {
-			log_error("[squid] Reloading for configuration sync...");
+			syslog(LOG_NOTICE, "[squid] Reloading for configuration sync...");
 			mwexec(SQUID_BASE . "/sbin/squid -k reconfigure -f " . SQUID_CONFFILE);
 		}
 		// sleep for a couple seconds to give squid a chance to fire up fully.
@@ -1414,7 +1414,7 @@ function squid_resync_general() {
 
 	$logdir = ($settings['log_dir'] ? $settings['log_dir'] : '/var/squid/logs');
 	if (!is_dir($logdir)) {
-		log_error("[squid] Creating Squid log dir '{$logdir}' ...");
+		syslog(LOG_NOTICE, "[squid] Creating Squid log dir '{$logdir}' ...");
 		safe_mkdir($logdir, 0755);
 	}
 	squid_chown_recursive($logdir, SQUID_UID, SQUID_GID);
@@ -1554,8 +1554,8 @@ function squid_resync_cache() {
 	$conf = '';
 	if (!isset($settings['harddisk_cache_system'])) {
 		if (!is_array(config_get_path('installedpackages/squidcache/config'))) {
-			log_error("[squid] 'Local Cache' not configured, disk cache will be disabled.");
-			log_error("[squid] Please, configure and save 'Local Cache' settings before enabling Squid proxy.");
+			syslog(LOG_NOTICE, "[squid] 'Local Cache' not configured, disk cache will be disabled.");
+			syslog(LOG_NOTICE, "[squid] Please, configure and save 'Local Cache' settings before enabling Squid proxy.");
 		} else {
 			$disk_cache_system = 'ufs';
 		}
@@ -2245,7 +2245,7 @@ function squid_resync($via_rpc = "no") {
 		}
 	}
 
-	log_error("[squid] - squid_resync function call pr:" . is_process_running('squid') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
+	syslog(LOG_NOTICE, "[squid] - squid_resync function call pr:" . is_process_running('squid') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
 
 	if (is_process_running('squid') && isset($boot_process) && $via_rpc == "no") {
 		return;
@@ -2300,7 +2300,7 @@ function squid_generate_rules($type) {
 
 	// Do not install any firewall rules if Squid is disabled or used as reverse proxy only
 	if (!squid_enabled()) {
-		log_error("[squid] Installed but disabled. Not installing '{$type}' rules.");
+		syslog(LOG_NOTICE, "[squid] Installed but disabled. Not installing '{$type}' rules.");
 		return;
 	} elseif (empty($squid_conf['active_interface'])) {
 		log_error("[squid] Configured as reverse proxy only. Not installing '{$type}' rules.");
@@ -2777,7 +2777,7 @@ function squid_plugin_carp($pluginparams) {
 	}
 	/* Start or stop the service as needed based on the CARP transition. */
 	if ($pluginparams['event'] == "rc.carpmaster") {
-		log_error("[squid] Starting service...");
+		syslog(LOG_NOTICE, "[squid] Starting service...");
 		/* Stopping the service on other node may take some time
 		(shutdown_lifetime 3 seconds) */
 		sleep(4);
