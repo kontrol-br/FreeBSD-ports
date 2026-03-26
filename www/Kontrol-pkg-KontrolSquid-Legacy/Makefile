@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-KontrolSquid-Legacy
 PORTVERSION=	1.1.14
-PORTREVISION=	# empty
+PORTREVISION=	1
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
