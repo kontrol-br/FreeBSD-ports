@@ -15,6 +15,11 @@ LICENSE_FILE=	${WRKSRC}/COPYING
 
 USES=		compiler:c++11-lib cpe gmake localbase:ldflags perl5 \
 		shebangfix tar:xz
+# Force OpenSSL 1.1 for this legacy branch to avoid OpenSSL 3 API breakage
+DEFAULT_VERSIONS+=	ssl=openssl111
+# Squid 4.15 uses OpenSSL APIs deprecated in OpenSSL 3.0+;
+# keep deprecation diagnostics non-fatal in strict builder environments.
+CXXFLAGS+=	-Wno-error=deprecated-declarations
 CPE_VENDOR=	squid-cache
 USE_RC_SUBR=	squid
 
