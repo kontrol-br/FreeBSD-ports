@@ -1,3 +1,7 @@
 #!/bin/sh
 
-/usr/local/bin/php -f /etc/rc.packages openvpn_schedule "${2}"
+if [ "${2}" != "PRE-DEINSTALL" ]; then
+	exit 0
+fi
+
+/usr/local/bin/php -r "require_once('/usr/local/pkg/openvpn_schedule.inc'); openvpn_schedule_deinstall();"
