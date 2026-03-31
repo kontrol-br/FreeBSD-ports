@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-OpenVPN-Schedule
 PORTVERSION=	0.1.0
-PORTREVISION=	2
+PORTREVISION=	3
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -24,8 +24,11 @@ do-extract:
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/pkg
 	${MKDIR} ${STAGEDIR}${PREFIX}/www
+	${MKDIR} ${STAGEDIR}/etc/inc/priv
 	${MKDIR} ${STAGEDIR}${PREFIX}/share/doc/${PORTNAME}
 	${MKDIR} ${STAGEDIR}/var/db/openvpn_schedule
+	${INSTALL_DATA} ${FILESDIR}/etc/inc/priv/openvpn_schedule.priv.inc \
+		${STAGEDIR}/etc/inc/priv
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule.inc \
