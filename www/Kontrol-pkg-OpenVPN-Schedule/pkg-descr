@@ -1,0 +1,9 @@
+Kontrol OpenVPN Schedule package adds OpenVPN-only login-time enforcement using
+existing pfSense schedules (firewall_schedule/System > Routing > Schedules).
+
+Features:
+- Per-user and per-group schedule mapping
+- Deterministic priority (user > group > default allow)
+- Enforcement only in OpenVPN auth flow
+- Reversible, checksum-validated runtime patching with rollback
+- Clear denial logging for schedule-based rejects
