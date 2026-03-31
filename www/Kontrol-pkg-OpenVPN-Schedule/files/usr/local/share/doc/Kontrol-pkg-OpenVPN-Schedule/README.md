@@ -1,40 +1,35 @@
 # Kontrol OpenVPN Schedule Package
 
-## Visão geral
-Package para controle de login por horário **somente no OpenVPN**, reaproveitando os schedules do pfSense/Kontrol.
+## Overview
+This package enforces OpenVPN login access windows using existing pfSense/Kontrol schedules.
 
-## Instalação
-1. Instale o port `www/Kontrol-pkg-OpenVPN-Schedule` normalmente via pkg/ports.
-2. O `POST-INSTALL` chama `/etc/rc.packages` e executa `openvpn_schedule_install()`.
-3. O instalador valida compatibilidade do arquivo alvo e aplica patch idempotente com backup + checksum.
+## Installation
+1. Install the `www/Kontrol-pkg-OpenVPN-Schedule` port via pkg/ports.
+2. `POST-INSTALL` calls `/etc/rc.packages` and runs `openvpn_schedule_install()`.
+3. The installer validates the target auth file and applies an idempotent patch with backup + checksum.
 
-## Configuração
-1. Acesse **VPN > OpenVPN Schedule**.
-2. Defina a política default (`allow` recomendado).
-3. Cadastre regras no formato `tipo,nome,schedule`:
-   - `user,alice,Comercial`
-   - `group,vpn-users,Noite`
-4. Prioridade de decisão:
-   1. regra de usuário
-   2. regra de grupo
-   3. política default
+## Configuration
+1. Open **VPN > OpenVPN Schedule**.
+2. The page lists non-admin local users.
+3. Select one schedule per user, or **None** for unrestricted access.
+4. If no schedules exist in **Firewall > Schedules**, all users remain on **None**.
 
-## Como testar
-1. Crie/valide schedules em **System > Routing > Schedules**.
-2. Teste autenticação OpenVPN dentro do horário permitido.
-3. Teste autenticação OpenVPN fora do horário permitido.
-4. Verifique logs: mensagens com tag `[openvpn_schedule]`.
+## How to test
+1. Create or validate schedules in **Firewall > Schedules**.
+2. Assign a schedule to one test user in **VPN > OpenVPN Schedule**.
+3. Test OpenVPN authentication inside and outside the allowed window.
+4. Review logs tagged with `[openvpn_schedule]`.
 
-## Desinstalação / rollback
-1. Remova o package.
-2. O `pkg-deinstall` executa `openvpn_schedule_deinstall()`.
-3. O deinstall restaura o arquivo original a partir de backup validado por checksum.
-4. Se checksum/backup falhar, rollback é abortado com log explícito para recuperação manual.
+## Deinstall / rollback
+1. Remove the package.
+2. `pkg-deinstall` runs `openvpn_schedule_deinstall()`.
+3. Deinstall restores the original auth file from a checksum-validated backup.
+4. If backup validation fails, rollback is aborted with explicit logs for manual recovery.
 
 ## Upgrade
-- `POST-UPGRADE` executa migração de configuração e reaplica patch idempotente.
-- Backups e manifesto (`/var/db/openvpn_schedule/manifest.json`) são mantidos consistentes.
+- `POST-UPGRADE` migrates legacy config to per-user schedule settings.
+- Backups and the manifest (`/var/db/openvpn_schedule/manifest.json`) remain consistent.
 
-## Limitações conhecidas
-- O patch runtime depende de âncoras conhecidas em `/etc/inc/openvpn.auth-user.php`.
-- Se o arquivo base mudar de forma incompatível, a instalação é abortada com erro de compatibilidade (comportamento seguro).
+## Known limitations
+- Runtime patching depends on known anchors in `/etc/inc/openvpn.auth-user.php`.
+- If the base file changes incompatibly, installation aborts with a compatibility error (safe behavior).

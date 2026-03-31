@@ -61,11 +61,44 @@ function openvpn_schedule_migrate_config() {
 		write_config('Migrated OpenVPN schedule package configuration');
 		return;
 	}
-	if (!isset($cfg['config'][0]['default_policy'])) {
-		$cfg['config'][0]['default_policy'] = 'allow';
-		config_set_path('installedpackages/openvpn_schedule', $cfg);
-		write_config('Migrated OpenVPN schedule default policy');
+
+	$pkgcfg = $cfg['config'][0] ?? [];
+	if (!isset($pkgcfg['user_schedule']) || !is_array($pkgcfg['user_schedule'])) {
+		$pkgcfg['user_schedule'] = [];
 	}
+
+	// Backward compatibility: import legacy user rules into per-user schedules.
+	foreach (($pkgcfg['rule'] ?? []) as $rule) {
+		if (($rule['type'] ?? '') !== 'user') {
+			continue;
+		}
+		$username = trim($rule['name'] ?? '');
+		$schedule = trim($rule['schedule'] ?? '');
+		if ($username === '' || $schedule === '' || strcasecmp($schedule, 'none') === 0) {
+			continue;
+		}
+		$already_set = false;
+		foreach ($pkgcfg['user_schedule'] as $entry) {
+			if (($entry['username'] ?? '') === $username) {
+				$already_set = true;
+				break;
+			}
+		}
+		if (!$already_set) {
+			$pkgcfg['user_schedule'][] = [
+				'username' => $username,
+				'schedule' => $schedule,
+			];
+		}
+	}
+
+	// Keep defaults open (none) for users without explicit schedule.
+	unset($pkgcfg['default_policy']);
+	unset($pkgcfg['rule']);
+
+	$cfg['config'][0] = $pkgcfg;
+	config_set_path('installedpackages/openvpn_schedule', $cfg);
+	write_config('Migrated OpenVPN schedule package configuration');
 }
 
 function openvpn_schedule_build_manifest($backup_file, $target_sha256, $backup_sha256) {
