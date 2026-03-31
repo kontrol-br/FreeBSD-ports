@@ -4,4 +4,4 @@ if [ "${2}" != "POST-INSTALL" ] && [ "${2}" != "POST-UPGRADE" ]; then
 	exit 0
 fi
 
-/usr/local/bin/php -f /etc/rc.packages %%PORTNAME%% "${2}"
+/usr/local/bin/php -f /etc/rc.packages openvpn_schedule "${2}"
