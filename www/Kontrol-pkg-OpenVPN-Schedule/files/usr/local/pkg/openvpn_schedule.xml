@@ -5,7 +5,6 @@
 	<name>openvpn_schedule</name>
 	<version>%%PKGVERSION%%</version>
 	<title>VPN: OpenVPN Login Schedule</title>
-	<category>VPN</category>
 	<aftersaveredirect>/openvpn_schedule.php</aftersaveredirect>
 	<include_file>/usr/local/pkg/openvpn_schedule.inc</include_file>
 	<menu>
@@ -21,8 +20,7 @@
 			<active/>
 		</tab>
 		<tab>
-			<name>Schedule Policy</name>
-			<tabgroup>OpenVPN</tabgroup>
+			<text>Schedule Policy</text>
 			<url>/openvpn_schedule.php</url>
 		</tab>
 	</tabs>
