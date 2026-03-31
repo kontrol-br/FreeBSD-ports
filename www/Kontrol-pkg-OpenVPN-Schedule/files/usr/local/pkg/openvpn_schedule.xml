@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE packagegui SYSTEM "../schema/packages.dtd">
+<?xml-stylesheet type="text/xsl" href="../xsl/package.xsl"?>
+<packagegui>
+	<name>openvpn_schedule</name>
+	<version>%%PKGVERSION%%</version>
+	<title>VPN: OpenVPN Login Schedule</title>
+	<category>VPN</category>
+	<aftersaveredirect>/openvpn_schedule.php</aftersaveredirect>
+	<include_file>/usr/local/pkg/openvpn_schedule.inc</include_file>
+	<menu>
+		<name>OpenVPN Schedule</name>
+		<tooltiptext>Configure OpenVPN login schedule policy</tooltiptext>
+		<section>VPN</section>
+		<url>/pkg_edit.php?xml=openvpn_schedule.xml&amp;id=0</url>
+	</menu>
+	<tabs>
+		<tab>
+			<text>General</text>
+			<url>/pkg_edit.php?xml=openvpn_schedule.xml&amp;id=0</url>
+			<active/>
+		</tab>
+		<tab>
+			<name>Schedule Policy</name>
+			<tabgroup>OpenVPN</tabgroup>
+			<url>/openvpn_schedule.php</url>
+		</tab>
+	</tabs>
+	<fields>
+		<field>
+			<name>OpenVPN Schedule Package</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<type>info</type>
+			<fielddescr>Configuração</fielddescr>
+			<description><![CDATA[
+				Use o botão abaixo para editar as regras de horário (usuário/grupo) do login OpenVPN.
+				<br/><br/>
+				<a class="btn btn-info" href="/openvpn_schedule.php">Abrir tela de configuração</a>
+			]]></description>
+		</field>
+	</fields>
+	<custom_php_resync_config_command>
+		openvpn_schedule_sync();
+	</custom_php_resync_config_command>
+</packagegui>
