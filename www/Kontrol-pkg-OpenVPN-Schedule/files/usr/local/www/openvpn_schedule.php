@@ -22,10 +22,16 @@ function openvpn_schedule_get_all_schedule_names() {
 function openvpn_schedule_get_admin_members() {
 	$admins = [];
 	foreach (config_get_path('system/group', []) as $group) {
-		if (strcasecmp(($group['name'] ?? ''), 'admins') !== 0) {
+		if (strcasecmp((string)($group['name'] ?? ''), 'admins') !== 0) {
 			continue;
 		}
-		foreach (($group['member'] ?? []) as $member) {
+
+		$members = $group['member'] ?? [];
+		if (!is_array($members)) {
+			$members = [$members];
+		}
+		foreach ($members as $member) {
+			$member = trim((string)$member);
 			if ($member !== '') {
 				$admins[$member] = true;
 			}
@@ -39,16 +45,23 @@ function openvpn_schedule_get_visible_users() {
 	$admins = openvpn_schedule_get_admin_members();
 
 	foreach (config_get_path('system/user', []) as $user) {
-		$username = trim($user['name'] ?? '');
+		$username = trim((string)($user['name'] ?? ''));
 		if ($username === '') {
 			continue;
 		}
-		if (isset($admins[$username])) {
+
+		$uid = trim((string)($user['uid'] ?? ''));
+		$groupname = trim((string)($user['groupname'] ?? ''));
+		if ($groupname !== '' && strcasecmp($groupname, 'admins') === 0) {
 			continue;
 		}
+		if (isset($admins[$username]) || ($uid !== '' && isset($admins[$uid]))) {
+			continue;
+		}
+
 		$visible_users[] = [
 			'name' => $username,
-			'descr' => trim($user['descr'] ?? ''),
+			'descr' => trim((string)($user['descr'] ?? '')),
 		];
 	}
 
@@ -133,11 +146,16 @@ if (!empty($input_errors)) {
 	print_input_errors($input_errors);
 }
 
-$form = new Form(false);
+$form = new Form();
 $section = new Form_Section('OpenVPN User Schedules');
 $section->addInput(new Form_StaticText(
 	'About',
 	'Assign an existing schedule to each OpenVPN user. Select "None" to allow login at any time.'
+));
+
+$section->addInput(new Form_StaticText(
+	'Storage',
+	'Settings are stored in config.xml under installedpackages/openvpn_schedule/config/0/user_schedule and are automatically removed when this package is uninstalled.'
 ));
 
 if (empty($schedule_names)) {
