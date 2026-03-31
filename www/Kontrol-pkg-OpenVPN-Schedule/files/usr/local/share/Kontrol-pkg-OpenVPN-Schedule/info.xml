@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<pfsensepkgs>
+	<package>
+		<name>OpenVPN-Schedule</name>
+		<descr><![CDATA[OpenVPN login schedule policy package (user/group based using existing schedules).]]></descr>
+		<pkginfolink/>
+		<version>%%PKGVERSION%%</version>
+		<configurationfile>openvpn_schedule.xml</configurationfile>
+	</package>
+</pfsensepkgs>
