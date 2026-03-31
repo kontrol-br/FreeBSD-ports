@@ -1,0 +1,6 @@
+pkg/openvpn_schedule.xml
+pkg/openvpn_schedule.inc
+pkg/openvpn_schedule_hook.inc
+www/openvpn_schedule.php
+share/doc/Kontrol-pkg-OpenVPN-Schedule/README.md
+@dir /var/db/openvpn_schedule
