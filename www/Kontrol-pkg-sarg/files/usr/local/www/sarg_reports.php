@@ -29,14 +29,67 @@
 */
 require("guiconfig.inc");
 
-if ($savemsg) {
-    print_info_box($savemsg);
-}
-
 if ($uname['machine'] == 'amd64') {
         ini_set('memory_limit', '512M');
 }
 
+function sarg_reports_base_dir($suffix = "") {
+	$dir = "/usr/local/sarg-reports";
+	if ($suffix != "") {
+		$dir .= "/" . preg_replace("/\W/", "", $suffix);
+	}
+	return $dir;
+}
+
+function sarg_list_report_directories($dir) {
+	$reports = array();
+	if (!is_dir($dir)) {
+		return $reports;
+	}
+	foreach (glob($dir . "/*", GLOB_ONLYDIR) as $path) {
+		$name = basename($path);
+		if ($name == "images") {
+			continue;
+		}
+		if (file_exists($path . "/index.html") || file_exists($path . "/index.html.gz")) {
+			$reports[$name] = array(
+				'name' => $name,
+				'path' => $path,
+				'mtime' => filemtime($path)
+			);
+		}
+	}
+	uasort($reports, function($a, $b) {
+		return $b['mtime'] <=> $a['mtime'];
+	});
+	return $reports;
+}
+
+$input_errors = array();
+$savemsg = "";
+$dir_suffix = preg_replace("/\W/", "", $_REQUEST['dir']);
+$report_base_dir = sarg_reports_base_dir($dir_suffix);
+
+if ($_POST['delete_report'] == "yes") {
+	$report_name = preg_replace("/[^a-zA-Z0-9._-]/", "", $_POST['report_name']);
+	if ($report_name == "") {
+		$input_errors[] = gettext("Report name is invalid.");
+	} elseif ($report_name == "images") {
+		$input_errors[] = gettext("The shared images directory cannot be deleted.");
+	} else {
+		$full_path = "{$report_base_dir}/{$report_name}";
+		if (!is_dir($full_path)) {
+			$input_errors[] = sprintf(gettext("Report '%s' not found."), htmlspecialchars($report_name));
+		} elseif (strpos(realpath($full_path), realpath($report_base_dir)) !== 0) {
+			$input_errors[] = gettext("Invalid report path.");
+		} else {
+			conf_mount_rw();
+			rmdir_recursive($full_path);
+			conf_mount_ro();
+			$savemsg = sprintf(gettext("Report '%s' deleted successfully."), htmlspecialchars($report_name));
+		}
+	}
+}
 
 $pgtitle = array(gettext("Package"), gettext("Sarg"), gettext("Reports"));
 $shortcut_section = "sarg";
@@ -60,10 +113,18 @@ if ($_REQUEST['dir'] != "") {
     
 ?>
 <body link="#0000CC" vlink="#0000CC" alink="#0000CC">
-<form>
+<form method="post">
 <div id="mainlevel">
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
 	<tr><td>
+		<?php
+		if (!empty($input_errors)) {
+			print_input_errors($input_errors);
+		}
+		if (!empty($savemsg)) {
+			print_info_box($savemsg);
+		}
+		?>
 		<?php
 		$tab_array = array();
 		$tab_array[] = array(gettext("General"), false, "/pkg_edit.php?xml=sarg.xml&id=0");
@@ -104,6 +165,41 @@ if ($_REQUEST['dir'] != "") {
 		<div id="mainarea">
 		</div>
 		<br />
+		<?php $reports = sarg_list_report_directories($report_base_dir); ?>
+		<div class="panel panel-default">
+			<div class="panel-heading"><h2 class="panel-title"><?=gettext("Manage stored reports")?></h2></div>
+			<div class="panel-body">
+				<?php if (empty($reports)): ?>
+					<?=gettext("No generated report directories were found for this view.")?>
+				<?php else: ?>
+					<table class="table table-striped table-condensed">
+						<thead>
+							<tr>
+								<th><?=gettext("Report directory")?></th>
+								<th><?=gettext("Last update")?></th>
+								<th><?=gettext("Actions")?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ($reports as $report): ?>
+							<tr>
+								<td><?=htmlspecialchars($report['name'])?></td>
+								<td><?=date("Y-m-d H:i:s", $report['mtime'])?></td>
+								<td>
+									<button type="submit" class="btn btn-danger btn-xs"
+									        name="report_name" value="<?=htmlspecialchars($report['name'])?>"
+									        onclick="return confirm('<?=gettext("Delete this report directory? This action cannot be undone.")?>');">
+										<?=gettext("Delete")?>
+									</button>
+								</td>
+							</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php endif; ?>
+				<input type="hidden" name="delete_report" value="yes" />
+			</div>
+		</div>
 		<script type="text/javascript">
 		//<![CDATA[
 		var axel = Math.random() + "";

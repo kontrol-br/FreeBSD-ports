@@ -35,6 +35,48 @@ session_start();
 //Starting Cache Session - export to PDF process
 ob_start();
 
+function sarg_build_runtime_index($dir, $dsuffix = "") {
+	$items = array();
+	if (is_dir($dir)) {
+		foreach (glob($dir . "/*", GLOB_ONLYDIR) as $path) {
+			$name = basename($path);
+			if ($name == "images") {
+				continue;
+			}
+			if (file_exists($path . "/index.html") || file_exists($path . "/index.html.gz")) {
+				$items[] = array(
+					'name' => $name,
+					'mtime' => filemtime($path)
+				);
+			}
+		}
+	}
+	usort($items, function($a, $b) {
+		return $b['mtime'] <=> $a['mtime'];
+	});
+
+	$html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+	$html .= '<title>Sarg Reports</title>';
+	$html .= '<style>body{font-family:Segoe UI,Arial,sans-serif;padding:12px;}';
+	$html .= 'table{border-collapse:collapse;width:100%;}';
+	$html .= 'th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left;}';
+	$html .= 'h2{margin-top:0;}</style></head><body>';
+	$html .= '<h2>Sarg Reports</h2>';
+	$html .= '<table><thead><tr><th>Directory</th><th>Last update</th></tr></thead><tbody>';
+
+	if (empty($items)) {
+		$html .= '<tr><td colspan="2">No reports found.</td></tr>';
+	} else {
+		foreach ($items as $item) {
+			$link = '/sarg_frame.php?dir=' . urlencode($dsuffix) . '&file=' . rawurlencode($item['name']) . '/index.html';
+			$html .= '<tr><td><a href="' . htmlspecialchars($link) . '">' . htmlspecialchars($item['name']) . '</a></td>';
+			$html .= '<td>' . date("Y-m-d H:i:s", $item['mtime']) . '</td></tr>';
+		}
+	}
+	$html .= '</tbody></table></body></html>';
+	return $html;
+}
+
 
 $uname = posix_uname();
 if ($uname['machine'] == 'amd64') {
@@ -74,6 +116,8 @@ if (file_exists("{$dir}/{$url}")) {
 	$data = gzfile("{$dir}/{$url}.gz");
 	$report = implode($data);
 	unset ($data);
+} elseif ($url == "index.html" && $prefix == "") {
+	$report = sarg_build_runtime_index($dir, $dsuffix);
 }
 if ($report != "" ) {
 	$pattern[0] = "/href=\W(\S+html)\W/";
