@@ -16,7 +16,8 @@ if (!function_exists('openvpn_schedule_log_runtime')) {
 
 if (!function_exists('openvpn_schedule_now_matches')) {
 	function openvpn_schedule_now_matches($schedule_name) {
-		if (empty($schedule_name)) {
+		$schedule_name = trim((string)$schedule_name);
+		if ($schedule_name === '' || strcasecmp($schedule_name, 'none') === 0) {
 			return true;
 		}
 
@@ -34,40 +35,24 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 	}
 }
 
-if (!function_exists('openvpn_schedule_user_groups')) {
-	function openvpn_schedule_user_groups($username) {
-		$groups = [];
-		foreach (config_get_path('system/group', []) as $group) {
-			foreach (($group['member'] ?? []) as $member) {
-				if ($member === $username) {
-					$groups[] = $group['name'];
-				}
-			}
-		}
-		return $groups;
-	}
-}
-
 if (!function_exists('openvpn_schedule_find_policy')) {
 	function openvpn_schedule_find_policy($username) {
 		$pkg = config_get_path('installedpackages/openvpn_schedule/config/0', []);
-		$rules = $pkg['rule'] ?? [];
-		$default = $pkg['default_policy'] ?? 'allow';
 
-		foreach ($rules as $rule) {
+		foreach (($pkg['user_schedule'] ?? []) as $entry) {
+			if (($entry['username'] ?? '') === $username) {
+				return trim($entry['schedule'] ?? 'none');
+			}
+		}
+
+		// Backward compatibility with the previous user/group rule format.
+		foreach (($pkg['rule'] ?? []) as $rule) {
 			if (($rule['type'] ?? '') === 'user' && ($rule['name'] ?? '') === $username) {
-				return ['match' => 'user', 'schedule' => ($rule['schedule'] ?? ''), 'default' => $default];
+				return trim($rule['schedule'] ?? 'none');
 			}
 		}
 
-		$user_groups = openvpn_schedule_user_groups($username);
-		foreach ($rules as $rule) {
-			if (($rule['type'] ?? '') === 'group' && in_array(($rule['name'] ?? ''), $user_groups, true)) {
-				return ['match' => 'group', 'schedule' => ($rule['schedule'] ?? ''), 'default' => $default];
-			}
-		}
-
-		return ['match' => 'default', 'schedule' => '', 'default' => $default];
+		return 'none';
 	}
 }
 
@@ -78,20 +63,12 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 			return;
 		}
 
-		$policy = openvpn_schedule_find_policy($username);
-		if ($policy['match'] === 'default') {
-			if ($policy['default'] === 'deny') {
-				openvpn_schedule_log_runtime("OpenVPN login denied for user '{$username}' by default deny policy");
-				exit(1);
-			}
+		$schedule = openvpn_schedule_find_policy($username);
+		if (openvpn_schedule_now_matches($schedule)) {
 			return;
 		}
 
-		if (openvpn_schedule_now_matches($policy['schedule'])) {
-			return;
-		}
-
-		openvpn_schedule_log_runtime("OpenVPN login denied for user '{$username}' outside allowed schedule '{$policy['schedule']}' via {$policy['match']} rule");
+		openvpn_schedule_log_runtime("OpenVPN login denied for user '{$username}' outside allowed schedule '{$schedule}'");
 		exit(1);
 	}
 }
