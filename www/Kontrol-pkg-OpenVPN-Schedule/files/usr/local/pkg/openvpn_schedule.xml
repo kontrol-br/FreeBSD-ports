@@ -2,7 +2,7 @@
 <!DOCTYPE packagegui SYSTEM "../schema/packages.dtd">
 <?xml-stylesheet type="text/xsl" href="../xsl/package.xsl"?>
 <packagegui>
-	<name>openvpn_schedule</name>
+	<name>OpenVPN-Schedule</name>
 	<version>%%PKGVERSION%%</version>
 	<title>VPN: OpenVPN Login Schedule</title>
 	<aftersaveredirect>/openvpn_schedule.php</aftersaveredirect>
