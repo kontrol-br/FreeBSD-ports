@@ -4,15 +4,23 @@
 <packagegui>
 	<name>openvpn_schedule</name>
 	<version>%%PKGVERSION%%</version>
-	<title>OpenVPN Login Schedule</title>
+	<title>Services: OpenVPN Login Schedule</title>
 	<category>Services</category>
 	<aftersaveredirect>/openvpn_schedule.php</aftersaveredirect>
 	<include_file>/usr/local/pkg/openvpn_schedule.inc</include_file>
 	<menu>
 		<name>OpenVPN Schedule</name>
+		<tooltiptext>Configure OpenVPN login schedule policy</tooltiptext>
 		<section>Services</section>
-		<url>/openvpn_schedule.php</url>
+		<url>/pkg_edit.php?xml=openvpn_schedule.xml&amp;id=0</url>
 	</menu>
+	<tabs>
+		<tab>
+			<text>Settings</text>
+			<url>/openvpn_schedule.php</url>
+			<active/>
+		</tab>
+	</tabs>
 	<custom_php_resync_config_command>
 		openvpn_schedule_sync();
 	</custom_php_resync_config_command>
