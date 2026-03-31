@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE packagegui SYSTEM "../schema/packages.dtd">
+<?xml-stylesheet type="text/xsl" href="../xsl/package.xsl"?>
+<packagegui>
+	<name>openvpn_schedule</name>
+	<version>%%PKGVERSION%%</version>
+	<title>VPN: OpenVPN Login Schedule</title>
+	<category>VPN</category>
+	<aftersaveredirect>/openvpn_schedule.php</aftersaveredirect>
+	<include_file>/usr/local/pkg/openvpn_schedule.inc</include_file>
+	<menu>
+		<name>OpenVPN Schedule</name>
+		<tooltiptext>Configure OpenVPN login schedule policy</tooltiptext>
+		<section>VPN</section>
+		<url>/openvpn_schedule.php</url>
+	</menu>
+	<tabs>
+		<tab>
+			<text>Settings</text>
+			<url>/openvpn_schedule.php</url>
+			<active/>
+		</tab>
+		<tab>
+			<name>Schedule Policy</name>
+			<tabgroup>OpenVPN</tabgroup>
+			<url>/openvpn_schedule.php</url>
+		</tab>
+	</tabs>
+	<custom_php_resync_config_command>
+		openvpn_schedule_sync();
+	</custom_php_resync_config_command>
+</packagegui>
