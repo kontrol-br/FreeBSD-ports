@@ -2,6 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-OpenVPN-Schedule
 PORTVERSION=	0.1.0
+PORTREVISION=	1
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -24,15 +25,16 @@ do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/pkg
 	${MKDIR} ${STAGEDIR}${PREFIX}/www
 	${MKDIR} ${STAGEDIR}${PREFIX}/share/doc/${PORTNAME}
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/openvpn_schedule.xml \
+	${MKDIR} ${STAGEDIR}/var/db/openvpn_schedule
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule.xml \
 		${STAGEDIR}${PREFIX}/pkg
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/openvpn_schedule.inc \
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule.inc \
 		${STAGEDIR}${PREFIX}/pkg
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/openvpn_schedule_hook.inc \
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule_hook.inc \
 		${STAGEDIR}${PREFIX}/pkg
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/openvpn_schedule.php \
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/openvpn_schedule.php \
 		${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/share/doc/${PORTNAME}/README.md \
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/share/doc/${PORTNAME}/README.md \
 		${STAGEDIR}${PREFIX}/share/doc/${PORTNAME}
 	@${REINPLACE_CMD} -i '' -e "s|%%PKGVERSION%%|${PKGVERSION}|" \
 		${STAGEDIR}${PREFIX}/pkg/openvpn_schedule.xml
