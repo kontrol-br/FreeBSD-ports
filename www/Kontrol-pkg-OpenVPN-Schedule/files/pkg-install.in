@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ "${2}" != "POST-INSTALL" ] && [ "${2}" != "POST-UPGRADE" ]; then
+	exit 0
+fi
+
+if [ "${2}" = "POST-UPGRADE" ]; then
+	/usr/local/bin/php -r "require_once('/usr/local/pkg/openvpn_schedule.inc'); openvpn_schedule_upgrade();"
+else
+	/usr/local/bin/php -r "require_once('/usr/local/pkg/openvpn_schedule.inc'); openvpn_schedule_install();"
+fi
