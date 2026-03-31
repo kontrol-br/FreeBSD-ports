@@ -5,11 +5,12 @@
 	<name>openvpn_schedule</name>
 	<version>%%PKGVERSION%%</version>
 	<title>OpenVPN Login Schedule</title>
+	<category>Services</category>
 	<aftersaveredirect>/openvpn_schedule.php</aftersaveredirect>
 	<include_file>/usr/local/pkg/openvpn_schedule.inc</include_file>
 	<menu>
 		<name>OpenVPN Schedule</name>
-		<section>VPN</section>
+		<section>Services</section>
 		<url>/openvpn_schedule.php</url>
 	</menu>
 	<custom_php_resync_config_command>
