@@ -7,6 +7,26 @@
 require_once('guiconfig.inc');
 require_once('/usr/local/pkg/openvpn_schedule.inc');
 
+
+function openvpn_schedule_save_user_schedules(array $entries) {
+	global $config;
+
+	if (!isset($config['installedpackages']) || !is_array($config['installedpackages'])) {
+		$config['installedpackages'] = [];
+	}
+	if (!isset($config['installedpackages']['openvpn_schedule']) || !is_array($config['installedpackages']['openvpn_schedule'])) {
+		$config['installedpackages']['openvpn_schedule'] = [];
+	}
+	if (!isset($config['installedpackages']['openvpn_schedule']['config']) || !is_array($config['installedpackages']['openvpn_schedule']['config'])) {
+		$config['installedpackages']['openvpn_schedule']['config'] = [];
+	}
+	if (!isset($config['installedpackages']['openvpn_schedule']['config'][0]) || !is_array($config['installedpackages']['openvpn_schedule']['config'][0])) {
+		$config['installedpackages']['openvpn_schedule']['config'][0] = [];
+	}
+
+	$config['installedpackages']['openvpn_schedule']['config'][0]['user_schedule'] = $entries;
+}
+
 function openvpn_schedule_get_all_schedule_names() {
 	$names = [];
 	foreach (config_get_path('schedules/schedule', []) as $schedule) {
@@ -128,7 +148,7 @@ if ($_POST) {
 	}
 
 	if (empty($input_errors)) {
-		config_set_path('installedpackages/openvpn_schedule/config/0/user_schedule', $new_entries);
+		openvpn_schedule_save_user_schedules($new_entries);
 		write_config('Updated OpenVPN per-user schedule settings');
 		openvpn_schedule_sync();
 		header(url_safe('Location: /openvpn_schedule.php?save=1'));
