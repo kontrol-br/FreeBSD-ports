@@ -165,6 +165,7 @@ function sarg_resync() {
 		sync_package_sarg();
 	}
 	if ($_POST['Submit'] == 'Force update now') {
+		sync_package_sarg();
 		run_sarg();
 	}
 }
@@ -184,6 +185,33 @@ function run_sarg($id = -1) {
 	    } else {
 	        die("log file configuration not found");
 	    }
+	}
+
+	if (!file_exists($rs_file)) {
+		$error_msg = sprintf(gettext("[sarg] Report generation aborted: log file '%s' does not exist."), $rs_file);
+		log_error($error_msg);
+		file_notice("sarg_log_check", $error_msg, gettext("Sarg report generation"), "/sarg_reports.php");
+		return;
+	}
+	if (!is_readable($rs_file)) {
+		$error_msg = sprintf(gettext("[sarg] Report generation aborted: log file '%s' is not readable."), $rs_file);
+		log_error($error_msg);
+		file_notice("sarg_log_check", $error_msg, gettext("Sarg report generation"), "/sarg_reports.php");
+		return;
+	}
+	$sample_line = trim((string)@file_get_contents($rs_file, false, null, 0, 512));
+	if ($sample_line === "") {
+		$error_msg = sprintf(gettext("[sarg] Report generation aborted: log file '%s' is empty."), $rs_file);
+		log_error($error_msg);
+		file_notice("sarg_log_check", $error_msg, gettext("Sarg report generation"), "/sarg_reports.php");
+		return;
+	}
+	if ($proxy_server_log == "e2guardian" && !preg_match('/\s(?:TCP_|NONE\/|TAG_NONE)/', $sample_line)) {
+		$error_msg = gettext("[sarg] Report generation aborted: E2Guardian log does not look like Squid-compatible format.");
+		$error_msg .= " " . gettext("On E2Guardian, set Log file format to Squid.");
+		log_error($error_msg);
+		file_notice("sarg_log_check", $error_msg, gettext("Sarg report generation"), "/sarg_reports.php");
+		return;
 	}
 
 	if ($id >= 0 && is_array($config['installedpackages']['sargschedule']['config'])) {
@@ -219,7 +247,7 @@ function run_sarg($id = -1) {
 	}
 	print "$cmd -f /usr/local/etc/sarg/sarg.conf $args\n";
 	$find = (preg_match("/(\d+)/", $find, $find_matches) ? $find_matches[1] : "60");
-	log_error("[sarg] Force refresh now with {$args} args, compress({$gzip}).");
+	syslog(LOG_INFO, "[sarg] Force refresh now with {$args} args, compress({$gzip}).");
 	$gzip_script = "#!/bin/sh\n";
 	if ($gzip == "on") {
 		// remove old file if exists
@@ -245,8 +273,10 @@ done
 EOF;
 	}
 	// create a new file to speedup find search
+	conf_mount_rw();
 	file_put_contents("/root/sarg_run_{$id}.sh", $gzip_script, LOCK_EX);
 	mwexec("export LC_ALL=C && " . $cmd . " " . $args);
+	close_notice("sarg_log_check");
 
 	// check compress option
 	if ($gzip == "on") {

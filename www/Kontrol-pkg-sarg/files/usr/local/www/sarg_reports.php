@@ -65,6 +65,10 @@ function sarg_list_report_directories($dir) {
 	return $reports;
 }
 
+function sarg_has_root_report($dir) {
+	return (file_exists($dir . "/index.html") || file_exists($dir . "/index.html.gz"));
+}
+
 $input_errors = array();
 $savemsg = "";
 $dir_suffix = preg_replace("/\W/", "", $_REQUEST['dir']);
@@ -166,6 +170,13 @@ if ($_REQUEST['dir'] != "") {
 		</div>
 		<br />
 		<?php $reports = sarg_list_report_directories($report_base_dir); ?>
+		<?php
+		$dest_msg = sprintf(gettext("Report destination folder: %s"), htmlspecialchars($report_base_dir));
+		if (sarg_has_root_report($report_base_dir)) {
+			$dest_msg .= "<br />" . gettext("A main index report exists in this folder (root index.html).");
+		}
+		print_info_box($dest_msg, 'info', false);
+		?>
 		<div class="panel panel-default">
 			<div class="panel-heading"><h2 class="panel-title"><?=gettext("Manage stored reports")?></h2></div>
 			<div class="panel-body">
