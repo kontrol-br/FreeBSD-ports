@@ -74,6 +74,14 @@ function openvpn_schedule_upgrade() {
 	openvpn_schedule_log('upgrade done');
 }
 
+function openvpn_schedule_install_command() {
+	openvpn_schedule_install();
+}
+
+function openvpn_schedule_upgrade_command() {
+	openvpn_schedule_upgrade();
+}
+
 function openvpn_schedule_deinstall() {
 	openvpn_schedule_log('deinstall start');
 	$runtime_restored = openvpn_schedule_restore_runtime_patch();
@@ -95,6 +103,10 @@ function openvpn_schedule_deinstall() {
 	} else {
 		openvpn_schedule_log('deinstall done with warnings');
 	}
+}
+
+function openvpn_schedule_deinstall_command() {
+	openvpn_schedule_deinstall();
 }
 
 function openvpn_schedule_migrate_config() {

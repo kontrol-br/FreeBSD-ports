@@ -16,4 +16,16 @@
 	<custom_php_resync_config_command>
 		openvpn_schedule_sync();
 	</custom_php_resync_config_command>
+	<custom_php_install_command>
+		openvpn_schedule_install_command();
+	</custom_php_install_command>
+	<custom_php_upgrade_command>
+		openvpn_schedule_upgrade_command();
+	</custom_php_upgrade_command>
+	<custom_php_pre_deinstall_command>
+		openvpn_schedule_deinstall_command();
+	</custom_php_pre_deinstall_command>
+	<custom_php_deinstall_command>
+		openvpn_schedule_deinstall_command();
+	</custom_php_deinstall_command>
 </packagegui>
