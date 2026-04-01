@@ -117,9 +117,58 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 }
 
 if (!function_exists('openvpn_schedule_enforce_or_exit')) {
+	function openvpn_schedule_extract_username_from_argv_file() {
+		$argv = $_SERVER['argv'] ?? [];
+		if (!is_array($argv)) {
+			return '';
+		}
+
+		foreach ($argv as $idx => $arg) {
+			if ($idx === 0) {
+				continue;
+			}
+			$path = trim((string)$arg);
+			if ($path === '' || !is_file($path) || !is_readable($path)) {
+				continue;
+			}
+			$lines = @file($path, FILE_IGNORE_NEW_LINES);
+			if (!is_array($lines) || !isset($lines[0])) {
+				continue;
+			}
+			$username = trim((string)$lines[0]);
+			if ($username !== '') {
+				return $username;
+			}
+		}
+
+		return '';
+	}
+
+	function openvpn_schedule_extract_username() {
+		$candidates = [
+			$_POST['username'] ?? '',
+			$_REQUEST['username'] ?? '',
+			$_ENV['username'] ?? '',
+			$_SERVER['username'] ?? '',
+			$_SERVER['common_name'] ?? '',
+			getenv('username') ?: '',
+			$GLOBALS['username'] ?? '',
+		];
+
+		foreach ($candidates as $candidate) {
+			$username = trim((string)$candidate);
+			if ($username !== '') {
+				return $username;
+			}
+		}
+
+		return openvpn_schedule_extract_username_from_argv_file();
+	}
+
 	function openvpn_schedule_enforce_or_exit() {
-		$username = $_POST['username'] ?? $_ENV['username'] ?? '';
+		$username = openvpn_schedule_extract_username();
 		if (empty($username)) {
+			openvpn_schedule_log_runtime('username is empty at auth hook, skipping schedule check');
 			return;
 		}
 

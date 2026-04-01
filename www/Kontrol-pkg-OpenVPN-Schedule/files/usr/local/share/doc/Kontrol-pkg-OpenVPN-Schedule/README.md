@@ -2,6 +2,7 @@
 
 ## Overview
 This package enforces OpenVPN login access windows using existing pfSense/Kontrol schedules.
+It also can disconnect active sessions that become out-of-schedule.
 
 ## Installation
 1. Install the `www/Kontrol-pkg-OpenVPN-Schedule` port via pkg/ports.
@@ -19,6 +20,12 @@ This package enforces OpenVPN login access windows using existing pfSense/Kontro
 2. Assign a schedule to one test user in **VPN > OpenVPN Schedule**.
 3. Test OpenVPN authentication inside and outside the allowed window.
 4. Review logs tagged with `[openvpn_schedule]`.
+5. Keep a test user connected past the schedule end time and confirm the periodic watcher disconnects the session.
+
+## Periodic disconnect watcher
+- A cron task is automatically installed when at least one user has a non-`None` schedule.
+- The watcher runs every 5 minutes and checks currently connected OpenVPN users.
+- If a connected user is outside the configured schedule window, the package sends a management `kill` command to OpenVPN server sockets.
 
 ## Deinstall / rollback
 1. Remove the package.
