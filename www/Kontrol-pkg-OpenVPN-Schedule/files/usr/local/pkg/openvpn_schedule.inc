@@ -74,18 +74,38 @@ function openvpn_schedule_upgrade() {
 	openvpn_schedule_log('upgrade done');
 }
 
+function openvpn_schedule_install_command() {
+	openvpn_schedule_install();
+}
+
+function openvpn_schedule_upgrade_command() {
+	openvpn_schedule_upgrade();
+}
+
 function openvpn_schedule_deinstall() {
 	openvpn_schedule_log('deinstall start');
-	if (!openvpn_schedule_restore_runtime_patch()) {
-		openvpn_schedule_log('deinstall failed: could not restore original auth file. Manual recovery required from backup in ' . OVPN_SCHEDULE_STATE_DIR);
-		return;
+	$runtime_restored = openvpn_schedule_restore_runtime_patch();
+	if (!$runtime_restored) {
+		openvpn_schedule_log('deinstall warning: could not restore original auth file. Manual recovery may be required from backup in ' . OVPN_SCHEDULE_STATE_DIR);
 	}
+
+	/*
+	 * Always continue package cleanup even when runtime patch rollback fails.
+	 * This prevents stale config.xml/package cron leftovers after uninstall.
+	 */
 	openvpn_schedule_setup_cron(false);
 	config_del_path(openvpn_schedule_package_base_path());
 	write_config('Removed OpenVPN schedule package configuration');
 	@unlink(OVPN_SCHEDULE_MANIFEST);
-	@rmdir(OVPN_SCHEDULE_STATE_DIR);
-	openvpn_schedule_log('deinstall done');
+	if ($runtime_restored) {
+		openvpn_schedule_log('deinstall done');
+	} else {
+		openvpn_schedule_log('deinstall done with warnings');
+	}
+}
+
+function openvpn_schedule_deinstall_command() {
+	openvpn_schedule_deinstall();
 }
 
 function openvpn_schedule_migrate_config() {
