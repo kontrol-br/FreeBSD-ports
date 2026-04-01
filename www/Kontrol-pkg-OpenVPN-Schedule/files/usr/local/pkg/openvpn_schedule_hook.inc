@@ -172,6 +172,31 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 }
 
 if (!function_exists('openvpn_schedule_enforce_or_exit')) {
+	function openvpn_schedule_decode_username_candidate($value) {
+		$username = trim((string)$value);
+		if ($username === '') {
+			return '';
+		}
+
+		/*
+		 * Some auth flows can pass username in base64 (e.g. "am9hbw==" for "joao").
+		 * Decode only when the input clearly looks like base64 and the decoded value
+		 * is a non-empty printable token.
+		 */
+		if (preg_match('/^[A-Za-z0-9+\/]+={0,2}$/', $username) === 1 && (strlen($username) % 4) === 0) {
+			$decoded = base64_decode($username, true);
+			if ($decoded !== false) {
+				$decoded = trim((string)$decoded);
+				if ($decoded !== '' && preg_match('/^[[:print:]]+$/', $decoded) === 1) {
+					openvpn_schedule_log_debug("decoded base64 username '{$username}' => '{$decoded}'");
+					return $decoded;
+				}
+			}
+		}
+
+		return $username;
+	}
+
 	function openvpn_schedule_extract_username_from_argv_file() {
 		$argv = $_SERVER['argv'] ?? [];
 		if (!is_array($argv)) {
@@ -190,7 +215,7 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 			if (!is_array($lines) || !isset($lines[0])) {
 				continue;
 			}
-			$username = trim((string)$lines[0]);
+			$username = openvpn_schedule_decode_username_candidate($lines[0] ?? '');
 			if ($username !== '') {
 				return $username;
 			}
@@ -215,7 +240,7 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 		];
 
 		foreach ($candidates as $candidate) {
-			$username = trim((string)$candidate);
+			$username = openvpn_schedule_decode_username_candidate($candidate);
 			if ($username !== '') {
 				return $username;
 			}
