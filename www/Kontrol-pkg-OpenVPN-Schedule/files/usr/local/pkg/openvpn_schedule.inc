@@ -97,7 +97,6 @@ function openvpn_schedule_deinstall() {
 	config_del_path(openvpn_schedule_package_base_path());
 	write_config('Removed OpenVPN schedule package configuration');
 	@unlink(OVPN_SCHEDULE_MANIFEST);
-	@rmdir(OVPN_SCHEDULE_STATE_DIR);
 	if ($runtime_restored) {
 		openvpn_schedule_log('deinstall done');
 	} else {
