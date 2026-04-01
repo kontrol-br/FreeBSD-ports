@@ -651,43 +651,89 @@ function openvpn_schedule_collect_management_sessions() {
 	$sessions = [];
 	foreach (openvpn_schedule_management_endpoints() as $endpoint) {
 		openvpn_schedule_log_debug('management collector: querying endpoint=' . json_encode($endpoint));
-		$socket = openvpn_schedule_open_management_socket($endpoint);
-		if ($socket === false) {
-			continue;
-		}
-
-		stream_set_timeout($socket, 1);
-		fwrite($socket, "status 2\n");
-		fwrite($socket, "quit\n");
-
-		while (!feof($socket)) {
-			$line = fgets($socket);
-			if ($line === false) {
+		$commands = ["status 2\n", "status\n"];
+		foreach ($commands as $command) {
+			$socket = openvpn_schedule_open_management_socket($endpoint);
+			if ($socket === false) {
 				break;
 			}
-			$line = trim((string)$line);
-			if (strpos($line, 'CLIENT_LIST,') !== 0) {
-				continue;
+
+			stream_set_timeout($socket, 3);
+			fwrite($socket, $command);
+
+			$inside_classic_client_list = false;
+			while (!feof($socket)) {
+				$line = fgets($socket, 4096);
+				$info = stream_get_meta_data($socket);
+				if (!empty($info['timed_out'])) {
+					break;
+				}
+				if ($line === false) {
+					break;
+				}
+				$line = trim((string)$line);
+				if ($line === '' || strpos($line, 'HEADER,') === 0 || strpos($line, '>INFO:') === 0) {
+					continue;
+				}
+
+				if ($line === 'END' || strpos($line, 'ERROR') === 0) {
+					break;
+				}
+
+				$csv_line = '';
+				$csv_pos = strpos($line, 'CLIENT_LIST,');
+				if ($csv_pos !== false) {
+					$csv_line = substr($line, $csv_pos);
+				}
+				if ($csv_line !== '') {
+					$columns = str_getcsv($csv_line);
+					$common_name = trim((string)($columns[1] ?? ''));
+					$username = trim((string)($columns[9] ?? ''));
+					$remote_host = trim((string)($columns[2] ?? ''));
+					$client_id = trim((string)($columns[10] ?? ''));
+					if ($username === '' || strcasecmp($username, 'UNDEF') === 0) {
+						$username = trim((string)($columns[0] ?? ''));
+					}
+					$sessions[] = [
+						'username' => $username,
+						'common_name' => $common_name,
+						'remote_host' => $remote_host,
+						'client_id' => $client_id,
+						'endpoint' => $endpoint,
+					];
+					continue;
+				}
+
+				if (strpos($line, 'Common Name,') === 0) {
+					$inside_classic_client_list = true;
+					continue;
+				}
+				if ($inside_classic_client_list &&
+				    (strpos($line, 'ROUTING TABLE') === 0 || $line === 'GLOBAL STATS' || $line === 'END')) {
+					$inside_classic_client_list = false;
+					continue;
+				}
+				if ($inside_classic_client_list) {
+					$columns = str_getcsv($line);
+					$common_name = trim((string)($columns[0] ?? ''));
+					$remote_host = trim((string)($columns[1] ?? ''));
+					if ($common_name !== '') {
+						$sessions[] = [
+							'username' => $common_name,
+							'common_name' => $common_name,
+							'remote_host' => $remote_host,
+							'client_id' => '',
+							'endpoint' => $endpoint,
+						];
+					}
+				}
 			}
 
-			$columns = str_getcsv($line);
-			$common_name = trim((string)($columns[1] ?? ''));
-			$username = trim((string)($columns[9] ?? ''));
-			$remote_host = trim((string)($columns[2] ?? ''));
-			$client_id = trim((string)($columns[10] ?? ''));
-			if ($username === '' || strcasecmp($username, 'UNDEF') === 0) {
-				$username = trim((string)($columns[0] ?? ''));
+			fclose($socket);
+			if (!empty($sessions)) {
+				break;
 			}
-			$sessions[] = [
-				'username' => $username,
-				'common_name' => $common_name,
-				'remote_host' => $remote_host,
-				'client_id' => $client_id,
-				'endpoint' => $endpoint,
-			];
 		}
-
-		fclose($socket);
 	}
 
 	openvpn_schedule_log_debug('management collector: parsed sessions=' . json_encode($sessions));
