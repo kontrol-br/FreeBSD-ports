@@ -155,7 +155,7 @@ if ($_POST) {
 		openvpn_schedule_save_user_schedules($new_entries);
 		write_config('Updated OpenVPN per-user schedule settings', false);
 		openvpn_schedule_sync();
-		header(url_safe('Location: /openvpn_schedule.php?save=1'));
+		header('Location: /openvpn_schedule.php?save=1');
 		exit;
 	}
 }
