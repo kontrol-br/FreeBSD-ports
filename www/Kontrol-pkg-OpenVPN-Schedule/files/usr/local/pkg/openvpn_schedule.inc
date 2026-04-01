@@ -371,6 +371,52 @@ function openvpn_schedule_collect_connected_users() {
 		}
 	}
 
+	foreach (openvpn_schedule_collect_connected_users_from_management() as $username) {
+		$users[$username] = true;
+	}
+
+	return array_keys($users);
+}
+
+function openvpn_schedule_collect_connected_users_from_management() {
+	$users = [];
+	$sockets = glob('/var/etc/openvpn/server*.sock') ?: [];
+
+	foreach ($sockets as $socket_file) {
+		$socket = @stream_socket_client('unix://' . $socket_file, $errno, $errstr, 1);
+		if ($socket === false) {
+			continue;
+		}
+
+		stream_set_timeout($socket, 1);
+		fwrite($socket, "status 2\n");
+		fwrite($socket, "quit\n");
+
+		while (!feof($socket)) {
+			$line = fgets($socket);
+			if ($line === false) {
+				break;
+			}
+			$line = trim((string)$line);
+			if (strpos($line, 'CLIENT_LIST,') !== 0) {
+				continue;
+			}
+
+			$columns = str_getcsv($line);
+			$common_name = trim((string)($columns[1] ?? ''));
+			$username = trim((string)($columns[9] ?? ''));
+
+			if ($username !== '' && strcasecmp($username, 'UNDEF') !== 0) {
+				$users[$username] = true;
+			}
+			if ($common_name !== '' && strcasecmp($common_name, 'UNDEF') !== 0) {
+				$users[$common_name] = true;
+			}
+		}
+
+		fclose($socket);
+	}
+
 	return array_keys($users);
 }
 
