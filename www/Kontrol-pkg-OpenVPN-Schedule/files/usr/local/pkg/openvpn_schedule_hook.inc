@@ -65,9 +65,9 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 			return (bool)$core_match;
 		}
 
-		// Safe fallback: if schedule engine is unavailable, do not block logins.
-		openvpn_schedule_log_runtime("schedule engine not available for '{$schedule_name}', fallback allow");
-		return true;
+		// Fail closed when a schedule is configured but schedule engine is unavailable.
+		openvpn_schedule_log_runtime("schedule engine not available for '{$schedule_name}', denying login");
+		return false;
 	}
 }
 
@@ -152,6 +152,10 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 			$_SERVER['username'] ?? '',
 			$_SERVER['common_name'] ?? '',
 			getenv('username') ?: '',
+			$GLOBALS['authcfg']['username'] ?? '',
+			$GLOBALS['authcfg']['common_name'] ?? '',
+			$GLOBALS['upauth']['username'] ?? '',
+			$GLOBALS['vpnuser'] ?? '',
 			$GLOBALS['username'] ?? '',
 		];
 
@@ -168,8 +172,8 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 	function openvpn_schedule_enforce_or_exit() {
 		$username = openvpn_schedule_extract_username();
 		if (empty($username)) {
-			openvpn_schedule_log_runtime('username is empty at auth hook, skipping schedule check');
-			return;
+			openvpn_schedule_log_runtime('username is empty at auth hook, denying login to avoid schedule bypass');
+			exit(1);
 		}
 
 		$schedule = openvpn_schedule_find_policy($username);
