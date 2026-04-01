@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-OpenVPN-Schedule
-PORTVERSION=	0.1.4
+PORTVERSION=	1.6
 PORTREVISION=	# empty
 CATEGORIES=	www
 MASTER_SITES=	# empty

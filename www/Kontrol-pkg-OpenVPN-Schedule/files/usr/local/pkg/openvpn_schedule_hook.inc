@@ -36,10 +36,18 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 }
 
 if (!function_exists('openvpn_schedule_find_policy')) {
+	function openvpn_schedule_get_entries($pkg) {
+		$user_schedule = $pkg['user_schedule'] ?? [];
+		if (is_array($user_schedule) && isset($user_schedule['item']) && is_array($user_schedule['item'])) {
+			return $user_schedule['item'];
+		}
+		return is_array($user_schedule) ? $user_schedule : [];
+	}
+
 	function openvpn_schedule_find_policy($username) {
 		$pkg = config_get_path('installedpackages/openvpn_schedule/config/0', []);
 
-		foreach (($pkg['user_schedule'] ?? []) as $entry) {
+		foreach (openvpn_schedule_get_entries($pkg) as $entry) {
 			if (($entry['username'] ?? '') === $username) {
 				return trim($entry['schedule'] ?? 'none');
 			}
