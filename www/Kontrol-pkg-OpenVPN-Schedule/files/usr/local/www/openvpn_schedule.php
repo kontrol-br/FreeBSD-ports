@@ -8,6 +8,13 @@ require_once('guiconfig.inc');
 require_once('/usr/local/pkg/openvpn_schedule.inc');
 
 function openvpn_schedule_normalize_text($value) {
+	while (is_array($value)) {
+		$value = reset($value);
+		if ($value === false) {
+			$value = '';
+			break;
+		}
+	}
 	$text = (string)$value;
 	if (function_exists('iconv')) {
 		$normalized = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
