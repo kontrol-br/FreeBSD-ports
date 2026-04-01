@@ -396,6 +396,21 @@ function openvpn_schedule_collect_connected_users_from_status($status_file) {
 		if ($line === '') {
 			continue;
 		}
+		if (strpos($line, 'CLIENT_LIST,') === 0) {
+			$columns = str_getcsv($line);
+			$common_name = trim((string)($columns[1] ?? ''));
+			$username = trim((string)($columns[9] ?? ''));
+			if ($username === '' || strcasecmp($username, 'UNDEF') === 0) {
+				$username = trim((string)($columns[0] ?? ''));
+			}
+			if ($username !== '' && strcasecmp($username, 'UNDEF') !== 0) {
+				$users[$username] = true;
+			}
+			if ($common_name !== '' && strcasecmp($common_name, 'UNDEF') !== 0) {
+				$users[$common_name] = true;
+			}
+			continue;
+		}
 		if (strpos($line, 'Common Name,') === 0) {
 			$inside_client_list = true;
 			continue;
@@ -418,11 +433,54 @@ function openvpn_schedule_collect_connected_users_from_status($status_file) {
 	return array_keys($users);
 }
 
+function openvpn_schedule_openvpn_config_files() {
+	$config_files = array_merge(
+		glob('/var/etc/openvpn/*.conf') ?: [],
+		glob('/var/etc/openvpn/*.ovpn') ?: [],
+		glob('/var/etc/openvpn/*/*.conf') ?: [],
+		glob('/var/etc/openvpn/*/*.ovpn') ?: []
+	);
+	return array_values(array_unique($config_files));
+}
+
+function openvpn_schedule_status_files_from_openvpn_configs() {
+	$status_files = [];
+	foreach (openvpn_schedule_openvpn_config_files() as $config_file) {
+		$lines = @file($config_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		if (!is_array($lines)) {
+			continue;
+		}
+		foreach ($lines as $line) {
+			$line = trim((string)$line);
+			if ($line === '' || strpos($line, '#') === 0 || strpos($line, ';') === 0) {
+				continue;
+			}
+			if (preg_match('/^status\s+(.+)$/', $line, $matches) !== 1) {
+				continue;
+			}
+			$directive = trim((string)$matches[1]);
+			if ($directive === '') {
+				continue;
+			}
+			$parts = str_getcsv($directive, ' ');
+			$status_file = trim((string)($parts[0] ?? ''), " \t\n\r\0\x0B\"'");
+			if ($status_file !== '' && strpos($status_file, '/') === 0) {
+				$status_files[$status_file] = $status_file;
+			}
+		}
+	}
+	return array_values($status_files);
+}
+
 function openvpn_schedule_collect_connected_users() {
 	$users = [];
 	$status_files = array_merge(
 		glob('/var/etc/openvpn/*.status') ?: [],
+		glob('/var/etc/openvpn/*/*.status') ?: [],
 		glob('/var/etc/openvpn/status*') ?: [],
+		glob('/var/log/openvpn*.status') ?: [],
+		glob('/var/log/openvpn/*.status') ?: [],
+		openvpn_schedule_status_files_from_openvpn_configs(),
 		glob('/tmp/openvpn-status*') ?: []
 	);
 	$status_files = array_unique($status_files);
@@ -491,7 +549,7 @@ function openvpn_schedule_management_endpoints() {
 		];
 	}
 
-	foreach (glob('/var/etc/openvpn/server*.conf') ?: [] as $config_file) {
+	foreach (openvpn_schedule_openvpn_config_files() as $config_file) {
 		$lines = @file($config_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 		if (!is_array($lines)) {
 			continue;
