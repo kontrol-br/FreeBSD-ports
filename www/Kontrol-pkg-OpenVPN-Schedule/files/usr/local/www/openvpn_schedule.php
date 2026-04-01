@@ -46,6 +46,10 @@ function openvpn_schedule_save_user_schedules(array $entries) {
 	config_set_path(openvpn_schedule_ui_package_base_path() . '/config/0/user_schedule', ['item' => array_values($entries)]);
 }
 
+function openvpn_schedule_save_debug_flag($enabled) {
+	config_set_path(openvpn_schedule_ui_package_base_path() . '/config/0/debug_auth', $enabled ? 'yes' : '');
+}
+
 function openvpn_schedule_get_user_schedule_entries(array $pkgcfg) {
 	$user_schedule = $pkgcfg['user_schedule'] ?? [];
 	if (is_array($user_schedule) && isset($user_schedule['item']) && is_array($user_schedule['item'])) {
@@ -155,6 +159,7 @@ foreach ($schedule_names as $schedule_name) {
 
 $users = openvpn_schedule_get_visible_users();
 $current_user_map = openvpn_schedule_build_user_map();
+$debug_auth_enabled = trim((string)config_get_path(openvpn_schedule_ui_package_base_path() . '/config/0/debug_auth', '')) !== '';
 foreach ($current_user_map as $saved_schedule) {
 	if ($saved_schedule !== 'none' && !array_key_exists($saved_schedule, $schedule_options)) {
 		$schedule_options[$saved_schedule] = $saved_schedule . ' (missing schedule)';
@@ -189,6 +194,8 @@ if ($_POST) {
 
 	if (empty($input_errors)) {
 		openvpn_schedule_save_user_schedules($new_entries);
+		$debug_auth_enabled = isset($_POST['debug_auth']) && $_POST['debug_auth'] === 'yes';
+		openvpn_schedule_save_debug_flag($debug_auth_enabled);
 		write_config('Updated OpenVPN per-user schedule settings', false);
 		openvpn_schedule_sync();
 		header('Location: /openvpn_schedule.php?save=1');
@@ -217,6 +224,14 @@ $section->addInput(new Form_StaticText(
 	'Storage',
 	'Settings are stored in config.xml under installedpackages/<openvpn_schedule>/config/0/user_schedule and are automatically removed when this package is uninstalled.'
 ));
+
+$section->addInput(new Form_Checkbox(
+	'debug_auth',
+	'Auth Debug',
+	'Enable verbose authentication debug logs (temporarily)',
+	$debug_auth_enabled,
+	'yes'
+))->setHelp('When enabled, extra [debug] entries are written to the system log for each authentication intercept. Disable after troubleshooting.');
 
 if (empty($schedule_names)) {
 	$section->addInput(new Form_StaticText(
