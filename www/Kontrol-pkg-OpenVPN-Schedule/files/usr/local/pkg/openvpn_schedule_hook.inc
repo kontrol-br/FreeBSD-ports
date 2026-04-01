@@ -151,19 +151,31 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 		return is_array($user_schedule) ? $user_schedule : [];
 	}
 
+	function openvpn_schedule_hook_text_value($value, $default = '') {
+		while (is_array($value)) {
+			$value = reset($value);
+			if ($value === false) {
+				$value = $default;
+				break;
+			}
+		}
+		$text = trim((string)$value);
+		return $text === '' ? (string)$default : $text;
+	}
+
 	function openvpn_schedule_find_policy($username) {
 		$pkg = config_get_path(openvpn_schedule_hook_package_base_path() . '/config/0', []);
 
 		foreach (openvpn_schedule_get_entries($pkg) as $entry) {
 			if (strcasecmp((string)($entry['username'] ?? ''), $username) === 0) {
-				return trim($entry['schedule'] ?? 'none');
+				return openvpn_schedule_hook_text_value($entry['schedule'] ?? 'none', 'none');
 			}
 		}
 
 		// Backward compatibility with the previous user/group rule format.
 		foreach (($pkg['rule'] ?? []) as $rule) {
 			if (($rule['type'] ?? '') === 'user' && strcasecmp((string)($rule['name'] ?? ''), $username) === 0) {
-				return trim($rule['schedule'] ?? 'none');
+				return openvpn_schedule_hook_text_value($rule['schedule'] ?? 'none', 'none');
 			}
 		}
 
