@@ -319,7 +319,35 @@ function openvpn_schedule_setup_cron($active = true) {
 		return;
 	}
 	install_cron_job(OVPN_SCHEDULE_CRON_COMMAND, false);
+	openvpn_schedule_force_remove_cron_entries();
 	openvpn_schedule_log('cron watcher disabled');
+}
+
+function openvpn_schedule_force_remove_cron_entries() {
+	$items = config_get_path('cron/item', []);
+	if (!is_array($items) || empty($items)) {
+		return;
+	}
+
+	$filtered = [];
+	$removed = 0;
+	foreach ($items as $item) {
+		$command = (string)($item['command'] ?? '');
+		if (strpos($command, '/usr/local/pkg/openvpn_schedule_cron.php') !== false) {
+			$removed++;
+			continue;
+		}
+		$filtered[] = $item;
+	}
+
+	if ($removed > 0) {
+		config_set_path('cron/item', $filtered);
+		write_config('Removed OpenVPN schedule cron watcher entries');
+		if (function_exists('configure_cron')) {
+			configure_cron();
+		}
+		openvpn_schedule_log("cron watcher cleanup removed {$removed} stale entr" . ($removed === 1 ? 'y' : 'ies'));
+	}
 }
 
 function openvpn_schedule_collect_connected_users_from_status($status_file) {

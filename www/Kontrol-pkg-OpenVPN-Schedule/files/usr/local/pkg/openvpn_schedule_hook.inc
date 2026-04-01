@@ -173,11 +173,22 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 		}
 
 		$schedule = openvpn_schedule_find_policy($username);
-		if (openvpn_schedule_now_matches($schedule)) {
+		$allowed = openvpn_schedule_now_matches($schedule);
+		if ($allowed) {
+			if (strcasecmp($schedule, 'none') !== 0) {
+				openvpn_schedule_log_runtime("OpenVPN login allowed for user '{$username}' inside schedule '{$schedule}'");
+			}
 			return;
 		}
 
 		openvpn_schedule_log_runtime("OpenVPN login denied for user '{$username}' outside allowed schedule '{$schedule}'");
 		exit(1);
+	}
+}
+
+if (!defined('OVPN_SCHEDULE_DISABLE_AUTO_ENFORCE')) {
+	$script_name = basename((string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
+	if ($script_name === 'openvpn.auth-user.php') {
+		openvpn_schedule_enforce_or_exit();
 	}
 }
