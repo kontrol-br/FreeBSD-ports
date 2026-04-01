@@ -18,6 +18,14 @@ function openvpn_schedule_log($message) {
 	log_error(OVPN_SCHEDULE_LOG_TAG . ' ' . $message);
 }
 
+function openvpn_schedule_user_schedule_entries($pkgcfg) {
+	$user_schedule = $pkgcfg['user_schedule'] ?? [];
+	if (is_array($user_schedule) && isset($user_schedule['item']) && is_array($user_schedule['item'])) {
+		return $user_schedule['item'];
+	}
+	return is_array($user_schedule) ? $user_schedule : [];
+}
+
 function openvpn_schedule_sync() {
 	openvpn_schedule_apply_runtime_patch();
 }
@@ -63,9 +71,7 @@ function openvpn_schedule_migrate_config() {
 	}
 
 	$pkgcfg = $cfg['config'][0] ?? [];
-	if (!isset($pkgcfg['user_schedule']) || !is_array($pkgcfg['user_schedule'])) {
-		$pkgcfg['user_schedule'] = [];
-	}
+	$entries = openvpn_schedule_user_schedule_entries($pkgcfg);
 
 	// Backward compatibility: import legacy user rules into per-user schedules.
 	foreach (($pkgcfg['rule'] ?? []) as $rule) {
@@ -78,19 +84,21 @@ function openvpn_schedule_migrate_config() {
 			continue;
 		}
 		$already_set = false;
-		foreach ($pkgcfg['user_schedule'] as $entry) {
+		foreach ($entries as $entry) {
 			if (($entry['username'] ?? '') === $username) {
 				$already_set = true;
 				break;
 			}
 		}
 		if (!$already_set) {
-			$pkgcfg['user_schedule'][] = [
+			$entries[] = [
 				'username' => $username,
 				'schedule' => $schedule,
 			];
 		}
 	}
+
+	$pkgcfg['user_schedule'] = ['item' => array_values($entries)];
 
 	// Keep defaults open (none) for users without explicit schedule.
 	unset($pkgcfg['default_policy']);

@@ -20,7 +20,15 @@ function openvpn_schedule_normalize_text($value) {
 }
 
 function openvpn_schedule_save_user_schedules(array $entries) {
-	config_set_path('installedpackages/openvpn_schedule/config/0/user_schedule', $entries);
+	config_set_path('installedpackages/openvpn_schedule/config/0/user_schedule', ['item' => array_values($entries)]);
+}
+
+function openvpn_schedule_get_user_schedule_entries(array $pkgcfg) {
+	$user_schedule = $pkgcfg['user_schedule'] ?? [];
+	if (is_array($user_schedule) && isset($user_schedule['item']) && is_array($user_schedule['item'])) {
+		return $user_schedule['item'];
+	}
+	return is_array($user_schedule) ? $user_schedule : [];
 }
 
 function openvpn_schedule_get_all_schedule_names() {
@@ -92,7 +100,7 @@ function openvpn_schedule_build_user_map() {
 	$map = [];
 	$pkgcfg = config_get_path('installedpackages/openvpn_schedule/config/0', []);
 
-	foreach (($pkgcfg['user_schedule'] ?? []) as $entry) {
+	foreach (openvpn_schedule_get_user_schedule_entries($pkgcfg) as $entry) {
 		$username = openvpn_schedule_normalize_text($entry['username'] ?? '');
 		$schedule = openvpn_schedule_normalize_text($entry['schedule'] ?? '');
 		if ($username === '') {
@@ -121,10 +129,10 @@ if ($_POST) {
 	$input_errors = [];
 	$new_entries = [];
 
-		foreach ($users as $user) {
-			$username = $user['name'];
-			$field_name = 'schedule_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $username);
-			$selected = openvpn_schedule_normalize_text($_POST[$field_name] ?? 'none');
+	foreach ($users as $user) {
+		$username = $user['name'];
+		$field_name = 'schedule_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $username);
+		$selected = openvpn_schedule_normalize_text($_POST[$field_name] ?? 'none');
 		if ($selected === '') {
 			$selected = 'none';
 		}
