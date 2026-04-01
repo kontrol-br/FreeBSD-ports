@@ -193,6 +193,12 @@ function openvpn_schedule_apply_runtime_patch() {
 			// Newer pfSense variants authenticate inside the authmodes loop.
 			"/(^\\s*foreach\\s*\\(\\s*\\$authmodes\\s+as\\s+\\$authmode\\s*\\)\\s*\\{)/m" =>
 				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+			// Some variants initialize auth state before any backend call.
+			"/(^\\s*\\$authenticated\\s*=\\s*false\\s*;)/m" =>
+				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+			// Last-resort anchor: first explicit authenticate_user invocation.
+			"/(^\\s*\\$authenticated\\s*=\\s*authenticate_user\\s*\\()/m" =>
+				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
 		];
 		foreach ($call_anchors as $pattern => $replacement) {
 			$patched = preg_replace($pattern, $replacement, $patched, 1, $call_count);
