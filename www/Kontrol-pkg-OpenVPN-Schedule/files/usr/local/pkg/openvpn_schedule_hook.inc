@@ -7,6 +7,7 @@
 require_once('auth.inc');
 require_once('config.inc');
 require_once('util.inc');
+require_once('filter.inc');
 
 if (!function_exists('openvpn_schedule_log_runtime')) {
 	function openvpn_schedule_log_runtime($message) {
@@ -115,6 +116,8 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 			return false;
 		}
 
+		openvpn_schedule_log_debug("checking schedule '{$schedule_name}' at local " . date('c') . ' (tz=' . date_default_timezone_get() . ', utc=' . gmdate('c') . ')');
+
 		$core_match = openvpn_schedule_eval_with_core_engine($schedule_name, $schedule_cfg);
 		if ($core_match !== null) {
 			return (bool)$core_match;
@@ -163,19 +166,29 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 		return $text === '' ? (string)$default : $text;
 	}
 
+	function openvpn_schedule_hook_field_text($row, $field, $default = '') {
+		if (!is_array($row)) {
+			return (string)$default;
+		}
+		return openvpn_schedule_hook_text_value($row[$field] ?? $default, $default);
+	}
+
 	function openvpn_schedule_find_policy($username) {
 		$pkg = config_get_path(openvpn_schedule_hook_package_base_path() . '/config/0', []);
 
 		foreach (openvpn_schedule_get_entries($pkg) as $entry) {
-			if (strcasecmp((string)($entry['username'] ?? ''), $username) === 0) {
-				return openvpn_schedule_hook_text_value($entry['schedule'] ?? 'none', 'none');
+			$entry_username = openvpn_schedule_hook_field_text($entry, 'username', '');
+			if ($entry_username !== '' && strcasecmp($entry_username, $username) === 0) {
+				return openvpn_schedule_hook_field_text($entry, 'schedule', 'none');
 			}
 		}
 
 		// Backward compatibility with the previous user/group rule format.
 		foreach (($pkg['rule'] ?? []) as $rule) {
-			if (($rule['type'] ?? '') === 'user' && strcasecmp((string)($rule['name'] ?? ''), $username) === 0) {
-				return openvpn_schedule_hook_text_value($rule['schedule'] ?? 'none', 'none');
+			$rule_type = openvpn_schedule_hook_field_text($rule, 'type', '');
+			$rule_name = openvpn_schedule_hook_field_text($rule, 'name', '');
+			if (strcasecmp($rule_type, 'user') === 0 && $rule_name !== '' && strcasecmp($rule_name, $username) === 0) {
+				return openvpn_schedule_hook_field_text($rule, 'schedule', 'none');
 			}
 		}
 
