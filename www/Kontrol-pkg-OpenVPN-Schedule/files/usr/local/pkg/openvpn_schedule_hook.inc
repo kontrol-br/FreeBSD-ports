@@ -25,7 +25,9 @@ if (!function_exists('openvpn_schedule_hook_debug_enabled')) {
 		$debug_flag = trim((string)($pkg['debug_auth'] ?? ''));
 		return in_array(strtolower($debug_flag), ['1', 'yes', 'on', 'true'], true);
 	}
+}
 
+if (!function_exists('openvpn_schedule_log_debug')) {
 	function openvpn_schedule_log_debug($message) {
 		if (openvpn_schedule_hook_debug_enabled()) {
 			openvpn_schedule_log_runtime('[debug] ' . $message);
