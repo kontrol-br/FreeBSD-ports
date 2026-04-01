@@ -7,6 +7,11 @@
 require_once('auth.inc');
 require_once('config.inc');
 require_once('util.inc');
+if (file_exists('/etc/inc/filter.inc')) {
+	require_once('/etc/inc/filter.inc');
+} else {
+	include_once('filter.inc');
+}
 
 if (!function_exists('openvpn_schedule_log_runtime')) {
 	function openvpn_schedule_log_runtime($message) {
@@ -65,6 +70,102 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 		return [];
 	}
 
+	function openvpn_schedule_eval_manual_timerange($timerange, DateTimeImmutable $now_local) {
+		if (!is_array($timerange)) {
+			return false;
+		}
+
+		$now_month = (int)$now_local->format('n');
+		$now_day = (int)$now_local->format('j');
+		$now_weekday = (int)$now_local->format('N'); // 1..7 (Mon..Sun)
+		$now_minutes = ((int)$now_local->format('G') * 60) + (int)$now_local->format('i');
+		$now_hm = sprintf('%02d:%02d', (int)$now_local->format('G'), (int)$now_local->format('i'));
+
+		$month_raw = trim((string)($timerange['month'] ?? ''));
+		$day_raw = trim((string)($timerange['day'] ?? ''));
+		$position_raw = trim((string)($timerange['position'] ?? ''));
+		$hour_raw = trim((string)($timerange['hour'] ?? ''));
+		if ($hour_raw === '') {
+			$from = trim((string)($timerange['timerange_from'] ?? ($timerange['from'] ?? '')));
+			$to = trim((string)($timerange['timerange_to'] ?? ($timerange['to'] ?? '')));
+			if ($from !== '' && $to !== '') {
+				$hour_raw = $from . '-' . $to;
+			}
+		}
+
+		$match_month = true;
+		if ($month_raw !== '') {
+			$match_month = in_array($now_month, array_map('intval', explode(',', $month_raw)), true);
+		}
+
+		$match_day = true;
+		if ($day_raw !== '') {
+			$match_day = in_array($now_day, array_map('intval', explode(',', $day_raw)), true);
+		}
+
+		$match_position = true;
+		if ($position_raw !== '') {
+			$match_position = in_array($now_weekday, array_map('intval', explode(',', $position_raw)), true);
+		}
+
+		$match_hour = true;
+		if ($hour_raw !== '') {
+			$parts = explode('-', $hour_raw, 2);
+			$start = isset($parts[0]) ? trim((string)$parts[0]) : '';
+			$end = isset($parts[1]) ? trim((string)$parts[1]) : '';
+			$match_hour = false;
+			if ($start !== '' && $end !== '') {
+				$start_chunks = explode(':', $start, 2);
+				$end_chunks = explode(':', $end, 2);
+				if (isset($start_chunks[0], $start_chunks[1], $end_chunks[0], $end_chunks[1])) {
+					$start_minutes = ((int)$start_chunks[0] * 60) + (int)$start_chunks[1];
+					$end_minutes = ((int)$end_chunks[0] * 60) + (int)$end_chunks[1];
+					if ($end_minutes === $start_minutes) {
+						$match_hour = true;
+					} elseif ($end_minutes > $start_minutes) {
+						$match_hour = ($now_minutes >= $start_minutes && $now_minutes < $end_minutes);
+					} else {
+						$match_hour = ($now_minutes >= $start_minutes || $now_minutes < $end_minutes);
+					}
+				}
+			}
+		}
+
+		openvpn_schedule_log_debug(
+			'manual evaluator compare: now(local=' . $now_local->format('c') . ', month=' . $now_month . ', day=' . $now_day .
+			', weekday=' . $now_weekday . ', hour=' . $now_hm . ') vs schedule(month=' . ($month_raw === '' ? '*' : $month_raw) .
+			', day=' . ($day_raw === '' ? '*' : $day_raw) . ', position=' . ($position_raw === '' ? '*' : $position_raw) .
+			', hour=' . ($hour_raw === '' ? '*' : $hour_raw) . ') => month=' . ($match_month ? 'match' : 'no') .
+			', day=' . ($match_day ? 'match' : 'no') . ', position=' . ($match_position ? 'match' : 'no') .
+			', hour=' . ($match_hour ? 'match' : 'no')
+		);
+
+		return $match_month && $match_day && $match_position && $match_hour;
+	}
+
+	function openvpn_schedule_eval_with_manual_fallback($schedule_name, array $schedule_cfg) {
+		$timeranges = $schedule_cfg['timerange'] ?? [];
+		if (isset($timeranges['from']) || isset($timeranges['timerange_from'])) {
+			$timeranges = [$timeranges];
+		}
+		if (!is_array($timeranges) || empty($timeranges)) {
+			openvpn_schedule_log_debug("manual evaluator: schedule '{$schedule_name}' has no timeranges");
+			return null;
+		}
+
+		$now_local = new DateTimeImmutable('now');
+		openvpn_schedule_log_debug("manual evaluator: schedule '{$schedule_name}' raw timeranges=" . json_encode($timeranges));
+		foreach ($timeranges as $idx => $timerange) {
+			$in_range = openvpn_schedule_eval_manual_timerange($timerange, $now_local);
+			openvpn_schedule_log_debug("manual evaluator: schedule '{$schedule_name}' range #" . ($idx + 1) . ' => ' . ($in_range ? 'match' : 'no-match'));
+			if ($in_range) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	function openvpn_schedule_eval_with_core_engine($schedule_name, array $schedule_cfg) {
 		if (function_exists('filter_schedule_in_effect')) {
 			foreach ([$schedule_cfg, $schedule_name] as $arg) {
@@ -115,13 +216,24 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 			return false;
 		}
 
+		openvpn_schedule_log_debug("checking schedule '{$schedule_name}' at local " . date('c') . ' (tz=' . date_default_timezone_get() . ', utc=' . gmdate('c') . ')');
+
 		$core_match = openvpn_schedule_eval_with_core_engine($schedule_name, $schedule_cfg);
 		if ($core_match !== null) {
 			return (bool)$core_match;
 		}
 
-		// Fail closed when a schedule is configured but schedule engine is unavailable.
-		openvpn_schedule_log_runtime("schedule engine not available for '{$schedule_name}', denying login");
+		$manual_match = openvpn_schedule_eval_with_manual_fallback($schedule_name, $schedule_cfg);
+		if ($manual_match !== null) {
+			openvpn_schedule_log_debug("schedule '{$schedule_name}' evaluated by manual fallback => " . ($manual_match ? 'allow' : 'deny'));
+			return (bool)$manual_match;
+		}
+
+		$known = [
+			'filter_schedule_in_effect' => function_exists('filter_schedule_in_effect') ? 'yes' : 'no',
+			'is_schedule_in_time' => function_exists('is_schedule_in_time') ? 'yes' : 'no',
+		];
+		openvpn_schedule_log_runtime("schedule engine not available for '{$schedule_name}', denying login (functions: " . json_encode($known) . ')');
 		return false;
 	}
 }
@@ -163,19 +275,29 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 		return $text === '' ? (string)$default : $text;
 	}
 
+	function openvpn_schedule_hook_field_text($row, $field, $default = '') {
+		if (!is_array($row)) {
+			return (string)$default;
+		}
+		return openvpn_schedule_hook_text_value($row[$field] ?? $default, $default);
+	}
+
 	function openvpn_schedule_find_policy($username) {
 		$pkg = config_get_path(openvpn_schedule_hook_package_base_path() . '/config/0', []);
 
 		foreach (openvpn_schedule_get_entries($pkg) as $entry) {
-			if (strcasecmp((string)($entry['username'] ?? ''), $username) === 0) {
-				return openvpn_schedule_hook_text_value($entry['schedule'] ?? 'none', 'none');
+			$entry_username = openvpn_schedule_hook_field_text($entry, 'username', '');
+			if ($entry_username !== '' && strcasecmp($entry_username, $username) === 0) {
+				return openvpn_schedule_hook_field_text($entry, 'schedule', 'none');
 			}
 		}
 
 		// Backward compatibility with the previous user/group rule format.
 		foreach (($pkg['rule'] ?? []) as $rule) {
-			if (($rule['type'] ?? '') === 'user' && strcasecmp((string)($rule['name'] ?? ''), $username) === 0) {
-				return openvpn_schedule_hook_text_value($rule['schedule'] ?? 'none', 'none');
+			$rule_type = openvpn_schedule_hook_field_text($rule, 'type', '');
+			$rule_name = openvpn_schedule_hook_field_text($rule, 'name', '');
+			if (strcasecmp($rule_type, 'user') === 0 && $rule_name !== '' && strcasecmp($rule_name, $username) === 0) {
+				return openvpn_schedule_hook_field_text($rule, 'schedule', 'none');
 			}
 		}
 

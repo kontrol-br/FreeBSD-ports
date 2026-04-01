@@ -20,6 +20,18 @@ function openvpn_schedule_log($message) {
 	log_error(OVPN_SCHEDULE_LOG_TAG . ' ' . $message);
 }
 
+function openvpn_schedule_debug_enabled() {
+	$pkg = config_get_path(openvpn_schedule_package_base_path() . '/config/0', []);
+	$debug_flag = trim((string)($pkg['debug_auth'] ?? ''));
+	return in_array(strtolower($debug_flag), ['1', 'yes', 'on', 'true'], true);
+}
+
+function openvpn_schedule_log_debug($message) {
+	if (openvpn_schedule_debug_enabled()) {
+		openvpn_schedule_log('[debug] ' . $message);
+	}
+}
+
 function openvpn_schedule_normalized_package_key($key) {
 	return preg_replace('/[^a-z0-9]/', '', strtolower((string)$key));
 }
@@ -375,6 +387,7 @@ function openvpn_schedule_collect_connected_users_from_status($status_file) {
 	$inside_client_list = false;
 	$lines = @file($status_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 	if (!is_array($lines)) {
+		openvpn_schedule_log_debug("status parser: unable to read '{$status_file}'");
 		return [];
 	}
 
@@ -401,6 +414,7 @@ function openvpn_schedule_collect_connected_users_from_status($status_file) {
 		}
 	}
 
+	openvpn_schedule_log_debug("status parser: file '{$status_file}' users=" . json_encode(array_keys($users)));
 	return array_keys($users);
 }
 
@@ -412,6 +426,7 @@ function openvpn_schedule_collect_connected_users() {
 		glob('/tmp/openvpn-status*') ?: []
 	);
 	$status_files = array_unique($status_files);
+	openvpn_schedule_log_debug('collector: discovered status files=' . json_encode(array_values($status_files)));
 
 	foreach ($status_files as $status_file) {
 		foreach (openvpn_schedule_collect_connected_users_from_status($status_file) as $username) {
@@ -419,19 +434,111 @@ function openvpn_schedule_collect_connected_users() {
 		}
 	}
 
-	foreach (openvpn_schedule_collect_connected_users_from_management() as $username) {
+	$management_users = openvpn_schedule_collect_connected_users_from_management();
+	openvpn_schedule_log_debug('collector: users from management=' . json_encode(array_values($management_users)));
+	foreach ($management_users as $username) {
 		$users[$username] = true;
 	}
 
+	openvpn_schedule_log_debug('collector: merged connected users=' . json_encode(array_values(array_keys($users))));
 	return array_keys($users);
+}
+
+function openvpn_schedule_open_management_socket($endpoint) {
+	if (!is_array($endpoint)) {
+		return false;
+	}
+
+	$type = (string)($endpoint['type'] ?? '');
+	if ($type === 'unix') {
+		$path = (string)($endpoint['path'] ?? '');
+		if ($path === '') {
+			openvpn_schedule_log_debug('management socket: unix endpoint without path');
+			return false;
+		}
+		$socket = @stream_socket_client('unix://' . $path, $errno, $errstr, 1);
+		if ($socket === false) {
+			openvpn_schedule_log_debug("management socket: failed unix://{$path} ({$errno}: {$errstr})");
+		}
+		return $socket;
+	}
+
+	if ($type === 'tcp') {
+		$host = (string)($endpoint['host'] ?? '127.0.0.1');
+		$port = (int)($endpoint['port'] ?? 0);
+		if ($port <= 0) {
+			openvpn_schedule_log_debug("management socket: invalid tcp endpoint host='{$host}' port='{$port}'");
+			return false;
+		}
+		$socket = @stream_socket_client('tcp://' . $host . ':' . $port, $errno, $errstr, 1);
+		if ($socket === false) {
+			openvpn_schedule_log_debug("management socket: failed tcp://{$host}:{$port} ({$errno}: {$errstr})");
+		}
+		return $socket;
+	}
+
+	openvpn_schedule_log_debug("management socket: unsupported endpoint type '{$type}'");
+	return false;
+}
+
+function openvpn_schedule_management_endpoints() {
+	$endpoints = [];
+
+	foreach (glob('/var/etc/openvpn/server*.sock') ?: [] as $socket_file) {
+		$endpoints['unix:' . $socket_file] = [
+			'type' => 'unix',
+			'path' => $socket_file,
+		];
+	}
+
+	foreach (glob('/var/etc/openvpn/server*.conf') ?: [] as $config_file) {
+		$lines = @file($config_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		if (!is_array($lines)) {
+			continue;
+		}
+
+		foreach ($lines as $line) {
+			$line = trim((string)$line);
+			if ($line === '' || strpos($line, '#') === 0 || strpos($line, ';') === 0) {
+				continue;
+			}
+			if (preg_match('/^management\s+(.+)$/', $line, $matches) !== 1) {
+				continue;
+			}
+
+			$parts = preg_split('/\s+/', trim((string)$matches[1]));
+			if (!is_array($parts) || empty($parts)) {
+				continue;
+			}
+
+			if (count($parts) === 1 && strpos($parts[0], '/') === 0) {
+				$path = trim((string)$parts[0]);
+				$endpoints['unix:' . $path] = ['type' => 'unix', 'path' => $path];
+				continue;
+			}
+
+			$host = trim((string)($parts[0] ?? '127.0.0.1'));
+			$port = (int)($parts[1] ?? 0);
+			if ($port > 0) {
+				$endpoints['tcp:' . $host . ':' . $port] = [
+					'type' => 'tcp',
+					'host' => $host,
+					'port' => $port,
+				];
+			}
+		}
+	}
+
+	openvpn_schedule_log_debug('management endpoints: ' . json_encode(array_values($endpoints)));
+	return array_values($endpoints);
 }
 
 function openvpn_schedule_collect_connected_users_from_management() {
 	$users = [];
-	$sockets = glob('/var/etc/openvpn/server*.sock') ?: [];
 
-	foreach ($sockets as $socket_file) {
-		$socket = @stream_socket_client('unix://' . $socket_file, $errno, $errstr, 1);
+	foreach (openvpn_schedule_management_endpoints() as $endpoint) {
+		openvpn_schedule_log_debug('management collector: querying endpoint=' . json_encode($endpoint));
+		$socket = openvpn_schedule_open_management_socket($endpoint);
 		if ($socket === false) {
 			continue;
 		}
@@ -453,6 +560,9 @@ function openvpn_schedule_collect_connected_users_from_management() {
 			$columns = str_getcsv($line);
 			$common_name = trim((string)($columns[1] ?? ''));
 			$username = trim((string)($columns[9] ?? ''));
+			if ($username === '' || strcasecmp($username, 'UNDEF') === 0) {
+				$username = trim((string)($columns[0] ?? ''));
+			}
 
 			if ($username !== '' && strcasecmp($username, 'UNDEF') !== 0) {
 				$users[$username] = true;
@@ -465,15 +575,15 @@ function openvpn_schedule_collect_connected_users_from_management() {
 		fclose($socket);
 	}
 
+	openvpn_schedule_log_debug('management collector: parsed users=' . json_encode(array_keys($users)));
 	return array_keys($users);
 }
 
 function openvpn_schedule_disconnect_user_from_openvpn($username) {
-	$sockets = glob('/var/etc/openvpn/server*.sock') ?: [];
 	$disconnected = false;
 
-	foreach ($sockets as $socket_file) {
-		$socket = @stream_socket_client('unix://' . $socket_file, $errno, $errstr, 1);
+	foreach (openvpn_schedule_management_endpoints() as $endpoint) {
+		$socket = openvpn_schedule_open_management_socket($endpoint);
 		if ($socket === false) {
 			continue;
 		}
@@ -492,6 +602,7 @@ function openvpn_schedule_disconnect_out_of_schedule_users() {
 		openvpn_schedule_log('cron watcher: no connected users found');
 		return;
 	}
+	openvpn_schedule_log_debug('cron watcher: connected users found=' . json_encode(array_values($connected_users)));
 
 	foreach ($connected_users as $username) {
 		$schedule = openvpn_schedule_find_policy($username);
