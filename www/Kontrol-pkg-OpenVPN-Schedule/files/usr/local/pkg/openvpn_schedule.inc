@@ -147,6 +147,16 @@ function openvpn_schedule_read_manifest() {
 	return is_array($data) ? $data : null;
 }
 
+function openvpn_schedule_insert_before_first($content, $needle, $insert, &$insert_count) {
+	$pos = strpos($content, $needle);
+	if ($pos === false) {
+		$insert_count = 0;
+		return $content;
+	}
+	$insert_count = 1;
+	return substr($content, 0, $pos) . $insert . $needle . substr($content, $pos + strlen($needle));
+}
+
 function openvpn_schedule_apply_runtime_patch() {
 	safe_mkdir(OVPN_SCHEDULE_STATE_DIR);
 	if (!file_exists(OVPN_SCHEDULE_TARGET)) {
@@ -171,13 +181,26 @@ function openvpn_schedule_apply_runtime_patch() {
 	$patched = $current;
 
 	if (strpos($patched, OVPN_SCHEDULE_REQUIRE_MARK) === false) {
-		$patched = preg_replace(
-			"/(require_once\\((['\"])auth\\.inc\\2\\);\\s*)/m",
-			"$1" . OVPN_SCHEDULE_REQUIRE_MARK . "\n",
-			$patched,
-			1,
-			$require_count
-		);
+		$require_count = 0;
+		$require_anchors = [
+			'require_once("auth.inc");',
+			"require_once('auth.inc');",
+		];
+		foreach ($require_anchors as $needle) {
+			$patched = openvpn_schedule_insert_before_first($patched, $needle, OVPN_SCHEDULE_REQUIRE_MARK . "\n", $require_count);
+			if ((int)$require_count > 0) {
+				break;
+			}
+		}
+		if ((int)$require_count === 0) {
+			$patched = preg_replace(
+				"/(require_once\\((['\"])auth\\.inc\\2\\);\\s*)/m",
+				"$1" . OVPN_SCHEDULE_REQUIRE_MARK . "\n",
+				$patched,
+				1,
+				$require_count
+			);
+		}
 		if ((int)$require_count === 0) {
 			openvpn_schedule_log('compatibility error: auth include anchor not found, refusing to patch');
 			return false;
@@ -186,24 +209,33 @@ function openvpn_schedule_apply_runtime_patch() {
 
 	if (strpos($patched, OVPN_SCHEDULE_CALL_MARK) === false) {
 		$call_count = 0;
-		$call_anchors = [
-			// Older pfSense variants initialize $authcfg directly.
-			"/(\\$authcfg\\s*=\\s*(?:array\\s*\\(\\s*\\)|\\[\\s*\\])\\s*;)/m" =>
-				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
-			// Newer pfSense variants authenticate inside the authmodes loop.
-			"/(^\\s*foreach\\s*\\(\\s*\\$authmodes\\s+as\\s+\\$authmode\\s*\\)\\s*\\{)/m" =>
-				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
-			// Some variants initialize auth state before any backend call.
-			"/(^\\s*\\$authenticated\\s*=\\s*false\\s*;)/m" =>
-				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
-			// Last-resort anchor: first explicit authenticate_user invocation.
-			"/(^\\s*\\$authenticated\\s*=\\s*authenticate_user\\s*\\()/m" =>
-				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+		$call_needles = [
+			// Most common pfSense 2.7.x format.
+			"foreach (\$authmodes as \$authmode) {",
+			// Older variants.
+			'$authcfg = array();',
+			'$authcfg = [];',
+			// Additional fallback anchors.
+			'$authenticated = false;',
 		];
-		foreach ($call_anchors as $pattern => $replacement) {
-			$patched = preg_replace($pattern, $replacement, $patched, 1, $call_count);
+		foreach ($call_needles as $needle) {
+			$patched = openvpn_schedule_insert_before_first($patched, $needle, OVPN_SCHEDULE_CALL_MARK . "\n\n", $call_count);
 			if ((int)$call_count > 0) {
 				break;
+			}
+		}
+		if ((int)$call_count === 0) {
+			$call_anchors = [
+				"/(^\\s*foreach\\s*\\(\\s*\\$authmodes\\s+as\\s+\\$authmode\\s*\\)\\s*\\{)/m" => OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+				"/(\\$authcfg\\s*=\\s*(?:array\\s*\\(\\s*\\)|\\[\\s*\\])\\s*;)/m" => OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+				"/(^\\s*\\$authenticated\\s*=\\s*false\\s*;)/m" => OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+				"/(^\\s*\\$authenticated\\s*=\\s*authenticate_user\\s*\\()/m" => OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+			];
+			foreach ($call_anchors as $pattern => $replacement) {
+				$patched = preg_replace($pattern, $replacement, $patched, 1, $call_count);
+				if ((int)$call_count > 0) {
+					break;
+				}
 			}
 		}
 		if ((int)$call_count === 0) {
