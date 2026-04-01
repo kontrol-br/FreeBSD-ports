@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-OpenVPN-Schedule
 PORTVERSION=	1.6
-PORTREVISION=	# empty
+PORTREVISION=	7
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty

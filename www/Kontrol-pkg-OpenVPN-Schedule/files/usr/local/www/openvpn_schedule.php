@@ -19,8 +19,24 @@ function openvpn_schedule_normalize_text($value) {
 	return trim((string)$text);
 }
 
+function openvpn_schedule_ui_normalized_package_key($key) {
+	return preg_replace('/[^a-z0-9]/', '', strtolower((string)$key));
+}
+
+function openvpn_schedule_ui_package_base_path() {
+	$installed = config_get_path('installedpackages', []);
+	if (is_array($installed)) {
+		foreach (array_keys($installed) as $key) {
+			if (openvpn_schedule_ui_normalized_package_key($key) === 'openvpnschedule') {
+				return 'installedpackages/' . $key;
+			}
+		}
+	}
+	return 'installedpackages/openvpn_schedule';
+}
+
 function openvpn_schedule_save_user_schedules(array $entries) {
-	config_set_path('installedpackages/openvpn_schedule/config/0/user_schedule', ['item' => array_values($entries)]);
+	config_set_path(openvpn_schedule_ui_package_base_path() . '/config/0/user_schedule', ['item' => array_values($entries)]);
 }
 
 function openvpn_schedule_get_user_schedule_entries(array $pkgcfg) {
@@ -98,7 +114,7 @@ function openvpn_schedule_get_visible_users() {
 
 function openvpn_schedule_build_user_map() {
 	$map = [];
-	$pkgcfg = config_get_path('installedpackages/openvpn_schedule/config/0', []);
+	$pkgcfg = config_get_path(openvpn_schedule_ui_package_base_path() . '/config/0', []);
 
 	foreach (openvpn_schedule_get_user_schedule_entries($pkgcfg) as $entry) {
 		$username = openvpn_schedule_normalize_text($entry['username'] ?? '');
@@ -124,6 +140,11 @@ foreach ($schedule_names as $schedule_name) {
 
 $users = openvpn_schedule_get_visible_users();
 $current_user_map = openvpn_schedule_build_user_map();
+foreach ($current_user_map as $saved_schedule) {
+	if ($saved_schedule !== 'none' && !array_key_exists($saved_schedule, $schedule_options)) {
+		$schedule_options[$saved_schedule] = $saved_schedule . ' (missing schedule)';
+	}
+}
 
 if ($_POST) {
 	$input_errors = [];
@@ -155,7 +176,7 @@ if ($_POST) {
 		openvpn_schedule_save_user_schedules($new_entries);
 		write_config('Updated OpenVPN per-user schedule settings', false);
 		openvpn_schedule_sync();
-		header(url_safe('Location: /openvpn_schedule.php?save=1'));
+		header('Location: /openvpn_schedule.php?save=1');
 		exit;
 	}
 }
@@ -179,7 +200,7 @@ $section->addInput(new Form_StaticText(
 
 $section->addInput(new Form_StaticText(
 	'Storage',
-	'Settings are stored in config.xml under installedpackages/openvpn_schedule/config/0/user_schedule and are automatically removed when this package is uninstalled.'
+	'Settings are stored in config.xml under installedpackages/<openvpn_schedule>/config/0/user_schedule and are automatically removed when this package is uninstalled.'
 ));
 
 if (empty($schedule_names)) {
