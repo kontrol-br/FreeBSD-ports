@@ -139,6 +139,14 @@ function openvpn_schedule_build_user_map() {
 	return $map;
 }
 
+function openvpn_schedule_user_label(array $user) {
+	$label = '👤 ' . $user['name'];
+	if ($user['descr'] !== '') {
+		$label .= ' (' . $user['descr'] . ')';
+	}
+	return $label;
+}
+
 $schedule_names = openvpn_schedule_get_all_schedule_names();
 $schedule_options = ['none' => 'None'];
 foreach ($schedule_names as $schedule_name) {
@@ -218,10 +226,7 @@ if (empty($schedule_names)) {
 }
 
 foreach ($users as $user) {
-	$label = $user['name'];
-	if ($user['descr'] !== '') {
-		$label .= ' (' . $user['descr'] . ')';
-	}
+	$label = openvpn_schedule_user_label($user);
 	$field_name = 'schedule_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $user['name']);
 	$current_value = $current_user_map[$user['name']] ?? 'none';
 	if (!array_key_exists($current_value, $schedule_options)) {
