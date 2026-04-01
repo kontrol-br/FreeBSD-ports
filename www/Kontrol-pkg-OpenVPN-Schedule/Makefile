@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-OpenVPN-Schedule
 PORTVERSION=	1.6
-PORTREVISION=	8
+PORTREVISION=	9
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -35,6 +35,8 @@ do-install:
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule.inc \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule_hook.inc \
+		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/openvpn_schedule_cron.php \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/openvpn_schedule.php \
 		${STAGEDIR}${PREFIX}/www

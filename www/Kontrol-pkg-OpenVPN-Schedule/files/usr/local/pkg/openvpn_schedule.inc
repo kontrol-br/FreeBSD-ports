@@ -6,6 +6,7 @@
 
 require_once('config.inc');
 require_once('util.inc');
+require_once('/usr/local/pkg/openvpn_schedule_hook.inc');
 
 const OVPN_SCHEDULE_LOG_TAG = '[openvpn_schedule]';
 const OVPN_SCHEDULE_STATE_DIR = '/var/db/openvpn_schedule';
@@ -13,6 +14,7 @@ const OVPN_SCHEDULE_MANIFEST = '/var/db/openvpn_schedule/manifest.json';
 const OVPN_SCHEDULE_TARGET = '/etc/inc/openvpn.auth-user.php';
 const OVPN_SCHEDULE_REQUIRE_MARK = "require_once('/usr/local/pkg/openvpn_schedule_hook.inc');";
 const OVPN_SCHEDULE_CALL_MARK = "openvpn_schedule_enforce_or_exit();";
+const OVPN_SCHEDULE_CRON_COMMAND = '/usr/local/bin/php -f /usr/local/pkg/openvpn_schedule_cron.php';
 
 function openvpn_schedule_log($message) {
 	log_error(OVPN_SCHEDULE_LOG_TAG . ' ' . $message);
@@ -48,6 +50,7 @@ function openvpn_schedule_user_schedule_entries($pkgcfg) {
 
 function openvpn_schedule_sync() {
 	openvpn_schedule_apply_runtime_patch();
+	openvpn_schedule_setup_cron(true);
 }
 
 function openvpn_schedule_install() {
@@ -56,6 +59,7 @@ function openvpn_schedule_install() {
 		openvpn_schedule_log('install failed: patch apply unsuccessful');
 		return;
 	}
+	openvpn_schedule_setup_cron(true);
 	openvpn_schedule_log('install done');
 }
 
@@ -66,6 +70,7 @@ function openvpn_schedule_upgrade() {
 		openvpn_schedule_log('upgrade failed: patch apply unsuccessful');
 		return;
 	}
+	openvpn_schedule_setup_cron(true);
 	openvpn_schedule_log('upgrade done');
 }
 
@@ -75,6 +80,7 @@ function openvpn_schedule_deinstall() {
 		openvpn_schedule_log('deinstall failed: could not restore original auth file. Manual recovery required from backup in ' . OVPN_SCHEDULE_STATE_DIR);
 		return;
 	}
+	openvpn_schedule_setup_cron(false);
 	config_del_path(openvpn_schedule_package_base_path());
 	write_config('Removed OpenVPN schedule package configuration');
 	@unlink(OVPN_SCHEDULE_MANIFEST);
@@ -292,4 +298,166 @@ function openvpn_schedule_restore_runtime_patch() {
 	@unlink(OVPN_SCHEDULE_MANIFEST);
 	openvpn_schedule_log('runtime patch restored from backup');
 	return true;
+}
+
+function openvpn_schedule_has_enforced_user_schedules() {
+	$pkgcfg = config_get_path(openvpn_schedule_package_base_path() . '/config/0', []);
+	foreach (openvpn_schedule_user_schedule_entries($pkgcfg) as $entry) {
+		$schedule = trim((string)($entry['schedule'] ?? ''));
+		if ($schedule !== '' && strcasecmp($schedule, 'none') !== 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function openvpn_schedule_setup_cron($active = true) {
+	$should_enable = (bool)$active && openvpn_schedule_has_enforced_user_schedules();
+	if ($should_enable) {
+		install_cron_job(OVPN_SCHEDULE_CRON_COMMAND, true, '*/5', '*', '*', '*', '*', 'root');
+		openvpn_schedule_log('cron watcher enabled (every 5 minutes)');
+		return;
+	}
+	install_cron_job(OVPN_SCHEDULE_CRON_COMMAND, false);
+	openvpn_schedule_log('cron watcher disabled');
+}
+
+function openvpn_schedule_collect_connected_users_from_status($status_file) {
+	$users = [];
+	$inside_client_list = false;
+	$lines = @file($status_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+	if (!is_array($lines)) {
+		return [];
+	}
+
+	foreach ($lines as $line) {
+		$line = trim((string)$line);
+		if ($line === '') {
+			continue;
+		}
+		if (strpos($line, 'Common Name,') === 0) {
+			$inside_client_list = true;
+			continue;
+		}
+		if (!$inside_client_list) {
+			continue;
+		}
+		if (strpos($line, 'ROUTING TABLE') === 0 || $line === 'GLOBAL STATS' || $line === 'END') {
+			break;
+		}
+
+		$columns = str_getcsv($line);
+		$username = trim((string)($columns[0] ?? ''));
+		if ($username !== '' && strcasecmp($username, 'UNDEF') !== 0) {
+			$users[$username] = true;
+		}
+	}
+
+	return array_keys($users);
+}
+
+function openvpn_schedule_collect_connected_users() {
+	$users = [];
+	$status_files = array_merge(
+		glob('/var/etc/openvpn/*.status') ?: [],
+		glob('/var/etc/openvpn/status*') ?: [],
+		glob('/tmp/openvpn-status*') ?: []
+	);
+	$status_files = array_unique($status_files);
+
+	foreach ($status_files as $status_file) {
+		foreach (openvpn_schedule_collect_connected_users_from_status($status_file) as $username) {
+			$users[$username] = true;
+		}
+	}
+
+	foreach (openvpn_schedule_collect_connected_users_from_management() as $username) {
+		$users[$username] = true;
+	}
+
+	return array_keys($users);
+}
+
+function openvpn_schedule_collect_connected_users_from_management() {
+	$users = [];
+	$sockets = glob('/var/etc/openvpn/server*.sock') ?: [];
+
+	foreach ($sockets as $socket_file) {
+		$socket = @stream_socket_client('unix://' . $socket_file, $errno, $errstr, 1);
+		if ($socket === false) {
+			continue;
+		}
+
+		stream_set_timeout($socket, 1);
+		fwrite($socket, "status 2\n");
+		fwrite($socket, "quit\n");
+
+		while (!feof($socket)) {
+			$line = fgets($socket);
+			if ($line === false) {
+				break;
+			}
+			$line = trim((string)$line);
+			if (strpos($line, 'CLIENT_LIST,') !== 0) {
+				continue;
+			}
+
+			$columns = str_getcsv($line);
+			$common_name = trim((string)($columns[1] ?? ''));
+			$username = trim((string)($columns[9] ?? ''));
+
+			if ($username !== '' && strcasecmp($username, 'UNDEF') !== 0) {
+				$users[$username] = true;
+			}
+			if ($common_name !== '' && strcasecmp($common_name, 'UNDEF') !== 0) {
+				$users[$common_name] = true;
+			}
+		}
+
+		fclose($socket);
+	}
+
+	return array_keys($users);
+}
+
+function openvpn_schedule_disconnect_user_from_openvpn($username) {
+	$sockets = glob('/var/etc/openvpn/server*.sock') ?: [];
+	$disconnected = false;
+
+	foreach ($sockets as $socket_file) {
+		$socket = @stream_socket_client('unix://' . $socket_file, $errno, $errstr, 1);
+		if ($socket === false) {
+			continue;
+		}
+		fwrite($socket, "kill {$username}\n");
+		fwrite($socket, "quit\n");
+		fclose($socket);
+		$disconnected = true;
+	}
+
+	return $disconnected;
+}
+
+function openvpn_schedule_disconnect_out_of_schedule_users() {
+	$connected_users = openvpn_schedule_collect_connected_users();
+	if (empty($connected_users)) {
+		openvpn_schedule_log('cron watcher: no connected users found');
+		return;
+	}
+
+	foreach ($connected_users as $username) {
+		$schedule = openvpn_schedule_find_policy($username);
+		if (strcasecmp($schedule, 'none') === 0) {
+			continue;
+		}
+		if (openvpn_schedule_now_matches($schedule)) {
+			continue;
+		}
+
+		if (openvpn_schedule_disconnect_user_from_openvpn($username)) {
+			openvpn_schedule_log("cron watcher: disconnected user '{$username}' outside schedule '{$schedule}'");
+		} else {
+			openvpn_schedule_log("cron watcher: unable to disconnect user '{$username}' outside schedule '{$schedule}' (management socket unavailable)");
+		}
+	}
 }
