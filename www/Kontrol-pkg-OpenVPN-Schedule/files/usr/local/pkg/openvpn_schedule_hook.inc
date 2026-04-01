@@ -14,7 +14,48 @@ if (!function_exists('openvpn_schedule_log_runtime')) {
 	}
 }
 
+if (!function_exists('openvpn_schedule_hook_debug_enabled')) {
+	function openvpn_schedule_hook_debug_enabled() {
+		$pkg = config_get_path(openvpn_schedule_hook_package_base_path() . '/config/0', []);
+		$debug_flag = trim((string)($pkg['debug_auth'] ?? ''));
+		return in_array(strtolower($debug_flag), ['1', 'yes', 'on', 'true'], true);
+	}
+
+	function openvpn_schedule_log_debug($message) {
+		if (openvpn_schedule_hook_debug_enabled()) {
+			openvpn_schedule_log_runtime('[debug] ' . $message);
+		}
+	}
+}
+
 if (!function_exists('openvpn_schedule_now_matches')) {
+	function openvpn_schedule_hook_eval_to_bool($value) {
+		if (is_bool($value)) {
+			return $value;
+		}
+
+		if (is_int($value) || is_float($value)) {
+			if ((int)$value === 0) {
+				return false;
+			}
+			if ((int)$value === 1) {
+				return true;
+			}
+		}
+
+		if (is_string($value)) {
+			$normalized = strtolower(trim($value));
+			if (in_array($normalized, ['0', 'no', 'off', 'false'], true)) {
+				return false;
+			}
+			if (in_array($normalized, ['1', 'yes', 'on', 'true'], true)) {
+				return true;
+			}
+		}
+
+		return null;
+	}
+
 	function openvpn_schedule_get_schedule_config($schedule_name) {
 		foreach (config_get_path('schedules/schedule', []) as $schedule) {
 			if (strcasecmp(trim((string)($schedule['name'] ?? '')), $schedule_name) === 0) {
@@ -28,9 +69,16 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 		if (function_exists('filter_schedule_in_effect')) {
 			foreach ([$schedule_cfg, $schedule_name] as $arg) {
 				try {
-					return (bool)filter_schedule_in_effect($arg);
+					$raw = filter_schedule_in_effect($arg);
+					$normalized = openvpn_schedule_hook_eval_to_bool($raw);
+					if ($normalized !== null) {
+						openvpn_schedule_log_debug("schedule '{$schedule_name}' evaluated by filter_schedule_in_effect(" . gettype($arg) . ') => ' . ($normalized ? 'allow' : 'deny'));
+						return $normalized;
+					}
+					openvpn_schedule_log_debug("schedule '{$schedule_name}' returned non-boolean from filter_schedule_in_effect(" . gettype($arg) . '), trying fallback signatures');
 				} catch (Throwable $e) {
 					/* Ignore and continue trying compatibility signatures. */
+					openvpn_schedule_log_debug("filter_schedule_in_effect(" . gettype($arg) . ') failed for schedule ' . "'{$schedule_name}': " . $e->getMessage());
 				}
 			}
 		}
@@ -38,9 +86,16 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 		if (function_exists('is_schedule_in_time')) {
 			foreach ([$schedule_cfg, $schedule_name] as $arg) {
 				try {
-					return (bool)is_schedule_in_time($arg);
+					$raw = is_schedule_in_time($arg);
+					$normalized = openvpn_schedule_hook_eval_to_bool($raw);
+					if ($normalized !== null) {
+						openvpn_schedule_log_debug("schedule '{$schedule_name}' evaluated by is_schedule_in_time(" . gettype($arg) . ') => ' . ($normalized ? 'allow' : 'deny'));
+						return $normalized;
+					}
+					openvpn_schedule_log_debug("schedule '{$schedule_name}' returned non-boolean from is_schedule_in_time(" . gettype($arg) . '), trying fallback signatures');
 				} catch (Throwable $e) {
 					/* Ignore and continue trying compatibility signatures. */
+					openvpn_schedule_log_debug("is_schedule_in_time(" . gettype($arg) . ') failed for schedule ' . "'{$schedule_name}': " . $e->getMessage());
 				}
 			}
 		}
@@ -96,19 +151,31 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 		return is_array($user_schedule) ? $user_schedule : [];
 	}
 
+	function openvpn_schedule_hook_text_value($value, $default = '') {
+		while (is_array($value)) {
+			$value = reset($value);
+			if ($value === false) {
+				$value = $default;
+				break;
+			}
+		}
+		$text = trim((string)$value);
+		return $text === '' ? (string)$default : $text;
+	}
+
 	function openvpn_schedule_find_policy($username) {
 		$pkg = config_get_path(openvpn_schedule_hook_package_base_path() . '/config/0', []);
 
 		foreach (openvpn_schedule_get_entries($pkg) as $entry) {
 			if (strcasecmp((string)($entry['username'] ?? ''), $username) === 0) {
-				return trim($entry['schedule'] ?? 'none');
+				return openvpn_schedule_hook_text_value($entry['schedule'] ?? 'none', 'none');
 			}
 		}
 
 		// Backward compatibility with the previous user/group rule format.
 		foreach (($pkg['rule'] ?? []) as $rule) {
 			if (($rule['type'] ?? '') === 'user' && strcasecmp((string)($rule['name'] ?? ''), $username) === 0) {
-				return trim($rule['schedule'] ?? 'none');
+				return openvpn_schedule_hook_text_value($rule['schedule'] ?? 'none', 'none');
 			}
 		}
 
@@ -117,6 +184,31 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 }
 
 if (!function_exists('openvpn_schedule_enforce_or_exit')) {
+	function openvpn_schedule_decode_username_candidate($value) {
+		$username = trim((string)$value);
+		if ($username === '') {
+			return '';
+		}
+
+		/*
+		 * Some auth flows can pass username in base64 (e.g. "am9hbw==" for "joao").
+		 * Decode only when the input clearly looks like base64 and the decoded value
+		 * is a non-empty printable token.
+		 */
+		if (preg_match('/^[A-Za-z0-9+\/]+={0,2}$/', $username) === 1 && (strlen($username) % 4) === 0) {
+			$decoded = base64_decode($username, true);
+			if ($decoded !== false) {
+				$decoded = trim((string)$decoded);
+				if ($decoded !== '' && preg_match('/^[[:print:]]+$/', $decoded) === 1) {
+					openvpn_schedule_log_debug("decoded base64 username '{$username}' => '{$decoded}'");
+					return $decoded;
+				}
+			}
+		}
+
+		return $username;
+	}
+
 	function openvpn_schedule_extract_username_from_argv_file() {
 		$argv = $_SERVER['argv'] ?? [];
 		if (!is_array($argv)) {
@@ -135,7 +227,7 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 			if (!is_array($lines) || !isset($lines[0])) {
 				continue;
 			}
-			$username = trim((string)$lines[0]);
+			$username = openvpn_schedule_decode_username_candidate($lines[0] ?? '');
 			if ($username !== '') {
 				return $username;
 			}
@@ -160,7 +252,7 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 		];
 
 		foreach ($candidates as $candidate) {
-			$username = trim((string)$candidate);
+			$username = openvpn_schedule_decode_username_candidate($candidate);
 			if ($username !== '') {
 				return $username;
 			}
@@ -178,6 +270,7 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 
 		$schedule = openvpn_schedule_find_policy($username);
 		$allowed = openvpn_schedule_now_matches($schedule);
+		openvpn_schedule_log_debug("auth intercept user='{$username}' schedule='{$schedule}' decision=" . ($allowed ? 'allow' : 'deny'));
 		if ($allowed) {
 			if (strcasecmp($schedule, 'none') !== 0) {
 				openvpn_schedule_log_runtime("OpenVPN login allowed for user '{$username}' inside schedule '{$schedule}'");
@@ -185,7 +278,7 @@ if (!function_exists('openvpn_schedule_enforce_or_exit')) {
 			return;
 		}
 
-		openvpn_schedule_log_runtime("OpenVPN login denied for user '{$username}' outside allowed schedule '{$schedule}'");
+		openvpn_schedule_log_runtime("OpenVPN login denied for user '{$username}' outside allowed schedule '{$schedule}' (reason: schedule not active at authentication time)");
 		exit(1);
 	}
 }
