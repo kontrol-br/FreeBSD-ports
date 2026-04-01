@@ -36,15 +36,15 @@ if (!function_exists('openvpn_schedule_now_matches')) {
 }
 
 if (!function_exists('openvpn_schedule_find_policy')) {
-	function openvpn_schedule_normalized_package_key($key) {
+	function openvpn_schedule_hook_normalized_package_key($key) {
 		return preg_replace('/[^a-z0-9]/', '', strtolower((string)$key));
 	}
 
-	function openvpn_schedule_package_base_path() {
+	function openvpn_schedule_hook_package_base_path() {
 		$installed = config_get_path('installedpackages', []);
 		if (is_array($installed)) {
 			foreach (array_keys($installed) as $key) {
-				if (openvpn_schedule_normalized_package_key($key) === 'openvpnschedule') {
+				if (openvpn_schedule_hook_normalized_package_key($key) === 'openvpnschedule') {
 					return 'installedpackages/' . $key;
 				}
 			}
@@ -61,7 +61,7 @@ if (!function_exists('openvpn_schedule_find_policy')) {
 	}
 
 	function openvpn_schedule_find_policy($username) {
-		$pkg = config_get_path(openvpn_schedule_package_base_path() . '/config/0', []);
+		$pkg = config_get_path(openvpn_schedule_hook_package_base_path() . '/config/0', []);
 
 		foreach (openvpn_schedule_get_entries($pkg) as $entry) {
 			if (($entry['username'] ?? '') === $username) {
