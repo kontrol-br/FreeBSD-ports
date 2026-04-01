@@ -18,6 +18,26 @@ function openvpn_schedule_log($message) {
 	log_error(OVPN_SCHEDULE_LOG_TAG . ' ' . $message);
 }
 
+function openvpn_schedule_normalized_package_key($key) {
+	return preg_replace('/[^a-z0-9]/', '', strtolower((string)$key));
+}
+
+function openvpn_schedule_detect_package_key() {
+	$installed = config_get_path('installedpackages', []);
+	if (is_array($installed)) {
+		foreach (array_keys($installed) as $key) {
+			if (openvpn_schedule_normalized_package_key($key) === 'openvpnschedule') {
+				return (string)$key;
+			}
+		}
+	}
+	return 'openvpn_schedule';
+}
+
+function openvpn_schedule_package_base_path() {
+	return 'installedpackages/' . openvpn_schedule_detect_package_key();
+}
+
 function openvpn_schedule_user_schedule_entries($pkgcfg) {
 	$user_schedule = $pkgcfg['user_schedule'] ?? [];
 	if (is_array($user_schedule) && isset($user_schedule['item']) && is_array($user_schedule['item'])) {
@@ -55,7 +75,7 @@ function openvpn_schedule_deinstall() {
 		openvpn_schedule_log('deinstall failed: could not restore original auth file. Manual recovery required from backup in ' . OVPN_SCHEDULE_STATE_DIR);
 		return;
 	}
-	config_del_path('installedpackages/openvpn_schedule');
+	config_del_path(openvpn_schedule_package_base_path());
 	write_config('Removed OpenVPN schedule package configuration');
 	@unlink(OVPN_SCHEDULE_MANIFEST);
 	@rmdir(OVPN_SCHEDULE_STATE_DIR);
@@ -63,9 +83,9 @@ function openvpn_schedule_deinstall() {
 }
 
 function openvpn_schedule_migrate_config() {
-	$cfg = config_get_path('installedpackages/openvpn_schedule', []);
+	$cfg = config_get_path(openvpn_schedule_package_base_path(), []);
 	if (!is_array($cfg)) {
-		config_set_path('installedpackages/openvpn_schedule', []);
+		config_set_path(openvpn_schedule_package_base_path(), []);
 		write_config('Migrated OpenVPN schedule package configuration');
 		return;
 	}
@@ -105,7 +125,7 @@ function openvpn_schedule_migrate_config() {
 	unset($pkgcfg['rule']);
 
 	$cfg['config'][0] = $pkgcfg;
-	config_set_path('installedpackages/openvpn_schedule', $cfg);
+	config_set_path(openvpn_schedule_package_base_path(), $cfg);
 	write_config('Migrated OpenVPN schedule package configuration');
 }
 
