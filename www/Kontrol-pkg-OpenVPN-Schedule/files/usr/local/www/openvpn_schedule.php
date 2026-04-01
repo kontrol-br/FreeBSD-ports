@@ -140,6 +140,11 @@ foreach ($schedule_names as $schedule_name) {
 
 $users = openvpn_schedule_get_visible_users();
 $current_user_map = openvpn_schedule_build_user_map();
+foreach ($current_user_map as $saved_schedule) {
+	if ($saved_schedule !== 'none' && !array_key_exists($saved_schedule, $schedule_options)) {
+		$schedule_options[$saved_schedule] = $saved_schedule . ' (missing schedule)';
+	}
+}
 
 if ($_POST) {
 	$input_errors = [];
