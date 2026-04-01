@@ -18,6 +18,26 @@ function openvpn_schedule_log($message) {
 	log_error(OVPN_SCHEDULE_LOG_TAG . ' ' . $message);
 }
 
+function openvpn_schedule_normalized_package_key($key) {
+	return preg_replace('/[^a-z0-9]/', '', strtolower((string)$key));
+}
+
+function openvpn_schedule_detect_package_key() {
+	$installed = config_get_path('installedpackages', []);
+	if (is_array($installed)) {
+		foreach (array_keys($installed) as $key) {
+			if (openvpn_schedule_normalized_package_key($key) === 'openvpnschedule') {
+				return (string)$key;
+			}
+		}
+	}
+	return 'openvpn_schedule';
+}
+
+function openvpn_schedule_package_base_path() {
+	return 'installedpackages/' . openvpn_schedule_detect_package_key();
+}
+
 function openvpn_schedule_user_schedule_entries($pkgcfg) {
 	$user_schedule = $pkgcfg['user_schedule'] ?? [];
 	if (is_array($user_schedule) && isset($user_schedule['item']) && is_array($user_schedule['item'])) {
@@ -55,7 +75,7 @@ function openvpn_schedule_deinstall() {
 		openvpn_schedule_log('deinstall failed: could not restore original auth file. Manual recovery required from backup in ' . OVPN_SCHEDULE_STATE_DIR);
 		return;
 	}
-	config_del_path('installedpackages/openvpn_schedule');
+	config_del_path(openvpn_schedule_package_base_path());
 	write_config('Removed OpenVPN schedule package configuration');
 	@unlink(OVPN_SCHEDULE_MANIFEST);
 	@rmdir(OVPN_SCHEDULE_STATE_DIR);
@@ -63,9 +83,9 @@ function openvpn_schedule_deinstall() {
 }
 
 function openvpn_schedule_migrate_config() {
-	$cfg = config_get_path('installedpackages/openvpn_schedule', []);
+	$cfg = config_get_path(openvpn_schedule_package_base_path(), []);
 	if (!is_array($cfg)) {
-		config_set_path('installedpackages/openvpn_schedule', []);
+		config_set_path(openvpn_schedule_package_base_path(), []);
 		write_config('Migrated OpenVPN schedule package configuration');
 		return;
 	}
@@ -105,7 +125,7 @@ function openvpn_schedule_migrate_config() {
 	unset($pkgcfg['rule']);
 
 	$cfg['config'][0] = $pkgcfg;
-	config_set_path('installedpackages/openvpn_schedule', $cfg);
+	config_set_path(openvpn_schedule_package_base_path(), $cfg);
 	write_config('Migrated OpenVPN schedule package configuration');
 }
 
@@ -140,13 +160,6 @@ function openvpn_schedule_apply_runtime_patch() {
 		return true;
 	}
 
-	$has_anchor_require = strpos($current, "require_once('auth.inc');") !== false;
-	$has_anchor_call = strpos($current, '$authcfg = array();') !== false;
-	if (!$has_anchor_require || !$has_anchor_call) {
-		openvpn_schedule_log('compatibility error: unsupported openvpn auth file version, refusing to patch');
-		return false;
-	}
-
 	$before_sha = hash_file('sha256', OVPN_SCHEDULE_TARGET);
 	$backup_file = OVPN_SCHEDULE_STATE_DIR . '/openvpn.auth-user.php.' . gmdate('YmdHis') . '.bak';
 	if (!@copy(OVPN_SCHEDULE_TARGET, $backup_file)) {
@@ -155,16 +168,43 @@ function openvpn_schedule_apply_runtime_patch() {
 	}
 	$backup_sha = hash_file('sha256', $backup_file);
 
-	$patched = str_replace(
-		"require_once('auth.inc');",
-		"require_once('auth.inc');\n" . OVPN_SCHEDULE_REQUIRE_MARK,
-		$current
-	);
-	$patched = str_replace(
-		'$authcfg = array();',
-		OVPN_SCHEDULE_CALL_MARK . "\n\n" . '$authcfg = array();',
-		$patched
-	);
+	$patched = $current;
+
+	if (strpos($patched, OVPN_SCHEDULE_REQUIRE_MARK) === false) {
+		$patched = preg_replace(
+			"/(require_once\\((['\"])auth\\.inc\\2\\);\\s*)/m",
+			"$1" . OVPN_SCHEDULE_REQUIRE_MARK . "\n",
+			$patched,
+			1,
+			$require_count
+		);
+		if ((int)$require_count === 0) {
+			openvpn_schedule_log('compatibility error: auth include anchor not found, refusing to patch');
+			return false;
+		}
+	}
+
+	if (strpos($patched, OVPN_SCHEDULE_CALL_MARK) === false) {
+		$call_count = 0;
+		$call_anchors = [
+			// Older pfSense variants initialize $authcfg directly.
+			"/(\\$authcfg\\s*=\\s*(?:array\\s*\\(\\s*\\)|\\[\\s*\\])\\s*;)/m" =>
+				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+			// Newer pfSense variants authenticate inside the authmodes loop.
+			"/(^\\s*foreach\\s*\\(\\s*\\$authmodes\\s+as\\s+\\$authmode\\s*\\)\\s*\\{)/m" =>
+				OVPN_SCHEDULE_CALL_MARK . "\n\n$1",
+		];
+		foreach ($call_anchors as $pattern => $replacement) {
+			$patched = preg_replace($pattern, $replacement, $patched, 1, $call_count);
+			if ((int)$call_count > 0) {
+				break;
+			}
+		}
+		if ((int)$call_count === 0) {
+			openvpn_schedule_log('compatibility error: no supported runtime auth anchor found, refusing to patch');
+			return false;
+		}
+	}
 
 	if ($patched === $current) {
 		openvpn_schedule_log('idempotency warning: generated patch unchanged, keeping existing file');
