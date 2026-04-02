@@ -1,12 +1,12 @@
 PORTNAME=	sarg
 PORTVERSION=	2.4.0
-PORTREVISION=	4
+PORTREVISION=	2
 CATEGORIES=	www
 MASTER_SITES=	SF/${PORTNAME}/${PORTNAME}/${PORTNAME}-${PORTVERSION}
 
 MAINTAINER=	garga@FreeBSD.org
 COMMENT=	Squid log analyzer and HTML report generator
-WWW=		https://sarg.sourceforge.net/
+WWW=		http://sarg.sourceforge.net/
 
 LICENSE=	GPLv2
 LICENSE_FILE=	${WRKSRC}/LICENSE
