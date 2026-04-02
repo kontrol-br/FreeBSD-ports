@@ -13,6 +13,9 @@ COMMENT=	Kontrol SARG Package
 
 LICENSE=	APACHE20
 
+# Allow this meta-port to build even when a dependency is flagged in VuXML.
+DISABLE_VULNERABILITIES=	yes
+
 RUN_DEPENDS=	${LOCALBASE}/bin/sarg:www/sarg
 
 NO_BUILD=	yes
