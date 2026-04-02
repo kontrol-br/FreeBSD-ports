@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-Sarg
-PORTVERSION=	0.7.10
+PORTVERSION=	0.7.12
 #PORTREVISION=	# empty
 CATEGORIES=	www
 MASTER_SITES=	# empty
