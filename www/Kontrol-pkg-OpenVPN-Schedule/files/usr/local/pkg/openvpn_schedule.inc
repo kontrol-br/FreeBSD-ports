@@ -756,6 +756,40 @@ function openvpn_schedule_collect_connected_users_from_management() {
 	return array_keys($users);
 }
 
+function openvpn_schedule_management_issue_command($socket, $command) {
+	if (!is_resource($socket)) {
+		return false;
+	}
+	stream_set_timeout($socket, 2);
+	fwrite($socket, $command . "\n");
+
+	while (!feof($socket)) {
+		$line = fgets($socket, 4096);
+		$info = stream_get_meta_data($socket);
+		if (!empty($info['timed_out'])) {
+			break;
+		}
+		if ($line === false) {
+			break;
+		}
+		$line = trim((string)$line);
+		if ($line === '' || strpos($line, '>INFO:') === 0) {
+			continue;
+		}
+		if (strpos($line, 'SUCCESS') !== false) {
+			openvpn_schedule_log_debug("management kill success for command '{$command}': {$line}");
+			return true;
+		}
+		if (strpos($line, 'ERROR') !== false) {
+			openvpn_schedule_log_debug("management kill error for command '{$command}': {$line}");
+			return false;
+		}
+	}
+
+	openvpn_schedule_log_debug("management kill no explicit SUCCESS for command '{$command}'");
+	return false;
+}
+
 function openvpn_schedule_disconnect_user_from_openvpn($username) {
 	$disconnected = false;
 	$target = trim((string)$username);
@@ -773,19 +807,25 @@ function openvpn_schedule_disconnect_user_from_openvpn($username) {
 		if ($socket === false) {
 			continue;
 		}
-		stream_set_timeout($socket, 1);
 		$client_id = trim((string)($session['client_id'] ?? ''));
 		$remote_host = trim((string)($session['remote_host'] ?? ''));
+		$commands = [];
 		if ($client_id !== '' && ctype_digit($client_id)) {
-			fwrite($socket, "client-kill {$client_id} HALT\n");
-		} elseif ($remote_host !== '') {
-			fwrite($socket, "kill {$remote_host}\n");
-		} else {
-			fwrite($socket, "kill {$target}\n");
+			$commands[] = "client-kill {$client_id} HALT";
+			$commands[] = "client-kill {$client_id}";
 		}
-		fwrite($socket, "quit\n");
+		if ($remote_host !== '') {
+			$commands[] = "kill {$remote_host}";
+		}
+		$commands[] = "kill {$target}";
+
+		foreach ($commands as $command) {
+			if (openvpn_schedule_management_issue_command($socket, $command)) {
+				$disconnected = true;
+				break;
+			}
+		}
 		fclose($socket);
-		$disconnected = true;
 	}
 	if ($disconnected) {
 		return true;
@@ -796,10 +836,10 @@ function openvpn_schedule_disconnect_user_from_openvpn($username) {
 		if ($socket === false) {
 			continue;
 		}
-		fwrite($socket, "kill {$target}\n");
-		fwrite($socket, "quit\n");
+		if (openvpn_schedule_management_issue_command($socket, "kill {$target}")) {
+			$disconnected = true;
+		}
 		fclose($socket);
-		$disconnected = true;
 	}
 
 	return $disconnected;
@@ -825,7 +865,7 @@ function openvpn_schedule_disconnect_out_of_schedule_users() {
 		if (openvpn_schedule_disconnect_user_from_openvpn($username)) {
 			openvpn_schedule_log("cron watcher: disconnected user '{$username}' outside schedule '{$schedule}'");
 		} else {
-			openvpn_schedule_log("cron watcher: unable to disconnect user '{$username}' outside schedule '{$schedule}' (management socket unavailable)");
+			openvpn_schedule_log("cron watcher: unable to disconnect user '{$username}' outside schedule '{$schedule}' (management command failed)");
 		}
 	}
 }
