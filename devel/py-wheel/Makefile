@@ -11,6 +11,9 @@ WWW=		https://github.com/pypa/wheel
 
 LICENSE=	MIT
 
+# Local build override: allow build to continue despite VuXML advisory.
+DISABLE_VULNERABILITIES=	yes
+
 BUILD_DEPENDS=	${PYTHON_PKGNAMEPREFIX}flit-core>=3.8:devel/py-flit-core@${PY_FLAVOR}
 
 USES=		python
