@@ -1,15 +1,14 @@
 PORTNAME=	gvfs
-DISTVERSION=	1.56.1
-PORTREVISION=	1
+DISTVERSION=	1.58.4
 CATEGORIES=	filesystems devel gnome
 MASTER_SITES=	GNOME
 DIST_SUBDIR=	gnome
 
 MAINTAINER=	gnome@FreeBSD.org
 COMMENT=	GNOME virtual file system
-WWW=		https://www.gnome.org/
+WWW=		https://gitlab.gnome.org/GNOME/gvfs
 
-LICENSE=	GPLv2
+LICENSE=	LGPL20+
 LICENSE_FILE=	${WRKSRC}/COPYING
 
 BUILD_DEPENDS=	docbook-xsl>=0:textproc/docbook-xsl
@@ -23,7 +22,7 @@ LIB_DEPENDS=	libgcrypt.so:security/libgcrypt \
 RUN_DEPENDS=	bsdisks>0:sysutils/bsdisks \
 		lsof:sysutils/lsof
 
-USES=		cpe gettext gnome libarchive localbase meson \
+USES=		cpe gettext-tools gnome libarchive localbase meson \
 		pkgconfig python:build tar:xz
 CPE_VENDOR=	gnome
 USE_GNOME=	glib20 libxml2 libxslt:build
@@ -37,14 +36,15 @@ MESON_ARGS=	-Dsystemduserunitdir=no \
 
 PORTSCOUT=	limitw:1,even
 
-OPTIONS_DEFINE=	AVAHI FUSE AFC GOA SMB CDDA GOOGLE GPHOTO MTP NFS BLURAY
-OPTIONS_DEFAULT=AVAHI SMB CDDA GPHOTO MTP NFS BLURAY
+OPTIONS_DEFINE=	AFC AVAHI BLURAY CDDA FUSE GOA GOOGLE GPHOTO MTP NFS ONEDRIVE SMB
+OPTIONS_DEFAULT=	AVAHI BLURAY CDDA GPHOTO MTP NFS SMB
 OPTIONS_SUB=	yes
 
 AFC_DESC=	Apple device support
 BLURAY_DESC=	Blu-ray metadata support
 GOA_DESC=	GNOME Online Accounts volume monitor support
 GOOGLE_DESC=	Google backend
+ONEDRIVE_DESC=	OneDrive backend
 
 AFC_LIB_DEPENDS=	libimobiledevice-1.0.so:comms/libimobiledevice \
 			libplist-2.0.so:devel/libplist
@@ -64,9 +64,8 @@ CDDA_MESON_TRUE=	cdda
 FUSE_USES=		fuse:3
 FUSE_MESON_TRUE=	fuse
 
-GOA_LIB_DEPENDS=	libgoa-1.0.so:net/gnome-online-accounts \
-			libmsgraph-1.so:net/msgraph
-GOA_MESON_TRUE=		goa onedrive
+GOA_LIB_DEPENDS=	libgoa-1.0.so:net/gnome-online-accounts
+GOA_MESON_TRUE=		goa
 
 GOOGLE_IMPLIES=		GOA
 GOOGLE_LIB_DEPENDS=	libgdata.so:devel/libgdata
@@ -80,6 +79,15 @@ MTP_MESON_TRUE=		mtp
 
 NFS_LIB_DEPENDS=	libnfs.so:net/libnfs
 NFS_MESON_TRUE=		nfs
+
+.if !exists(/usr/bin/ssh)
+BUILD_DEPENDS+=		${LOCALBASE}/bin/ssh:security/openssh-portable
+RUN_DEPENDS+=		${LOCALBASE}/bin/ssh:security/openssh-portable
+.endif
+
+ONEDRIVE_IMPLIES=	GOA
+ONEDRIVE_LIB_DEPENDS=	libmsgraph-1.so:net/msgraph
+ONEDRIVE_MESON_TRUE=	onedrive
 
 SMB_USES=		samba:lib
 SMB_MESON_TRUE=		smb

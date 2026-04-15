@@ -236,7 +236,6 @@
     SUBDIR += py-i3-gnome-pomodoro
     SUBDIR += py-khal
     SUBDIR += py-khard
-    SUBDIR += py-paperless
     SUBDIR += py-paperless-ngx
     SUBDIR += py-py3status
     SUBDIR += py-pystash
@@ -304,10 +303,10 @@
     SUBDIR += xcalendar
     SUBDIR += xcbautolock
     SUBDIR += xchm
-    SUBDIR += xdgctl
     SUBDIR += xdg-desktop-portal
     SUBDIR += xdg-desktop-portal-lxqt
     SUBDIR += xdg-terminal-exec
+    SUBDIR += xdgctl
     SUBDIR += xdpi
     SUBDIR += xfce4-generic-slider
     SUBDIR += xfce4-notes-plugin

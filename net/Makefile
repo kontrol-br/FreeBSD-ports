@@ -85,7 +85,7 @@
     SUBDIR += cjdns
     SUBDIR += claws
     SUBDIR += cloud-init
-    SUBDIR += cloud-init-devel
+    SUBDIR += cloudflare-speed-cli
     SUBDIR += cloudflared
     SUBDIR += cloudquery
     SUBDIR += clusterit
@@ -286,6 +286,7 @@
     SUBDIR += ip2location
     SUBDIR += ip2proxy
     SUBDIR += ip6_int
+    SUBDIR += ipaddr
     SUBDIR += ipdecap
     SUBDIR += ipgrab
     SUBDIR += ipinfo-cli
@@ -438,7 +439,6 @@
     SUBDIR += libyang
     SUBDIR += libyang2
     SUBDIR += libzapojit
-    SUBDIR += libzmq3
     SUBDIR += libzmq4
     SUBDIR += liferea
     SUBDIR += linphone
@@ -1336,6 +1336,7 @@
     SUBDIR += rubygem-gitaly
     SUBDIR += rubygem-gitaly-proto
     SUBDIR += rubygem-gitlab-fog-azure-rm
+    SUBDIR += rubygem-gitlab-gkg-proto
     SUBDIR += rubygem-gitlab-kas-grpc
     SUBDIR += rubygem-gitlab_omniauth-ldap
     SUBDIR += rubygem-gitlab_omniauth-ldap-gitlab
@@ -1485,6 +1486,7 @@
     SUBDIR += rubygem-x
     SUBDIR += rubygem-xmlrpc
     SUBDIR += rude
+    SUBDIR += rustconn
     SUBDIR += rustdesk-server
     SUBDIR += ryu
     SUBDIR += s3m

@@ -74,6 +74,7 @@
     SUBDIR += cargo-audit
     SUBDIR += ccrypt
     SUBDIR += ccsrch
+    SUBDIR += cdxgen
     SUBDIR += certificate_maker
     SUBDIR += certmgr
     SUBDIR += certmonger
@@ -260,6 +261,7 @@
     SUBDIR += keepass-plugin-keepassrpc
     SUBDIR += keepassxc
     SUBDIR += keepassxc276
+    SUBDIR += keepsecret
     SUBDIR += keybase
     SUBDIR += keychain
     SUBDIR += keyprint
@@ -452,13 +454,13 @@
     SUBDIR += openssl
     SUBDIR += openssl-agent
     SUBDIR += openssl-oqsprovider
+    SUBDIR += openssl-pkcs11provider
     SUBDIR += openssl-unsafe
     SUBDIR += openssl111
-    SUBDIR += openssl33
-    SUBDIR += openssl33-quictls
     SUBDIR += openssl34
     SUBDIR += openssl35
     SUBDIR += openssl36
+    SUBDIR += openssl40
     SUBDIR += openvas
     SUBDIR += openvpn
     SUBDIR += openvpn-admin
@@ -897,6 +899,7 @@
     SUBDIR += py-base58
     SUBDIR += py-bcrypt
     SUBDIR += py-bitbox02
+    SUBDIR += py-blake3
     SUBDIR += py-btchip-python
     SUBDIR += py-cart
     SUBDIR += py-cerealizer
@@ -1158,11 +1161,14 @@
     SUBDIR += rubygem-digest-crc
     SUBDIR += rubygem-doorkeeper
     SUBDIR += rubygem-doorkeeper-device_authorization_grant
+    SUBDIR += rubygem-doorkeeper-i18n
+    SUBDIR += rubygem-doorkeeper-i18n-rails72
     SUBDIR += rubygem-doorkeeper-openid_connect
     SUBDIR += rubygem-doorkeeper-rails-gitlab
     SUBDIR += rubygem-doorkeeper-rails5
     SUBDIR += rubygem-doorkeeper-rails50
     SUBDIR += rubygem-doorkeeper-rails70
+    SUBDIR += rubygem-doorkeeper-rails72
     SUBDIR += rubygem-doorkeeper57-rails70
     SUBDIR += rubygem-duo_api
     SUBDIR += rubygem-ed25519
@@ -1319,7 +1325,6 @@
     SUBDIR += snort-rep
     SUBDIR += snort2pfcd
     SUBDIR += snort3
-    SUBDIR += snortsam
     SUBDIR += snortsnarf
     SUBDIR += snowflake-tor
     SUBDIR += snuffleupagus
@@ -1368,7 +1373,9 @@
     SUBDIR += sudoscript
     SUBDIR += super
     SUBDIR += suricata
+    SUBDIR += susshi
     SUBDIR += swatchdog
+    SUBDIR += syft
     SUBDIR += tailscale
     SUBDIR += tang
     SUBDIR += tclsasl

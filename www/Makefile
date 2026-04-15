@@ -237,7 +237,6 @@
     SUBDIR += gitlab-workhorse
     SUBDIR += glance
     SUBDIR += glassfish
-    SUBDIR += glassfish4
     SUBDIR += glpi
     SUBDIR += gnome-user-share
     SUBDIR += go-anubis
@@ -251,6 +250,7 @@
     SUBDIR += gotty
     SUBDIR += gpx2map
     SUBDIR += grafana
+    SUBDIR += grafanactl
     SUBDIR += grails
     SUBDIR += gregarius
     SUBDIR += groupoffice
@@ -519,7 +519,6 @@
     SUBDIR += nyxt
     SUBDIR += oatpp
     SUBDIR += oauth2-proxy
-    SUBDIR += obhttpd
     SUBDIR += offpunk
     SUBDIR += oneshot
     SUBDIR += onionbalance
@@ -1477,6 +1476,7 @@
     SUBDIR += py-Tenjin
     SUBDIR += py-WebError
     SUBDIR += py-WebFlash
+    SUBDIR += py-a2wsgi
     SUBDIR += py-adblock
     SUBDIR += py-advocate
     SUBDIR += py-aiobreaker
@@ -1498,6 +1498,7 @@
     SUBDIR += py-autobahn
     SUBDIR += py-azure-common
     SUBDIR += py-azure-storage
+    SUBDIR += py-baize
     SUBDIR += py-beaker
     SUBDIR += py-beautifulsoup
     SUBDIR += py-betamax
@@ -1589,7 +1590,6 @@
     SUBDIR += py-django-autocomplete-light
     SUBDIR += py-django-bakery
     SUBDIR += py-django-bitfield
-    SUBDIR += py-django-bleach
     SUBDIR += py-django-bootstrap3
     SUBDIR += py-django-bootstrap4
     SUBDIR += py-django-braces
@@ -1608,7 +1608,6 @@
     SUBDIR += py-django-cors-headers
     SUBDIR += py-django-countries
     SUBDIR += py-django-crispy-forms
-    SUBDIR += py-django-cron
     SUBDIR += py-django-csp
     SUBDIR += py-django-debreach
     SUBDIR += py-django-debug-toolbar
@@ -1671,12 +1670,10 @@
     SUBDIR += py-django-soft-delete
     SUBDIR += py-django-solo
     SUBDIR += py-django-sortedm2m
-    SUBDIR += py-django-star-ratings
     SUBDIR += py-django-staticinline
     SUBDIR += py-django-storages
     SUBDIR += py-django-stubs-ext
     SUBDIR += py-django-tables2
-    SUBDIR += py-django-tagging
     SUBDIR += py-django-taggit
     SUBDIR += py-django-tasks
     SUBDIR += py-django-tastypie
@@ -2030,6 +2027,7 @@
     SUBDIR += reddsaver
     SUBDIR += redmine51
     SUBDIR += redmine60
+    SUBDIR += redmine61
     SUBDIR += rejik
     SUBDIR += remark42
     SUBDIR += reportmagic
@@ -2445,6 +2443,7 @@
     SUBDIR += rubygem-ruby-readability
     SUBDIR += rubygem-savon
     SUBDIR += rubygem-sawyer
+    SUBDIR += rubygem-sawyer-gitlab
     SUBDIR += rubygem-select2-rails
     SUBDIR += rubygem-selenium-webdriver
     SUBDIR += rubygem-semantic-ui-sass
@@ -2668,6 +2667,7 @@
     SUBDIR += vger
     SUBDIR += vigil
     SUBDIR += vimb
+    SUBDIR += vinyl09
     SUBDIR += visitors
     SUBDIR += volta
     SUBDIR += vultr-cli
@@ -2677,6 +2677,7 @@
     SUBDIR += wabt
     SUBDIR += wasm-bindgen-cli
     SUBDIR += wasm-pack
+    SUBDIR += wasmtime
     SUBDIR += waterfox
     SUBDIR += web2ldap
     SUBDIR += webalizer
@@ -2734,7 +2735,9 @@
     SUBDIR += yuicompressor
     SUBDIR += zenphoto
     SUBDIR += zerowait-httpd
+    SUBDIR += zine-ssg
     SUBDIR += zgrab2
     SUBDIR += zola
+    SUBDIR += zoraxy
 
 .include <bsd.port.subdir.mk>

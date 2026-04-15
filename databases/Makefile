@@ -1,13 +1,17 @@
     COMMENT = Databases and related software
 
     SUBDIR += R-cran-DBI
+    SUBDIR += R-cran-RMariaDB
     SUBDIR += R-cran-RMySQL
     SUBDIR += R-cran-RPostgreSQL
+    SUBDIR += R-cran-RPostgres
     SUBDIR += R-cran-RSQLite
     SUBDIR += R-cran-cachem
     SUBDIR += R-cran-dbplyr
     SUBDIR += R-cran-dtplyr
     SUBDIR += R-cran-fastmap
+    SUBDIR += R-cran-nanoparquet
+    SUBDIR += R-cran-pool
     SUBDIR += R-cran-sqldf
     SUBDIR += WWWdb
     SUBDIR += adminer
@@ -22,6 +26,7 @@
     SUBDIR += beansdb
     SUBDIR += buzhug
     SUBDIR += c3p0
+    SUBDIR += cargo-pgrx
     SUBDIR += cassandra-cpp-driver
     SUBDIR += cassandra3
     SUBDIR += cassandra4
@@ -55,6 +60,7 @@
     SUBDIR += dbtool
     SUBDIR += dbview
     SUBDIR += diesel
+    SUBDIR += dlmdb
     SUBDIR += duckdb
     SUBDIR += ejdb
     SUBDIR += emacsql
@@ -193,10 +199,6 @@
     SUBDIR += mysql80-server
     SUBDIR += mysql84-client
     SUBDIR += mysql84-server
-    SUBDIR += mysql91-client
-    SUBDIR += mysql91-server
-    SUBDIR += mysql94-client
-    SUBDIR += mysql94-server
     SUBDIR += mysql96-client
     SUBDIR += mysql96-server
     SUBDIR += mysqlbackup
@@ -555,6 +557,7 @@
     SUBDIR += pg_partman
     SUBDIR += pg_qualstats
     SUBDIR += pg_repack
+    SUBDIR += pg_search
     SUBDIR += pg_similarity
     SUBDIR += pg_stat_kcache
     SUBDIR += pg_store_plans
@@ -652,7 +655,6 @@
     SUBDIR += postgis34
     SUBDIR += postgis35
     SUBDIR += postgis36
-    SUBDIR += postgresql-cstore_fdw
     SUBDIR += postgresql-idn
     SUBDIR += postgresql-jdbc
     SUBDIR += postgresql-libpgeasy
@@ -1146,6 +1148,7 @@
     SUBDIR += usql
     SUBDIR += valkey
     SUBDIR += valkey8
+    SUBDIR += vchord
     SUBDIR += vfront
     SUBDIR += virtualpg
     SUBDIR += weaviate

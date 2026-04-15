@@ -350,6 +350,7 @@
     SUBDIR += json-yaml
     SUBDIR += json2yaml
     SUBDIR += jsonfmt
+    SUBDIR += jsongrep
     SUBDIR += jtc
     SUBDIR += kdiff3
     SUBDIR += kepubify
@@ -360,6 +361,9 @@
     SUBDIR += kf6-sonnet
     SUBDIR += kf6-syntax-highlighting
     SUBDIR += kibana8
+    SUBDIR += kibana91
+    SUBDIR += kibana92
+    SUBDIR += kibana93
     SUBDIR += kiss-templates
     SUBDIR += kmfl-european-latin
     SUBDIR += kmfl-khmer
@@ -545,8 +549,8 @@
     SUBDIR += or-aspell
     SUBDIR += otree
     SUBDIR += ov
-    SUBDIR += oyo
     SUBDIR += ox-gfm.el
+    SUBDIR += oyo
     SUBDIR += p5-AI-Categorizer
     SUBDIR += p5-Algorithm-CheckDigits
     SUBDIR += p5-Algorithm-RabinKarp
@@ -1386,6 +1390,7 @@
     SUBDIR += py-elementpath
     SUBDIR += py-emeraldtree
     SUBDIR += py-empy
+    SUBDIR += py-en-core-web-sm
     SUBDIR += py-enchant
     SUBDIR += py-enrich
     SUBDIR += py-epy-reader
@@ -1409,6 +1414,8 @@
     SUBDIR += py-graphemeu
     SUBDIR += py-grep-ast
     SUBDIR += py-griffe
+    SUBDIR += py-griffecli
+    SUBDIR += py-griffelib
     SUBDIR += py-grimoire-elk
     SUBDIR += py-grimoirelab-panels
     SUBDIR += py-guess-language
@@ -1535,6 +1542,7 @@
     SUBDIR += py-pdfrw
     SUBDIR += py-pdftotext
     SUBDIR += py-petl
+    SUBDIR += py-phonemizer-fork
     SUBDIR += py-pikepdf
     SUBDIR += py-precis_i18n
     SUBDIR += py-pscript

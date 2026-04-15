@@ -1,6 +1,7 @@
     COMMENT = CAD tools
 
     SUBDIR += Clipper2
+    SUBDIR += OrcaSlicer
     SUBDIR += PrusaSlicer
     SUBDIR += abc
     SUBDIR += admesh
@@ -133,6 +134,7 @@
     SUBDIR += qucs-s
     SUBDIR += qucsator
     SUBDIR += repsnapper
+    SUBDIR += route-rnd
     SUBDIR += rubygem-gdsii
     SUBDIR += sch-rnd
     SUBDIR += scotch

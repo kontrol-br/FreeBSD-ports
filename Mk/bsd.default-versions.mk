@@ -73,7 +73,7 @@ GUILE_DEFAULT?=		2.2
 # Format:	     version[-flavor]
 # Examples:	     6-nox11, 7
 IMAGEMAGICK_DEFAULT?=	7
-# Possible values: 8, 11, 17, 20, 21, 22, 23, 24, 25
+# Possible values: 8, 11, 17, 21, 22, 23, 24, 25
 .  if ${ARCH:Marmv*}
 JAVA_DEFAULT?=		11
 .  else
@@ -109,8 +109,8 @@ LUAJIT_DEFAULT?=	luajit
 .  endif
 # Possible values: 5.10, 5.20, 6.8
 MONO_DEFAULT?=		5.20
-# Possible values: 8.0, 8.4, 9.1, 9.4, 9.6, 10.6m, 10.11m, 11.4m, 11.8m
-MYSQL_DEFAULT?=		8.0
+# Possible values: 8.0, 8.4, 9.6, 10.6m, 10.11m, 11.4m, 11.8m
+MYSQL_DEFAULT?=		8.4
 # Possible values: ninja, samurai
 NINJA_DEFAULT?=		ninja
 # Possible value: 20, 22, 24, 25, current, lts (Note: current = 25 and lts = 24)
@@ -156,7 +156,7 @@ RUST_DEFAULT?=		rust
 SAMBA_DEFAULT?=		4.16
 # When updating this, please also update the same list in ssl.mk and the checks
 # for USES=ssl in qa.sh!
-# Possible values: base, openssl, openssl111, openssl33, openssl34, openssl35,
+# Possible values: base, openssl, openssl111, openssl34, openssl35,
 # openssl36, libressl, libressl-devel
 .  if !defined(SSL_DEFAULT)
 #	If no preference was set, check for an installed base version

@@ -8,8 +8,6 @@ DISTNAME=	Python-${DISTVERSION}
 DIST_SUBDIR=	python
 
 PATCH_SITES=	https://github.com/python/cpython/commit/
-PATCHFILES=	c97e87593063d84a2bd9fe7068b30eb44de23dc0.patch:-p1 \
-		5dc101675fd22918facbbe0fecdc821502beaaf0.patch:-p1
 
 MAINTAINER=	python@FreeBSD.org
 COMMENT=	Interpreted object-oriented programming language
@@ -81,7 +79,7 @@ LTO_CONFIGURE_ON=	--with-lto
 # Use CPPFLAGS over CFLAGS due to -I ordering, causing elementtree and pyexpat
 # to break in Python 2.7, or preprocessor complaints in Python >= 3.3
 # Upstream Issue: https://bugs.python.org/issue6299
-NLS_USES=		gettext
+NLS_USES=		gettext-runtime
 NLS_CPPFLAGS=		-I${LOCALBASE}/include
 NLS_LIBS=		-L${LOCALBASE}/lib -lintl
 NLS_CONFIGURE_ENV_OFF=	ac_cv_lib_intl_textdomain=no ac_cv_header_libintl_h=no

@@ -58,6 +58,7 @@
     SUBDIR += ffmpeg
     SUBDIR += ffmpeg3
     SUBDIR += ffmpeg4
+    SUBDIR += ffmpeg6
     SUBDIR += ffmpegthumbnailer
     SUBDIR += ffms2
     SUBDIR += ffnvcodec-headers
@@ -69,6 +70,7 @@
     SUBDIR += get_iplayer
     SUBDIR += gmmlib
     SUBDIR += gmp-api
+    SUBDIR += go2tv
     SUBDIR += gpac
     SUBDIR += gpodder
     SUBDIR += gst123
@@ -97,7 +99,6 @@
     SUBDIR += gstreamer1-plugins-rust
     SUBDIR += gstreamer1-plugins-smoothstreaming
     SUBDIR += gstreamer1-plugins-svt-av1
-    SUBDIR += gstreamer1-plugins-svt-hevc
     SUBDIR += gstreamer1-plugins-svt-vp9
     SUBDIR += gstreamer1-plugins-theora
     SUBDIR += gstreamer1-plugins-ttml
@@ -108,7 +109,6 @@
     SUBDIR += gstreamer1-plugins-x264
     SUBDIR += gstreamer1-plugins-x265
     SUBDIR += gstreamer1-rtsp-server
-    SUBDIR += gstreamer1-vaapi
     SUBDIR += gstreamermm
     SUBDIR += gtk-pipe-viewer
     SUBDIR += gtk-youtube-viewer
@@ -256,7 +256,6 @@
     SUBDIR += nymphcastlib
     SUBDIR += nymphrpc
     SUBDIR += obs-multi-rtmp
-    SUBDIR += obs-recursion-effect
     SUBDIR += obs-streamfx
     SUBDIR += obs-studio
     SUBDIR += obs-text-pthread
@@ -367,6 +366,7 @@
     SUBDIR += tautulli
     SUBDIR += tenacity
     SUBDIR += termplay
+    SUBDIR += termusic
     SUBDIR += tinyobjloader
     SUBDIR += tivodecode
     SUBDIR += totem

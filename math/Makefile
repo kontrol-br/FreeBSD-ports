@@ -38,6 +38,7 @@
     SUBDIR += R-cran-acepack
     SUBDIR += R-cran-admisc
     SUBDIR += R-cran-alabama
+    SUBDIR += R-cran-ankiR
     SUBDIR += R-cran-ash
     SUBDIR += R-cran-assertthat
     SUBDIR += R-cran-backports
@@ -45,6 +46,7 @@
     SUBDIR += R-cran-car
     SUBDIR += R-cran-carData
     SUBDIR += R-cran-coda
+    SUBDIR += R-cran-collections
     SUBDIR += R-cran-combinat
     SUBDIR += R-cran-conf.design
     SUBDIR += R-cran-conquer
@@ -312,6 +314,7 @@
     SUBDIR += ecos
     SUBDIR += edenmath
     SUBDIR += eigen3
+    SUBDIR += eigen5
     SUBDIR += eispack
     SUBDIR += elan
     SUBDIR += elemental
@@ -590,6 +593,7 @@
     SUBDIR += octave-forge-fl-core
     SUBDIR += octave-forge-fpl
     SUBDIR += octave-forge-fuzzy-logic-toolkit
+    SUBDIR += octave-forge-fxp
     SUBDIR += octave-forge-ga
     SUBDIR += octave-forge-general
     SUBDIR += octave-forge-generate_html
@@ -1146,6 +1150,7 @@
     SUBDIR += py-theano
     SUBDIR += py-timple
     SUBDIR += py-topologic
+    SUBDIR += py-torchsde
     SUBDIR += py-triangle
     SUBDIR += py-umap-learn
     SUBDIR += py-uncertainties
