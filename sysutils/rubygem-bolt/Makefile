@@ -1,6 +1,5 @@
 PORTNAME=	bolt
-PORTVERSION=	3.30.0
-PORTREVISION=	5
+PORTVERSION=	4.0.0
 CATEGORIES=	sysutils rubygems
 MASTER_SITES=	RG
 
@@ -9,6 +8,9 @@ COMMENT=	Execute commands remotely over SSH and WinRM
 WWW=		https://github.com/puppetlabs/bolt
 
 LICENSE=	APACHE20
+
+DEPRECATED=	Discontinued, use sysutils/rubygem-openbolt
+EXPIRATION_DATE=2026-07-01
 
 RUN_DEPENDS=	r10k:sysutils/rubygem-r10k \
 		rubygem-addressable>=2.5:www/rubygem-addressable \

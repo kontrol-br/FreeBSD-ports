@@ -1,10 +1,11 @@
 PORTNAME=	electron
 DISTVERSIONPREFIX=	v
 DISTVERSION=	${ELECTRON_VER}
+PORTREVISION=	1
 PULSEMV=	16
 PULSEV=		${PULSEMV}.1
 CATEGORIES=	devel
-MASTER_SITES=	https://github.com/tagattie/FreeBSD-Electron/releases/download/v39.2.7/:chromium \
+MASTER_SITES=	https://github.com/tagattie/FreeBSD-Electron/releases/download/v39.3.0/:chromium \
 		https://freedesktop.org/software/pulseaudio/releases/:pulseaudio
 PKGNAMESUFFIX=	${ELECTRON_VER_MAJOR}
 DISTFILES=	chromium-${CHROMIUM_VER}${EXTRACT_SUFX}.0:chromium \
@@ -223,9 +224,9 @@ SNDIO_VARS=		GN_ARGS+=use_sndio=true
 SNDIO_VARS_OFF=		GN_ARGS+=use_sndio=false
 
 # See ${WRKSRC}/electron/DEPS for CHROMIUM_VER
-CHROMIUM_VER=			142.0.7444.235
+CHROMIUM_VER=			142.0.7444.265
 # See ${WRKSRC}/electron/DEPS for NODE_VER
-NODE_VER=			22.21.1
+NODE_VER=			22.22.1
 # See ${WRKSRC}/electron/DEPS for NAN_VER
 NAN_VER=			e14bdcd1f72d62bca1d541b66da43130384ec213
 # See ${WRKSRC}/electron/DEPS for SQUIRREL_MAC_VER
@@ -330,6 +331,8 @@ post-extract:
 		${WRKSRC}/third_party/engflow-reclient-configs
 
 pre-patch:
+	${REINPLACE_CMD} -e 's|src/third_party/angle/src|src/third_party/angle|' \
+		${WRKSRC}/electron/patches/config.json
 	${SH} ${FILESDIR}/apply-electron-patches.sh ${WRKSRC}
 	# ${FIND} ${WRKSRC} -type f -name '*.orig' -print -delete
 	# ${FIND} ${WRKSRC} -type f -name '*~' -print -delete

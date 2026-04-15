@@ -1,6 +1,6 @@
---- components/viz/service/gl/gpu_service_impl.h.orig	2025-12-10 15:04:57 UTC
+--- components/viz/service/gl/gpu_service_impl.h.orig	2026-03-24 16:59:08 UTC
 +++ components/viz/service/gl/gpu_service_impl.h
-@@ -442,7 +442,7 @@ class VIZ_SERVICE_EXPORT GpuServiceImpl
+@@ -439,7 +439,7 @@ class VIZ_SERVICE_EXPORT GpuServiceImpl
  
    void OnBeginFrameOnIO(const BeginFrameArgs& args);
  

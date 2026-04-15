@@ -1,6 +1,6 @@
---- chrome/browser/component_updater/registration.cc.orig	2025-12-05 10:12:50 UTC
+--- chrome/browser/component_updater/registration.cc.orig	2026-03-13 06:02:14 UTC
 +++ chrome/browser/component_updater/registration.cc
-@@ -95,7 +95,7 @@
+@@ -84,7 +84,7 @@
  #endif  // BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -9,27 +9,24 @@
  #include "components/component_updater/installer_policies/amount_extraction_heuristic_regexes_component_installer.h"
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
          // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
-@@ -108,7 +108,7 @@
- #include "chrome/browser/component_updater/lacros_component_remover.h"
- #endif  // BUILDFLAG(IS_CHROMEOS)
+@@ -93,7 +93,7 @@
+ #include "ui/aura/env.h"
+ #endif
  
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
  #include "chrome/browser/component_updater/wasm_tts_engine_component_installer.h"
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
  
-@@ -247,7 +247,7 @@ void RegisterComponentsForUpdate() {
-   RegisterCookieReadinessListComponent(cus);
+@@ -219,12 +219,12 @@ void RegisterComponentsForUpdate() {
+ #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
--    BUILDFLAG(IS_CHROMEOS)
-+    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
+-    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
++    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_BSD)
    RegisterAmountExtractionHeuristicRegexesComponent(cus);
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-         // BUILDFLAG(IS_CHROMEOS)
-@@ -259,7 +259,7 @@ void RegisterComponentsForUpdate() {
-   }
- #endif  // BUIDLFLAG(IS_ANDROID)
+         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
  
 -#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)

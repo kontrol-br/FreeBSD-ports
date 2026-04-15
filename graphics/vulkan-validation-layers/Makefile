@@ -1,6 +1,7 @@
 PORTNAME=	vulkan-validation-layers
 DISTVERSIONPREFIX=	v
 DISTVERSION=	1.4.336
+PORTREVISION=	1
 CATEGORIES=	graphics
 
 MAINTAINER=	atanubiswas484@gmail.com
@@ -15,7 +16,7 @@ BUILD_DEPENDS=	robin-hood-hashing>0:devel/robin-hood-hashing \
 		vulkan-headers>0:graphics/vulkan-headers \
 		vulkan-utility-libraries>0:graphics/vulkan-utility-libraries
 
-USES=		alias cmake compiler:c++11-lib pkgconfig python:build
+USES=		cmake compiler:c++11-lib pkgconfig python:build
 USE_GITHUB=	yes
 GH_ACCOUNT=	KhronosGroup
 GH_PROJECT=	Vulkan-ValidationLayers

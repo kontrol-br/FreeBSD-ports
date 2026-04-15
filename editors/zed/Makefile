@@ -1,6 +1,7 @@
 PORTNAME=	zed
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.217.3
+DISTVERSION=	0.227.1
+PORTREVISION=	1
 CATEGORIES=	editors
 PKGNAMESUFFIX=	-editor
 
@@ -50,8 +51,11 @@ MAKE_ENV=	APP_CLI="zedit" \
 		ZED_UPDATE_EXPLANATION="Please use packages/ports to update zed." \
 		RELEASE_VERSION="${DISTVERSION}"
 
+SUB_FILES=	pkg-message
+SUB_LIST=	DISTVERSION=${DISTVERSION}
+
 PLIST_FILES=	bin/zedit \
-		bin/zed-remote-server-stable-${DISTVERSION} \
+		bin/zed-remote-server-stable-${DISTVERSION}+stable \
 		libexec/zed-editor \
 		share/applications/dev.zed.Zed.desktop \
 		share/icons/hicolor/1024x1024/apps/zed-editor.png \
@@ -63,7 +67,6 @@ OPTIONS_DEFINE=	DOCS
 post-patch:
 # https://github.com/RazrFalcon/fontdb/issues/61
 	@${REINPLACE_CMD} -e 's|/etc|${LOCALBASE}&|g' \
-		${WRKSRC_crate_fontdb-0.16.2}/src/lib.rs \
 		${WRKSRC_crate_fontdb-0.23.0}/src/lib.rs
 
 post-build:
@@ -75,7 +78,7 @@ do-install:
 	${INSTALL_PROGRAM} ${CARGO_TARGET_DIR}/release/cli \
 		${STAGEDIR}${PREFIX}/bin/zedit
 	${INSTALL_PROGRAM} ${CARGO_TARGET_DIR}/release/remote_server \
-		${STAGEDIR}${PREFIX}/bin/zed-remote-server-stable-${DISTVERSION}
+		${STAGEDIR}${PREFIX}/bin/zed-remote-server-stable-${DISTVERSION}+stable
 	${INSTALL_PROGRAM} ${CARGO_TARGET_DIR}/release/zed \
 		${STAGEDIR}${PREFIX}/libexec/zed-editor
 	${INSTALL_DATA} ${WRKSRC}/crates/zed/resources/${PORTNAME}.desktop \

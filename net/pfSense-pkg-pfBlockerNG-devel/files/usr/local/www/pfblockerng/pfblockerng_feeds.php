@@ -3,7 +3,7 @@
  * pfblockerng_feeds.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2016-2025 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2016-2026 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2015-2024 BBcan177@gmail.com
  * All rights reserved.
  *
@@ -597,8 +597,8 @@ print ($section);
 										$feed_radio	= "&emsp;<input type=\"radio\" name=\"alt_{$feed['header']}\""
 												. " value=\"alt_{$feed['header']}\" checked=\"checked\" />&emsp;";
 
-										print ("<input type=\"hidden\" name=\"alt_" . "${feed['header']}" . "\" id=\"alt_"
-											. "${feed['header']}" . "\" value=\"\" />");
+										print ("<input type=\"hidden\" name=\"alt_" . "{$feed['header']}" . "\" id=\"alt_"
+											. "{$feed['header']}" . "\" value=\"\" />");
 									}
 									else {
 										if (empty($icon)) {

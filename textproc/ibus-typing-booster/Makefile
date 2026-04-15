@@ -1,5 +1,6 @@
 PORTNAME=	ibus-typing-booster
-PORTVERSION=	2.28.6
+PORTVERSION=	2.30.4
+PORTREVISION=	1
 CATEGORIES=	textproc
 
 MAINTAINER=	thierry@FreeBSD.org
@@ -9,13 +10,13 @@ WWW=		https://mike-fabian.github.io/ibus-typing-booster/
 LICENSE=	GPLv3
 LICENSE_FILE=	${WRKSRC}/COPYING
 
-BUILD_DEPENDS=	${PYTHON_PKGNAMEPREFIX}xdg>0:devel/py-xdg@${PY_FLAVOR}		\
+BUILD_DEPENDS=	${PYTHON_PKGNAMEPREFIX}pyxdg>0:devel/py-pyxdg@${PY_FLAVOR}		\
 		${PYTHON_PKGNAMEPREFIX}sqlite3>0:databases/py-sqlite3@${PY_FLAVOR}
 LIB_DEPENDS=	libibus-1.0.so:textproc/ibus	\
 		libm17n.so:devel/m17n-lib
 RUN_DEPENDS=	CLDR>0:textproc/CLDR	\
 		UCD>0:textproc/UCD	\
-		${PYTHON_PKGNAMEPREFIX}xdg>0:devel/py-xdg@${PY_FLAVOR}		\
+		${PYTHON_PKGNAMEPREFIX}pyxdg>0:devel/py-pyxdg@${PY_FLAVOR}		\
 		${PYTHON_PKGNAMEPREFIX}dbus>0:devel/py-dbus@${PY_FLAVOR}		\
 		${PYTHON_PKGNAMEPREFIX}rapidfuzz>0:devel/py-rapidfuzz@${PY_FLAVOR}	\
 		${PYTHON_PKGNAMEPREFIX}hunspell>0:textproc/py-hunspell@${PY_FLAVOR}	\
@@ -43,7 +44,7 @@ SHEBANG_FILES=	engine/emoji-picker.in engine/ibus-engine-typing-booster.in	\
 SHEBANG_LANG=	sh
 sh_OLD_CMD=	/usr/bin/sh
 sh_CMD=		${SH}
-USE_GNOME=	glib20 gtk30 pygobject3
+USE_GNOME=	gtk40
 USE_LOCALE=	en_US.UTF-8
 GNU_CONFIGURE=	yes
 CONFIGURE_ARGS=	--libexecdir=${PREFIX}/libexec
@@ -53,6 +54,7 @@ GLIB_SCHEMAS=	org.freedesktop.ibus.engine.typing-booster.gschema.xml
 TEST_TARGET=	check
 TEST_ENV=	${MAKE_ENV} \
 		IBUS_TYPING_BOOSTER_DEBUG_LEVEL=1
+TESTING_UNSAFE=	yes
 
 OPTIONS_DEFINE=	HUNSPELL
 OPTIONS_DEFAULT=HUNSPELL

@@ -1,15 +1,15 @@
---- chrome/browser/ui/tabs/tab_features.cc.orig	2025-12-06 13:30:52 UTC
+--- chrome/browser/ui/tabs/tab_features.cc.orig	2026-03-15 18:32:51 UTC
 +++ chrome/browser/ui/tabs/tab_features.cc
-@@ -82,7 +82,7 @@
- #include "chrome/browser/ui/web_applications/pwa_install_page_action.h"
- #include "chrome/browser/ui/webui/webui_embedding_context.h"
+@@ -96,7 +96,7 @@
+ #include "components/contextual_tasks/public/features.h"
+ #include "components/skills/features.h"
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
 -    BUILDFLAG(IS_CHROMEOS)
 +    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
+ #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
  #include "chrome/browser/wallet/chrome_walletable_pass_client.h"
  #endif
- #include "chrome/browser/web_applications/web_app_tab_helper.h"
-@@ -419,7 +419,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* pro
+@@ -444,7 +444,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* pro
    task_manager::WebContentsTags::CreateForTabContents(tab.GetContents());
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -18,3 +18,12 @@
    inactive_window_mouse_event_controller_ =
        std::make_unique<InactiveWindowMouseEventController>();
  
+@@ -510,7 +510,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* pro
+   }
+ #endif  // BUILDFLAG(ENABLE_GLIC) && !BUILDFLAG(IS_ANDROID)
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_BSD)
+   if (base::FeatureList::IsEnabled(enterprise_reporting::kSaasUsageReporting)) {
+     saas_usage_navigation_observer_ =
+         std::make_unique<enterprise_reporting::SaasUsageNavigationObserver>(

@@ -1,6 +1,6 @@
---- chrome/common/chrome_content_client.cc.orig	2025-12-10 15:04:57 UTC
+--- chrome/common/chrome_content_client.cc.orig	2026-03-24 16:59:08 UTC
 +++ chrome/common/chrome_content_client.cc
-@@ -62,12 +62,12 @@
+@@ -61,12 +61,12 @@
  #include "url/url_constants.h"
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -15,7 +15,7 @@
  #include <fcntl.h>
  #include "sandbox/linux/services/credentials.h"
  #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-@@ -187,7 +187,7 @@ static const char* const kChromeStandardURLSchemes[] =
+@@ -189,7 +189,7 @@ static const char* const kChromeStandardURLSchemes[] =
      extensions::kExtensionScheme,
  #endif
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -24,7 +24,7 @@
      webapps::kIsolatedAppScheme,
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
          // BUILDFLAG(IS_CHROMEOS)
-@@ -211,7 +211,7 @@ void ChromeContentClient::AddAdditionalSchemes(Schemes
+@@ -214,7 +214,7 @@ void ChromeContentClient::AddAdditionalSchemes(Schemes
  #endif
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -33,7 +33,7 @@
    schemes->isolated_app_schemes.push_back(webapps::kIsolatedAppScheme);
  #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
          // BUILDFLAG(IS_CHROMEOS)
-@@ -260,7 +260,7 @@ void ChromeContentClient::AddAdditionalSchemes(Schemes
+@@ -263,7 +263,7 @@ void ChromeContentClient::AddAdditionalSchemes(Schemes
  #endif
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \

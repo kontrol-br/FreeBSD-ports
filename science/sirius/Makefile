@@ -1,6 +1,6 @@
 PORTNAME=	sirius
 DISTVERSIONPREFIX=	v
-DISTVERSION=	7.9.0
+DISTVERSION=	7.10.0
 CATEGORIES=	science
 PKGNAMESUFFIX=	-quantum-chemistry # other software also has the name "sirius"
 
@@ -12,6 +12,7 @@ LICENSE=	BSD3CLAUSE
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
 LIB_DEPENDS=	libcosta.so:math/costa \
+		libfmt.so:devel/libfmt \
 		libgsl.so:math/gsl \
 		libhdf5.so:science/hdf5 \
 		libopenblas.so:math/openblas \

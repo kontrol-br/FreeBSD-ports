@@ -1,4 +1,4 @@
---- base/process/process_metrics.h.orig	2025-10-02 14:20:29 UTC
+--- base/process/process_metrics.h.orig	2026-02-11 09:05:39 UTC
 +++ base/process/process_metrics.h
 @@ -40,7 +40,7 @@
  #endif
@@ -93,10 +93,10 @@
  #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
 -    BUILDFLAG(IS_AIX) || BUILDFLAG(IS_FUCHSIA)
 +    BUILDFLAG(IS_AIX) || BUILDFLAG(IS_FUCHSIA) || BUILDFLAG(IS_BSD)
-   ByteCount buffers;
-   ByteCount cached;
-   ByteCount active_anon;
-@@ -398,7 +398,7 @@ BASE_EXPORT bool GetSystemMemoryInfo(SystemMemoryInfo*
+   ByteSize buffers;
+   ByteSize cached;
+   ByteSize active_anon;
+@@ -403,7 +403,7 @@ BASE_EXPORT bool GetSystemMemoryInfo(SystemMemoryInfo*
          // BUILDFLAG(IS_FUCHSIA)
  
  #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || \
@@ -105,7 +105,7 @@
  // Parse the data found in /proc/<pid>/stat and return the sum of the
  // CPU-related ticks.  Returns -1 on parse error.
  // Exposed for testing.
-@@ -574,7 +574,7 @@ class BASE_EXPORT SystemMetrics {
+@@ -579,7 +579,7 @@ class BASE_EXPORT SystemMetrics {
    FRIEND_TEST_ALL_PREFIXES(SystemMetricsTest, SystemMetrics);
  
    size_t committed_memory_;

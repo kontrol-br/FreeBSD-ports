@@ -1,12 +1,11 @@
 PORTNAME=	oqsprovider
-PORTVERSION=	0.10.0
-PORTREVISION=	1
+PORTVERSION=	0.11.0
 CATEGORIES=	security
 PKGNAMEPREFIX=	openssl-
 
 MAINTAINER=	brnrd@FreeBSD.org
 COMMENT=	quantum-resistant cryptography provider for OpenSSL
-WWW=		https://openquantumsafe.org/applications/tls.html#oqs-openssl-provider
+WWW=		https://openquantumsafe.org/applications/tls.html\#oqs-openssl-provider
 
 LICENSE=	MIT
 LICENSE_FILE=	${WRKSRC}/LICENSE.txt

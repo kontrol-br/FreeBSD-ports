@@ -1,6 +1,6 @@
 PORTNAME=	redis_exporter
 DISTVERSIONPREFIX=	v
-DISTVERSION=	1.80.0
+DISTVERSION=	1.81.0
 PORTREVISION=	1
 CATEGORIES=	databases
 
@@ -21,6 +21,6 @@ GO_BUILDFLAGS=	-v -ldflags "${LD_FLAG_STRING}"
 PLIST_FILES=	bin/redis_exporter
 
 LD_FLAG_X_PREFIX=	-X main
-LD_FLAG_STRING=		${STRIP} ${LD_FLAG_X_PREFIX}.BuildVersion=${DISTVERSION}
+LD_FLAG_STRING=		${LD_FLAG_X_PREFIX}.BuildVersion=${DISTVERSION}
 
 .include <bsd.port.mk>

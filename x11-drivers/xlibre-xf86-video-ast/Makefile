@@ -1,15 +1,16 @@
 PORTNAME=	xlibre-xf86-video-ast
-PORTVERSION=	1.2.0.1
+PORTVERSION=	25.0.0
+PORTREVISION=	2
 CATEGORIES=	x11-drivers
 
-MAINTAINER=	b-aazbsd@proton.me
+MAINTAINER=	xlibre@FreeBSD.org
 COMMENT=	XLibre ASPEED display driver
 WWW=		https://github.com/X11Libre/xf86-video-ast/
 
+ONLY_FOR_ARCHS=	amd64 i386 powerpc64le
+
 LICENSE=	MIT
 LICENSE_FILE=	${WRKSRC}/COPYING
-
-CONFLICTS_INSTALL=	xf86-video-ast
 
 USES=		xlibre-cat:driver
 INSTALL_TARGET=	install-strip

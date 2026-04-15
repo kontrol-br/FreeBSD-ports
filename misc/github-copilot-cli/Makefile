@@ -1,5 +1,6 @@
 PORTNAME=	github-copilot-cli
-DISTVERSION=	0.0.366
+DISTVERSION=	1.0.10
+PORTEPOCH=	1
 CATEGORIES=	misc # machine-learning
 DISTFILES=	${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX} \
 		${NODE_HEADERS}${EXTRACT_SUFX}
@@ -13,11 +14,13 @@ ONLY_FOR_ARCHS=		aarch64 amd64
 ONLY_FOR_ARCHS_REASON=	binaries are installed in folders with architecture encoded in them, patches are welcome to fix this limitation
 
 FETCH_DEPENDS=	npm:www/npm \
-		jq:textproc/jq
+		jq:textproc/jq \
+		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss
 BUILD_DEPENDS=	npm:www/npm \
 		libsecret>0:security/libsecret \
 		vips>=8.17.2:graphics/vips
 RUN_DEPENDS=	libsecret>0:security/libsecret \
+		rg:textproc/ripgrep \
 		vips>=8.17.2:graphics/vips
 
 USES=		nodejs:run pkgconfig python:build
@@ -60,27 +63,27 @@ do-fetch:
 		${ECHO} "====> Fetching ${NODE_HEADERS}${EXTRACT_SUFX}" && \
 		${FETCH_CMD} -q https://nodejs.org/download/release/v22.19.0/${NODE_HEADERS}${EXTRACT_SUFX} -o ${DD}/${NODE_HEADERS}${EXTRACT_SUFX} && \
 		${ECHO} "====> Fetching dependency pty" && \
-		${SETENV} TMPDIR=${WRKDIR} ${FETCH_SCRIPT} \
+		${SETENV} TMPDIR=${WRKDIR} LOCALBASE=${LOCALBASE} ${FETCH_SCRIPT} \
 			${dep_pty_npm_name} ${dep_pty_version} \
 			${FILESDIR}/package-lock-pty.json \
 			${DD}/pty-${dep_pty_version}${EXTRACT_SUFX} && \
 		${ECHO} "====> Fetching dependency sharp" && \
-		${SETENV} TMPDIR=${WRKDIR} ${FETCH_SCRIPT} \
+		${SETENV} TMPDIR=${WRKDIR} LOCALBASE=${LOCALBASE} ${FETCH_SCRIPT} \
 			${dep_sharp_npm_name} ${dep_sharp_version} \
 			${FILESDIR}/package-lock-sharp.json \
 			${DD}/sharp-${dep_sharp_version}${EXTRACT_SUFX} && \
 		${ECHO} "====> Fetching dependency keytar" && \
-		${SETENV} TMPDIR=${WRKDIR} ${FETCH_SCRIPT} \
+		${SETENV} TMPDIR=${WRKDIR} LOCALBASE=${LOCALBASE} ${FETCH_SCRIPT} \
 			${dep_keytar_npm_name} ${dep_keytar_version} \
 			${FILESDIR}/package-lock-keytar.json \
 			${DD}/keytar-${dep_keytar_version}${EXTRACT_SUFX} && \
 		${ECHO} "====> Fetching dependency node-addon-api" && \
-		${SETENV} TMPDIR=${WRKDIR} ${FETCH_SCRIPT} \
+		${SETENV} TMPDIR=${WRKDIR} LOCALBASE=${LOCALBASE} ${FETCH_SCRIPT} \
 			${dep_node_addon_api_npm_name} ${dep_node_addon_api_version} \
 			${FILESDIR}/package-lock-node-addon-api.json \
 			${DD}/node-addon-api-${dep_node_addon_api_version}${EXTRACT_SUFX} && \
 		${ECHO} "====> Fetching ${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" && \
-		${SETENV} TMPDIR=${WRKDIR} ${FETCH_SCRIPT} \
+		${SETENV} TMPDIR=${WRKDIR} LOCALBASE=${LOCALBASE} ${FETCH_SCRIPT} \
 			${PACKAGE_NAME} ${DISTVERSION} \
 			${FILESDIR}/package-lock.json \
 			${DD}/${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}; \
@@ -92,6 +95,12 @@ post-extract:
 	@${MV} \
 		${WRKDIR}/${dep_node_addon_api_npm_name}-${dep_node_addon_api_version}/node_modules/${dep_node_addon_api_npm_name} \
 		${WRKDIR}/${dep_sharp_npm_name}-${dep_sharp_version}/node_modules/${dep_sharp_npm_name}/node_modules/node-addon-api
+
+post-patch:
+	# set version
+	${REINPLACE_CMD} -i '' \
+		-e 's|qg.default.createElement(U,{color:e.MUTED},"v",t)|qg.default.createElement(U,{color:e.MUTED},"v","${PORTVERSION}")|g' \
+		${WRKSRC}/node_modules/@github/copilot/index.js
 
 do-build:
 	# Create directory for FreeBSD prebuilds
@@ -134,7 +143,7 @@ do-install:
 		-e "s|#!/usr/bin/env node|#!${PREFIX}/bin/node|" \
 		${STAGEDIR}${PREFIX}/lib/node_modules/${PACKAGE_NAME}/index.js
 	# set exec bit
-	@${CHMOD} +x ${STAGEDIR}${PREFIX}/lib/node_modules/${PACKAGE_NAME}/index.js
+	@${CHMOD} +x ${STAGEDIR}${PREFIX}/lib/node_modules/${PACKAGE_NAME}/npm-loader.js
 	# create symlink in bin
 	@${RLN} -s ${STAGEDIR}${PREFIX}/lib/node_modules/.bin/copilot ${STAGEDIR}${PREFIX}/bin/copilot
 	# strip binaries

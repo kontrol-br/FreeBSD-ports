@@ -3,7 +3,7 @@
  * pfblockerng.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015-2025 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2026 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2015-2024 BBcan177@gmail.com
  * All rights reserved.
  *
@@ -3958,7 +3958,7 @@ function pfb_download($list_url, $file_dwn, $pflex=FALSE, $header, $format, $log
 
 				if (isset($pfb['rfc7231'][$http_status])) {
 					if ($logtype < 3) {
-						pfb_logger(". {$pfb['rfc7231'][$http_status]}", 2);
+						pfb_logger(". {$pfb['rfc7231'][$http_status]}", $logtype);
 					} else {
 						pfb_logger(" {$file_dwn}\t\t{$pfb['rfc7231'][$http_status]}\n", $logtype);
 					}
@@ -4560,6 +4560,7 @@ function pfb_firewall_rule($action, $pfb_alias, $vtype, $pfb_log, $agateway_in='
 		case 'Match_Outbound':
 			$rule = $pfb['base_rule_float'];
 			$rule['type'] = 'match';
+			unset($rule['quick']);
 			if ($vtype == '_v6') {
 				$rule['ipprotocol'] = 'inet6';
 			}
@@ -4599,6 +4600,7 @@ function pfb_firewall_rule($action, $pfb_alias, $vtype, $pfb_log, $agateway_in='
 		case 'Match_Inbound':
 			$rule = $pfb['base_rule_float'];
 			$rule['type'] = 'match';
+			unset($rule['quick']);
 			if ($vtype == '_v6') {
 				$rule['ipprotocol'] = 'inet6';
 			}

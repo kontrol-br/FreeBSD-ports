@@ -1,5 +1,5 @@
 PORTNAME=	openssl
-PORTVERSION=	3.0.18
+PORTVERSION=	3.0.19
 PORTEPOCH=	1
 CATEGORIES=	security devel
 MASTER_SITES=	https://github.com/openssl/openssl/releases/download/${DISTNAME}/
@@ -13,7 +13,7 @@ LICENSE_FILE=	${WRKSRC}/LICENSE.txt
 
 #EXPIRATION_DATE=	2026-09-07
 
-CONFLICTS_INSTALL=	boringssl libressl libressl-devel openssl111 openssl3* openssl*-quictls
+CONFLICTS_INSTALL=	boringssl libressl libressl-devel openssl[134]*
 
 USES=		cpe perl5
 USE_PERL5=	build

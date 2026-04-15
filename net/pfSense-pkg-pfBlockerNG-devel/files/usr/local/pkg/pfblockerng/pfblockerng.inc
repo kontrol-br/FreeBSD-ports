@@ -3,7 +3,7 @@
  * pfblockerng.inc
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2015-2025 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2015-2026 Rubicon Communications, LLC (Netgate)
  * Copyright (c) 2015-2024 BBcan177@gmail.com
  * All rights reserved.
  *
@@ -3958,7 +3958,7 @@ function pfb_download($list_url, $file_dwn, $pflex=FALSE, $header, $format, $log
 
 				if (isset($pfb['rfc7231'][$http_status])) {
 					if ($logtype < 3) {
-						pfb_logger(". {$pfb['rfc7231'][$http_status]}", 2);
+						pfb_logger(". {$pfb['rfc7231'][$http_status]}", $logtype);
 					} else {
 						pfb_logger(" {$file_dwn}\t\t{$pfb['rfc7231'][$http_status]}\n", $logtype);
 					}
@@ -4560,6 +4560,7 @@ function pfb_firewall_rule($action, $pfb_alias, $vtype, $pfb_log, $agateway_in='
 		case 'Match_Outbound':
 			$rule = $pfb['base_rule_float'];
 			$rule['type'] = 'match';
+			unset($rule['quick']);
 			if ($vtype == '_v6') {
 				$rule['ipprotocol'] = 'inet6';
 			}
@@ -4599,6 +4600,7 @@ function pfb_firewall_rule($action, $pfb_alias, $vtype, $pfb_log, $agateway_in='
 		case 'Match_Inbound':
 			$rule = $pfb['base_rule_float'];
 			$rule['type'] = 'match';
+			unset($rule['quick']);
 			if ($vtype == '_v6') {
 				$rule['ipprotocol'] = 'inet6';
 			}
@@ -10048,8 +10050,12 @@ function sync_package_pfblockerng($cron='') {
 	#	Assign Rules	#
 	#########################
 
+	// Any pfB alias not in this list will be killed.
+	$pfb_active_aliases = null;
+
 	// Only execute if autorules are defined or if an alias has been removed.
 	if ($pfb['autorules'] || $pfb['enable'] == '' || $pfb['remove']) {
+		$pfb_active_aliases = [];
 		$message = '';
 		if (!empty($pfb['deny_inbound']) || !empty($pfb['permit_inbound']) || !empty($pfb['match_inbound'])) {
 			if (empty($pfb['inbound_interfaces'])) {
@@ -10131,6 +10137,14 @@ function sync_package_pfblockerng($cron='') {
 									$other_rules[] = $rule;
 								}
 							}
+						}
+					}
+
+					// Track pfB aliases referenced by rules.
+					foreach (array('source', 'destination') as $rtype) {
+						if ((substr($rule[$rtype]['address'], 0, 4) == 'pfB_') &&
+						    !in_array($rule[$rtype]['address'], $pfb_active_aliases)) {
+							$pfb_active_aliases[] = $rule[$rtype]['address'];
 						}
 					}
 
@@ -10383,12 +10397,31 @@ function sync_package_pfblockerng($cron='') {
 			pfb_logger("{$log}\n", 1);
 		}
 
-		// Remove all pfB aliastables
 		exec("{$pfb['pfctl']} -s Tables | {$pfb['grep']} '^pfB_'", $pfb_tables);
 		if (isset($pfb_tables)) {
+			$final_alias = array();
+			$pfb_active_aliases = isset($pfb_active_aliases) ? array_unique($pfb_active_aliases) : [];
+			if ($pfb['repcheck'] && ($pfb['drep'] == 'on' || $pfb['prep'] == 'on')) {
+				if (!empty($pfb_alias_lists_all)) {
+					$final_alias = array_intersect(array_unique($pfb_alias_lists_all), $pfb_active_aliases);
+				}
+			} else {
+				if (!empty($pfb_alias_lists)) {
+					$final_alias = array_intersect(array_unique($pfb_alias_lists), $pfb_active_aliases);
+				}
+			}
 			foreach ($pfb_tables as $pfb_table) {
 				$pfb_table_esc = escapeshellarg($pfb_table);
-				exec("{$pfb['pfctl']} -t {$pfb_table_esc} -T kill 2>&1", $result);
+				$pfb_table_path_esc	= escapeshellarg("{$pfb['aliasdir']}/{$pfb_table}.txt");
+				if (in_array($pfb_table, $pfb_active_aliases)) {
+					if (in_array($pfb_table, $final_alias)) {
+						// Replace active pfB aliastables which have been updated
+						exec("{$pfb['pfctl']} -t {$pfb_table_esc} -T replace -f {$pfb_table_path_esc} 2>&1", $result);
+					}
+				} else {
+					// Remove inactive pfB aliastables
+					exec("{$pfb['pfctl']} -t {$pfb_table_esc} -T kill 2>&1", $result);
+				}
 			}
 		}
 

@@ -1,5 +1,6 @@
 PORTNAME=	petsc4py
 DISTVERSION=	3.22.4
+PORTREVISION=	1
 CATEGORIES=	math python
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -18,7 +19,7 @@ LIB_DEPENDS=	libpetsc.so:science/PETSc
 RUN_DEPENDS=	${PYNUMPY}
 
 USES=		python
-USE_PYTHON=	autoplist cython3 distutils pytest # tests fail to run, see https://gitlab.com/petsc/petsc/-/issues/1301
+USE_PYTHON=	autoplist cython distutils pytest # tests fail to run, see https://gitlab.com/petsc/petsc/-/issues/1301
 
 MAKE_ENV=	PETSC_DIR=${LOCALBASE}
 

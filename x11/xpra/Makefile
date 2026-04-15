@@ -1,5 +1,6 @@
 PORTNAME=	xpra
 PORTVERSION=	6.4
+PORTREVISION=	3
 CATEGORIES=	x11
 MASTER_SITES=	https://xpra.org/src/
 
@@ -34,7 +35,7 @@ RUN_DEPENDS=	${PY_PILLOW} \
 		${PYTHON_PKGNAMEPREFIX}PyOpenGL>=3.1.0:graphics/py-PyOpenGL@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}aioquic>=0:www/py-aioquic@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}rencode>1:converters/py-rencode@${PY_FLAVOR} \
-		${PYTHON_PKGNAMEPREFIX}xdg>0:devel/py-xdg@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}pyxdg>0:devel/py-pyxdg@${PY_FLAVOR} \
 		setxkbmap:x11/setxkbmap \
 		ssh-askpass:security/openssh-askpass \
 		xauth:x11/xauth \
@@ -47,7 +48,7 @@ USES=		desktop-file-utils gettext-runtime gnome localbase pkgconfig \
 		python shared-mime-info shebangfix tar:xz xorg
 
 USE_GNOME=	cairo gdkpixbuf gtk30 pygobject3
-USE_PYTHON=	cryptography cython3 distutils noflavors
+USE_PYTHON=	cryptography cython distutils noflavors
 USE_XORG=	x11 xcomposite xcursor xdamage xext xfixes xi xkbfile xrandr \
 		xres xtst
 PLIST_SUB+=	PORTVERSION=${PORTVERSION} \

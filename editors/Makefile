@@ -48,6 +48,7 @@
     SUBDIR += fileobj
     SUBDIR += flim
     SUBDIR += focuswriter
+    SUBDIR += fresh
     SUBDIR += fxite
     SUBDIR += gedit
     SUBDIR += gedit-plugins
@@ -66,6 +67,7 @@
     SUBDIR += hexpert
     SUBDIR += hnb
     SUBDIR += hte
+    SUBDIR += hxavi
     SUBDIR += imhex
     SUBDIR += jed
     SUBDIR += jedit
@@ -205,6 +207,7 @@
     SUBDIR += lite-xl
     SUBDIR += marginalia.el
     SUBDIR += marker
+    SUBDIR += markmywords
     SUBDIR += mg
     SUBDIR += mickey
     SUBDIR += micro
@@ -250,6 +253,7 @@
     SUBDIR += py-pynvim
     SUBDIR += py-vim-bridge
     SUBDIR += rehex
+    SUBDIR += remarkable
     SUBDIR += retext
     SUBDIR += rubygem-neovim
     SUBDIR += sam

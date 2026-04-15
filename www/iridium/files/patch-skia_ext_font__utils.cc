@@ -1,6 +1,6 @@
---- skia/ext/font_utils.cc.orig	2025-12-10 15:04:57 UTC
+--- skia/ext/font_utils.cc.orig	2026-02-16 10:45:29 UTC
 +++ skia/ext/font_utils.cc
-@@ -21,7 +21,7 @@
+@@ -25,7 +25,7 @@
  #include "third_party/skia/include/ports/SkFontMgr_mac_ct.h"
  #endif
  
@@ -9,7 +9,7 @@
  #include "third_party/skia/include/ports/SkFontConfigInterface.h"
  #include "third_party/skia/include/ports/SkFontMgr_FontConfigInterface.h"
  #include "third_party/skia/include/ports/SkFontScanner_Fontations.h"
-@@ -64,7 +64,7 @@ static sk_sp<SkFontMgr> fontmgr_factory() {
+@@ -83,7 +83,7 @@ static sk_sp<SkFontMgr> fontmgr_factory() {
    return SkFontMgr_New_Android(nullptr, SkFontScanner_Make_Fontations());
  #elif BUILDFLAG(IS_APPLE)
    return SkFontMgr_New_CoreText(nullptr);

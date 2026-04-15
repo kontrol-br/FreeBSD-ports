@@ -1,6 +1,6 @@
---- components/password_manager/core/browser/features/password_features.cc.orig	2025-12-06 13:30:52 UTC
+--- components/password_manager/core/browser/features/password_features.cc.orig	2026-03-15 18:32:51 UTC
 +++ components/password_manager/core/browser/features/password_features.cc
-@@ -71,7 +71,7 @@ BASE_FEATURE(kClearUndecryptablePasswords,
+@@ -60,7 +60,7 @@ BASE_FEATURE(kClearUndecryptablePasswords,
  BASE_FEATURE(kClearUndecryptablePasswordsOnSync,
               "ClearUndecryptablePasswordsInSync",
  #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_IOS) || \
@@ -9,9 +9,9 @@
               base::FEATURE_ENABLED_BY_DEFAULT
  #else
               base::FEATURE_DISABLED_BY_DEFAULT
-@@ -139,7 +139,7 @@ BASE_FEATURE(kPasswordManualFallbackAvailable,
- 
- BASE_FEATURE(kPasswordManagerLogToTerminal, base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -137,7 +137,7 @@ BASE_FEATURE(kProactivelyDownloadModelForPasswordChang
+ BASE_FEATURE(kReduceRequirementsForPasswordChange,
+              base::FEATURE_DISABLED_BY_DEFAULT);
  
 -#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 +#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)

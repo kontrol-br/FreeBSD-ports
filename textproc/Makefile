@@ -84,10 +84,12 @@
     SUBDIR += bibutils
     SUBDIR += biodiff
     SUBDIR += bn-aspell
+    SUBDIR += bookokrat
     SUBDIR += br-aspell
     SUBDIR += bsd-spell
     SUBDIR += c2html
     SUBDIR += ca-aspell
+    SUBDIR += caps-log
     SUBDIR += cast2gif
     SUBDIR += castxml
     SUBDIR += catdoc
@@ -108,6 +110,7 @@
     SUBDIR += codesearch
     SUBDIR += codespell
     SUBDIR += colordiff
+    SUBDIR += comparator
     SUBDIR += comrak
     SUBDIR += confget
     SUBDIR += consul-template
@@ -207,6 +210,7 @@
     SUBDIR += fcitx5-gtk-common
     SUBDIR += fcitx5-lua
     SUBDIR += fcitx5-m17n
+    SUBDIR += fcitx5-mcfoxim
     SUBDIR += fcitx5-qt
     SUBDIR += fcitx5-qt-common
     SUBDIR += feluda
@@ -294,6 +298,7 @@
     SUBDIR += htmltolatex
     SUBDIR += humanzip
     SUBDIR += hunspell
+    SUBDIR += hus-aspell
     SUBDIR += hy-aspell
     SUBDIR += hyperestraier
     SUBDIR += hyphen
@@ -344,6 +349,7 @@
     SUBDIR += jshon
     SUBDIR += json-yaml
     SUBDIR += json2yaml
+    SUBDIR += jsonfmt
     SUBDIR += jtc
     SUBDIR += kdiff3
     SUBDIR += kepubify
@@ -354,6 +360,9 @@
     SUBDIR += kf6-sonnet
     SUBDIR += kf6-syntax-highlighting
     SUBDIR += kibana8
+    SUBDIR += kibana91
+    SUBDIR += kibana92
+    SUBDIR += kibana93
     SUBDIR += kiss-templates
     SUBDIR += kmfl-european-latin
     SUBDIR += kmfl-khmer
@@ -366,6 +375,7 @@
     SUBDIR += kmflcomp
     SUBDIR += kn-aspell
     SUBDIR += kompare
+    SUBDIR += krep
     SUBDIR += kreport
     SUBDIR += ku-aspell
     SUBDIR += ky-aspell
@@ -482,6 +492,7 @@
     SUBDIR += meilisearch
     SUBDIR += meld
     SUBDIR += metauml
+    SUBDIR += mg-aspell
     SUBDIR += mgdiff
     SUBDIR += mi-aspell
     SUBDIR += miller
@@ -538,6 +549,7 @@
     SUBDIR += otree
     SUBDIR += ov
     SUBDIR += ox-gfm.el
+    SUBDIR += oyo
     SUBDIR += p5-AI-Categorizer
     SUBDIR += p5-Algorithm-CheckDigits
     SUBDIR += p5-Algorithm-RabinKarp
@@ -1264,15 +1276,6 @@
     SUBDIR += peco
     SUBDIR += peg
     SUBDIR += perl2html
-    SUBDIR += php81-ctype
-    SUBDIR += php81-dom
-    SUBDIR += php81-enchant
-    SUBDIR += php81-pspell
-    SUBDIR += php81-simplexml
-    SUBDIR += php81-xml
-    SUBDIR += php81-xmlreader
-    SUBDIR += php81-xmlwriter
-    SUBDIR += php81-xsl
     SUBDIR += php82-ctype
     SUBDIR += php82-dom
     SUBDIR += php82-enchant
@@ -1386,6 +1389,7 @@
     SUBDIR += py-elementpath
     SUBDIR += py-emeraldtree
     SUBDIR += py-empy
+    SUBDIR += py-en-core-web-sm
     SUBDIR += py-enchant
     SUBDIR += py-enrich
     SUBDIR += py-epy-reader
@@ -1416,6 +1420,7 @@
     SUBDIR += py-hexdump
     SUBDIR += py-hieroglyph
     SUBDIR += py-hjson
+    SUBDIR += py-hotdoc
     SUBDIR += py-html-text
     SUBDIR += py-html2json
     SUBDIR += py-html2text
@@ -1534,12 +1539,12 @@
     SUBDIR += py-pdfrw
     SUBDIR += py-pdftotext
     SUBDIR += py-petl
+    SUBDIR += py-phonemizer-fork
     SUBDIR += py-pikepdf
     SUBDIR += py-precis_i18n
     SUBDIR += py-pscript
     SUBDIR += py-pss
     SUBDIR += py-pyPEG2
-    SUBDIR += py-pyRdfa3
     SUBDIR += py-pyahocorasick
     SUBDIR += py-pyaml
     SUBDIR += py-pybtex
@@ -1557,6 +1562,7 @@
     SUBDIR += py-pygccxml
     SUBDIR += py-pygments
     SUBDIR += py-pygtail
+    SUBDIR += py-pygtkspellcheck
     SUBDIR += py-pyhamcrest
     SUBDIR += py-pykwalify
     SUBDIR += py-pylatexenc
@@ -1566,6 +1572,7 @@
     SUBDIR += py-pypa-docs-theme
     SUBDIR += py-pypandoc
     SUBDIR += py-pyphen
+    SUBDIR += py-pyrdfa3
     SUBDIR += py-pyrss2gen
     SUBDIR += py-pyscss
     SUBDIR += py-pysrt
@@ -1671,6 +1678,7 @@
     SUBDIR += py-sphinxcontrib-jquery
     SUBDIR += py-sphinxcontrib-jsmath
     SUBDIR += py-sphinxcontrib-log-cabinet
+    SUBDIR += py-sphinxcontrib-mermaid
     SUBDIR += py-sphinxcontrib-napoleon
     SUBDIR += py-sphinxcontrib-newsfeed
     SUBDIR += py-sphinxcontrib-nwdiag
@@ -1698,8 +1706,10 @@
     SUBDIR += py-texttable
     SUBDIR += py-textual
     SUBDIR += py-textual-autocomplete
+    SUBDIR += py-textual-fastdatatable
     SUBDIR += py-textual-image
     SUBDIR += py-textual-speedups
+    SUBDIR += py-textual-textarea
     SUBDIR += py-textual0
     SUBDIR += py-textwrap3
     SUBDIR += py-three-merge
@@ -1713,6 +1723,7 @@
     SUBDIR += py-tomli
     SUBDIR += py-tomli-w
     SUBDIR += py-tomlkit
+    SUBDIR += py-tomllint
     SUBDIR += py-toronado
     SUBDIR += py-towncrier
     SUBDIR += py-translationstring
@@ -1734,6 +1745,7 @@
     SUBDIR += py-wavedrom
     SUBDIR += py-wcmatch
     SUBDIR += py-whatthepatch
+    SUBDIR += py-wheezy.template
     SUBDIR += py-whoosh
     SUBDIR += py-wordcloud
     SUBDIR += py-wordnet
@@ -1755,6 +1767,7 @@
     SUBDIR += py-zensical
     SUBDIR += py-zope.i18nmessageid
     SUBDIR += py-zpt
+    SUBDIR += qo
     SUBDIR += qprint
     SUBDIR += qr
     SUBDIR += qrcodegen
@@ -1843,12 +1856,12 @@
     SUBDIR += rubygem-commonmarker
     SUBDIR += rubygem-commonmarker0
     SUBDIR += rubygem-creole
+    SUBDIR += rubygem-cronex
     SUBDIR += rubygem-css_parser
     SUBDIR += rubygem-cssmin
     SUBDIR += rubygem-cucumber-gherkin
-    SUBDIR += rubygem-cucumber-gherkin34
     SUBDIR += rubygem-cucumber-html-formatter
-    SUBDIR += rubygem-cucumber-html-formatter21
+    SUBDIR += rubygem-cucumber-html-formatter22
     SUBDIR += rubygem-dartsass
     SUBDIR += rubygem-diff-lcs
     SUBDIR += rubygem-diff_match_patch
@@ -1932,7 +1945,6 @@
     SUBDIR += rubygem-loggability
     SUBDIR += rubygem-loofah
     SUBDIR += rubygem-loofah-gitlab
-    SUBDIR += rubygem-loofah222
     SUBDIR += rubygem-ltsv
     SUBDIR += rubygem-markaby
     SUBDIR += rubygem-mdl
@@ -1970,6 +1982,7 @@
     SUBDIR += rubygem-rails-dom-testing-rails81
     SUBDIR += rubygem-rails-dom-testing1
     SUBDIR += rubygem-rails-html-sanitizer
+    SUBDIR += rubygem-rails-html-sanitizer-gitlab
     SUBDIR += rubygem-rak
     SUBDIR += rubygem-rchardet
     SUBDIR += rubygem-rdiscount
@@ -2234,7 +2247,6 @@
     SUBDIR += xorg-sgml-doctools
     SUBDIR += xslide.el
     SUBDIR += xstream
-    SUBDIR += xsv-rs
     SUBDIR += xwindiff
     SUBDIR += xxdiff
     SUBDIR += xxdiff-scripts

@@ -1,5 +1,6 @@
 PORTNAME=	peazip
-PORTVERSION=	10.7.0
+PORTVERSION=	10.9.0
+PORTREVISION=	1
 CATEGORIES=	archivers
 MASTER_SITES=	https://github.com/giorgiotani/PeaZip/releases/download/${PORTVERSION}/
 PKGNAMESUFFIX=	${LAZARUS_PKGNAMESUFFIX}
@@ -22,7 +23,9 @@ SUB_FILES=	pea peazip
 
 DOS2UNIX_REGEX=		.*\.([txt]|pas|lpi|txt)
 
-LAZARUS_PROJECT_FILES=	dev/project_pea.lpi dev/project_peach.lpi
+LAZARUS_PROJECT_FILES=	dev/metadarkstyle/metadarkstyle.lpk \
+			dev/project_pea.lpi \
+			dev/project_peach.lpi
 LAZBUILD_ARGS=		-d
 
 gtk2_CONFLICTS_INSTALL=	${PORTNAME}-qt5 ${PORTNAME}-qt6
@@ -31,10 +34,11 @@ qt6_CONFLICTS_INSTALL=	${PORTNAME}-gtk2 ${PORTNAME}-qt5
 
 ARCHIVER_FILES=		#
 
-OPTIONS_DEFINE=		7Z ARC ZPAQ UNACE
+OPTIONS_DEFINE=		7Z ARC BROTLI ZPAQ UNACE
 
 7Z_DESC=		7z file archiver support
 ARC_DESC=		Arc file archiver support
+BROTLI_DESC=		Brotli file archiver support
 ZPAQ_DESC=		Zpaq file archiver support
 UNACE_DESC=		Unace file archiver support
 
@@ -63,6 +67,14 @@ PLIST_SUB+=	ARC=""
 PLIST_SUB+=	ARC="@comment "
 .endif
 
+.if ${PORT_OPTIONS:MBROTLI}
+RUN_DEPENDS+=	brotli:archivers/brotli
+ARCHIVER_FILES+=brotli
+PLIST_SUB+=	BROTLI=""
+.else
+PLIST_SUB+=	BROTLI="@comment "
+.endif
+
 .if ${PORT_OPTIONS:MZPAQ}
 RUN_DEPENDS+=	zpaq:archivers/paq
 ARCHIVER_FILES+=zpaq
@@ -80,10 +92,6 @@ PLIST_SUB+=	UNACE="@comment "
 .endif
 
 .include <bsd.port.pre.mk>
-
-post-patch:
-	${REINPLACE_CMD} -e 's|GetSelectedNodePath|Path|g' \
-		-e 's|IFDEF LCLQT5|IF DEFINED\(LCLQT5\) OR DEFINED\(LCLQT6\)|g ' ${WRKSRC}/dev/peach.pas
 
 pre-install:
 	@${ECHO_CMD} "#" > ${WRKSRC}/altconf.txt

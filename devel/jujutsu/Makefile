@@ -1,12 +1,12 @@
 PORTNAME=	jujutsu
 DISTVERSIONPREFIX=	v
-DISTVERSION=	0.35.0
-PORTREVISION=	2
+DISTVERSION=	0.39.0
+PORTREVISION=	1
 CATEGORIES=	devel
 
 MAINTAINER=	se@FreeBSD.org
 COMMENT=	Git-compatible VCS that is both simple and powerful
-WWW=		https://jj-vcs.github.io/jj/latest/
+WWW=		https://docs.jj-vcs.dev/latest/
 
 LICENSE=	APACHE20
 LICENSE_FILE=	${WRKSRC}/LICENSE
@@ -15,6 +15,8 @@ USES=		cargo localbase shebangfix
 USE_GITHUB=	yes
 GH_ACCOUNT=	jj-vcs
 GH_PROJECT=	jj
+
+TEST_DEPENDS=	git:devel/git
 
 SHEBANG_FILES=	demos/*.sh
 

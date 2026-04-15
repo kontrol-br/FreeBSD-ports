@@ -1,8 +1,9 @@
 PORTNAME=	filepizza
-DISTVERSION=	2.0.20250804
-PORTREVISION=	1
+DISTVERSION=	2.0.20251222
 CATEGORIES=	www
 MASTER_SITES=	LOCAL/dtxdf/${PORTNAME}/
+# For instructions on how to create assets:
+#   https://github.com/DtxdF/port-assets-makejails/tree/main/filepizza
 DISTFILES=	${PORTNAME}-${GITID}${EXTRACT_SUFX}
 
 MAINTAINER=	dtxdf@FreeBSD.org
@@ -25,7 +26,7 @@ WRKSRC=		${WRKDIR}/${PORTNAME}-files
 
 PLIST_SUB=	HOMEDIR=${FILEPIZZA_HOMEDIR}
 
-GITID=	3bd340d24bb86938450c1eb9e66ae601167b1bba
+GITID=		60704b45e6e4ed0fbcc43931b759d0cb9536c146
 
 FILEPIZZA_HOMEDIR=	${WWWDIR}
 FILEPIZZA_USER=		www

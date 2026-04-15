@@ -1,8 +1,8 @@
---- chrome/browser/flag_descriptions.h.orig	2025-12-10 15:04:57 UTC
+--- chrome/browser/flag_descriptions.h.orig	2026-03-24 16:59:08 UTC
 +++ chrome/browser/flag_descriptions.h
-@@ -8586,6 +8586,18 @@ inline constexpr char kHandleMdmErrorsForDasherAccount
- inline constexpr char kHandleMdmErrorsForDasherAccountsDescription[] =
-     "Enables the mdm error handling feature for dasher accounts";
+@@ -8311,6 +8311,18 @@ inline constexpr char kEnableOktaSSOName[] =
+ inline constexpr char kEnableOktaSSODescription[] =
+     "Enables native support for Okta SSO on managed MacOS devices.";
  
 +#if BUILDFLAG(IS_BSD)
 +inline constexpr char kAudioBackendName[] =

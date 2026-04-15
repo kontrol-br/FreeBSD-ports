@@ -1,10 +1,11 @@
 PORTNAME=	lime
-DISTVERSION=	5.4.28
+DISTVERSION=	5.4.100
+PORTREVISION=	1
 CATEGORIES=	security
 
 MAINTAINER=	bofh@FreeBSD.org
 COMMENT=	End-to-end encryption library for instant messaging
-WWW=		https://www.linphone.org/technical-corner/lime
+WWW=		https://gitlab.linphone.org/BC/public/lime
 
 LICENSE=	GPLv3
 LICENSE_FILE=	${WRKSRC}/LICENSE.txt

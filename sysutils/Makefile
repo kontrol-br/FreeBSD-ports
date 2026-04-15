@@ -38,7 +38,6 @@
     SUBDIR += anacron
     SUBDIR += and
     SUBDIR += android-file-transfer
-    SUBDIR += android-file-transfer-qt5
     SUBDIR += android-ota-payload-extractor
     SUBDIR += angrysearch
     SUBDIR += ansible
@@ -47,6 +46,7 @@
     SUBDIR += ansible-sshjail
     SUBDIR += ansible-sysrc
     SUBDIR += anvil
+    SUBDIR += aoostar-rs
     SUBDIR += apachetop
     SUBDIR += apcctrl
     SUBDIR += apcpwr
@@ -101,12 +101,12 @@
     SUBDIR += bareos-client
     SUBDIR += bareos-server
     SUBDIR += bareos-traymonitor
-    SUBDIR += bareos22-client
-    SUBDIR += bareos22-server
-    SUBDIR += bareos22-traymonitor
     SUBDIR += bareos23-client
     SUBDIR += bareos23-server
     SUBDIR += bareos23-traymonitor
+    SUBDIR += bareos24-client
+    SUBDIR += bareos24-server
+    SUBDIR += bareos24-traymonitor
     SUBDIR += barrier
     SUBDIR += bashtop
     SUBDIR += bastille
@@ -116,8 +116,10 @@
     SUBDIR += battray
     SUBDIR += bchunk
     SUBDIR += beadm
-    SUBDIR += beats7
     SUBDIR += beats8
+    SUBDIR += beats91
+    SUBDIR += beats92
+    SUBDIR += beats93
     SUBDIR += bfs
     SUBDIR += bhyve-firmware
     SUBDIR += bhyve-rc
@@ -154,7 +156,6 @@
     SUBDIR += bulk_extractor
     SUBDIR += bupstash
     SUBDIR += burp
-    SUBDIR += burp-devel
     SUBDIR += busybox
     SUBDIR += bvm
     SUBDIR += byobu
@@ -189,12 +190,14 @@
     SUBDIR += cfengine-masterfiles324
     SUBDIR += cfengine-masterfiles325
     SUBDIR += cfengine-masterfiles326
+    SUBDIR += cfengine-masterfiles327
     SUBDIR += cfengine321
     SUBDIR += cfengine322
     SUBDIR += cfengine323
     SUBDIR += cfengine324
     SUBDIR += cfengine325
     SUBDIR += cfengine326
+    SUBDIR += cfengine327
     SUBDIR += chaoskube
     SUBDIR += checkrestart
     SUBDIR += chezmoi
@@ -289,6 +292,7 @@
     SUBDIR += devd-mount
     SUBDIR += devedeng
     SUBDIR += devstat
+    SUBDIR += devtui
     SUBDIR += dfc
     SUBDIR += di
     SUBDIR += diffoci
@@ -362,6 +366,7 @@
     SUBDIR += envconsul
     SUBDIR += epazote
     SUBDIR += erdtree
+    SUBDIR += erldash
     SUBDIR += etcmerge
     SUBDIR += ethname
     SUBDIR += evhz
@@ -552,7 +557,6 @@
     SUBDIR += ipa
     SUBDIR += ipad_charge
     SUBDIR += ipdbtools
-    SUBDIR += ipfs-go-fs-repo-migrations
     SUBDIR += ipget
     SUBDIR += ipmi_exporter
     SUBDIR += ipmitool
@@ -669,6 +673,9 @@
     SUBDIR += logstalgia
     SUBDIR += logstash7
     SUBDIR += logstash8
+    SUBDIR += logstash91
+    SUBDIR += logstash92
+    SUBDIR += logstash93
     SUBDIR += logtool
     SUBDIR += logwatch
     SUBDIR += loki
@@ -713,6 +720,7 @@
     SUBDIR += mcron
     SUBDIR += mdcat
     SUBDIR += mdf2iso
+    SUBDIR += mdfried
     SUBDIR += megacli
     SUBDIR += megarc
     SUBDIR += memdump
@@ -721,6 +729,7 @@
     SUBDIR += memtester
     SUBDIR += metalog
     SUBDIR += mfid
+    SUBDIR += michaelo-periodic
     SUBDIR += minikube
     SUBDIR += minimunin
     SUBDIR += minipot
@@ -736,6 +745,7 @@
     SUBDIR += mmc-utils
     SUBDIR += mmve
     SUBDIR += modman
+    SUBDIR += mods
     SUBDIR += modules
     SUBDIR += mog
     SUBDIR += mongodb_exporter
@@ -751,6 +761,7 @@
     SUBDIR += msiklm
     SUBDIR += msktutil
     SUBDIR += mstflint
+    SUBDIR += mtail
     SUBDIR += mtm
     SUBDIR += mtxorbd
     SUBDIR += mult
@@ -955,8 +966,6 @@
     SUBDIR += pfstat
     SUBDIR += pftables
     SUBDIR += pftop
-    SUBDIR += php81-fileinfo
-    SUBDIR += php81-posix
     SUBDIR += php82-fileinfo
     SUBDIR += php82-posix
     SUBDIR += php83-fileinfo
@@ -1029,6 +1038,7 @@
     SUBDIR += py-ansible-compat
     SUBDIR += py-ansible-core
     SUBDIR += py-ansible-core219
+    SUBDIR += py-ansible-core220
     SUBDIR += py-ansible-lint
     SUBDIR += py-ansible-runner
     SUBDIR += py-appjail-gui
@@ -1046,6 +1056,7 @@
     SUBDIR += py-cron-descriptor
     SUBDIR += py-croniter
     SUBDIR += py-croniter2
+    SUBDIR += py-dbuild
     SUBDIR += py-debian-inspector
     SUBDIR += py-dict-toolbox
     SUBDIR += py-diffoscope
@@ -1078,6 +1089,7 @@
     SUBDIR += py-mitogen
     SUBDIR += py-mqttwarn
     SUBDIR += py-nagiosplugin
+    SUBDIR += py-nvitop
     SUBDIR += py-overlord
     SUBDIR += py-packet-python
     SUBDIR += py-pkginfo
@@ -1094,6 +1106,7 @@
     SUBDIR += py-python-consul
     SUBDIR += py-python-crontab
     SUBDIR += py-python-nomad
+    SUBDIR += py-python-on-whales
     SUBDIR += py-pytsk
     SUBDIR += py-pywatchman
     SUBDIR += py-pyznap
@@ -1176,7 +1189,9 @@
     SUBDIR += rubygem-backup
     SUBDIR += rubygem-bolt
     SUBDIR += rubygem-bosh-gen
+    SUBDIR += rubygem-bundle-audit
     SUBDIR += rubygem-bundler
+    SUBDIR += rubygem-bundler-audit
     SUBDIR += rubygem-bundler_ext
     SUBDIR += rubygem-capistrano
     SUBDIR += rubygem-capistrano-ext
@@ -1185,9 +1200,11 @@
     SUBDIR += rubygem-chef-bin
     SUBDIR += rubygem-chef-cleanroom
     SUBDIR += rubygem-chef-config
+    SUBDIR += rubygem-chef-config18
     SUBDIR += rubygem-chef-licensing
     SUBDIR += rubygem-chef-telemetry
     SUBDIR += rubygem-chef-utils
+    SUBDIR += rubygem-chef-utils18
     SUBDIR += rubygem-chef-vault
     SUBDIR += rubygem-chef-winrm
     SUBDIR += rubygem-chef-winrm-elevated
@@ -1228,6 +1245,7 @@
     SUBDIR += rubygem-mothra
     SUBDIR += rubygem-murder
     SUBDIR += rubygem-ohai
+    SUBDIR += rubygem-ohai18
     SUBDIR += rubygem-openbolt
     SUBDIR += rubygem-openfact
     SUBDIR += rubygem-openvoxserver-ca
@@ -1268,6 +1286,7 @@
     SUBDIR += rubygem-winrm-elevated-gitlab
     SUBDIR += rubygem-winrm-gitlab
     SUBDIR += rubygem-yell
+    SUBDIR += rucola
     SUBDIR += runas
     SUBDIR += rundeck
     SUBDIR += runiq
@@ -1278,6 +1297,7 @@
     SUBDIR += rush
     SUBDIR += rust-coreutils
     SUBDIR += rust-findutils
+    SUBDIR += rustic
     SUBDIR += rw
     SUBDIR += rw-tui
     SUBDIR += s-tui
@@ -1308,6 +1328,7 @@
     SUBDIR += screenie
     SUBDIR += scterc
     SUBDIR += sd-agent
+    SUBDIR += sdmon
     SUBDIR += sdparm
     SUBDIR += seatd
     SUBDIR += seatools
@@ -1360,7 +1381,6 @@
     SUBDIR += stow
     SUBDIR += stowES
     SUBDIR += stress
-    SUBDIR += stressdisk
     SUBDIR += superfile
     SUBDIR += superiotool
     SUBDIR += swapd
@@ -1431,9 +1451,11 @@
     SUBDIR += touchegg
     SUBDIR += toybox
     SUBDIR += tree
+    SUBDIR += treemd
     SUBDIR += treetop
     SUBDIR += triton
     SUBDIR += trueos-libqt5
+    SUBDIR += try-rs
     SUBDIR += ts
     SUBDIR += tty-clock
     SUBDIR += ttyd
@@ -1577,6 +1599,7 @@
     SUBDIR += wait_on
     SUBDIR += waitforssh
     SUBDIR += walk
+    SUBDIR += watchcat
     SUBDIR += watchfolder
     SUBDIR += watchman
     SUBDIR += watchmen
@@ -1586,8 +1609,8 @@
     SUBDIR += wemux
     SUBDIR += whatpix
     SUBDIR += whowatch
-    SUBDIR += wiimms
     SUBDIR += wiper
+    SUBDIR += witr
     SUBDIR += wmapmload
     SUBDIR += wmbluecpu
     SUBDIR += wmbsdbatt
@@ -1606,6 +1629,7 @@
     SUBDIR += xbatt
     SUBDIR += xbattbar
     SUBDIR += xcdroast
+    SUBDIR += xclipsync
     SUBDIR += xcp
     SUBDIR += xcpustate
     SUBDIR += xdu

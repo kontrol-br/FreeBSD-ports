@@ -1,18 +1,6 @@
---- bin/background_jobs.orig	2025-10-21 19:12:22 UTC
+--- bin/background_jobs.orig	2026-02-09 19:24:50 UTC
 +++ bin/background_jobs
-@@ -49,19 +49,14 @@ start_sidekiq()
- start_sidekiq()
- {
-   cmd="exec"
--  chpst=$(command -v chpst)
- 
--  if [ -n "$chpst" ]; then
--    cmd="${cmd} ${chpst} -P"
--  fi
--
-   # sidekiq-cluster expects an argument per process.
-   for (( i=1; i<=sidekiq_workers; i++ ))
-   do
+@@ -61,7 +61,7 @@ start_sidekiq()
      processes_args+=("${sidekiq_queues}")
    done
  

@@ -1,6 +1,6 @@
---- chrome/browser/chrome_browser_interface_binders.cc.orig	2025-12-10 15:04:57 UTC
+--- chrome/browser/chrome_browser_interface_binders.cc.orig	2026-03-24 16:59:08 UTC
 +++ chrome/browser/chrome_browser_interface_binders.cc
-@@ -82,7 +82,7 @@
+@@ -84,7 +84,7 @@
  #endif  // BUILDFLAG(ENABLE_UNHANDLED_TAP)
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -8,8 +8,8 @@
 +    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
  #include "chrome/browser/screen_ai/screen_ai_service_router.h"
  #include "chrome/browser/screen_ai/screen_ai_service_router_factory.h"
- #include "chrome/browser/ui/web_applications/sub_apps_service_impl.h"
-@@ -366,7 +366,7 @@ void BindMediaFoundationPreferences(
+ #include "chrome/browser/web_applications/sub_apps_service_impl.h"
+@@ -373,7 +373,7 @@ void BindMediaFoundationPreferences(
  #endif  // BUILDFLAG(IS_WIN)
  
  #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
@@ -24,6 +24,6 @@
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
 -    BUILDFLAG(IS_CHROMEOS)
 +    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
-   if (base::FeatureList::IsEnabled(blink::features::kDesktopPWAsSubApps) &&
+   if (base::FeatureList::IsEnabled(blink::features::kSubApps) &&
        !render_frame_host->GetParentOrOuterDocument()) {
      // The service binder will reject non-primary main frames, but we still need

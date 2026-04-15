@@ -3,7 +3,7 @@
  * system_patches_edit.php
  *
  * part of pfSense (https://www.pfsense.org)
- * Copyright (c) 2012-2025 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2012-2026 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -142,7 +142,7 @@ if ($_POST) {
 			}
 		}
 
-		write_config(gettext("System: Patches: edited a patch."));
+		write_config(LOG_PREFIX_PKG_SYSTEMPATCHES . ": " . gettext("edited a patch."));
 		if ($thispatch['autoapply']) {
 			patch_add_shellcmd();
 		}
@@ -239,7 +239,7 @@ $section = new Form_Section('Patch Information');
 
 $section->addInput(new Form_StaticText(
 	'Patch ID',
-	$pconfig['uniqid']
+	htmlspecialchars($pconfig['uniqid'])
 ));
 
 $form->add($section);

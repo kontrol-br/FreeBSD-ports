@@ -85,6 +85,7 @@
     SUBDIR += blend2d
     SUBDIR += blender
     SUBDIR += blender-doc
+    SUBDIR += blender4
     SUBDIR += bmeps
     SUBDIR += bmp2html
     SUBDIR += bonzomatic
@@ -169,6 +170,8 @@
     SUBDIR += ebsynth
     SUBDIR += edje_viewer
     SUBDIR += egl-wayland
+    SUBDIR += egl-wayland2
+    SUBDIR += egl-x11
     SUBDIR += eglexternalplatform
     SUBDIR += elastix
     SUBDIR += elementary-photos
@@ -344,6 +347,7 @@
     SUBDIR += gwenview
     SUBDIR += h3
     SUBDIR += halftone
+    SUBDIR += hdr_histogram
     SUBDIR += hdr_tools
     SUBDIR += heimer
     SUBDIR += hiptext
@@ -371,8 +375,6 @@
     SUBDIR += imageworsener
     SUBDIR += imc
     SUBDIR += imlib2
-    SUBDIR += imlib2-jxl
-    SUBDIR += imlib2-webp
     SUBDIR += imlib2_loaders
     SUBDIR += impressive
     SUBDIR += imv
@@ -398,7 +400,6 @@
     SUBDIR += jpeg-turbo
     SUBDIR += jpeginfo
     SUBDIR += jpegoptim
-    SUBDIR += jpgtn
     SUBDIR += jslice
     SUBDIR += kamera
     SUBDIR += kamerka
@@ -556,6 +557,7 @@
     SUBDIR += linux-rl9-cairo-gobject
     SUBDIR += linux-rl9-dri
     SUBDIR += linux-rl9-gdk-pixbuf2
+    SUBDIR += linux-rl9-glx-utils
     SUBDIR += linux-rl9-graphene
     SUBDIR += linux-rl9-graphite2
     SUBDIR += linux-rl9-imageformats-libs
@@ -574,6 +576,7 @@
     SUBDIR += linux-rl9-vulkan
     SUBDIR += linux-rl9-wayland
     SUBDIR += lua-gd
+    SUBDIR += lua-qrencode
     SUBDIR += luminance-qt5
     SUBDIR += lunasvg
     SUBDIR += lux
@@ -680,12 +683,12 @@
     SUBDIR += openshadinglanguage
     SUBDIR += openslide
     SUBDIR += opensubdiv
+    SUBDIR += openusd
     SUBDIR += openvkl
     SUBDIR += openxr
     SUBDIR += optar
     SUBDIR += optipng
     SUBDIR += osg
-    SUBDIR += osgearth
     SUBDIR += ospray
     SUBDIR += ospray-studio
     SUBDIR += ossim
@@ -773,7 +776,6 @@
     SUBDIR += p5-Image-OCR-Tesseract
     SUBDIR += p5-Image-PBMlib
     SUBDIR += p5-Image-PNG-Libpng
-    SUBDIR += p5-Image-PNG-QRCode
     SUBDIR += p5-Image-Pngslimmer
     SUBDIR += p5-Image-Sane
     SUBDIR += p5-Image-Scale
@@ -801,6 +803,7 @@
     SUBDIR += pagedgeometry
     SUBDIR += panoglview
     SUBDIR += panomatic
+    SUBDIR += papers
     SUBDIR += partio
     SUBDIR += pastel
     SUBDIR += pcdtojpeg
@@ -833,8 +836,6 @@
     SUBDIR += phototonic
     SUBDIR += php-facedetect
     SUBDIR += php-geos
-    SUBDIR += php81-exif
-    SUBDIR += php81-gd
     SUBDIR += php82-exif
     SUBDIR += php82-gd
     SUBDIR += php83-exif
@@ -853,6 +854,7 @@
     SUBDIR += pinta
     SUBDIR += pixd
     SUBDIR += pixelize
+    SUBDIR += pixelmosh
     SUBDIR += pixie
     SUBDIR += plantuml
     SUBDIR += plasma-kmod
@@ -909,7 +911,6 @@
     SUBDIR += py-blockdiag
     SUBDIR += py-blockdiagcontrib-cisco
     SUBDIR += py-box2d-py
-    SUBDIR += py-cairo
     SUBDIR += py-cairocffi
     SUBDIR += py-cairosvg
     SUBDIR += py-cartopy
@@ -960,6 +961,8 @@
     SUBDIR += py-imagesize
     SUBDIR += py-img2pdf
     SUBDIR += py-imutils
+    SUBDIR += py-kornia
+    SUBDIR += py-kornia-rs
     SUBDIR += py-leather
     SUBDIR += py-lerc
     SUBDIR += py-mapclassify
@@ -993,6 +996,7 @@
     SUBDIR += py-pointpats
     SUBDIR += py-projpicker
     SUBDIR += py-proplot
+    SUBDIR += py-pycairo
     SUBDIR += py-pycha
     SUBDIR += py-pycollada
     SUBDIR += py-pydot
@@ -1059,6 +1063,7 @@
     SUBDIR += py-vecrec
     SUBDIR += py-vispy
     SUBDIR += py-visvis
+    SUBDIR += py-vulkan
     SUBDIR += py-wand
     SUBDIR += py-webcolors
     SUBDIR += py-willow
@@ -1203,7 +1208,6 @@
     SUBDIR += squish
     SUBDIR += ssocr
     SUBDIR += sswf
-    SUBDIR += stamp
     SUBDIR += svgalib
     SUBDIR += svgbob
     SUBDIR += svgpp
@@ -1233,7 +1237,7 @@
     SUBDIR += tslib
     SUBDIR += ttygif
     SUBDIR += ttyplot
-    SUBDIR += tumble
+    SUBDIR += tulip
     SUBDIR += tweeny
     SUBDIR += ufraw
     SUBDIR += unpaper

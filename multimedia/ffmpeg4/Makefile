@@ -1,11 +1,10 @@
 PORTNAME=	ffmpeg
-PORTVERSION=	4.4.4
-PORTREVISION=	26
+PORTVERSION=	4.4.6
 CATEGORIES=	multimedia audio net
 MASTER_SITES=	https://ffmpeg.org/releases/
 PKGNAMESUFFIX=	4
 
-MAINTAINER=	multimedia@FreeBSD.org
+MAINTAINER=	monwarez@mailoo.org
 COMMENT=	Realtime audio/video encoder/converter and streaming server (legacy 4.* series)
 WWW=		https://ffmpeg.org/
 
@@ -53,8 +52,6 @@ OPTIONS_DEFAULT=	AOM ASM ASS DAV1D DRM FONTCONFIG FREETYPE FREI0R GMP \
 			GNUTLS ICONV LAME LIBXML2 NETWORK OPTIMIZED_CFLAGS OPUS \
 			RTCPU SVTAV1 V4L VAAPI VDPAU VMAF VORBIS VPX WEBP X264 \
 			X265 XCB
-OPTIONS_DEFAULT_amd64=	NVENC
-OPTIONS_DEFAULT_i386=	NVENC
 
 # i386 is too register-starved for LTO (PR257124)
 OPTIONS_EXCLUDE_i386=	LTO
@@ -355,6 +352,7 @@ MYSOFA_CONFIGURE_ENABLE=	libmysofa
 NETWORK_CONFIGURE_ENABLE=	network
 
 # nvenc
+NVENC_BROKEN=		Fails to configure or build with ffnvcodec-headers >= 13.0
 NVENC_BUILD_DEPENDS=	${LOCALBASE}/include/ffnvcodec/nvEncodeAPI.h:multimedia/ffnvcodec-headers
 NVENC_CONFIGURE_ENABLE=	nvenc
 

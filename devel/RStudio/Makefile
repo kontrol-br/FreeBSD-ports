@@ -4,7 +4,7 @@
 PORTNAME=	RStudio
 DISTVERSIONPREFIX=	v
 DISTVERSION=	2025.09.2+418
-PORTREVISION=	3
+PORTREVISION=	7
 CATEGORIES=	devel math java
 MASTER_SITES=	https://s3.amazonaws.com/rstudio-buildtools/dictionaries/:dictionaries \
 		https://rstudio-buildtools.s3.amazonaws.com/rstudio-buildtools/:gin \
@@ -87,9 +87,10 @@ MAKE_ENV=	HOME=${WRKDIR} \
 		ANT_OPTS="-Duser.home=${WRKDIR}"
 LDFLAGS+=	-lexecinfo
 
-GWT_VERSION=	2.12.2 # GWT_VER in src/gwt/tools/build-gwt
-GIN_VERSION=	2.1.2
-QUARTO_VERSION=	1.7.32 # Version expected by RStudio for panmirror build
+GWT_VERSION=		2.12.2 # GWT_VER in src/gwt/tools/build-gwt
+GIN_VERSION=		2.1.2
+ELECTRON_VERSION=	37
+QUARTO_VERSION=		1.7.32 # Version expected by RStudio for panmirror build
 QUARTO_MONO_COMMIT=	591b3520eafbb4da7b26b9f31aac6948801f19d8 # Commit from quarto monorepo with panmirror
 
 .if ${FLAVOR:U} == desktop
@@ -99,9 +100,9 @@ FETCH_DEPENDS+=	npm:www/npm \
 		yarn:www/yarn
 BUILD_DEPENDS+=	npm:www/npm \
 		yarn:www/yarn \
-		electron37:devel/electron37 \
+		electron${ELECTRON_VERSION}:devel/electron${ELECTRON_VERSION} \
 		zip:archivers/zip
-RUN_DEPENDS+=	electron37:devel/electron37
+RUN_DEPENDS+=	electron${ELECTRON_VERSION}:devel/electron${ELECTRON_VERSION}
 CMAKE_ARGS+=	-DRSTUDIO_TARGET=Electron
 MAKE_ENV+=	ELECTRON_SKIP_BINARY_DOWNLOAD=1 \
 		npm_config_nodedir=${WRKDIR}/.electron-headers \
@@ -145,20 +146,21 @@ WITH_QUARTO_CMAKE_BOOL=	QUARTO_ENABLED
 post-fetch:
 	@if ! [ -f ${NPM_DISTDIR}/${NPM_TARBALL} ]; then \
 		${MKDIR} ${NPM_DISTDIR} && \
-		${ECHO_MSG} "====> Fetching npm dependencies for desktop..." && \
+		${ECHO_MSG} "====> Fetching npm dependencies for desktop into the tarball ${NPM_DISTDIR}/${NPM_TARBALL} ..." && \
 		${MKDIR} ${WRKDIR}/tmp/rstudio-npm-fetch && \
 		${FETCH_CMD} -q "https://raw.githubusercontent.com/rstudio/rstudio/v${DISTVERSION}/src/node/desktop/package.json" -o ${WRKDIR}/tmp/rstudio-npm-fetch/package.json && \
-		${FETCH_CMD} -q "https://raw.githubusercontent.com/rstudio/rstudio/v${DISTVERSION}/src/node/desktop/package-lock.json" -o ${WRKDIR}/tmp/rstudio-npm-fetch/package-lock.json && \
 		cd ${WRKDIR}/tmp/rstudio-npm-fetch && \
-		HOME=${WRKDIR}/tmp/rstudio-npm-fetch npm ci --ignore-scripts && \
+		HOME=${WRKDIR}/tmp/rstudio-npm-fetch npm install --ignore-scripts && \
 		${FIND} node_modules -exec ${TOUCH} -h -d 1970-01-01T00:00:00Z {} \; 2>/dev/null; \
 		${TAR} -czf ${NPM_DISTDIR}/${NPM_TARBALL} node_modules && \
 		${RM} -rf ${WRKDIR}/tmp/rstudio-npm-fetch && \
 		${ECHO_MSG} "====> Created npm dependencies tarball ${NPM_DISTDIR}/${NPM_TARBALL}"; \
+	else \
+		${ECHO_MSG} "====> Using previously fetched npm dependencies tarball ${NPM_DISTDIR}/${NPM_TARBALL}"; \
 	fi
 	@if ! [ -f ${NPM_DISTDIR}/${QUARTO_TARBALL} ]; then \
 		${MKDIR} ${NPM_DISTDIR} && \
-		${ECHO_MSG} "====> Fetching quarto/panmirror npm dependencies..." && \
+		${ECHO_MSG} "====> Fetching quarto/panmirror npm dependencies into the tarball ${NPM_DISTDIR}/${QUARTO_TARBALL} ..." && \
 		${MKDIR} ${WRKDIR}/tmp/rstudio-quarto-fetch && \
 		cd ${WRKDIR}/tmp/rstudio-quarto-fetch && \
 		${FETCH_CMD} -q "https://github.com/quarto-dev/quarto/archive/${QUARTO_MONO_COMMIT}.tar.gz" -o quarto.tar.gz && \
@@ -169,7 +171,9 @@ post-fetch:
 		${FIND} node_modules apps/*/node_modules packages/*/node_modules apps/panmirror/dist-rstudio -exec ${TOUCH} -h -d 1970-01-01T00:00:00Z {} \; 2>/dev/null; \
 		${TAR} -czf ${NPM_DISTDIR}/${QUARTO_TARBALL} node_modules apps/*/node_modules packages/*/node_modules apps/panmirror/dist-rstudio && \
 		${RM} -rf ${WRKDIR}/tmp/rstudio-quarto-fetch && \
-		${ECHO_MSG} "====> Created quarto npm dependencies tarball"; \
+		${ECHO_MSG} "====> Created quarto npm dependencies tarball ${NPM_DISTDIR}/${NPM_TARBALL}"; \
+	else \
+		${ECHO_MSG} "====> Using previously fetched quarto npm dependencies tarball ${NPM_DISTDIR}/${QUARTO_TARBALL}"; \
 	fi
 .endif
 
@@ -239,17 +243,17 @@ pre-build:
 	# Create proper electron headers structure for node-gyp
 	# node-gyp expects common.gypi at root and headers at include/node
 	@${MKDIR} ${WRKDIR}/.electron-headers
-	@${LN} -sf ${LOCALBASE}/share/electron37/node_headers/include ${WRKDIR}/.electron-headers/include
-	@${LN} -sf ${LOCALBASE}/share/electron37/node_headers/include/node/common.gypi ${WRKDIR}/.electron-headers/common.gypi
+	@${LN} -sf ${LOCALBASE}/share/electron${ELECTRON_VERSION}/node_headers/include ${WRKDIR}/.electron-headers/include
+	@${LN} -sf ${LOCALBASE}/share/electron${ELECTRON_VERSION}/node_headers/include/node/common.gypi ${WRKDIR}/.electron-headers/common.gypi
 	# Create electron ZIP for electron-packager (expects electron-v{VERSION}-linux-x64.zip)
 	@${MKDIR} ${WRKDIR}/.electron-zip
-	@cd ${LOCALBASE}/share/electron37 && zip -rq ${WRKDIR}/.electron-zip/electron-v37.6.1-linux-x64.zip \
+	@cd ${LOCALBASE}/share/electron${ELECTRON_VERSION} && zip -rq ${WRKDIR}/.electron-zip/electron-v37.6.1-linux-x64.zip \
 		electron chromedriver *.so *.pak *.bin *.json locales resources version LICENSE LICENSES.chromium.html
 .endif
 
 post-install:
 .if ${FLAVOR:U} == desktop
-	# Desktop flavor: create launcher script that uses electron37
+	# Desktop flavor: create launcher script that uses electronXX
 	@(echo "#!/bin/sh"; \
 	  echo ""; \
 	  echo "if ! [ -d /proc/curproc ]; then"; \
@@ -263,7 +267,7 @@ post-install:
 	  echo "export ELECTRON_IS_DEV=0"; \
 	  echo "export ELECTRON_FORCE_IS_PACKAGED=true"; \
 	  echo ""; \
-	  echo "exec ${PREFIX}/bin/electron37 ${PREFIX}/resources/app \"\$$@\"" \
+	  echo "exec ${PREFIX}/bin/electron${ELECTRON_VERSION} ${PREFIX}/resources/app \"\$$@\"" \
 	) > ${STAGEDIR}${PREFIX}/bin/${EXECUTABLE}
 	@${CHMOD} +x ${STAGEDIR}${PREFIX}/bin/${EXECUTABLE}
 	-${REINPLACE_CMD} -i '' -e 's|^Exec=.*/rstudio|Exec=${PREFIX}/bin/${EXECUTABLE}|' ${STAGEDIR}${PREFIX}/share/applications/${EXECUTABLE}.desktop 2>/dev/null || true

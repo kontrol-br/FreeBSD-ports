@@ -1,6 +1,7 @@
 PORTNAME=	oauth2-proxy
-PORTVERSION=	7.13.0
+PORTVERSION=	7.14.3
 DISTVERSIONPREFIX=	v
+PORTREVISION=	1
 CATEGORIES=	www
 
 MAINTAINER=	dtxdf@FreeBSD.org
@@ -10,7 +11,7 @@ WWW=		https://github.com/oauth2-proxy/oauth2-proxy
 LICENSE=	MIT
 LICENSE_FILE=	${WRKSRC}/LICENSE
 
-USES=		go:modules,1.25+
+USES=		go:1.25+,modules
 USE_GITHUB=	yes
 USE_RC_SUBR=	oauth2_proxy
 

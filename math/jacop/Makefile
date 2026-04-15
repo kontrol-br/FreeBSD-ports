@@ -1,6 +1,7 @@
 PORTNAME=	jacop
 DISTVERSIONPREFIX=	v
 DISTVERSION=	4.8.0
+PORTREVISION=	1
 CATEGORIES=	math java
 MASTER_SITES=	LOCAL/yuri/:maven \
 		http://people.freebsd.org/~yuri/:maven
@@ -17,6 +18,9 @@ BUILD_DEPENDS=	maven>0:devel/maven
 USES=		java
 USE_GITHUB=	yes
 GH_ACCOUNT=	radsz
+JAVA_VERSION=	8 11 17
+
+MAKE_ENV+=	JAVA_HOME=${JAVA_HOME}
 
 NO_ARCH=	yes
 

@@ -1,11 +1,12 @@
 PORTNAME=	RetroArch
 DISTVERSIONPREFIX=	v
 DISTVERSION=	1.22.2
+PORTREVISION=	1
 CATEGORIES=	games emulators
 MASTER_SITES=	https://github.com/libretro/${PORTNAME}/releases/download/v${DISTVERSION}/
 DISTNAME=	${PORTNAME:tl}-sourceonly-${DISTVERSION}
 
-MAINTAINER=	dmenelkir@gmail.com
+MAINTAINER=	tilde@ultros.pro
 COMMENT=	Cross-platform entertainment system based on libretro API
 WWW=		https://github.com/libretro/RetroArch
 

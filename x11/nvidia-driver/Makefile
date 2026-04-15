@@ -21,7 +21,7 @@ DISTNAME=	NVIDIA-FreeBSD-${ARCH_SUFX}-${DISTVERSION}
 DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
 
 MAINTAINER?=	x11@FreeBSD.org
-COMMENT?=	NVidia graphics card binary drivers for hardware OpenGL rendering
+COMMENT?=	NVIDIA graphics driver userland
 WWW=		https://www.nvidia.com/object/unix.html
 
 LICENSE_FILE=	${WRKSRC}/doc/license.txt
@@ -54,6 +54,11 @@ RUN_DEPENDS=	${KMODDIR}/nvidia.ko:x11/nvidia-kmod${PKGNAMESUFFIX}
 
 .if ${NVVERSION} >= 415.013
 LIB_DEPENDS+=	libnvidia-egl-wayland.so:graphics/egl-wayland
+.endif
+
+.if ${NVVERSION} >= 580.00000
+LIB_DEPENDS+=	libnvidia-egl-xcb.so:graphics/egl-x11
+LIB_DEPENDS+=	libnvidia-egl-wayland2.so:graphics/egl-wayland2
 .endif
 
 USES=		uidfix xorg
