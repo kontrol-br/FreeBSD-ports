@@ -55,44 +55,57 @@ if (!isset($pconfig['ch341_usbbulkout']))            $pconfig['ch341_usbbulkout'
 if (!isset($pconfig['ch341_usbbulkin']))             $pconfig['ch341_usbbulkin']             = '0x82';
 if (!isset($pconfig['ch341_usbconfig']))             $pconfig['ch341_usbconfig']             = '1';
 
+$detect_message = '';
 
 if ($_POST) {
 	$input_errors = [];
 	$pconfig = $_POST;
 
+	if (isset($_POST['ch341_autodetect'])) {
+		$detected_values = lcdproc_detect_ch341_usb();
+		if (!empty($detected_values)) {
+			$pconfig = array_merge($pconfig, $detected_values);
+			$detect_message = 'CH341 USB dongle detected and fields were auto-filled from usbconfig descriptors. Verify values and save.';
+		} else {
+			$detect_message = 'No CH341 USB dongle was detected. Connect the device and try again.';
+		}
+	}
+
 	/* Input validation */
-	lcdproc_validate_list($input_errors, 'log_level',              $lcdproc_log_levels,          'Log Level');
-	lcdproc_validate_list($input_errors, 'comport',                $comport_list,                'COM Port');
-	lcdproc_validate_list($input_errors, 'size',                   $size_list,                   'Display Size');
-	lcdproc_validate_list($input_errors, 'driver',                 $driver_list,                 'Driver');
-	lcdproc_validate_list($input_errors, 'connection_type',        $connection_type_list,        'Connection Type');
-	lcdproc_validate_list($input_errors, 'mtxorb_type',            $mtxorb_type_list,            'Display Type');
-	lcdproc_validate_list($input_errors, 'mtxorb_backlight_color', $mtxorb_backlight_color_list, 'Matrix Orbital Background Color');
-	lcdproc_validate_list($input_errors, 'port_speed',             $port_speed_list,             'Port Speed');
-	lcdproc_validate_list($input_errors, 'refresh_frequency',      $refresh_frequency_list,      'Refresh Frequency');
-	lcdproc_validate_list($input_errors, 'brightness',             $percent_list,                'Brightness');
-	lcdproc_validate_list($input_errors, 'contrast',               $percent_list,                'Contrast');
-	lcdproc_validate_list($input_errors, 'backlight',              $backlight_list,              'Backlight');
-	lcdproc_validate_list($input_errors, 'offbrightness',          $percent_list,                'Off Brightness');
-	$using_hd44780_ch341 = ($pconfig['driver'] == 'hd44780' && $pconfig['connection_type'] == 'ch341i2c');
-	if ($using_hd44780_ch341) {
-		if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_port'])) {
-			$input_errors[] = 'CH341 I2C address must be in hexadecimal format, for example 0x27.';
-		}
-		if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_usbbulkout'])) {
-			$input_errors[] = 'CH341 UsbBulkOut must be in hexadecimal format, for example 0x02.';
-		}
-		if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_usbbulkin'])) {
-			$input_errors[] = 'CH341 UsbBulkIn must be in hexadecimal format, for example 0x82.';
-		}
-		foreach (['ch341_usbinterface' => 16, 'ch341_usbindex' => 16, 'ch341_usbconfig' => 16] as $field => $max) {
-			if (!is_numeric($pconfig[$field]) || (int)$pconfig[$field] < 0 || (int)$pconfig[$field] > $max) {
-				$input_errors[] = sprintf('CH341 %s must be a number between 0 and %d.', $field, $max);
+	if (!isset($_POST['ch341_autodetect'])) {
+		lcdproc_validate_list($input_errors, 'log_level',              $lcdproc_log_levels,          'Log Level');
+		lcdproc_validate_list($input_errors, 'comport',                $comport_list,                'COM Port');
+		lcdproc_validate_list($input_errors, 'size',                   $size_list,                   'Display Size');
+		lcdproc_validate_list($input_errors, 'driver',                 $driver_list,                 'Driver');
+		lcdproc_validate_list($input_errors, 'connection_type',        $connection_type_list,        'Connection Type');
+		lcdproc_validate_list($input_errors, 'mtxorb_type',            $mtxorb_type_list,            'Display Type');
+		lcdproc_validate_list($input_errors, 'mtxorb_backlight_color', $mtxorb_backlight_color_list, 'Matrix Orbital Background Color');
+		lcdproc_validate_list($input_errors, 'port_speed',             $port_speed_list,             'Port Speed');
+		lcdproc_validate_list($input_errors, 'refresh_frequency',      $refresh_frequency_list,      'Refresh Frequency');
+		lcdproc_validate_list($input_errors, 'brightness',             $percent_list,                'Brightness');
+		lcdproc_validate_list($input_errors, 'contrast',               $percent_list,                'Contrast');
+		lcdproc_validate_list($input_errors, 'backlight',              $backlight_list,              'Backlight');
+		lcdproc_validate_list($input_errors, 'offbrightness',          $percent_list,                'Off Brightness');
+		$using_hd44780_ch341 = ($pconfig['driver'] == 'hd44780' && $pconfig['connection_type'] == 'ch341i2c');
+		if ($using_hd44780_ch341) {
+			if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_port'])) {
+				$input_errors[] = 'CH341 I2C address must be in hexadecimal format, for example 0x27.';
+			}
+			if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_usbbulkout'])) {
+				$input_errors[] = 'CH341 UsbBulkOut must be in hexadecimal format, for example 0x02.';
+			}
+			if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_usbbulkin'])) {
+				$input_errors[] = 'CH341 UsbBulkIn must be in hexadecimal format, for example 0x82.';
+			}
+			foreach (['ch341_usbinterface', 'ch341_usbindex', 'ch341_usbconfig'] as $field) {
+				if (!is_numericint($pconfig[$field])) {
+					$input_errors[] = sprintf('CH341 %s must be a non-negative integer.', $field);
+				}
 			}
 		}
 	}
 
-	if (empty($input_errors)) {
+	if (!isset($_POST['ch341_autodetect']) && empty($input_errors)) {
 		$lcdproc_config['enable']                      = $pconfig['enable'];
 		$lcdproc_config['log_level']                   = $pconfig['log_level'];
 		$lcdproc_config['comport']                     = $pconfig['comport'];
@@ -130,6 +143,9 @@ include("head.inc");
 
 if (!empty($input_errors)) {
 	print_input_errors($input_errors);
+}
+if (!empty($detect_message)) {
+	print_info_box($detect_message, 'info');
 }
 
 $tab_array = array();
@@ -248,9 +264,19 @@ $subsection->add(new Form_Input('ch341_usbindex', 'USB Index', 'number', $pconfi
 $subsection->add(new Form_Input('ch341_usbbulkout', 'USB Bulk Out', 'text', $pconfig['ch341_usbbulkout']));
 $subsection->add(new Form_Input('ch341_usbbulkin', 'USB Bulk In', 'text', $pconfig['ch341_usbbulkin']));
 $subsection->add(new Form_Input('ch341_usbconfig', 'USB Config', 'number', $pconfig['ch341_usbconfig']));
+$autodetect_btn = new Form_Button('ch341_autodetect', 'Auto Detect USB Values', null, 'fa-solid fa-wand-magic-sparkles');
+$autodetect_btn->setAttribute('type', 'submit')->addClass('btn-primary btn-sm');
+$subsection->add($autodetect_btn);
 $subsection->setHelp(
 	'Used only when Driver is HD44780 and Connection Type is ch341i2c.%1$s' .
-	'Recommended defaults: I2C Address 0x27, USB Interface 0, USB Index 0, USB Bulk Out 0x02, USB Bulk In 0x82, USB Config 1.',
+	'Recommended defaults: I2C Address 0x27, USB Interface 0, USB Index 0, USB Bulk Out 0x02, USB Bulk In 0x82, USB Config 1.%1$s%1$s' .
+	'To find USB values, connect the adapter and run:%1$s' .
+	'<code>usbconfig list | grep -i ch34</code>%1$s' .
+	'Then inspect the selected device (example <code>ugen0.2</code>):%1$s' .
+	'<code>usbconfig -d ugen0.2 dump_all_desc | egrep "bConfigurationValue|bInterfaceNumber|bEndpointAddress"</code>.%1$s' .
+	'Use <b>bConfigurationValue</b> for USB Config, <b>bInterfaceNumber</b> for USB Interface, ' .
+	'and endpoint addresses for USB Bulk Out / USB Bulk In.%1$s' .
+	'For I2C Address, use the LCD backpack default (commonly 0x27 or 0x3f) or check the board documentation.',
 	'<br/>'
 );
 $section->add($subsection);
