@@ -346,10 +346,28 @@ function lcdproc_detect_ch341_usb() {
 		return $detected;
 	}
 
-	$ch341_devices = [];
+	$all_usb_devices = [];
 	foreach (explode("\n", $list_output) as $line) {
-		if (preg_match('/^(ugen\\d+\\.\\d+):.*ch341/i', $line, $matches)) {
-			$ch341_devices[] = $matches[1];
+		if (preg_match('/^(ugen\\d+\\.\\d+):/', $line, $matches)) {
+			$all_usb_devices[] = $matches[1];
+		}
+	}
+
+	if (empty($all_usb_devices)) {
+		return $detected;
+	}
+
+	$ch341_devices = [];
+	foreach ($all_usb_devices as $device) {
+		$device_desc = shell_exec("{$usbconfig} -d " . escapeshellarg($device) . " dump_device_desc 2>/dev/null");
+		if (empty($device_desc)) {
+			continue;
+		}
+
+		$is_ch341_vendor = (bool)preg_match('/idVendor\\s*=\\s*0x1a86/i', $device_desc);
+		$is_ch341_label = (bool)preg_match('/(ch34[01]|qinheng)/i', $device_desc);
+		if ($is_ch341_vendor || $is_ch341_label) {
+			$ch341_devices[] = $device;
 		}
 	}
 
@@ -363,18 +381,22 @@ function lcdproc_detect_ch341_usb() {
 		return $detected;
 	}
 
-	if (preg_match('/bConfigurationValue\\s*=\\s*(\\d+)/', $descriptor_output, $matches)) {
-		$detected['ch341_usbconfig'] = $matches[1];
+	if (preg_match('/bConfigurationValue\\s*=\\s*(0x[0-9a-f]+|\\d+)/i', $descriptor_output, $matches)) {
+		$config_value = $matches[1];
+		$detected['ch341_usbconfig'] = (stripos($config_value, '0x') === 0) ?
+		    (string)hexdec($config_value) : $config_value;
 	}
 
-	if (preg_match('/bInterfaceNumber\\s*=\\s*(\\d+)/', $descriptor_output, $matches)) {
-		$detected['ch341_usbinterface'] = $matches[1];
+	if (preg_match('/bInterfaceNumber\\s*=\\s*(0x[0-9a-f]+|\\d+)/i', $descriptor_output, $matches)) {
+		$interface_value = $matches[1];
+		$detected['ch341_usbinterface'] = (stripos($interface_value, '0x') === 0) ?
+		    (string)hexdec($interface_value) : $interface_value;
 	}
 
-	preg_match_all('/bEndpointAddress\\s*=\\s*0x([0-9a-f]{2})/i', $descriptor_output, $matches);
+	preg_match_all('/bEndpointAddress\\s*=\\s*0x([0-9a-f]{2,4})/i', $descriptor_output, $matches);
 	if (!empty($matches[1])) {
 		foreach ($matches[1] as $endpoint_hex) {
-			$endpoint_value = hexdec($endpoint_hex);
+			$endpoint_value = hexdec($endpoint_hex) & 0xff;
 			$endpoint_formatted = sprintf('0x%02x', $endpoint_value);
 			if (($endpoint_value & 0x80) && empty($detected['ch341_usbbulkin'])) {
 				$detected['ch341_usbbulkin'] = $endpoint_formatted;

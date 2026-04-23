@@ -259,11 +259,11 @@ $section->add($subsection);
 
 $subsection = new Form_Group('CH341/I2C');
 $subsection->add(new Form_Input('ch341_port', 'I2C Address', 'text', $pconfig['ch341_port']));
-$subsection->add(new Form_Input('ch341_usbinterface', 'USB Interface', 'number', $pconfig['ch341_usbinterface']));
-$subsection->add(new Form_Input('ch341_usbindex', 'USB Index', 'number', $pconfig['ch341_usbindex']));
+$subsection->add((new Form_Input('ch341_usbinterface', 'USB Interface', 'number', $pconfig['ch341_usbinterface']))->setAttribute('min', '0'));
+$subsection->add((new Form_Input('ch341_usbindex', 'USB Index', 'number', $pconfig['ch341_usbindex']))->setAttribute('min', '0'));
 $subsection->add(new Form_Input('ch341_usbbulkout', 'USB Bulk Out', 'text', $pconfig['ch341_usbbulkout']));
 $subsection->add(new Form_Input('ch341_usbbulkin', 'USB Bulk In', 'text', $pconfig['ch341_usbbulkin']));
-$subsection->add(new Form_Input('ch341_usbconfig', 'USB Config', 'number', $pconfig['ch341_usbconfig']));
+$subsection->add((new Form_Input('ch341_usbconfig', 'USB Config', 'number', $pconfig['ch341_usbconfig']))->setAttribute('min', '0'));
 $autodetect_btn = new Form_Button('ch341_autodetect', 'Auto Detect USB Values', null, 'fa-solid fa-wand-magic-sparkles');
 $autodetect_btn->setAttribute('type', 'submit')->addClass('btn-primary btn-sm');
 $subsection->add($autodetect_btn);
