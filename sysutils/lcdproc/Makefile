@@ -1,11 +1,11 @@
 PORTNAME=	lcdproc
 DISTVERSIONPREFIX=	v
 DISTVERSION=	0.5.9
-PORTREVISION=	2
+PORTREVISION=	3
 CATEGORIES=	sysutils
 
 MAINTAINER=	daniel@shafer.cc
-COMMENT=	Client/server suite for LCD devices
+COMMENT=	Custom Client/server suite for LCD devices including Ch341 i2c
 WWW=		https://www.lcdproc.org/
 
 LICENSE=	GPLv2
