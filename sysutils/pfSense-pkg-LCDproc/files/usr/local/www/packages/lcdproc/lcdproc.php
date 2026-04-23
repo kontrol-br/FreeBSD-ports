@@ -48,6 +48,12 @@ if (!isset($pconfig['controlmenu']))                 $pconfig['controlmenu']    
 if (!isset($pconfig['mtxorb_type']))                 $pconfig['mtxorb_type']                 = 'lcd'; // specific to Matrix Orbital driver
 if (!isset($pconfig['mtxorb_adjustable_backlight'])) $pconfig['mtxorb_adjustable_backlight'] = true;  // specific to Matrix Orbital driver
 if (!isset($pconfig['mtxorb_backlight_color']))      $pconfig['mtxorb_backlight_color']      = '';  // specific to Matrix Orbital driver
+if (!isset($pconfig['ch341_port']))                  $pconfig['ch341_port']                  = '0x27';
+if (!isset($pconfig['ch341_usbinterface']))          $pconfig['ch341_usbinterface']          = '0';
+if (!isset($pconfig['ch341_usbindex']))              $pconfig['ch341_usbindex']              = '0';
+if (!isset($pconfig['ch341_usbbulkout']))            $pconfig['ch341_usbbulkout']            = '0x02';
+if (!isset($pconfig['ch341_usbbulkin']))             $pconfig['ch341_usbbulkin']             = '0x82';
+if (!isset($pconfig['ch341_usbconfig']))             $pconfig['ch341_usbconfig']             = '1';
 
 
 if ($_POST) {
@@ -68,6 +74,23 @@ if ($_POST) {
 	lcdproc_validate_list($input_errors, 'contrast',               $percent_list,                'Contrast');
 	lcdproc_validate_list($input_errors, 'backlight',              $backlight_list,              'Backlight');
 	lcdproc_validate_list($input_errors, 'offbrightness',          $percent_list,                'Off Brightness');
+	$using_hd44780_ch341 = ($pconfig['driver'] == 'hd44780' && $pconfig['connection_type'] == 'ch341i2c');
+	if ($using_hd44780_ch341) {
+		if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_port'])) {
+			$input_errors[] = 'CH341 I2C address must be in hexadecimal format, for example 0x27.';
+		}
+		if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_usbbulkout'])) {
+			$input_errors[] = 'CH341 UsbBulkOut must be in hexadecimal format, for example 0x02.';
+		}
+		if (!preg_match('/^0x[0-9a-fA-F]{2}$/', $pconfig['ch341_usbbulkin'])) {
+			$input_errors[] = 'CH341 UsbBulkIn must be in hexadecimal format, for example 0x82.';
+		}
+		foreach (['ch341_usbinterface' => 16, 'ch341_usbindex' => 16, 'ch341_usbconfig' => 16] as $field => $max) {
+			if (!is_numeric($pconfig[$field]) || (int)$pconfig[$field] < 0 || (int)$pconfig[$field] > $max) {
+				$input_errors[] = sprintf('CH341 %s must be a number between 0 and %d.', $field, $max);
+			}
+		}
+	}
 
 	if (empty($input_errors)) {
 		$lcdproc_config['enable']                      = $pconfig['enable'];
@@ -87,6 +110,12 @@ if ($_POST) {
 		$lcdproc_config['mtxorb_type']                 = $pconfig['mtxorb_type'];
 		$lcdproc_config['mtxorb_adjustable_backlight'] = $pconfig['mtxorb_adjustable_backlight'];
 		$lcdproc_config['mtxorb_backlight_color']      = $pconfig['mtxorb_backlight_color'];
+		$lcdproc_config['ch341_port']                  = $pconfig['ch341_port'];
+		$lcdproc_config['ch341_usbinterface']          = $pconfig['ch341_usbinterface'];
+		$lcdproc_config['ch341_usbindex']              = $pconfig['ch341_usbindex'];
+		$lcdproc_config['ch341_usbbulkout']            = $pconfig['ch341_usbbulkout'];
+		$lcdproc_config['ch341_usbbulkin']             = $pconfig['ch341_usbbulkin'];
+		$lcdproc_config['ch341_usbconfig']             = $pconfig['ch341_usbconfig'];
 
 		config_set_path('installedpackages/lcdproc/config/0', $lcdproc_config);
 		write_config("lcdproc: Settings saved");
@@ -211,6 +240,20 @@ $subsection->setHelp(
 );
 
 $section->add($subsection);
+
+$subsection = new Form_Group('CH341/I2C');
+$subsection->add(new Form_Input('ch341_port', 'I2C Address', 'text', $pconfig['ch341_port']));
+$subsection->add(new Form_Input('ch341_usbinterface', 'USB Interface', 'number', $pconfig['ch341_usbinterface']));
+$subsection->add(new Form_Input('ch341_usbindex', 'USB Index', 'number', $pconfig['ch341_usbindex']));
+$subsection->add(new Form_Input('ch341_usbbulkout', 'USB Bulk Out', 'text', $pconfig['ch341_usbbulkout']));
+$subsection->add(new Form_Input('ch341_usbbulkin', 'USB Bulk In', 'text', $pconfig['ch341_usbbulkin']));
+$subsection->add(new Form_Input('ch341_usbconfig', 'USB Config', 'number', $pconfig['ch341_usbconfig']));
+$subsection->setHelp(
+	'Used only when Driver is HD44780 and Connection Type is ch341i2c.%1$s' .
+	'Recommended defaults: I2C Address 0x27, USB Interface 0, USB Index 0, USB Bulk Out 0x02, USB Bulk In 0x82, USB Config 1.',
+	'<br/>'
+);
+$section->add($subsection);
 ?>
 
 <script type="text/javascript">
@@ -218,6 +261,7 @@ $section->add($subsection);
 	events.push(
 		function() {
 			$('#driver').on('change', updateInputVisibility);
+			$('#connection_type').on('change', updateInputVisibility);
 			updateInputVisibility();
 		}
 	);
@@ -233,6 +277,9 @@ $section->add($subsection);
 		// Hide the Matrix Orbital specific fields when not using the MtxOrb driver
 		var using_MtxOrb_driver  = driverName_lowercase.indexOf("mtxorb") >= 0;
 		hideInput('mtxorb_type', !using_MtxOrb_driver); // Hides the entire section, including the mtxorb_adjustable_backlight checkbox
+
+		var using_CH341 = using_HD44780_driver && $('#connection_type').val() == 'ch341i2c';
+		hideInput('ch341_port', !using_CH341);
 
 		// Hide the Output-LEDs checkbox when not using the CFontzPacket driver
 		var driverSupportsLEDs  = driverName_lowercase.indexOf("cfontzpacket") >= 0;
