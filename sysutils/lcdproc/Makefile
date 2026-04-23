@@ -1,12 +1,12 @@
 PORTNAME=	lcdproc
 DISTVERSIONPREFIX=	v
 DISTVERSION=	0.5.9
-PORTREVISION=	3
+PORTREVISION=	4
 CATEGORIES=	sysutils
 
-MAINTAINER=	daniel@shafer.cc
+MAINTAINER=	contato@kontrol.com.br
 COMMENT=	Custom Client/server suite for LCD devices including Ch341 i2c
-WWW=		https://www.lcdproc.org/
+WWW=		https://kontrol.com.br/
 
 LICENSE=	GPLv2
 LICENSE_FILE=	${WRKSRC}/COPYING
