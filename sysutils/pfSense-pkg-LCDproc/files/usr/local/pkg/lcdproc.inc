@@ -301,10 +301,91 @@ function validate_form_lcdproc($post, &$input_errors) {
 				break;
 		}
 	}
+
+	$is_hd44780_ch341 = ($post['driver'] == "hd44780" && $post['connection_type'] == "ch341i2c");
+	if ($is_hd44780_ch341) {
+		if (!empty($post['ch341_port']) && !preg_match('/^0x[0-9a-f]{2}$/i', $post['ch341_port'])) {
+			$input_errors[] = "CH341 I2C Address must be hexadecimal in the form 0xNN (example: 0x27)";
+		}
+
+		foreach ([
+			'ch341_usbinterface' => 'CH341 USB Interface',
+			'ch341_usbindex' => 'CH341 USB Index',
+			'ch341_usbconfig' => 'CH341 USB Config'
+		] as $field => $label) {
+			if ($post[$field] !== '' && !is_numericint($post[$field])) {
+				$input_errors[] = sprintf('%s must be a non-negative integer', $label);
+			}
+		}
+
+		foreach ([
+			'ch341_usbbulkout' => 'CH341 USB Bulk Out',
+			'ch341_usbbulkin' => 'CH341 USB Bulk In'
+		] as $field => $label) {
+			if (!empty($post[$field]) && !preg_match('/^0x[0-9a-f]{2}$/i', $post[$field])) {
+				$input_errors[] = sprintf('%s must be hexadecimal in the form 0xNN', $label);
+			}
+		}
+	}
 }
 
 function sync_package_lcdproc_screens() {
 	sync_package_lcdproc();
+}
+
+function lcdproc_detect_ch341_usb() {
+	$detected = [];
+	$usbconfig = '/usr/sbin/usbconfig';
+
+	if (!is_executable($usbconfig)) {
+		return $detected;
+	}
+
+	$list_output = shell_exec("{$usbconfig} list 2>/dev/null");
+	if (empty($list_output)) {
+		return $detected;
+	}
+
+	$ch341_devices = [];
+	foreach (explode("\n", $list_output) as $line) {
+		if (preg_match('/^(ugen\\d+\\.\\d+):.*ch341/i', $line, $matches)) {
+			$ch341_devices[] = $matches[1];
+		}
+	}
+
+	if (empty($ch341_devices)) {
+		return $detected;
+	}
+
+	$detected['ch341_usbindex'] = "0";
+	$descriptor_output = shell_exec("{$usbconfig} -d " . escapeshellarg($ch341_devices[0]) . " dump_all_desc 2>/dev/null");
+	if (empty($descriptor_output)) {
+		return $detected;
+	}
+
+	if (preg_match('/bConfigurationValue\\s*=\\s*(\\d+)/', $descriptor_output, $matches)) {
+		$detected['ch341_usbconfig'] = $matches[1];
+	}
+
+	if (preg_match('/bInterfaceNumber\\s*=\\s*(\\d+)/', $descriptor_output, $matches)) {
+		$detected['ch341_usbinterface'] = $matches[1];
+	}
+
+	preg_match_all('/bEndpointAddress\\s*=\\s*0x([0-9a-f]{2})/i', $descriptor_output, $matches);
+	if (!empty($matches[1])) {
+		foreach ($matches[1] as $endpoint_hex) {
+			$endpoint_value = hexdec($endpoint_hex);
+			$endpoint_formatted = sprintf('0x%02x', $endpoint_value);
+			if (($endpoint_value & 0x80) && empty($detected['ch341_usbbulkin'])) {
+				$detected['ch341_usbbulkin'] = $endpoint_formatted;
+			}
+			if (!(($endpoint_value & 0x80)) && empty($detected['ch341_usbbulkout'])) {
+				$detected['ch341_usbbulkout'] = $endpoint_formatted;
+			}
+		}
+	}
+
+	return $detected;
 }
 
 function sync_package_lcdproc() {
