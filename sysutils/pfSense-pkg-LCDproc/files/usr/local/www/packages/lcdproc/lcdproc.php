@@ -61,11 +61,11 @@ if ($_POST) {
 	$input_errors = [];
 	$pconfig = $_POST;
 
-	if (isset($_POST['ch341_autodetect'])) {
+		if (isset($_POST['ch341_autodetect'])) {
 		$detected_values = lcdproc_detect_ch341_usb();
 		if (!empty($detected_values)) {
 			$pconfig = array_merge($pconfig, $detected_values);
-			$detect_message = 'CH341 USB dongle detected and fields were auto-filled from usbconfig descriptors. Verify values and save.';
+			$detect_message = 'CH341 USB dongle detected and USB fields were auto-filled from usbconfig descriptors. I2C Address was set to default 0x27 (descriptor does not expose LCD backpack address). Verify values and save.';
 		} else {
 			$detect_message = 'No CH341 USB dongle was detected. Connect the device and try again.';
 		}
@@ -276,7 +276,8 @@ $subsection->setHelp(
 	'<code>usbconfig -d ugen0.2 dump_all_desc | egrep "bConfigurationValue|bInterfaceNumber|bEndpointAddress"</code>.%1$s' .
 	'Use <b>bConfigurationValue</b> for USB Config, <b>bInterfaceNumber</b> for USB Interface, ' .
 	'and endpoint addresses for USB Bulk Out / USB Bulk In.%1$s' .
-	'For I2C Address, use the LCD backpack default (commonly 0x27 or 0x3f) or check the board documentation.',
+	'The I2C Address is not exposed by USB descriptors; auto-detect keeps default <code>0x27</code>. ' .
+	'Use the LCD backpack address from hardware docs (commonly 0x27 or 0x3f).',
 	'<br/>'
 );
 $section->add($subsection);

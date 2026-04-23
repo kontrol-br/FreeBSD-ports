@@ -375,6 +375,10 @@ function lcdproc_detect_ch341_usb() {
 		return $detected;
 	}
 
+	/* CH341 descriptors do not expose the downstream LCD I2C slave address.
+	 * Keep a sane default when autodetect runs.
+	 */
+	$detected['ch341_port'] = "0x27";
 	$detected['ch341_usbindex'] = "0";
 	$descriptor_output = shell_exec("{$usbconfig} -d " . escapeshellarg($ch341_devices[0]) . " dump_all_desc 2>/dev/null");
 	if (empty($descriptor_output)) {
