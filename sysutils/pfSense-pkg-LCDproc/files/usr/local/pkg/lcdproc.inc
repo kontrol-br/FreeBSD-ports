@@ -161,6 +161,7 @@ $connection_type_list = [
 	'ftdi'          => 'LCD connected to FTDI 2232D USB chip',
 	'usblcd'        => 'USBLCD adapter from Adams IT Services',
 	'i2c'           => 'LCD driven by PCF8574/PCA9554 connected via i2c',
+	'ch341i2c'      => 'CH341 USB to I2C bridge',
 	'ezio'          => 'Portwell EZIO-100 and EZIO-300'
 ];
 
@@ -320,8 +321,15 @@ function sync_package_lcdproc() {
 	$lcdproc_screens_config = config_get_path('installedpackages/lcdprocscreens/config/0', []);
 
 	/* Since config is written before this file invoked, we don't need to read post data */
-	if ($lcdproc_config['enable'] && ($lcdproc_config['comport'] != "none")) {
+	$is_hd44780_ch341 = ($lcdproc_config['driver'] == "hd44780" &&
+	    $lcdproc_config['connection_type'] == "ch341i2c");
+
+	if ($lcdproc_config['enable'] &&
+	    (($lcdproc_config['comport'] != "none") || $is_hd44780_ch341)) {
 		switch ($lcdproc_config['comport']) {
+			case "none":
+				$realport = "";
+				break;
 			case "com1":
 				$realport = "/dev/cua0";
 				break;
@@ -488,6 +496,18 @@ function sync_package_lcdproc() {
 				$config_text .= "[{$lcdproc_config['driver']}]\n";
 				$config_text .= "driverpath=/usr/local/lib/lcdproc/\n";
 				$config_text .= "ConnectionType={$lcdproc_config['connection_type']}\n";
+				if ($lcdproc_config['connection_type'] == "ch341i2c") {
+					$config_text .= "Port=" . (empty($lcdproc_config['ch341_port']) ? "0x27" : $lcdproc_config['ch341_port']) . "\n";
+					$config_text .= "Size={$lcdproc_config['size']}\n";
+					$config_text .= "Backlight=external\n";
+					$config_text .= "DelayBus=yes\n";
+					$config_text .= "UsbIndex=" . (empty($lcdproc_config['ch341_usbindex']) ? "0" : $lcdproc_config['ch341_usbindex']) . "\n";
+					$config_text .= "UsbBulkOut=" . (empty($lcdproc_config['ch341_usbbulkout']) ? "0x02" : $lcdproc_config['ch341_usbbulkout']) . "\n";
+					$config_text .= "UsbBulkIn=" . (empty($lcdproc_config['ch341_usbbulkin']) ? "0x82" : $lcdproc_config['ch341_usbbulkin']) . "\n";
+					$config_text .= "UsbInterface=" . (empty($lcdproc_config['ch341_usbinterface']) ? "0" : $lcdproc_config['ch341_usbinterface']) . "\n";
+					$config_text .= "UsbConfig=" . (empty($lcdproc_config['ch341_usbconfig']) ? "1" : $lcdproc_config['ch341_usbconfig']) . "\n";
+					break;
+				}
 				if ($lcdproc_config['comport'] != "none" && $lcdproc_config['connection_type'] != "ezio") {
 					$config_text .= "Device={$realport}\n";
 					$config_text .= "Port=0x378\n";
@@ -500,7 +520,7 @@ function sync_package_lcdproc() {
 					$config_text .= "Charmap=hd44780_default\n";
 					$config_text .= "DelayBus=true\n";
 					$config_text .= "Size={$lcdproc_config['size']}\n";
-					if ($lcdproc_config['connection_type'] = "pertelian") {
+					if ($lcdproc_config['connection_type'] == "pertelian") {
 						$config_text .= "DelayMult=32\n";
 						$config_text .= "Keypad=no\n";
 					} else {
@@ -718,7 +738,9 @@ EOD;
 		}
 	}
 
-	if (!$lcdproc_config['enable'] || !$lcdproc_config['driver'] || !$lcdproc_config['comport']) {
+	if (!$lcdproc_config['enable'] || !$lcdproc_config['driver'] ||
+	    (($lcdproc_config['comport'] == "none") &&
+	     !($lcdproc_config['driver'] == "hd44780" && $lcdproc_config['connection_type'] == "ch341i2c"))) {
 		/* No parameters - user does not want lcdproc running */
 		/* Let's stop the service and remove the rc file */
 		if (file_exists(LCDPROC_RCFILE)) {

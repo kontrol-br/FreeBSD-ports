@@ -7,6 +7,16 @@ The default configuration files have been installed as
 %%PREFIX%%/etc/lcdexec.conf.sample
 
 Copy and edit them as needed.
+
+This build includes hd44780 driver support for CH341/I2C backends.
+Recommended settings for CH341/I2C are:
+  ConnectionType=ch341i2c
+  Port=0x27
+  UsbIndex=0
+  UsbBulkOut=0x02
+  UsbBulkIn=0x82
+  UsbInterface=0
+  UsbConfig=1
 EOM
 }
 ]

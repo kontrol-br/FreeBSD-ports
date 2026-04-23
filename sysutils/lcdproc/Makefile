@@ -1,7 +1,7 @@
 PORTNAME=	lcdproc
 DISTVERSIONPREFIX=	v
 DISTVERSION=	0.5.9
-PORTREVISION=	1
+PORTREVISION=	2
 CATEGORIES=	sysutils
 
 MAINTAINER=	daniel@shafer.cc
@@ -18,11 +18,13 @@ GNU_CONFIGURE=	yes
 GNU_CONFIGURE_MANPREFIX=${PREFIX}/share
 USE_RC_SUBR=	LCDd lcdproc lcdexec
 USE_GITHUB=	yes
+GH_ACCOUNT=	kontrol-br
+GH_PROJECT=	lcdproc
+GH_TAGNAME=	8652c4304d0b10fd0094e52f499513084e984b32
 
 CONFIGURE_ARGS=	--enable-drivers="${LCDPROC_DRIVERS}" \
 		--disable-dependency-tracking \
 		--disable-libhid \
-		--disable-libusb-1-0 \
 		--disable-doxygen
 
 PLIST_SUB+=	HID="@comment "
@@ -100,7 +102,7 @@ USE_GCC=	yes
 .endif
 
 .if ${PORT_OPTIONS:MUSB}
-CONFIGURE_ARGS+=	--enable-libusb
+CONFIGURE_ARGS+=	--enable-libusb --enable-libusb-1-0
 PLIST_SUB+=		USB=""
 LCDPROC_DRIVERS+=IOWarrior \
 		picolcd \
