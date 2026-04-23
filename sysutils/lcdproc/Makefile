@@ -103,6 +103,7 @@ USE_GCC=	yes
 .endif
 
 .if ${PORT_OPTIONS:MUSB}
+LIB_DEPENDS+=		libusb-1.0.so:devel/libusb1
 CONFIGURE_ARGS+=	--enable-libusb --enable-libusb-1-0
 PLIST_SUB+=		USB=""
 LCDPROC_DRIVERS+=IOWarrior \
