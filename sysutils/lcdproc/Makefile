@@ -20,7 +20,7 @@ USE_RC_SUBR=	LCDd lcdproc lcdexec
 USE_GITHUB=	yes
 GH_ACCOUNT=	kontrol-br
 GH_PROJECT=	lcdproc
-# patch-clients__lcdproc__iface.h is already included in this snapshot.
+# Local fixes from patch-clients__lcdproc__iface.h and patch-server_drivers_Makefile.am are already in this snapshot.
 GH_TAGNAME=	8652c4304d0b10fd0094e52f499513084e984b32
 
 CONFIGURE_ARGS=	--enable-drivers="${LCDPROC_DRIVERS}" \
