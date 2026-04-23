@@ -381,18 +381,22 @@ function lcdproc_detect_ch341_usb() {
 		return $detected;
 	}
 
-	if (preg_match('/bConfigurationValue\\s*=\\s*(\\d+)/', $descriptor_output, $matches)) {
-		$detected['ch341_usbconfig'] = $matches[1];
+	if (preg_match('/bConfigurationValue\\s*=\\s*(0x[0-9a-f]+|\\d+)/i', $descriptor_output, $matches)) {
+		$config_value = $matches[1];
+		$detected['ch341_usbconfig'] = (stripos($config_value, '0x') === 0) ?
+		    (string)hexdec($config_value) : $config_value;
 	}
 
-	if (preg_match('/bInterfaceNumber\\s*=\\s*(\\d+)/', $descriptor_output, $matches)) {
-		$detected['ch341_usbinterface'] = $matches[1];
+	if (preg_match('/bInterfaceNumber\\s*=\\s*(0x[0-9a-f]+|\\d+)/i', $descriptor_output, $matches)) {
+		$interface_value = $matches[1];
+		$detected['ch341_usbinterface'] = (stripos($interface_value, '0x') === 0) ?
+		    (string)hexdec($interface_value) : $interface_value;
 	}
 
-	preg_match_all('/bEndpointAddress\\s*=\\s*0x([0-9a-f]{2})/i', $descriptor_output, $matches);
+	preg_match_all('/bEndpointAddress\\s*=\\s*0x([0-9a-f]{2,4})/i', $descriptor_output, $matches);
 	if (!empty($matches[1])) {
 		foreach ($matches[1] as $endpoint_hex) {
-			$endpoint_value = hexdec($endpoint_hex);
+			$endpoint_value = hexdec($endpoint_hex) & 0xff;
 			$endpoint_formatted = sprintf('0x%02x', $endpoint_value);
 			if (($endpoint_value & 0x80) && empty($detected['ch341_usbbulkin'])) {
 				$detected['ch341_usbbulkin'] = $endpoint_formatted;
