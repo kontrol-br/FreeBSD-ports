@@ -2195,16 +2195,15 @@ EOF;
 	}
 	$filtergroups = ($count > 1?($count -1):1);
 	$filterip = "";
-	$filterports = "";
+	$filterports = "filterports = " . $filterport;
+	$mapportstoips = "mapportstoips = off";
 	foreach (explode(",", $e2guardian['interface']) as $i => $iface) {
 		$real_ifaces[] = dg_get_real_interface_address($iface);
 		if ($real_ifaces[$i][0]) {
 			$filterip .= "filterip = " . $real_ifaces[$i][0] . "\n";
 		}
-		$filterports .= "filterports = " . $filterport . "\n";
 	}
 	$filterip = ($filterip == "" ? "filterip = " : $filterip);
-	$filterports = ($filterports == "" ? "filterports = $filterport" : $filterports);
 	$ssl_proxy_port = $e2guardian['ssl_proxy_port'] ? $e2guardian['ssl_proxy_port'] : "8081";
 	include(E2GUARDIAN_PKGDIR . "/e2guardian.conf.template");
 
