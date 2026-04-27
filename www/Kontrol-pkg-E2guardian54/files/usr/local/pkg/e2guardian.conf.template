@@ -176,6 +176,7 @@ dstatinterval = {$dstatinterval}
 # If disabled will listen on all filterports on all filterips.
 # on (default) | off
 #mapportstoips = off
+{$mapportstoips}
 
 #port for transparent https
 #if defined enables tranparent https
