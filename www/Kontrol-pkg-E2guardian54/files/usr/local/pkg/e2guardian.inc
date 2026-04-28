@@ -1155,16 +1155,21 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 
         $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
 	$ca_cert = lookup_ca($e2guardian["dca"]);
-	if ($ca_cert != false) {
-		if (base64_decode($ca_cert['prv'])) {
-			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", base64_decode($ca_cert['prv']));
+	if (is_array($ca_cert) && array_key_exists('item', $ca_cert) && is_array($ca_cert['item'])) {
+		$ca_cert = $ca_cert['item'];
+	}
+	if (is_array($ca_cert) && !empty($ca_cert)) {
+		$ca_prv = isset($ca_cert['prv']) ? base64_decode($ca_cert['prv']) : false;
+		if ($ca_prv !== false && $ca_prv !== "") {
+			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", $ca_prv);
 			$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
 		}
-		if (base64_decode($ca_cert['crt'])) {
+		$ca_crt = isset($ca_cert['crt']) ? base64_decode($ca_cert['crt']) : false;
+		if ($ca_crt !== false && $ca_crt !== "") {
 			$cert_hash = array();
-			file_put_contents("/etc/ssl/demoCA/cacert.pem", base64_decode($ca_cert['crt']));
+			file_put_contents("/etc/ssl/demoCA/cacert.pem", $ca_crt);
 			exec("/usr/bin/openssl x509 -hash -noout -in /etc/ssl/demoCA/cacert.pem", $cert_hash);
-			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
+			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", $ca_crt);
 			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
 			$generatedcertpath= "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
 		}
