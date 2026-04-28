@@ -233,6 +233,7 @@ function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = 
     }
 
     @chmod($target_path, 0640);
+    log_error("{$options['log_prefix']} Updated {$target_path} from sample " . basename($sample_path));
 
     return true;
 }
@@ -840,6 +841,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		log_error("[E2guardian] - Detected boot process pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
         log_error("[E2guardian] - Aborting config file generation");
 		return;
+	} else {
+		log_error("[E2guardian] - Save settings package call pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
 	}
 
 	// assign xml arrays
@@ -1151,36 +1154,25 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	}
 
         $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
-	$ca_pem = "";
-	$ca_pk = "";
-	$generatedcertpath = "";
-	$cert_key = "";
-	$certprivatekeypath = '/etc/ssl/demoCA/private/serverkey.pem';
-	$ca_pem_path = '/etc/ssl/demoCA/cacert.pem';
-	$ca_key_path = '/etc/ssl/demoCA/private/cakey.pem';
-	if ($enablessl === "on") {
-		$ca_pem = "cacertificatepath = '{$ca_pem_path}'";
-		$ca_pk = "caprivatekeypath = '{$ca_key_path}'";
-		$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
+	$ca_cert = lookup_ca($e2guardian["dca"]);
+	if ($ca_cert != false) {
+		if (base64_decode($ca_cert['prv'])) {
+			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", base64_decode($ca_cert['prv']));
+			$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
+		}
+		if (base64_decode($ca_cert['crt'])) {
+			$cert_hash = array();
+			file_put_contents("/etc/ssl/demoCA/cacert.pem", base64_decode($ca_cert['crt']));
+			exec("/usr/bin/openssl x509 -hash -noout -in /etc/ssl/demoCA/cacert.pem", $cert_hash);
+			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
+			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
+			$generatedcertpath= "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
+		}
+		$certprivatekeypath='/etc/ssl/demoCA/private/serverkey.pem';
 		if (! file_exists($certprivatekeypath)) {
 			system("openssl genrsa 4096 > $certprivatekeypath");
 		}
 		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
-	}
-	$ca_cert = lookup_ca($e2guardian["dca"]);
-	if ($ca_cert != false) {
-		if (base64_decode($ca_cert['prv'])) {
-			file_put_contents($ca_key_path, base64_decode($ca_cert['prv']));
-			$ca_pk = "caprivatekeypath = '{$ca_key_path}'";
-		}
-		if (base64_decode($ca_cert['crt'])) {
-			$cert_hash = array();
-			file_put_contents($ca_pem_path, base64_decode($ca_cert['crt']));
-			exec("/usr/bin/openssl x509 -hash -noout -in {$ca_pem_path}", $cert_hash);
-			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
-			$ca_pem = "cacertificatepath = '{$ca_pem_path}'";
-			$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
-		}
 		/*
 		$svr_cert = lookup_cert($e2guardian_config["dcert"]);
 		if ($svr_cert != false) {
@@ -1190,39 +1182,6 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			}
 		}
 		*/
-	}
-	if ($enablessl === "on") {
-		$ca_found = (file_exists($ca_pem_path) && file_exists($ca_key_path));
-		if (!$ca_found && is_array($config['ca'])) {
-			foreach ($config['ca'] as $ca) {
-				if (stripos($ca['descr'], 'e2guardian') !== false && !empty($ca['crt']) && !empty($ca['prv'])) {
-					file_put_contents($ca_pem_path, base64_decode($ca['crt']));
-					file_put_contents($ca_key_path, base64_decode($ca['prv']));
-					$ca_found = true;
-					break;
-				}
-			}
-			if (!$ca_found) {
-				foreach ($config['ca'] as $ca) {
-					if (!empty($ca['crt']) && !empty($ca['prv'])) {
-						file_put_contents($ca_pem_path, base64_decode($ca['crt']));
-						file_put_contents($ca_key_path, base64_decode($ca['prv']));
-						$ca_found = true;
-						break;
-					}
-				}
-			}
-		}
-		if (!$ca_found) {
-			$subj = '/C=US/ST=State/L=Locality/O=e2guardian/CN=e2guardianCA';
-			exec("/usr/bin/openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -keyout {$ca_key_path} -out {$ca_pem_path} -subj \"{$subj}\"");
-			$ca_found = (file_exists($ca_pem_path) && file_exists($ca_key_path));
-		}
-		if ($ca_found) {
-			$ca_pem = "cacertificatepath = '{$ca_pem_path}'";
-			$ca_pk = "caprivatekeypath = '{$ca_key_path}'";
-			$generatedcertpath = "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
-		}
 	}
 
 	//contentscanners preg_replace patterns
@@ -2209,6 +2168,7 @@ EOF;
 	//check blacklist download files
 	file_put_contents("/root/e2guardian_custom.script", base64_decode($e2guardian_blacklist['custom_script']), LOCK_EX);
 	if ($_POST["force_download"]) {
+		log_error("Blacklist update process started");
 		file_notice("E2guardian",$error,"E2guardian - " . gettext("Blacklist update process started"), "");
 		if ($e2guardian_blacklist['enable_custom_script']) {
 			mwexec_bg("/root/e2guardian_custom.script");
@@ -2250,9 +2210,11 @@ EOF;
 
 
 	//log rotation script
+    	log_error("Checking log rotation");
 	$lrt_file = E2GUARDIAN_WWWDIR . "/e2guardian_logrotate.php";
 	$cron_cmd = E2GUARDIAN_BINDIR . "/php -q {$lrt_file}";
 	if ($logrotate == "on") {
+        log_error("Log rotate on");
 		e2g_check_cron($cron_cmd, "create", $cronminute, $cronhour);
 	} else {
 		file_put_contents($lrt_file, "", LOCK_EX);
@@ -2399,11 +2361,13 @@ EOF;
 			chmod ($script, 0755);
 
 			if (file_exists('/var/run/e2guardian.pid') && is_process_running('clamd')) {
+				log_error('Stopping clamav-clamd');
 				mwexec("$script stop");
 			}
 			unlink_if_exists("/tmp/.dguardianipc");
 			unlink_if_exists("/tmp/.dguardianurlipc");
 			if (!is_process_running('clamd')) {
+				log_error('Starting clamav-clamd');
 				mwexec_bg("$script start");
 			}
 		}
@@ -2500,20 +2464,23 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
                 copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $script);
 		chmod ($script, 0755);
 		$max_threads = "sysctl kern.threads.max_threads_per_proc=20480";
-			if (is_process_running('e2guardian')) {
-				switch ($e2g_cfg['applyaction']){
-					case "rc.d":
-						mwexec("$script stop");
-						sleep(2);
-	                     			mwexec_bg("$script start");
-						break;
-					case "-r":
-	                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
-						break;
-					default:
-	                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
-						break;
-				}
+		if (is_process_running('e2guardian')) {
+			switch ($e2g_cfg['applyaction']){
+				case "rc.d":
+					log_error("Restarting e2g with rc.d script");
+					mwexec("$script stop");
+					sleep(2);
+                     			mwexec_bg("$script start");
+					break;
+				case "-r":
+					log_error("Sending USR1 to e2g processes");
+                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
+					break;
+				default:
+					log_error("Restarting e2g by sending -Q action to e2g binaries");
+                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
+					break;
+			}
 		} else {
 			//log_error('Starting E2guardian');
 			//mwexec("$script start");
@@ -2575,6 +2542,7 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 				break;
 			}
 			if (is_array($rs)) {
+				log_error("[E2guardian] xmlrpc sync is starting.");
 				foreach ($rs as $sh) {
 					if ($sh['syncdestinenable']) {
 						// Only sync enabled replication targets
@@ -2604,12 +2572,14 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 						} else {
 							log_error("[E2guardian] XMLRPC sync with '{$sync_to_ip}' aborted due to the following error(s): {$error}");
 						}
+
 					}
 				}
-			}
+				log_error("[E2guardian] xmlrpc sync is ending.");
 			}
 		}
 	}
+}
 
 function e2guardian_validate_input($post, &$input_errors) {
 	global $config;
@@ -3149,6 +3119,7 @@ function e2guardian_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $pa
 	$execcmd .= "e2guardian_start('yes');";
 
 	 /* xml will hold the sections to sync */
+        log_error("Include e2guardian config");
 	$elements = e2guardian_export_sections();
 
         $xml = array();
