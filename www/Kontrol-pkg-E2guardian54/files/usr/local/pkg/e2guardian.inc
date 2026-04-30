@@ -616,11 +616,11 @@ function e2g_watchdog_script($wpid, $wcmd, $winfo){
 			:
 		else
 			{$wcmd}
-			echo "\$(date '+%a %b %d %T %Y') {$winfo} start" >> {$wlog}
+			echo "\$(date) {$winfo} start" >> {$wlog}
 		fi
 	else
 		{$wcmd}
-		echo "\$(date '+%a %b %d %T %Y') {$winfo} start" >> {$wlog}
+		echo "\$(date) {$winfo} start" >> {$wlog}
 	fi
 EOF;
 	return($wscript);
@@ -2245,14 +2245,21 @@ EOF;
 				$watchdog_squid = e2g_watchdog_script($msqd_pid, $msqd_cmd, "squid");
 			}
 		}
-		$watchdog  =  "#!/bin/sh\n";
-		$watchdog .= "if [ \"\$1\" != \"--locked\" ]; then\n";
-		$watchdog .= "\texec /usr/bin/lockf -st 0 /var/run/e2g_watchdog.lock /bin/sh \"\$0\" --locked\n";
-		$watchdog .= "fi\n";
-		$watchdog .= "for a in 00 10 20 30 40 50\ndo\n";
-		$watchdog .= "\t{$watchdog_e2g}\n\t{$watchdog_parent}\n\t{$watchdog_squid}\n";
-		$watchdog .= "\tsleep 10\ndone\n";
-		$watchdog .= "'\n";
+		$watchdog_lines = array(
+			"#!/bin/sh",
+			"if [ \"\$1\" != \"--locked\" ]; then",
+			"\texec /usr/bin/lockf -st 0 /var/run/e2g_watchdog.lock /bin/sh \"\$0\" --locked",
+			"fi",
+			"for a in 00 10 20 30 40 50",
+			"do",
+			"\t{$watchdog_e2g}",
+			"\t{$watchdog_parent}",
+			"\t{$watchdog_squid}",
+			"\tsleep 10",
+			"done",
+		);
+		$watchdog = implode("\n", $watchdog_lines) . "\n";
+		$watchdog = preg_replace('/^\\x27\\s*$/m', '', $watchdog);
 		file_put_contents($cron_cmd, $watchdog, LOCK_EX);
 	} else {
 		e2g_stop_watchdog_processes();
