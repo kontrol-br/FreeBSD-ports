@@ -616,11 +616,11 @@ function e2g_watchdog_script($wpid, $wcmd, $winfo){
 			:
 		else
 			{$wcmd}
-			echo "`date +'%a %b %d %T %Y'` {$winfo} start" >> {$wlog}
+			echo "\$(date '+%a %b %d %T %Y') {$winfo} start" >> {$wlog}
 		fi
 	else
 		{$wcmd}
-		echo "`date +'%a %b %d %T %Y'` {$winfo} start" >> {$wlog}
+		echo "\$(date '+%a %b %d %T %Y') {$winfo} start" >> {$wlog}
 	fi
 EOF;
 	return($wscript);
