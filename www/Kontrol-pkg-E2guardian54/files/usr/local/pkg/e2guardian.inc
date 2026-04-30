@@ -2246,7 +2246,9 @@ EOF;
 			}
 		}
 		$watchdog  =  "#!/bin/sh\n";
-		$watchdog .= "/usr/bin/lockf -st 0 /var/run/e2g_watchdog.lock /bin/sh -c '\n";
+		$watchdog .= "if [ \"\$1\" != \"--locked\" ]; then\n";
+		$watchdog .= "\texec /usr/bin/lockf -st 0 /var/run/e2g_watchdog.lock /bin/sh \"\$0\" --locked\n";
+		$watchdog .= "fi\n";
 		$watchdog .= "for a in 00 10 20 30 40 50\ndo\n";
 		$watchdog .= "\t{$watchdog_e2g}\n\t{$watchdog_parent}\n\t{$watchdog_squid}\n";
 		$watchdog .= "\tsleep 10\ndone\n";
