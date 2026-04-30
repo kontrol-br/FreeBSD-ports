@@ -2252,6 +2252,7 @@ EOF;
 		$watchdog .= "for a in 00 10 20 30 40 50\ndo\n";
 		$watchdog .= "\t{$watchdog_e2g}\n\t{$watchdog_parent}\n\t{$watchdog_squid}\n";
 		$watchdog .= "\tsleep 10\ndone\n";
+		$watchdog .= "'\n";
 		file_put_contents($cron_cmd, $watchdog, LOCK_EX);
 	} else {
 		e2g_stop_watchdog_processes();
