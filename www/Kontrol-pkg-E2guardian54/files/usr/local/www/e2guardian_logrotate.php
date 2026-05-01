@@ -35,8 +35,12 @@ require_once("xmlrpc_client.inc");
 require_once("e2guardian.inc");
 require_once("service-utils.inc");
 
+$e2guardian_cfg = $config['installedpackages']['e2guardian']['config'][0];
+$watchdog_cmd = "/usr/local/bin/e2g_watchdog.sh";
 
 log_error("e2guardian - rotating logs.");
+log_error("e2guardian - stopping watchdog processes before rotation.");
+mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
 
 //TODO: Make all of this less hardcoded and hacky
 service_control_stop("e2guardian", array());
@@ -70,6 +74,32 @@ if (file_exists($log)){
 
 log_error("e2guardian - starting");
 service_control_start("e2guardian", array());
+
+$e2guardian_pid_file = "/var/run/e2guardian.pid";
+$e2guardian_ready = false;
+for ($i = 0; $i < 30; $i++) {
+	clearstatcache();
+	if (file_exists($e2guardian_pid_file)) {
+		$pid = trim(@file_get_contents($e2guardian_pid_file));
+		if (!empty($pid) && ctype_digit($pid) && posix_kill((int)$pid, 0)) {
+			$e2guardian_ready = true;
+			break;
+		}
+	}
+	sleep(1);
+}
+
+$e2guardian_cfg = $config['installedpackages']['e2guardian']['config'][0];
+if ($e2guardian_cfg['watchdog'] == "on") {
+	if ($e2guardian_ready) {
+		log_error("e2guardian - restarting watchdog after rotation.");
+		mwexec_bg("/bin/sh {$watchdog_cmd}");
+	} else {
+		log_error("e2guardian - watchdog restart deferred: e2guardian pid not ready.");
+	}
+} else {
+	log_error("e2guardian - watchdog remains disabled after rotation.");
+}
 
 log_error("e2guardian - log rotation complete.");
 ?>
