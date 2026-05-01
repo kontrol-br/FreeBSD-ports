@@ -608,19 +608,26 @@ function e2g_check_logdeniedcgi($logdeniedcgi) {
 
 function e2g_watchdog_script($wpid, $wcmd, $winfo){
 	$wlog = "/var/log/e2guardian/start.log";
+	$wprocess = ($winfo == "e2guardian" ? "^/usr/local/sbin/e2guardian$" : "");
 	$wscript = <<<EOF
 # watchdog script for {$winfo}
 	if [ -f {$wpid} ]; then
 		wpid_value=\$(/bin/cat {$wpid} 2>/dev/null)
 		if [ -n "\${wpid_value}" ] && /bin/kill -0 "\${wpid_value}" 2>/dev/null; then
 			:
+		elif [ -n "{$wprocess}" ] && /usr/bin/pgrep -f "{$wprocess}" >/dev/null 2>&1; then
+			/usr/bin/pgrep -f "{$wprocess}" | /usr/bin/head -n1 > {$wpid}
 		else
 			{$wcmd}
 			echo "\$(date) {$winfo} start" >> {$wlog}
 		fi
 	else
-		{$wcmd}
-		echo "\$(date) {$winfo} start" >> {$wlog}
+		if [ -n "{$wprocess}" ] && /usr/bin/pgrep -f "{$wprocess}" >/dev/null 2>&1; then
+			/usr/bin/pgrep -f "{$wprocess}" | /usr/bin/head -n1 > {$wpid}
+		else
+			{$wcmd}
+			echo "\$(date) {$winfo} start" >> {$wlog}
+		fi
 	fi
 EOF;
 	return($wscript);
@@ -2284,7 +2291,7 @@ EOF;
 	}
         $cron_cmd = E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist";
 	if ($e2guardian_blacklist['cron']) {
-		e2g_check_cron($cron_cmd, "create", "0", "0", $cron_field[$e2guardian_blacklist['cron']]);
+		e2g_check_cron($cron_cmd, "create", "20", "0", $cron_field[$e2guardian_blacklist['cron']]);
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}

@@ -75,10 +75,28 @@ if (file_exists($log)){
 log_error("e2guardian - starting");
 service_control_start("e2guardian", array());
 
+$e2guardian_pid_file = "/var/run/e2guardian.pid";
+$e2guardian_ready = false;
+for ($i = 0; $i < 30; $i++) {
+	clearstatcache();
+	if (file_exists($e2guardian_pid_file)) {
+		$pid = trim(@file_get_contents($e2guardian_pid_file));
+		if (!empty($pid) && ctype_digit($pid) && posix_kill((int)$pid, 0)) {
+			$e2guardian_ready = true;
+			break;
+		}
+	}
+	sleep(1);
+}
+
 $e2guardian_cfg = $config['installedpackages']['e2guardian']['config'][0];
 if ($e2guardian_cfg['watchdog'] == "on") {
-	log_error("e2guardian - restarting watchdog after rotation.");
-	mwexec_bg("/bin/sh {$watchdog_cmd}");
+	if ($e2guardian_ready) {
+		log_error("e2guardian - restarting watchdog after rotation.");
+		mwexec_bg("/bin/sh {$watchdog_cmd}");
+	} else {
+		log_error("e2guardian - watchdog restart deferred: e2guardian pid not ready.");
+	}
 } else {
 	log_error("e2guardian - watchdog remains disabled after rotation.");
 }
