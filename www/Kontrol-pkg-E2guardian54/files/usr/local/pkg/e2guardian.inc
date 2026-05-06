@@ -608,17 +608,26 @@ function e2g_check_logdeniedcgi($logdeniedcgi) {
 
 function e2g_watchdog_script($wpid, $wcmd, $winfo){
 	$wlog = "/var/log/e2guardian/start.log";
+	$wprocess = ($winfo == "e2guardian" ? "^/usr/local/sbin/e2guardian$" : "");
 	$wscript = <<<EOF
 # watchdog script for {$winfo}
-	if [ -f {$wpid} ];then
-		cat {$wpid} | xargs ps
-		if [ $? -ne 0 ]; then
+	if [ -f {$wpid} ]; then
+		wpid_value=\$(/bin/cat {$wpid} 2>/dev/null)
+		if [ -n "\${wpid_value}" ] && /bin/kill -0 "\${wpid_value}" 2>/dev/null; then
+			:
+		elif [ -n "{$wprocess}" ] && /usr/bin/pgrep -f "{$wprocess}" >/dev/null 2>&1; then
+			/usr/bin/pgrep -f "{$wprocess}" | /usr/bin/head -n1 > {$wpid}
+		else
 			{$wcmd}
-			echo "`date +'%a %b %d %T %Y'` {$winfo} start" >> {$wlog}
+			echo "\$(date) {$winfo} start" >> {$wlog}
 		fi
 	else
-		{$wcmd}
-		echo "`date +'%a %b %d %T %Y'` {$winfo} start" >> {$wlog}
+		if [ -n "{$wprocess}" ] && /usr/bin/pgrep -f "{$wprocess}" >/dev/null 2>&1; then
+			/usr/bin/pgrep -f "{$wprocess}" | /usr/bin/head -n1 > {$wpid}
+		else
+			{$wcmd}
+			echo "\$(date) {$winfo} start" >> {$wlog}
+		fi
 	fi
 EOF;
 	return($wscript);
@@ -1155,21 +1164,16 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 
         $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
 	$ca_cert = lookup_ca($e2guardian["dca"]);
-	if (is_array($ca_cert) && array_key_exists('item', $ca_cert) && is_array($ca_cert['item'])) {
-		$ca_cert = $ca_cert['item'];
-	}
-	if (is_array($ca_cert) && !empty($ca_cert)) {
-		$ca_prv = isset($ca_cert['prv']) ? base64_decode($ca_cert['prv']) : false;
-		if ($ca_prv !== false && $ca_prv !== "") {
-			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", $ca_prv);
+	if ($ca_cert != false) {
+		if (base64_decode($ca_cert['prv'])) {
+			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", base64_decode($ca_cert['prv']));
 			$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
 		}
-		$ca_crt = isset($ca_cert['crt']) ? base64_decode($ca_cert['crt']) : false;
-		if ($ca_crt !== false && $ca_crt !== "") {
+		if (base64_decode($ca_cert['crt'])) {
 			$cert_hash = array();
-			file_put_contents("/etc/ssl/demoCA/cacert.pem", $ca_crt);
+			file_put_contents("/etc/ssl/demoCA/cacert.pem", base64_decode($ca_cert['crt']));
 			exec("/usr/bin/openssl x509 -hash -noout -in /etc/ssl/demoCA/cacert.pem", $cert_hash);
-			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", $ca_crt);
+			file_put_contents(E2GUARDIAN_CERTSDIR . "/" . $cert_hash[0] . ".0", base64_decode($ca_cert['crt']));
 			$ca_pem = "cacertificatepath = '/etc/ssl/demoCA/cacert.pem'";
 			$generatedcertpath= "generatedcertpath = '" . $e2guardian_dir . "/ssl/generatedcerts'";
 		}
@@ -2200,16 +2204,15 @@ EOF;
 	}
 	$filtergroups = ($count > 1?($count -1):1);
 	$filterip = "";
-	$filterports = "";
+	$filterports = "filterports = " . $filterport;
+	$mapportstoips = "mapportstoips = off";
 	foreach (explode(",", $e2guardian['interface']) as $i => $iface) {
 		$real_ifaces[] = dg_get_real_interface_address($iface);
 		if ($real_ifaces[$i][0]) {
 			$filterip .= "filterip = " . $real_ifaces[$i][0] . "\n";
 		}
-		$filterports .= "filterports = " . $filterport . "\n";
 	}
 	$filterip = ($filterip == "" ? "filterip = " : $filterip);
-	$filterports = ($filterports == "" ? "filterports = $filterport" : $filterports);
 	$ssl_proxy_port = $e2guardian['ssl_proxy_port'] ? $e2guardian['ssl_proxy_port'] : "8081";
 	include(E2GUARDIAN_PKGDIR . "/e2guardian.conf.template");
 
@@ -2249,10 +2252,21 @@ EOF;
 				$watchdog_squid = e2g_watchdog_script($msqd_pid, $msqd_cmd, "squid");
 			}
 		}
-		$watchdog  =  "#!/bin/sh\n";
-		$watchdog .= "for a in 00 10 20 30 40 50\ndo\n";
-		$watchdog .= "\t{$watchdog_e2g}\n\t{$watchdog_parent}\n\t{$watchdog_squid}\n";
-		$watchdog .= "\tsleep 10\ndone\n";
+		$watchdog_lines = array(
+			"#!/bin/sh",
+			"if [ \"\$1\" != \"--locked\" ]; then",
+			"\texec /usr/bin/lockf -st 0 /var/run/e2g_watchdog.lock /bin/sh \"\$0\" --locked",
+			"fi",
+			"for a in 00 10 20 30 40 50",
+			"do",
+			"\t{$watchdog_e2g}",
+			"\t{$watchdog_parent}",
+			"\t{$watchdog_squid}",
+			"\tsleep 10",
+			"done",
+		);
+		$watchdog = implode("\n", $watchdog_lines) . "\n";
+		$watchdog = preg_replace('/^\\x27\\s*$/m', '', $watchdog);
 		file_put_contents($cron_cmd, $watchdog, LOCK_EX);
 	} else {
 		e2g_stop_watchdog_processes();
@@ -2277,7 +2291,7 @@ EOF;
 	}
         $cron_cmd = E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist";
 	if ($e2guardian_blacklist['cron']) {
-		e2g_check_cron($cron_cmd, "create", "0", "0", $cron_field[$e2guardian_blacklist['cron']]);
+		e2g_check_cron($cron_cmd, "create", "20", "0", $cron_field[$e2guardian_blacklist['cron']]);
 	} else {
 		e2g_check_cron($cron_cmd, "remove");
 	}
@@ -2399,7 +2413,7 @@ function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*"
 
 function e2g_stop_watchdog_processes() {
 	$watchdog_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
-	mwexec("/usr/bin/pgrep -f {$watchdog_cmd} | /usr/bin/xargs /bin/kill 2>/dev/null");
+	mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
 }
 
 function e2guardian_check_config() {
