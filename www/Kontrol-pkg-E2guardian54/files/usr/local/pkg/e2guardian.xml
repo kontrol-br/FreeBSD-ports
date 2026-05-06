@@ -149,7 +149,7 @@
 					Do not forget to apply a mask on limiter if you want to define a per user/ip limit. and check Allow Users on Interface option above.<br>
 					<b>NOTE: </b> To match transparent clients too, apply limiters under <b>firewall -> rules</b> that allows access to this firewall(127.0.0.1) under Listen port(s).]]></description>
 			<type>select_source</type>
-			<source><![CDATA[$config['dnshaper']['queue']]]></source>
+			<source><![CDATA[config_get_path('dnshaper/queue', [])]]></source>
 			<source_name>name</source_name>
 			<source_value>number</source_value>
 			<show_disable_value>none</show_disable_value>
@@ -160,7 +160,7 @@
 			<description><![CDATA[Choose the Out queue/Virtual interface only if In is also selected.<br>
 				The Out selection is applied to traffic leaving the interface where the rule is created, the In selection is applied to traffic coming into the chosen interface.]]></description>
 			<type>select_source</type>
-			<source><![CDATA[$config['dnshaper']['queue']]]></source>
+			<source><![CDATA[config_get_path('dnshaper/queue', [])]]></source>
 			<source_name>name</source_name>
 			<source_value>number</source_value>
 			<show_disable_value>none</show_disable_value>
@@ -288,7 +288,7 @@
                                 <button class="btn btn-danger btn-sm" name='clear_cert_cache' id='force_update' type='submit' value='clear_cert_cache'>
                                 <i class="fa fa-trash icon-embed-btn"></i>Clear MITM certificate cache data</button>]]></description>
                         <type>select_source</type>
-                        <source><![CDATA[$config['ca']]]></source>
+                        <source><![CDATA[config_get_path('ca', [])]]></source>
                         <source_name>descr</source_name>
                         <source_value>refid</source_value>
                 </field>
