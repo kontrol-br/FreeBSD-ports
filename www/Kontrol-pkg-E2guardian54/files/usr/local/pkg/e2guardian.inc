@@ -81,6 +81,21 @@ function e2g_ssl_intercept_is_enabled(array $config): bool
     }
 }
 
+if (!function_exists('e2g_extract_certmanager_item')) {
+    function e2g_extract_certmanager_item($certmanager_result)
+    {
+        if (!is_array($certmanager_result)) {
+            return false;
+        }
+
+        if (array_key_exists('item', $certmanager_result)) {
+            return is_array($certmanager_result['item']) ? $certmanager_result['item'] : false;
+        }
+
+        return $certmanager_result;
+    }
+}
+
 function e2g_normalize_bypass_entries($list_string, $context = 'bypass list')
 {
     $valid_entries = array();
@@ -1163,8 +1178,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	}
 
         $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
-	$ca_cert = lookup_ca($e2guardian["dca"]);
-	if ($ca_cert != false) {
+	$ca_cert = e2g_extract_certmanager_item(lookup_ca($e2guardian["dca"]));
+	if ($ca_cert !== false) {
 		if (base64_decode($ca_cert['prv'])) {
 			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", base64_decode($ca_cert['prv']));
 			$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
@@ -1183,8 +1198,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		}
 		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
 		/*
-		$svr_cert = lookup_cert($e2guardian_config["dcert"]);
-		if ($svr_cert != false) {
+		$svr_cert = e2g_extract_certmanager_item(lookup_cert($e2guardian_config["dcert"]));
+		if ($svr_cert !== false) {
 			if (base64_decode($svr_cert['prv'])) {
 				file_put_contents("/etc/ssl/demoCA/private/serverkey.pem", base64_decode($svr_cert['prv']) . base64_decode($svr_cert['crt']));
 				$cert_key = "certprivatekeypath = '/etc/ssl/demoCA/private/serverkey.pem' ";
