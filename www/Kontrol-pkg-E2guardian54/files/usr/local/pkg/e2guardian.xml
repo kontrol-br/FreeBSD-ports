@@ -113,6 +113,17 @@
 			<description><![CDATA[Enable or disable E2guardian service.]]></description>
 		</field>
 		<field>
+			<fielddescr>Force Restart</fielddescr>
+			<fieldname>e2g_force_restart_action</fieldname>
+			<type>info</type>
+			<description><![CDATA[
+				<button type="submit" name="e2g_force_restart" value="yes" class="btn btn-warning" title="Forcefully stop all E2guardian processes and start the service again. Use when normal restart/reload does not recover the proxy." onclick="return confirm('Force Restart will terminate active E2guardian connections, stop all E2guardian processes, remove the pidfile, and start the service again. Continue?');">
+					<i class="fa fa-exclamation-triangle icon-embed-btn"></i>Force Restart
+				</button>
+				<p class="help-block">Forcefully stop all E2guardian processes and start the service again. Use when normal restart/reload does not recover the proxy.</p>
+			]]></description>
+		</field>
+		<field>
 			<fielddescr>Listen Interface(s)</fielddescr>
 			<fieldname>interface</fieldname>
 			<description><![CDATA[Default: <strong>LAN</strong><br>Select interface(s) that you want to e2guardian to listen on.<br>
@@ -426,6 +437,9 @@
 		</field>
 	</fields>
 	<custom_php_command_before_form>
+		if (isset($_POST['e2g_force_restart']) and $_POST['e2g_force_restart'] == 'yes') {
+			$savemsg = e2guardian_force_restart();
+		}
 		e2guardian_check_config();
 	</custom_php_command_before_form>
 	<custom_php_install_command>
