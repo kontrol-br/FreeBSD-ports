@@ -426,6 +426,9 @@
 		</field>
 	</fields>
 	<custom_php_command_before_form>
+		if (isset($_POST['e2g_force_restart']) and $_POST['e2g_force_restart'] == 'yes') {
+			$savemsg = e2guardian_force_restart();
+		}
 		e2guardian_check_config();
 	</custom_php_command_before_form>
 	<custom_php_install_command>
@@ -444,6 +447,54 @@
 	</custom_php_resync_config_command>
 	<custom_php_command_after_form>
 		e2guardian_check_dirty();
+		$e2g_force_restart_label = json_encode(gettext('Force Restart'));
+		$e2g_force_restart_title = json_encode(gettext('Forcefully stop all E2guardian processes and start the service again. Use when normal restart/reload does not recover the proxy.'));
+		$e2g_force_restart_confirm = json_encode(gettext('Force Restart will terminate active E2guardian connections, stop all E2guardian processes, remove the pidfile, and start the service again. Continue?'));
+		echo &lt;&lt;&lt;EOD
+&lt;script type=&quot;text/javascript&quot;&gt;
+//&lt;![CDATA[
+var addE2guardianForceRestartButton = function() {
+	var form = document.querySelector('form');
+	if (!form || document.getElementById('e2g-force-restart-button')) {
+		return;
+	}
+
+	var button = document.createElement('button');
+	button.type = 'button';
+	button.id = 'e2g-force-restart-button';
+	button.className = 'btn btn-warning btn-sm';
+	button.title = {$e2g_force_restart_title};
+	button.textContent = {$e2g_force_restart_label};
+	button.onclick = function() {
+		if (!confirm({$e2g_force_restart_confirm})) {
+			return;
+		}
+
+		var action = document.createElement('input');
+		action.type = 'hidden';
+		action.name = 'e2g_force_restart';
+		action.value = 'yes';
+		form.appendChild(action);
+		form.submit();
+	};
+
+	var target = document.querySelector('.panel-heading .pull-right, .page-heading .pull-right, .content-box-header .pull-right');
+	if (target) {
+		target.insertBefore(button, target.firstChild);
+		target.insertBefore(document.createTextNode(' '), button.nextSibling);
+	} else {
+		form.parentNode.insertBefore(button, form);
+	}
+};
+
+if (typeof events !== 'undefined') {
+	events.push(addE2guardianForceRestartButton);
+} else {
+	document.addEventListener('DOMContentLoaded', addE2guardianForceRestartButton);
+}
+//]]&gt;
+&lt;/script&gt;
+EOD;
 	</custom_php_command_after_form>
 	<filter_rules_needed>e2g_generate_rules</filter_rules_needed>
 </packagegui>

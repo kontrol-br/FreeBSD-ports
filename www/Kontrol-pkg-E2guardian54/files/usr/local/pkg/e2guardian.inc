@@ -2416,6 +2416,81 @@ function e2g_stop_watchdog_processes() {
 	mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
 }
 
+function e2guardian_processes_running() {
+	$pattern = '^' . E2GUARDIAN_SBINDIR . '/e2guardian';
+	exec('/usr/bin/pgrep -f ' . escapeshellarg($pattern) . ' >/dev/null 2>&1', $output, $retval);
+
+	return ($retval == 0);
+}
+
+function e2guardian_wait_for_process_state($running, $timeout) {
+	$deadline = time() + $timeout;
+	do {
+		if (e2guardian_processes_running() == $running) {
+			return true;
+		}
+		sleep(1);
+	} while (time() < $deadline);
+
+	return (e2guardian_processes_running() == $running);
+}
+
+function e2guardian_force_restart() {
+	// Force Restart is an operational recovery path when reload/rc restart leaves stuck workers behind.
+	$script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+	$pidfile = '/var/run/e2guardian.pid';
+	$process_pattern = '^' . E2GUARDIAN_SBINDIR . '/e2guardian';
+	$stop_timeout = 15;
+	$start_timeout = 5;
+
+	log_error('[E2guardian] Force restart requested from GUI');
+	log_error('[E2guardian] Stopping watchdog before force restart');
+	e2g_stop_watchdog_processes();
+
+	if (file_exists($script)) {
+		log_error('[E2guardian] Stopping e2guardian via rc.d script before force restart');
+		mwexec($script . ' stop');
+	} else {
+		log_error('[E2guardian] rc.d script not found, using direct signals for force restart stop');
+	}
+
+	if (e2guardian_processes_running()) {
+		log_error('[E2guardian] Sending TERM to e2guardian processes');
+		mwexec('/usr/bin/pkill -TERM -f ' . escapeshellarg($process_pattern) . ' 2>/dev/null');
+	}
+
+	if (!e2guardian_wait_for_process_state(false, $stop_timeout)) {
+		log_error('[E2guardian] Sending KILL to remaining e2guardian processes');
+		mwexec('/usr/bin/pkill -KILL -f ' . escapeshellarg($process_pattern) . ' 2>/dev/null');
+		sleep(2);
+	}
+
+	if (e2guardian_processes_running()) {
+		log_error('[E2guardian] e2guardian processes still exist after KILL during force restart');
+	}
+
+	if (file_exists($pidfile)) {
+		log_error('[E2guardian] Removing stale pidfile before force restart start');
+		unlink_if_exists($pidfile);
+	}
+
+	if (!file_exists($script)) {
+		log_error('[E2guardian] Cannot start e2guardian after force restart because rc.d script is missing');
+		return gettext('Force Restart failed: E2guardian rc.d script was not found. Apply the package configuration and try again.');
+	}
+
+	log_error('[E2guardian] Starting e2guardian after force restart');
+	mwexec_bg($script . ' start');
+
+	if (e2guardian_wait_for_process_state(true, $start_timeout)) {
+		log_error('[E2guardian] Force restart completed and e2guardian is running');
+		return gettext('Force Restart completed. E2guardian was stopped forcefully and started again.');
+	}
+
+	log_error('[E2guardian] e2guardian did not return after force restart start command');
+	return gettext('Force Restart executed, but E2guardian does not appear to be running. Check the E2guardian logs.');
+}
+
 function e2guardian_check_config() {
 	global $savemsg, $config;
 
