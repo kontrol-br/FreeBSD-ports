@@ -2444,11 +2444,52 @@ function e2g_stop_watchdog_processes() {
 	mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
 }
 
-function e2guardian_processes_running() {
-	$pattern = '^' . E2GUARDIAN_SBINDIR . '/e2guardian';
-	exec('/usr/bin/pgrep -f ' . escapeshellarg($pattern) . ' >/dev/null 2>&1', $output, $retval);
+function e2guardian_pid_is_e2guardian($pid) {
+	if (!is_numeric($pid) || ((int)$pid <= 0)) {
+		return false;
+	}
 
-	return ($retval == 0);
+	$command = array();
+	exec('/bin/ps -p ' . escapeshellarg((string)((int)$pid)) . ' -o args= 2>/dev/null', $command, $retval);
+	if ($retval != 0 || empty($command)) {
+		return false;
+	}
+
+	$command = trim(implode(' ', $command));
+	return (strpos($command, E2GUARDIAN_SBINDIR . '/e2guardian') === 0 || preg_match('/(^|[[:space:]])e2guardian([[:space:]]|$)/', $command));
+}
+
+function e2guardian_running_pids() {
+	$pids = array();
+	$pidfile = '/var/run/e2guardian.pid';
+
+	if (file_exists($pidfile)) {
+		$pid = trim(@file_get_contents($pidfile));
+		if (e2guardian_pid_is_e2guardian($pid)) {
+			$pids[] = (int)$pid;
+		}
+	}
+
+	$process_pattern = '^' . E2GUARDIAN_SBINDIR . '/e2guardian([[:space:]]|$)';
+	exec('/usr/bin/pgrep -f ' . escapeshellarg($process_pattern) . ' 2>/dev/null', $pgrep_pids);
+	exec('/usr/bin/pgrep -x e2guardian 2>/dev/null', $name_pids);
+
+	foreach (array_merge($pgrep_pids, $name_pids) as $pid) {
+		$pid = trim($pid);
+		if (is_numeric($pid)) {
+			$pids[] = (int)$pid;
+		}
+	}
+
+	$pids = array_values(array_unique(array_filter($pids, function($pid) {
+		return ($pid > 0);
+	})));
+
+	return $pids;
+}
+
+function e2guardian_processes_running() {
+	return (count(e2guardian_running_pids()) > 0);
 }
 
 function e2guardian_wait_for_process_state($running, $timeout) {
@@ -2467,34 +2508,35 @@ function e2guardian_force_restart() {
 	// Force Restart is an operational recovery path when reload/rc restart leaves stuck workers behind.
 	$script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
 	$pidfile = '/var/run/e2guardian.pid';
-	$process_pattern = '^' . E2GUARDIAN_SBINDIR . '/e2guardian';
-	$stop_timeout = 15;
+	$stop_timeout = 5;
 	$start_timeout = 5;
 
 	log_error('[E2guardian] Force restart requested from GUI');
 	log_error('[E2guardian] Stopping watchdog before force restart');
 	e2g_stop_watchdog_processes();
 
-	if (file_exists($script)) {
-		log_error('[E2guardian] Stopping e2guardian via rc.d script before force restart');
-		mwexec($script . ' stop');
+	$pids = e2guardian_running_pids();
+	if (count($pids) > 0) {
+		$pid_list = implode(' ', $pids);
+		log_error('[E2guardian] Force killing e2guardian PID(s): ' . $pid_list);
+		mwexec('/bin/kill -KILL ' . $pid_list . ' 2>/dev/null');
 	} else {
-		log_error('[E2guardian] rc.d script not found, using direct signals for force restart stop');
-	}
-
-	if (e2guardian_processes_running()) {
-		log_error('[E2guardian] Sending TERM to e2guardian processes');
-		mwexec('/usr/bin/pkill -TERM -f ' . escapeshellarg($process_pattern) . ' 2>/dev/null');
+		log_error('[E2guardian] No running e2guardian PID found before force restart');
 	}
 
 	if (!e2guardian_wait_for_process_state(false, $stop_timeout)) {
-		log_error('[E2guardian] Sending KILL to remaining e2guardian processes');
-		mwexec('/usr/bin/pkill -KILL -f ' . escapeshellarg($process_pattern) . ' 2>/dev/null');
-		sleep(2);
+		$pids = e2guardian_running_pids();
+		if (count($pids) > 0) {
+			$pid_list = implode(' ', $pids);
+			log_error('[E2guardian] Retrying KILL for remaining e2guardian PID(s): ' . $pid_list);
+			mwexec('/bin/kill -KILL ' . $pid_list . ' 2>/dev/null');
+			sleep(1);
+		}
 	}
 
 	if (e2guardian_processes_running()) {
 		log_error('[E2guardian] e2guardian processes still exist after KILL during force restart');
+		return gettext('Force Restart failed: E2guardian process(es) still exist after kill -KILL. Check the E2guardian logs.');
 	}
 
 	if (file_exists($pidfile)) {
@@ -2512,7 +2554,7 @@ function e2guardian_force_restart() {
 
 	if (e2guardian_wait_for_process_state(true, $start_timeout)) {
 		log_error('[E2guardian] Force restart completed and e2guardian is running');
-		return gettext('Force Restart completed. E2guardian was stopped forcefully and started again.');
+		return gettext('Force Restart completed. E2guardian PID(s) were killed forcefully and the service was started again.');
 	}
 
 	log_error('[E2guardian] e2guardian did not return after force restart start command');
