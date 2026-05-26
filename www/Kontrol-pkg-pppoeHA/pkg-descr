@@ -1,0 +1,5 @@
+Kontrol PPPoE High Availability package for pfSense/Kontrol environments.
+
+Provides GUI, devd hooks, and reconcile logic to tie PPPoE interface up/down
+state to CARP MASTER/BACKUP transitions, avoiding duplicate PPPoE sessions in
+HA deployments.

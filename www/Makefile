@@ -301,6 +301,7 @@
     SUBDIR += joomla4
     SUBDIR += joomla5
     SUBDIR += jwt-cli
+    SUBDIR += Kontrol-pkg-pppoeHA
     SUBDIR += kanboard
     SUBDIR += kannel
     SUBDIR += kannel-sqlbox

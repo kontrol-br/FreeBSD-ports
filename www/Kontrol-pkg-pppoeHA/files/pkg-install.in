@@ -1,0 +1,46 @@
+#!/bin/sh
+set -e
+
+PKGNAME="%%PORTNAME%%"
+PHP_BIN="${PKG_ROOTDIR}%%PREFIX%%/bin/php"; [ -x "$PHP_BIN" ] || PHP_BIN="%%PREFIX%%/bin/php"
+RC_PACKAGES="${PKG_ROOTDIR}/etc/rc.packages"; [ -x "$RC_PACKAGES" ] || RC_PACKAGES="/etc/rc.packages"
+
+if [ -x "$PHP_BIN" ] && [ -f "$RC_PACKAGES" ]; then
+  "$PHP_BIN" -f "$RC_PACKAGES" "$PKGNAME" POST-INSTALL >/dev/null 2>&1 || true
+fi
+
+"$PHP_BIN" -r '
+  require_once("config.inc");
+  require_once("util.inc");
+  global $config;
+
+  $config = parse_config(true);
+  $menus = config_get_path("installedpackages/menu", []);
+  if (!is_array($menus)) { $menus = []; }
+
+  $targetUrl = "/pkg_edit.php?xml=pppoe_ha.xml&id=0";
+  $exists = false;
+  foreach ($menus as $m) {
+    if (is_array($m) && ($m["url"] ?? "") === $targetUrl) { $exists = true; break; }
+  }
+
+  if (!$exists) {
+    $menus[] = [
+      "name"        => "PPPoE High Availability",
+      "tooltiptext" => "Enable/disable PPPoE by CARP state",
+      "section"     => "Services",
+      "url"         => $targetUrl,
+    ];
+    config_set_path("installedpackages/menu", $menus);
+    write_config("Add PPPoE HA menu");
+  }
+' >/dev/null 2>&1 || true
+
+rm -f /tmp/*menu* /tmp/.menu* >/dev/null 2>&1 || true
+service devd restart >/dev/null 2>&1 || true
+
+if [ -x %%PREFIX%%/sbin/pppoe_ha_event ]; then
+    %%PREFIX%%/sbin/pppoe_ha_event reconcile >/dev/null 2>&1 || true
+fi
+
+exit 0
