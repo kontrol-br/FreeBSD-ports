@@ -1,0 +1,7 @@
+pkg/pppoe_ha.xml
+pkg/pppoe_ha.inc
+sbin/pppoe_ha_event
+sbin/pppoe_ha_event.php
+etc/rc.d/pppoe_ha
+etc/devd/pppoe_ha.conf
+share/Kontrol-pkg-pppoeHA/info.xml

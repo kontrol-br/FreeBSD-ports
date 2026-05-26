@@ -1,0 +1,35 @@
+#!/bin/sh
+set -e
+
+PHP_BIN="%%PREFIX%%/bin/php"; [ -x "$PHP_BIN" ] || PHP_BIN="%%PREFIX%%/sbin/php"
+
+"$PHP_BIN" -r '
+  require_once("config.inc");
+  require_once("util.inc");
+  global $config;
+
+  $config = parse_config(true);
+  $menus = config_get_path("installedpackages/menu", []);
+  if (!is_array($menus)) { $menus = []; }
+
+  $targetUrl = "/pkg_edit.php?xml=pppoe_ha.xml&id=0";
+  $filtered = [];
+  $changed = false;
+  foreach ($menus as $m) {
+    if (is_array($m) && ($m["url"] ?? "") === $targetUrl) {
+      $changed = true;
+      continue;
+    }
+    $filtered[] = $m;
+  }
+
+  if ($changed) {
+    config_set_path("installedpackages/menu", $filtered);
+    write_config("Remove PPPoE HA menu");
+  }
+' >/dev/null 2>&1 || true
+
+service devd reload >/dev/null 2>&1 || true
+rm -f /tmp/*menu* /tmp/.menu* >/dev/null 2>&1 || true
+
+exit 0
