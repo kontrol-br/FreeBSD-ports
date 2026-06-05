@@ -279,6 +279,34 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        return true;
+}
+
+function e2g_blacklist_create_temp_dir() {
+        $temp_dir = @tempnam(sys_get_temp_dir(), 'e2guardian-blacklist-');
+        if ($temp_dir === false) {
+                return false;
+        }
+        @unlink($temp_dir);
+        if (!@mkdir($temp_dir, 0700)) {
+                return false;
+        }
+        return $temp_dir;
+}
+
+function e2g_blacklist_prepare_tree($temp_dir) {
+        $entries = array_values(array_diff(scandir($temp_dir), array('.', '..')));
+        if (empty($entries)) {
+                return false;
+        }
+        if (count($entries) === 1 && $entries[0] === 'blacklists' && is_dir($temp_dir . '/blacklists')) {
+                return $temp_dir . '/blacklists';
+        }
+        if (count($entries) === 1 && is_dir($temp_dir . '/' . $entries[0])) {
+                return $temp_dir . '/' . $entries[0];
+        }
+        return true;
+}
 
         $prepared_dir = e2g_blacklist_prepare_tree($temp_dir);
         if ($prepared_dir === false || !is_dir($prepared_dir)) {
@@ -286,6 +314,8 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        return $prepared_dir;
+}
 
         if (is_dir($blacklists_old_dir)) {
                 if (!is_dir($blacklists_dir)) {
@@ -312,6 +342,8 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        return false;
+}
 
         if (empty($options['skip_read_lists'])) {
                 read_lists($log_notice);
