@@ -79,6 +79,10 @@ function e2g_blacklist_finish($temp_dir = false, $owns_lock = false, $lock_handl
         }
 }
 
+function e2g_compare_list_descriptions($a, $b) {
+        return strnatcasecmp($a['descr'], $b['descr']);
+}
+
 function e2g_blacklist_validate_archive($blacklist_file) {
         $entries = array();
         exec('/usr/bin/tar -tzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
@@ -257,6 +261,8 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        return $temp_dir;
+}
 
         $lists_dir = isset($options['lists_dir']) ? $options['lists_dir'] : E2GUARDIAN_ETCDIR . "/lists";
         $blacklists_dir = $lists_dir . '/blacklists';
@@ -277,26 +283,6 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
         if ($return !== 0) {
                 e2g_blacklist_notice("Could not extract blacklist archive.");
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
-                return false;
-        }
-        return true;
-}
-
-function e2g_blacklist_create_temp_dir() {
-        $temp_dir = @tempnam(sys_get_temp_dir(), 'e2guardian-blacklist-');
-        if ($temp_dir === false) {
-                return false;
-        }
-        @unlink($temp_dir);
-        if (!@mkdir($temp_dir, 0700)) {
-                return false;
-        }
-        return $temp_dir;
-}
-
-function e2g_blacklist_prepare_tree($temp_dir) {
-        $entries = array_values(array_diff(scandir($temp_dir), array('.', '..')));
-        if (empty($entries)) {
                 return false;
         }
         if (count($entries) === 1 && $entries[0] === 'blacklists' && is_dir($temp_dir . '/blacklists')) {
@@ -398,9 +384,7 @@ function read_lists($log_notice=true, $uw="") {
                                 continue;
                         }
                         $entries = e2g_unique_entries($entries);
-                        usort($entries, function ($a, $b) {
-                                return strnatcasecmp($a['descr'], $b['descr']);
-                        });
+                        usort($entries, 'e2g_compare_list_descriptions');
                         $config['installedpackages']['e2guardian' . $group . $xml_type]['config'] = $entries;
                 }
         }
