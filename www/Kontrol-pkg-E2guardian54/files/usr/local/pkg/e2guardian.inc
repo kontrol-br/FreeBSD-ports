@@ -333,7 +333,7 @@ function e2g_delTree($dir) {
         $files = array_diff(scandir($dir), array('.', '..'));
 
         foreach ($files as $file) {
-            (is_dir("$dir/$file")) ? e2g_delTree("$dir/$file") : unlink("$dir/$file");
+            (is_dir("$dir/$file") && !is_link("$dir/$file")) ? e2g_delTree("$dir/$file") : unlink("$dir/$file");
         }
 
         return rmdir($dir);
@@ -2186,8 +2186,10 @@ EOF;
                 }
 	}
 
-	//Update blacklist categories on Acls
-	if ($_POST["force_update"] || $_POST["liston"]) {
+	//Update blacklist categories on ACLs, but do not race the background
+	// fetch_blacklist process started by the Download button. The liston field is
+	// present on every form save, including force_download.
+	if (!$_POST["force_download"] && ($_POST["force_update"] || $_POST["liston"])) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		extract_black_list();
 	}
@@ -2894,7 +2896,8 @@ function e2guardian_php_install_command() {
 	echo "Checking Blacklist...\n";
 	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 
-	if (file_exists(E2GUARDIAN_PKGDIR . "/blacklist.tgz")) {
+	$blacklist_file = e2g_blacklist_archive_file();
+	if (file_exists($blacklist_file)) {
 		extract_black_list();
 	} else {
         	fetch_blacklist(false, true);
