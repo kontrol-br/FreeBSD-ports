@@ -83,6 +83,65 @@ function e2g_compare_list_descriptions($a, $b) {
         return strnatcasecmp($a['descr'], $b['descr']);
 }
 
+function e2g_blacklist_archive_file() {
+        $tgz_file = E2GUARDIAN_PKGDIR . "/blacklist.tgz";
+        $tar_gz_file = E2GUARDIAN_PKGDIR . "/blacklist.tar.gz";
+
+        if (file_exists($tgz_file)) {
+                return $tgz_file;
+        }
+        if (file_exists($tar_gz_file)) {
+                return $tar_gz_file;
+        }
+
+        return $tgz_file;
+}
+
+function e2g_blacklist_safe_archive_path($entry) {
+        $entry = str_replace('\\', '/', trim($entry));
+        if ($entry === '' || $entry === '.' || substr($entry, 0, 1) === '/') {
+                return false;
+        }
+        foreach (explode('/', $entry) as $component) {
+                if ($component === '..') {
+                        return false;
+                }
+        }
+        return true;
+}
+
+function e2g_blacklist_validate_link_target($target) {
+        $target = str_replace('\\', '/', trim($target));
+        if ($target === '' || substr($target, 0, 1) === '/') {
+                return false;
+        }
+        foreach (explode('/', $target) as $component) {
+                if ($component === '..') {
+                        return false;
+                }
+        }
+        return true;
+}
+
+function e2g_blacklist_validate_extracted_tree($path) {
+        if (is_link($path)) {
+                return e2g_blacklist_validate_link_target(readlink($path));
+        }
+        if (is_file($path)) {
+                return true;
+        }
+        if (!is_dir($path)) {
+                return false;
+        }
+
+        foreach (array_diff(scandir($path), array('.', '..')) as $entry) {
+                if (!e2g_blacklist_validate_extracted_tree($path . '/' . $entry)) {
+                        return false;
+                }
+        }
+        return true;
+}
+
 function e2g_blacklist_validate_archive($blacklist_file) {
         $entries = array();
         exec('/usr/bin/tar -tzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
@@ -90,26 +149,38 @@ function e2g_blacklist_validate_archive($blacklist_file) {
                 return false;
         }
         foreach ($entries as $entry) {
-                $entry = str_replace('\\', '/', trim($entry));
-                if ($entry === '' || $entry === '.' || substr($entry, 0, 1) === '/') {
+                if (!e2g_blacklist_safe_archive_path($entry)) {
                         return false;
                 }
-                foreach (explode('/', $entry) as $component) {
-                        if ($component === '..') {
-                                return false;
-                        }
-                }
         }
+        return $prepared_dir;
+}
 
         $verbose_entries = array();
         exec('/usr/bin/tar -tvzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $verbose_entries, $return);
-        if ($return !== 0) {
+        if ($return !== 0 || empty($verbose_entries)) {
                 return false;
         }
         foreach ($verbose_entries as $entry) {
-                if (!preg_match('/^[-d]/', $entry)) {
-                        return false;
+                $type = substr($entry, 0, 1);
+                if ($type === '-' || $type === 'd') {
+                        continue;
                 }
+                if ($type === 'l') {
+                        $parts = explode(' -> ', $entry, 2);
+                        if (count($parts) !== 2 || !e2g_blacklist_validate_link_target($parts[1])) {
+                                return false;
+                        }
+                        continue;
+                }
+                if ($type === 'h') {
+                        $parts = explode(' link to ', $entry, 2);
+                        if (count($parts) !== 2 || !e2g_blacklist_validate_link_target($parts[1])) {
+                                return false;
+                        }
+                        continue;
+                }
+                return false;
         }
         return true;
 }
@@ -131,11 +202,18 @@ function e2g_blacklist_prepare_tree($temp_dir) {
         if (empty($entries)) {
                 return false;
         }
-        if (count($entries) === 1 && $entries[0] === 'blacklists' && is_dir($temp_dir . '/blacklists')) {
-                return $temp_dir . '/blacklists';
-        }
         if (count($entries) === 1 && is_dir($temp_dir . '/' . $entries[0])) {
-                return $temp_dir . '/' . $entries[0];
+                $single_dir = $temp_dir . '/' . $entries[0];
+                if ($entries[0] === 'blacklists') {
+                        return $single_dir;
+                }
+                if (is_dir($single_dir . '/blacklists')) {
+                        return $single_dir . '/blacklists';
+                }
+                if (is_dir($single_dir . '/BL')) {
+                        return $single_dir . '/BL';
+                }
+                return $single_dir;
         }
 
         $prepared_dir = $temp_dir . '/.prepared-blacklists';
@@ -198,7 +276,7 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
         }
 
         $result = false;
-        $blacklist_file = E2GUARDIAN_PKGDIR . "/blacklist.tgz";
+        $blacklist_file = e2g_blacklist_archive_file();
         if (is_array($config['installedpackages']['e2guardianblacklist']) && is_array($config['installedpackages']['e2guardianblacklist']['config'])) {
                 $url = $config['installedpackages']['e2guardianblacklist']['config'][0]['url'];
                 $uw = "Found a previous install, checking Blacklist config...";
@@ -250,7 +328,7 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
         if (!empty($options['hold_lock_seconds'])) {
                 sleep((int)$options['hold_lock_seconds']);
         }
-        $blacklist_file = isset($options['blacklist_file']) ? $options['blacklist_file'] : E2GUARDIAN_PKGDIR . "/blacklist.tgz";
+        $blacklist_file = isset($options['blacklist_file']) ? $options['blacklist_file'] : e2g_blacklist_archive_file();
         if (!file_exists($blacklist_file)) {
                 e2g_blacklist_notice("Downloaded blacklists not found.");
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
@@ -280,6 +358,12 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
         exec('/usr/bin/tar -xzf ' . escapeshellarg($blacklist_file) . ' -C ' . escapeshellarg($temp_dir) . ' 2>&1', $output, $return);
         if ($return !== 0) {
                 e2g_blacklist_notice("Could not extract blacklist archive.");
+                e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
+                return false;
+        }
+
+        if (!e2g_blacklist_validate_extracted_tree($temp_dir)) {
+                e2g_blacklist_notice("Blacklist archive contains unsafe extracted entries.");
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }

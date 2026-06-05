@@ -87,10 +87,13 @@ function update_with($base, $archive, $extra = array()) {
 
 $root = sys_get_temp_dir() . '/e2guardian-smoke-' . getmypid();
 mkdir($root, 0777, true);
+define('E2GUARDIAN_PKGDIR', $root . '/pkg');
+mkdir(E2GUARDIAN_PKGDIR, 0777, true);
 try {
         foreach (array(
                 'blacklists-root' => array('blacklists/new-category/domains', 'blacklists/new-category/urls'),
                 'BL-root' => array('BL/new-category/domains', 'BL/new-category/urls'),
+                'wrapped-BL-root' => array('blacklist/BL/new-category/domains', 'blacklist/BL/new-category/urls'),
                 'direct-categories' => array('new-category/domains', 'new-category/urls', 'second-category/domains')
         ) as $scenario => $entries) {
                 $base = $root . '/' . $scenario;
@@ -100,6 +103,16 @@ try {
                 assert_true(is_file($base . '/lists/blacklists/new-category/domains'), "{$scenario} domains missing");
                 assert_true(is_file($base . '/lists/blacklists/new-category/urls'), "{$scenario} urls missing");
         }
+
+        $base = $root . '/tar-gz-fallback';
+        make_tree($base);
+        copy(create_archive($base, 'blacklist', array('BL/new-category/domains', 'BL/new-category/urls')), E2GUARDIAN_PKGDIR . '/blacklist.tar.gz');
+        assert_true(!file_exists(E2GUARDIAN_PKGDIR . '/blacklist.tgz'), 'unexpected blacklist.tgz in package directory');
+        assert_true(extract_black_list(false, null, array('lists_dir' => $base . '/lists', 'skip_read_lists' => true)), 'blacklist.tar.gz fallback update failed');
+        assert_true(is_file($base . '/lists/blacklists/new-category/domains'), 'blacklist.tar.gz fallback domains missing');
+        assert_true(is_file($base . '/lists/blacklists/new-category/urls'), 'blacklist.tar.gz fallback urls missing');
+        assert_preserved($base . '/lists');
+        unlink(E2GUARDIAN_PKGDIR . '/blacklist.tar.gz');
 
         $base = $root . '/corrupt';
         make_tree($base);
