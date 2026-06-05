@@ -126,6 +126,20 @@ function e2g_blacklist_prepare_tree($temp_dir) {
         if (count($entries) === 1 && is_dir($temp_dir . '/' . $entries[0])) {
                 return $temp_dir . '/' . $entries[0];
         }
+        return true;
+}
+
+function e2g_blacklist_create_temp_dir() {
+        $temp_dir = @tempnam(sys_get_temp_dir(), 'e2guardian-blacklist-');
+        if ($temp_dir === false) {
+                return false;
+        }
+        @unlink($temp_dir);
+        if (!@mkdir($temp_dir, 0700)) {
+                return false;
+        }
+        return $temp_dir;
+}
 
         $prepared_dir = $temp_dir . '/.prepared-blacklists';
         if (!@mkdir($prepared_dir, 0700)) {
@@ -137,6 +151,50 @@ function e2g_blacklist_prepare_tree($temp_dir) {
                 }
         }
         return $prepared_dir;
+}
+
+function e2g_blacklist_download_archive($url, $blacklist_file, $install_process = false, $options = array()) {
+        $download_dir = dirname($blacklist_file);
+        if (!is_dir($download_dir) && !@mkdir($download_dir, 0755, true)) {
+                e2g_blacklist_notice("Could not create the blacklist download directory.");
+                return false;
+        }
+        $temp_file = @tempnam($download_dir, '.blacklist-download-');
+        if ($temp_file === false) {
+                e2g_blacklist_notice("Could not create a temporary blacklist download file.");
+                return false;
+        }
+
+        try {
+                $return = 1;
+                if (!empty($options['source_file'])) {
+                        $return = @copy($options['source_file'], $temp_file) ? 0 : 1;
+                } elseif ($install_process && function_exists('download_file_with_progress_bar')) {
+                        download_file_with_progress_bar($url, $temp_file);
+                        $return = file_exists($temp_file) ? 0 : 1;
+                } else {
+                        exec("/usr/bin/fetch -o " . escapeshellarg($temp_file) . " " . escapeshellarg($url), $output, $return);
+                }
+
+                if ($return !== 0 || !file_exists($temp_file) || filesize($temp_file) === 0) {
+                        e2g_blacklist_notice("Could not fetch blacklists from url.");
+                        return false;
+                }
+                if (!e2g_blacklist_validate_archive($temp_file)) {
+                        e2g_blacklist_notice("Downloaded blacklist archive is invalid, empty, or contains unsafe paths or links. Previous archive was kept.");
+                        return false;
+                }
+                if (!@rename($temp_file, $blacklist_file)) {
+                        e2g_blacklist_notice("Could not install the downloaded blacklist archive. Previous archive was kept.");
+                        return false;
+                }
+                $temp_file = false;
+                return true;
+        } finally {
+                if (is_string($temp_file) && file_exists($temp_file)) {
+                        @unlink($temp_file);
+                }
+        }
 }
 
 function fetch_blacklist($log_notice = true, $install_process = false) {
@@ -159,29 +217,17 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
                 if (isset($url) && is_url($url)) {
                         if ($log_notice == true) {
                                 print "file download start..";
-                                unlink_if_exists($blacklist_file);
-                                exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
-                        } else {
-                                //install process
-                                if (file_exists($blacklist_file)) {
-                                        update_output_window("Found previous blacklist database, skipping download...");
-                                        $return = 0;
-                                } else {
-                                        update_output_window("Fetching blacklist");
-                                        if (function_exists('download_file_with_progress_bar')) {
-                                                download_file_with_progress_bar($url, $blacklist_file);
-                                        } else {
-                                                exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
-                                        }
-                                        if (file_exists($blacklist_file)) {
-                                                $return = 0;
-                                        }
-                                }
+                        } elseif ($install_process == true && file_exists($blacklist_file) && e2g_blacklist_validate_archive($blacklist_file)) {
+                                update_output_window("Found previous blacklist database, skipping download...");
+                                return extract_black_list($log_notice, $lock_handle);
+                        } elseif ($install_process == true) {
+                                update_output_window("Fetching blacklist");
                         }
-                        if ($return == 0) {
+
+                        if (e2g_blacklist_download_archive($url, $blacklist_file, $install_process)) {
                                 return extract_black_list($log_notice, $lock_handle);
                         }
-                        file_notice("E2guardian", $error, "E2guardian" . gettext("Could not fetch blacklists from url"), "");
+                        return false;
                 } else {
                         if ($install_process == true) {
                                 read_lists(false, $uw);
