@@ -153,6 +153,8 @@ function e2g_blacklist_validate_archive($blacklist_file) {
                         return false;
                 }
         }
+        return $prepared_dir;
+}
 
         $verbose_entries = array();
         exec('/usr/bin/tar -tvzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $verbose_entries, $return);
