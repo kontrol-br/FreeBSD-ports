@@ -2186,8 +2186,10 @@ EOF;
                 }
 	}
 
-	//Update blacklist categories on Acls
-	if ($_POST["force_update"] || $_POST["liston"]) {
+	//Update blacklist categories on ACLs, but do not race the background
+	// fetch_blacklist process started by the Download button. The liston field is
+	// present on every form save, including force_download.
+	if (!$_POST["force_download"] && ($_POST["force_update"] || $_POST["liston"])) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		extract_black_list();
 	}
