@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-E2guardian54
-PORTVERSION=	0.6.5.37
+PORTVERSION=	0.6.5.43
 PORTREVISION=	# empty
 CATEGORIES=	www
 MASTER_SITES=	# empty
@@ -97,7 +97,7 @@ do-install:
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_users.xml \
 		${STAGEDIR}${PREFIX}/pkg
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/blacklist.tgz \
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/blacklist.tar.gz \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/e2guardian.php \
 		${STAGEDIR}${PREFIX}/www
