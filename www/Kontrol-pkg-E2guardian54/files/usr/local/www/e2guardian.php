@@ -126,6 +126,20 @@ function e2g_blacklist_prepare_tree($temp_dir) {
         if (count($entries) === 1 && is_dir($temp_dir . '/' . $entries[0])) {
                 return $temp_dir . '/' . $entries[0];
         }
+        return true;
+}
+
+function e2g_blacklist_create_temp_dir() {
+        $temp_dir = @tempnam(sys_get_temp_dir(), 'e2guardian-blacklist-');
+        if ($temp_dir === false) {
+                return false;
+        }
+        @unlink($temp_dir);
+        if (!@mkdir($temp_dir, 0700)) {
+                return false;
+        }
+        return $temp_dir;
+}
 
         $prepared_dir = $temp_dir . '/.prepared-blacklists';
         if (!@mkdir($prepared_dir, 0700)) {
