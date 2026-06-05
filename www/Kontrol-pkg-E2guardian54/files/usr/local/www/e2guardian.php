@@ -261,6 +261,8 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        return $temp_dir;
+}
 
         $lists_dir = isset($options['lists_dir']) ? $options['lists_dir'] : E2GUARDIAN_ETCDIR . "/lists";
         $blacklists_dir = $lists_dir . '/blacklists';
@@ -283,6 +285,14 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        if (count($entries) === 1 && $entries[0] === 'blacklists' && is_dir($temp_dir . '/blacklists')) {
+                return $temp_dir . '/blacklists';
+        }
+        if (count($entries) === 1 && is_dir($temp_dir . '/' . $entries[0])) {
+                return $temp_dir . '/' . $entries[0];
+        }
+        return true;
+}
 
         $prepared_dir = e2g_blacklist_prepare_tree($temp_dir);
         if ($prepared_dir === false || !is_dir($prepared_dir)) {
@@ -290,6 +300,8 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        return $prepared_dir;
+}
 
         if (is_dir($blacklists_old_dir)) {
                 if (!is_dir($blacklists_dir)) {
@@ -316,6 +328,8 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 e2g_blacklist_finish($temp_dir, $owns_lock, $lock_handle);
                 return false;
         }
+        return false;
+}
 
         if (empty($options['skip_read_lists'])) {
                 read_lists($log_notice);
