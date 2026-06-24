@@ -66,15 +66,19 @@ function e2g_blacklist_unlock($lock_handle) {
 }
 
 function e2g_blacklist_remove_temp_dir($temp_dir) {
+        if (!is_string($temp_dir) || !is_dir($temp_dir)) {
+                return;
+        }
         $temp_prefix = rtrim(sys_get_temp_dir(), '/') . '/e2guardian-blacklist-';
-        if (is_string($temp_dir) && strpos($temp_dir, $temp_prefix) === 0 && is_dir($temp_dir)) {
+        $basename = basename($temp_dir);
+        if (strpos($temp_dir, $temp_prefix) === 0 || strpos($basename, '.blacklists.extract.') === 0) {
                 e2g_delTree($temp_dir);
         }
 }
 
 function e2g_blacklist_validate_archive($blacklist_file) {
         $entries = array();
-        exec('/usr/bin/tar -tzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
+        exec('/usr/bin/tar -tzf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
         if ($return !== 0 || empty($entries)) {
                 return false;
         }
@@ -89,22 +93,15 @@ function e2g_blacklist_validate_archive($blacklist_file) {
                         }
                 }
         }
-
-        $verbose_entries = array();
-        exec('/usr/bin/tar -tvzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $verbose_entries, $return);
-        if ($return !== 0) {
-                return false;
-        }
-        foreach ($verbose_entries as $entry) {
-                if (!preg_match('/^[-d]/', $entry)) {
-                        return false;
-                }
-        }
         return true;
 }
 
-function e2g_blacklist_create_temp_dir() {
-        $temp_dir = @tempnam(sys_get_temp_dir(), 'e2guardian-blacklist-');
+function e2g_blacklist_create_temp_dir($parent_dir = null) {
+        if (is_string($parent_dir) && is_dir($parent_dir)) {
+                $temp_dir = @tempnam($parent_dir, '.blacklists.extract.');
+        } else {
+                $temp_dir = @tempnam(sys_get_temp_dir(), 'e2guardian-blacklist-');
+        }
         if ($temp_dir === false) {
                 return false;
         }
@@ -115,26 +112,75 @@ function e2g_blacklist_create_temp_dir() {
         return $temp_dir;
 }
 
-function e2g_blacklist_prepare_tree($temp_dir) {
-        $entries = array_values(array_diff(scandir($temp_dir), array('.', '..')));
-        if (empty($entries)) {
+function e2g_blacklist_tree_has_lists($dir) {
+        if (!is_dir($dir)) {
                 return false;
         }
-        if (count($entries) === 1 && $entries[0] === 'blacklists' && is_dir($temp_dir . '/blacklists')) {
-                return $temp_dir . '/blacklists';
+        if (is_file($dir . '/global_usage')) {
+                return true;
         }
-        if (count($entries) === 1 && is_dir($temp_dir . '/' . $entries[0])) {
-                return $temp_dir . '/' . $entries[0];
+        foreach (array_diff(scandir($dir), array('.', '..')) as $entry) {
+                $path = $dir . '/' . $entry;
+                if (is_file($path) && in_array($entry, array('domains', 'urls'), true)) {
+                        return true;
+                }
+                if (is_dir($path) && e2g_blacklist_tree_has_lists($path)) {
+                        return true;
+                }
+        }
+        return false;
+}
+
+function e2g_blacklist_find_source_dir($temp_dir) {
+        $candidates = array(
+                $temp_dir . '/BL',
+                $temp_dir . '/blacklists/BL',
+                $temp_dir . '/blacklists'
+        );
+        foreach ($candidates as $candidate) {
+                if (e2g_blacklist_tree_has_lists($candidate)) {
+                        return $candidate;
+                }
         }
 
+        $dirs = array();
+        foreach (array_diff(scandir($temp_dir), array('.', '..')) as $entry) {
+                $path = $temp_dir . '/' . $entry;
+                if (is_dir($path)) {
+                        $dirs[] = $path;
+                }
+        }
+        if (count($dirs) === 1 && e2g_blacklist_tree_has_lists($dirs[0])) {
+                return $dirs[0];
+        }
+        if (e2g_blacklist_tree_has_lists($temp_dir)) {
+                return $temp_dir;
+        }
+        return false;
+}
+
+function e2g_blacklist_prepare_tree($temp_dir) {
+        $source_dir = e2g_blacklist_find_source_dir($temp_dir);
+        if ($source_dir === false || !is_dir($source_dir)) {
+                return false;
+        }
         $prepared_dir = $temp_dir . '/.prepared-blacklists';
         if (!@mkdir($prepared_dir, 0700)) {
                 return false;
         }
-        foreach ($entries as $entry) {
-                if (!@rename($temp_dir . '/' . $entry, $prepared_dir . '/' . $entry)) {
+        if ($source_dir === $temp_dir) {
+                if (!@mkdir($prepared_dir . '/BL', 0700)) {
                         return false;
                 }
+                foreach (array_diff(scandir($temp_dir), array('.', '..', '.prepared-blacklists')) as $entry) {
+                        if (!@rename($temp_dir . '/' . $entry, $prepared_dir . '/BL/' . $entry)) {
+                                return false;
+                        }
+                }
+                return $prepared_dir;
+        }
+        if (!@rename($source_dir, $prepared_dir . '/BL')) {
+                return false;
         }
         return $prepared_dir;
 }
@@ -223,12 +269,18 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 $lists_dir = $options['lists_dir'] ?? E2GUARDIAN_ETCDIR . "/lists";
                 $blacklists_dir = $lists_dir . '/blacklists';
                 $blacklists_old_dir = $lists_dir . '/blacklists.old';
+                $target_bl_dir = $blacklists_dir . '/BL';
+                $backup_bl_dir = $blacklists_dir . '/BL.old.' . getmypid();
                 if (!is_dir($lists_dir) && !@mkdir($lists_dir, 0755, true)) {
                         e2g_blacklist_notice("Could not create the E2guardian lists directory.");
                         return false;
                 }
+                if (!is_dir($blacklists_dir) && !@mkdir($blacklists_dir, 0755, true)) {
+                        e2g_blacklist_notice("Could not create the E2guardian blacklist directory.");
+                        return false;
+                }
 
-                $temp_dir = e2g_blacklist_create_temp_dir();
+                $temp_dir = e2g_blacklist_create_temp_dir($lists_dir);
                 if ($temp_dir === false) {
                         e2g_blacklist_notice("Could not create a temporary blacklist extraction directory.");
                         return false;
@@ -245,24 +297,23 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                         return false;
                 }
 
-                if (is_dir($blacklists_old_dir)) {
-                        if (!is_dir($blacklists_dir)) {
-                                if (!@rename($blacklists_old_dir, $blacklists_dir)) {
-                                        e2g_blacklist_notice("Could not restore the previous blacklist tree.");
-                                        return false;
-                                }
-                        } else {
-                                e2g_delTree($blacklists_old_dir);
+                if (is_dir($blacklists_old_dir) && !is_dir($target_bl_dir)) {
+                        if (!@rename($blacklists_old_dir, $target_bl_dir)) {
+                                e2g_blacklist_notice("Could not restore the previous blacklist tree.");
+                                return false;
                         }
+                } elseif (is_dir($blacklists_old_dir)) {
+                        e2g_delTree($blacklists_old_dir);
                 }
-                if (is_dir($blacklists_dir) && !@rename($blacklists_dir, $blacklists_old_dir)) {
+                e2g_delTree($backup_bl_dir);
+                if (is_dir($target_bl_dir) && !@rename($target_bl_dir, $backup_bl_dir)) {
                         e2g_blacklist_notice("Could not preserve the previous blacklist tree.");
                         return false;
                 }
                 $simulate_install_failure = !empty($options['simulate_install_failure']);
-                if ($simulate_install_failure || !@rename($prepared_dir, $blacklists_dir)) {
-                        if (!is_dir($blacklists_dir) && is_dir($blacklists_old_dir)) {
-                                @rename($blacklists_old_dir, $blacklists_dir);
+                if ($simulate_install_failure || !@rename($prepared_dir . '/BL', $target_bl_dir)) {
+                        if (!is_dir($target_bl_dir) && is_dir($backup_bl_dir)) {
+                                @rename($backup_bl_dir, $target_bl_dir);
                         }
                         e2g_blacklist_notice("Could not install the new blacklist tree; the previous tree was restored.");
                         return false;
@@ -271,8 +322,8 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 if (empty($options['skip_read_lists'])) {
                         read_lists($log_notice);
                 }
-                if (is_dir($blacklists_old_dir)) {
-                        e2g_delTree($blacklists_old_dir);
+                if (is_dir($backup_bl_dir)) {
+                        e2g_delTree($backup_bl_dir);
                 }
                 return true;
         } finally {
@@ -289,7 +340,8 @@ function read_lists($log_notice=true, $uw="") {
         $dir = E2GUARDIAN_ETCDIR . "/lists";
         $groups = array("phraselists", "blacklists", "whitelists");
         $liston = $config['installedpackages']['e2guardianblacklist']['config'][0]['liston'] ?? 'banned';
-        $metadata = e2g_parse_blacklist_metadata($dir . '/blacklists');
+        $blacklist_root = (is_dir($dir . '/blacklists/BL') ? $dir . '/blacklists/BL' : $dir . '/blacklists');
+        $metadata = e2g_parse_blacklist_metadata($blacklist_root);
 
         foreach ($config['installedpackages'] as $key => $values) {
                 if (preg_match("/e2guardian(phrase|black|white)lists/", $key)) {
@@ -309,11 +361,16 @@ function read_lists($log_notice=true, $uw="") {
                         continue;
                 }
 
-                $lists = array_diff(scandir($group_dir), array('.', '..'));
+                $scan_dir = $group_dir;
+                if ($group === 'blacklists' && is_dir($group_dir . '/BL')) {
+                        $scan_dir = $group_dir . '/BL';
+                }
+
+                $lists = array_diff(scandir($scan_dir), array('.', '..'));
                 foreach ($lists as $list) {
-                        $path = $group_dir . '/' . $list;
+                        $path = $scan_dir . '/' . $list;
                         if (is_dir($path)) {
-                                e2g_collect_category($collection, $group_dir, $group, array($list), $liston, $metadata);
+                                e2g_collect_category($collection, $scan_dir, $group, array($list), $liston, $metadata);
                         } else {
                                 e2g_register_list_file($collection, $group, array($list), $path, $list, $liston, $metadata);
                         }
