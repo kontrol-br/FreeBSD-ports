@@ -142,12 +142,14 @@ try {
 
         $base = $root . '/symlink';
         make_tree($base);
-        mkdir($base . '/payload/BL', 0777, true);
+        mkdir($base . '/payload/BL/new-category', 0777, true);
+        file_put_contents($base . '/payload/BL/new-category/domains', "fixture\n");
         symlink('/tmp', $base . '/payload/BL/link');
         $archive = $base . '/symlink.tgz';
         exec('/usr/bin/tar -czf ' . escapeshellarg($archive) . ' -C ' . escapeshellarg($base . '/payload') . ' BL', $output, $return);
         assert_true($return === 0, 'could not create symlink archive');
-        assert_true(!update_with($base, $archive), 'symlink archive unexpectedly accepted');
+        assert_true(update_with($base, $archive), 'symlink archive unexpectedly rejected');
+        assert_true(is_file($base . '/lists/blacklists/BL/new-category/domains'), 'symlink archive did not install blacklist');
         assert_preserved($base . '/lists');
 
         $base = $root . '/interrupted-rollback';

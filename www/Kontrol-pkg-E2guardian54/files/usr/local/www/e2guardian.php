@@ -74,7 +74,7 @@ function e2g_blacklist_remove_temp_dir($temp_dir) {
 
 function e2g_blacklist_validate_archive($blacklist_file) {
         $entries = array();
-        exec('/usr/bin/tar -tzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
+        exec('/usr/bin/tar -tzf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
         if ($return !== 0 || empty($entries)) {
                 return false;
         }
@@ -87,17 +87,6 @@ function e2g_blacklist_validate_archive($blacklist_file) {
                         if ($component === '..') {
                                 return false;
                         }
-                }
-        }
-
-        $verbose_entries = array();
-        exec('/usr/bin/tar -tvzPf ' . escapeshellarg($blacklist_file) . ' 2>&1', $verbose_entries, $return);
-        if ($return !== 0) {
-                return false;
-        }
-        foreach ($verbose_entries as $entry) {
-                if (!preg_match('/^[-d]/', $entry)) {
-                        return false;
                 }
         }
         return true;
