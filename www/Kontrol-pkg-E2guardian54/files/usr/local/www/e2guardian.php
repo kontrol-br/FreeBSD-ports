@@ -66,8 +66,21 @@ function e2g_blacklist_unlock($lock_handle) {
 }
 
 function e2g_blacklist_reload_service() {
-        if (function_exists('e2guardian_start') && is_process_running('e2guardian')) {
-                e2g_log_info("E2guardian - reloading service after blacklist update.");
+        if (!function_exists('is_process_running') || !is_process_running('e2guardian')) {
+                return;
+        }
+
+        e2g_log_info("E2guardian - restarting service after blacklist update.");
+        if (function_exists('e2g_stop_watchdog_processes')) {
+                e2g_stop_watchdog_processes();
+        }
+
+        $script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+        if (file_exists($script)) {
+                mwexec($script . ' stop');
+                sleep(2);
+                mwexec_bg($script . ' start');
+        } elseif (function_exists('e2guardian_start')) {
                 e2guardian_start("no", false, true);
         }
 }
