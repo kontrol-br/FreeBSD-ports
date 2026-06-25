@@ -97,8 +97,8 @@ try {
                 make_tree($base);
                 assert_true(update_with($base, create_archive($base, $scenario, $entries)), "{$scenario} update failed");
                 assert_preserved($base . '/lists');
-                assert_true(is_file($base . '/lists/blacklists/new-category/domains'), "{$scenario} domains missing");
-                assert_true(is_file($base . '/lists/blacklists/new-category/urls'), "{$scenario} urls missing");
+                assert_true(is_file($base . '/lists/blacklists/BL/new-category/domains'), "{$scenario} domains missing");
+                assert_true(is_file($base . '/lists/blacklists/BL/new-category/urls'), "{$scenario} urls missing");
         }
 
         $base = $root . '/corrupt';
@@ -142,12 +142,14 @@ try {
 
         $base = $root . '/symlink';
         make_tree($base);
-        mkdir($base . '/payload/BL', 0777, true);
+        mkdir($base . '/payload/BL/new-category', 0777, true);
+        file_put_contents($base . '/payload/BL/new-category/domains', "fixture\n");
         symlink('/tmp', $base . '/payload/BL/link');
         $archive = $base . '/symlink.tgz';
         exec('/usr/bin/tar -czf ' . escapeshellarg($archive) . ' -C ' . escapeshellarg($base . '/payload') . ' BL', $output, $return);
         assert_true($return === 0, 'could not create symlink archive');
-        assert_true(!update_with($base, $archive), 'symlink archive unexpectedly accepted');
+        assert_true(update_with($base, $archive), 'symlink archive unexpectedly rejected');
+        assert_true(is_file($base . '/lists/blacklists/BL/new-category/domains'), 'symlink archive did not install blacklist');
         assert_preserved($base . '/lists');
 
         $base = $root . '/interrupted-rollback';
@@ -155,14 +157,14 @@ try {
         rename($base . '/lists/blacklists', $base . '/lists/blacklists.old');
         $archive = create_archive($base, 'interrupted-rollback', array('BL/new-category/domains'));
         assert_true(update_with($base, $archive), 'update did not recover interrupted rollback');
-        assert_true(is_file($base . '/lists/blacklists/new-category/domains'), 'recovered update did not install new blacklist');
+        assert_true(is_file($base . '/lists/blacklists/BL/new-category/domains'), 'recovered update did not install new blacklist');
         assert_preserved($base . '/lists');
 
         $base = $root . '/rollback';
         make_tree($base);
         $archive = create_archive($base, 'rollback', array('BL/new-category/domains'));
         assert_true(!update_with($base, $archive, array('simulate_install_failure' => true)), 'simulated install failure unexpectedly succeeded');
-        assert_true(is_file($base . '/lists/blacklists/old-category/domains'), 'rollback did not restore previous blacklist');
+        assert_true(is_file($base . '/lists/blacklists/old-category/domains'), 'rollback did not preserve previous legacy blacklist');
         assert_true(!is_dir($base . '/lists/blacklists.old'), 'rollback left blacklists.old behind');
         assert_preserved($base . '/lists');
 

@@ -2922,11 +2922,7 @@ function e2guardian_php_install_command() {
 	echo "Checking Blacklist...\n";
 	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 
-	if (file_exists(E2GUARDIAN_PKGDIR . "/blacklist.tgz")) {
-		extract_black_list();
-	} else {
-        	fetch_blacklist(false, true);
-	}
+	fetch_blacklist(false, true);
         echo "Blacklist check done, continuing package config sync.\n";
 	clear_subsystem_dirty('e2guardian');
 }
