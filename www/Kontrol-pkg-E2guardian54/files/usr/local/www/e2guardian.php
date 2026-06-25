@@ -209,19 +209,15 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
                                 exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
                         } else {
                                 //install process
-                                if (file_exists($blacklist_file)) {
-                                        update_output_window("Found previous blacklist database, skipping download...");
-                                        $return = 0;
+                                update_output_window("Fetching blacklist");
+                                unlink_if_exists($blacklist_file);
+                                if (function_exists('download_file_with_progress_bar')) {
+                                        download_file_with_progress_bar($url, $blacklist_file);
                                 } else {
-                                        update_output_window("Fetching blacklist");
-                                        if (function_exists('download_file_with_progress_bar')) {
-                                                download_file_with_progress_bar($url, $blacklist_file);
-                                        } else {
-                                                exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
-                                        }
-                                        if (file_exists($blacklist_file)) {
-                                                $return = 0;
-                                        }
+                                        exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
+                                }
+                                if (file_exists($blacklist_file)) {
+                                        $return = 0;
                                 }
                         }
                         if ($return == 0) {
