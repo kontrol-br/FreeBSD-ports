@@ -2206,16 +2206,17 @@ EOF;
 	file_put_contents("/root/e2guardian_custom.script", base64_decode($e2guardian_blacklist['custom_script']), LOCK_EX);
 	if ($_POST["force_download"]) {
 		log_error("Blacklist update process started");
-		file_notice("E2guardian",$error,"E2guardian - " . gettext("Blacklist update process started"), "");
+		file_notice("E2guardian", $error, "E2guardian - " . gettext("Blacklist update process started"), "");
 		if ($e2guardian_blacklist['enable_custom_script']) {
 			mwexec_bg("/root/e2guardian_custom.script");
-                } else {
-                        mwexec_bg(E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist");
-                }
+		} else {
+			require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
+			fetch_blacklist();
+		}
 	}
 
 	//Update blacklist categories on Acls
-	if ($_POST["force_update"] || $_POST["liston"]) {
+	if (!$_POST["force_download"] && ($_POST["force_update"] || $_POST["liston"])) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		extract_black_list();
 	}
@@ -2918,12 +2919,12 @@ function isValidXmlElementName($elementName)
 }
 
 function e2guardian_php_install_command() {
-	sync_package_e2guardian("no", true);
 	echo "Checking Blacklist...\n";
 	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 
 	fetch_blacklist(false, true);
-        echo "Blacklist check done, continuing package config sync.\n";
+	echo "Blacklist check done, continuing package config sync.\n";
+	sync_package_e2guardian("no", true);
 	clear_subsystem_dirty('e2guardian');
 }
 
