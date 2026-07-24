@@ -35,5 +35,7 @@ do-install:
 		${STAGEDIR}${PREFIX}/sbin
 	${INSTALL_SCRIPT} ${WRKSRC}/install-boot.sh \
 		${STAGEDIR}${PREFIX}/libexec
+	${INSTALL_SCRIPT} ${WRKSRC}/pfSense-repo-setup \
+		${STAGEDIR}${PREFIX}/sbin
 
 .include <bsd.port.mk>
