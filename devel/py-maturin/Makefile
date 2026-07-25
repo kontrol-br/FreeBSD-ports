@@ -1,6 +1,6 @@
 PORTNAME=	maturin
 DISTVERSION=	1.12.6
-PORTREVISION=	1
+PORTREVISION=	2
 CATEGORIES=	devel python
 MASTER_SITES=	PYPI
 PKGNAMEPREFIX=	${PYTHON_PKGNAMEPREFIX}
@@ -19,7 +19,8 @@ LICENSE_FILE_MIT=	${WRKSRC}/license-mit
 BUILD_DEPENDS=	${PY_SETUPTOOLS} \
 		${PYTHON_PKGNAMEPREFIX}setuptools-rust>=1.4.0:devel/py-setuptools-rust@${PY_FLAVOR} \
 		${PY_TOMLI} \
-		${PYTHON_PKGNAMEPREFIX}wheel>=0.36.2:devel/py-wheel@${PY_FLAVOR}
+		${PYTHON_PKGNAMEPREFIX}wheel>=0.36.2:devel/py-wheel@${PY_FLAVOR} \
+		${RUST_DEFAULT}>=1.88.0:lang/${RUST_DEFAULT}
 LIB_DEPENDS=	libzstd.so:archivers/zstd
 RUN_DEPENDS=	${PY_TOMLI}
 
@@ -27,6 +28,9 @@ USES=		cargo python
 USE_PYTHON=	autoplist concurrent pep517
 
 CARGO_BUILD=	no
+# Keep the dependency aligned with maturin's declared MSRV instead of the
+# newer blanket minimum from cargo.mk.
+CARGO_BUILDDEP=	no
 CARGO_INSTALL=	no
 CARGO_TARGET_DIR=	${WRKSRC}/target
 MAKE_ENV=	${CARGO_ENV}
