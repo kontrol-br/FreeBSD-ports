@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.9.0
-PORTREVISION= 1
+PORTREVISION= 2
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -39,7 +39,8 @@ DEFAULT_REPO=	${DATADIR}/pkg/repos/${PFSENSE_DEFAULT_REPO_${ARCH}}.conf
 TMP_PLIST_FILES=${PFSENSE_REPOS_${ARCH}:C/$/.conf/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.descr/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.abi/} \
-		${PFSENSE_REPOS_${ARCH}:C/$/.altabi/}
+		${PFSENSE_REPOS_${ARCH}:C/$/.altabi/} \
+		${PFSENSE_REPOS_${ARCH}:C/$/.osversion/}
 PLIST_FILES=	${TMP_PLIST_FILES:C/^/%%DATADIR%%\/pkg\/repos\//} \
 		${DEFAULT_REPO}.default \
 		${DATADIR}/next_pkg_set_version
@@ -132,6 +133,13 @@ do-install:
 		${INSTALL_DATA} ${WRKSRC}/${f}.altabi ${STAGEDIR}${DATADIR}/pkg/repos; \
 	else \
 		${ECHO_CMD} ${DEFAULT_ALTABI} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.altabi; \
+	fi
+	if [ -f ${WRKSRC}/${f}.osversion ]; then \
+		${INSTALL_DATA} ${WRKSRC}/${f}.osversion \
+			${STAGEDIR}${DATADIR}/pkg/repos; \
+	else \
+		${ECHO_CMD} ${OSVERSION} \
+			> ${STAGEDIR}${DATADIR}/pkg/repos/${f}.osversion; \
 	fi
 .endfor
 	${ECHO_CMD} ${PFSENSE_PKG_SET_VERSION} \
