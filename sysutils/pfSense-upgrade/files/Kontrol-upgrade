@@ -771,16 +771,6 @@ pkg_upgrade() {
 		fi
 
 		local _meta_pkg=$(get_meta_pkg_name)
-		if [ "${platform}" = "nanobsd" ]; then
-			_echo "**** WARNING ****"
-			_echo ""
-			_echo "NanoBSD platform is no longer supported."
-			_echo ""
-			_echo "You can find instructions on how to convert it"
-			    "to Full Installation at http://bit.ly/2wDinm8"
-			_exit 1
-		fi
-
 		# ZFS panics with reroot, do not use it in this case
 		# https://redmine.pfsense.org/issues/6045
 		if ! kldstat -qm zfs; then
@@ -1402,7 +1392,6 @@ export product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
 export product_label=$(php -n /usr/local/sbin/read_global_var product_label Kontrol)
 export pkg_prefix=$(php -n /usr/local/sbin/read_global_var pkg_prefix \
     Kontrol-pkg-)
-export platform=$(cat /etc/platform)
 
 USE_MFS_TMPVAR=$(read_xml_tag.sh boolean system/use_mfs_tmpvar)
 if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
@@ -1411,13 +1400,9 @@ if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
 fi
 
 product_version=$(cat /etc/version)
-do_not_send_uniqueid=$(read_xml_tag.sh boolean system/do_not_send_uniqueid)
-if [ "${do_not_send_uniqueid}" != "true" ]; then
-	uniqueid=$(gnid)
-	export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
-else
-	export HTTP_USER_AGENT="${product}/${product_version}"
-fi
+# Keep a stable user agent without coupling update checks to the proprietary
+# pfSense unique-identifier executable, which is not shipped by Kontrol.
+export HTTP_USER_AGENT="${product}/${product_version}"
 
 validate_repo_conf
 
