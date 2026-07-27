@@ -2,6 +2,7 @@
 
 PORTNAME=	Kontrol-upgrade
 PORTVERSION=	2.9.0
+PORTREVISION=	1
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
