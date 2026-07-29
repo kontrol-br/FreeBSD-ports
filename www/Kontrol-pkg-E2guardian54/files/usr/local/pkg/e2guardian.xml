@@ -160,7 +160,7 @@
 					Do not forget to apply a mask on limiter if you want to define a per user/ip limit. and check Allow Users on Interface option above.<br>
 					<b>NOTE: </b> To match transparent clients too, apply limiters under <b>firewall -> rules</b> that allows access to this firewall(127.0.0.1) under Listen port(s).]]></description>
 			<type>select_source</type>
-			<source><![CDATA[$config['dnshaper']['queue']]]></source>
+			<source><![CDATA[config_get_path('dnshaper/queue', [])]]></source>
 			<source_name>name</source_name>
 			<source_value>number</source_value>
 			<show_disable_value>none</show_disable_value>
@@ -171,7 +171,7 @@
 			<description><![CDATA[Choose the Out queue/Virtual interface only if In is also selected.<br>
 				The Out selection is applied to traffic leaving the interface where the rule is created, the In selection is applied to traffic coming into the chosen interface.]]></description>
 			<type>select_source</type>
-			<source><![CDATA[$config['dnshaper']['queue']]]></source>
+			<source><![CDATA[config_get_path('dnshaper/queue', [])]]></source>
 			<source_name>name</source_name>
 			<source_value>number</source_value>
 			<show_disable_value>none</show_disable_value>
@@ -299,7 +299,7 @@
                                 <button class="btn btn-danger btn-sm" name='clear_cert_cache' id='force_update' type='submit' value='clear_cert_cache'>
                                 <i class="fa fa-trash icon-embed-btn"></i>Clear MITM certificate cache data</button>]]></description>
                         <type>select_source</type>
-                        <source><![CDATA[$config['ca']]]></source>
+                        <source><![CDATA[config_get_path('ca', [])]]></source>
                         <source_name>descr</source_name>
                         <source_value>refid</source_value>
                 </field>
@@ -458,54 +458,6 @@
 	</custom_php_resync_config_command>
 	<custom_php_command_after_form>
 		e2guardian_check_dirty();
-		$e2g_force_restart_label = json_encode(gettext('Force Restart'));
-		$e2g_force_restart_title = json_encode(gettext('Forcefully stop all E2guardian processes and start the service again. Use when normal restart/reload does not recover the proxy.'));
-		$e2g_force_restart_confirm = json_encode(gettext('Force Restart will terminate active E2guardian connections, stop all E2guardian processes, remove the pidfile, and start the service again. Continue?'));
-		echo &lt;&lt;&lt;EOD
-&lt;script type=&quot;text/javascript&quot;&gt;
-//&lt;![CDATA[
-var addE2guardianForceRestartButton = function() {
-	var form = document.querySelector('form');
-	if (!form || document.getElementById('e2g-force-restart-button')) {
-		return;
-	}
-
-	var button = document.createElement('button');
-	button.type = 'button';
-	button.id = 'e2g-force-restart-button';
-	button.className = 'btn btn-warning btn-sm';
-	button.title = {$e2g_force_restart_title};
-	button.textContent = {$e2g_force_restart_label};
-	button.onclick = function() {
-		if (!confirm({$e2g_force_restart_confirm})) {
-			return;
-		}
-
-		var action = document.createElement('input');
-		action.type = 'hidden';
-		action.name = 'e2g_force_restart';
-		action.value = 'yes';
-		form.appendChild(action);
-		form.submit();
-	};
-
-	var target = document.querySelector('.panel-heading .pull-right, .page-heading .pull-right, .content-box-header .pull-right');
-	if (target) {
-		target.insertBefore(button, target.firstChild);
-		target.insertBefore(document.createTextNode(' '), button.nextSibling);
-	} else {
-		form.parentNode.insertBefore(button, form);
-	}
-};
-
-if (typeof events !== 'undefined') {
-	events.push(addE2guardianForceRestartButton);
-} else {
-	document.addEventListener('DOMContentLoaded', addE2guardianForceRestartButton);
-}
-//]]&gt;
-&lt;/script&gt;
-EOD;
 	</custom_php_command_after_form>
 	<filter_rules_needed>e2g_generate_rules</filter_rules_needed>
 </packagegui>
