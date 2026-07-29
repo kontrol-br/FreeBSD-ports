@@ -111,7 +111,7 @@ _exec() {
 }
 
 _pkg() {
-	pkg-static "$@" 2>/dev/null
+	/usr/local/sbin/pkg-static "$@" 2>/dev/null
 	return $?
 }
 
@@ -446,8 +446,27 @@ pkg_update() {
 }
 
 pkg_upgrade_repo() {
-	if [ -n "${reinstall_pkg}" ] \
-	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
+	# A pkg binary built for the target FreeBSD major cannot run on the
+	# currently installed base.  Keep pkg pinned while only the repository
+	# package is synchronized; stage 2 replaces it after the new kernel/base
+	# have booted.
+	local _restore_pkg_lock=""
+	if [ -n "${NEW_MAJOR}" ]; then
+		local _pkg_locked=$(_pkg query %k pkg)
+		if [ "${_pkg_locked}" = "0" ]; then
+			pkg_lock pkg
+			_restore_pkg_lock=1
+		fi
+	fi
+
+	local _upgrade_pkg=""
+	if [ -z "${NEW_MAJOR}" ]; then
+		if [ -n "${reinstall_pkg}" ] \
+		    || [ "$(compare_pkg_version pkg)" = "<" ]; then
+			_upgrade_pkg=1
+		fi
+	fi
+	if [ -n "${_upgrade_pkg}" ]; then
 		pkg_unlock pkg
 		_exec "pkg-static upgrade${dont_update} pkg" "Upgrading pkg" \
 		    mute
@@ -465,6 +484,7 @@ pkg_upgrade_repo() {
 			local _force=" -f"
 			;;
 		"=")
+			[ -n "${_restore_pkg_lock}" ] && pkg_unlock pkg
 			return
 			;;
 		*)
@@ -491,6 +511,7 @@ pkg_upgrade_repo() {
 		fi
 	fi
 	rm -f /tmp/${product}.conf.copy
+	[ -n "${_restore_pkg_lock}" ] && pkg_unlock pkg
 }
 
 upgrade_available() {
