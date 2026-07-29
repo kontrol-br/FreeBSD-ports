@@ -33,6 +33,19 @@ $pfs_version = substr(trim(file_get_contents("/etc/version")),0,3);
 require_once("xmlrpc_client.inc");
 
 /*Chamadas array*/
+
+if (!function_exists('e2g_log_info')) {
+    function e2g_log_info($message) {
+        syslog(LOG_INFO, $message);
+    }
+}
+
+if (!function_exists('e2g_log_warning')) {
+    function e2g_log_warning($message) {
+        syslog(LOG_WARNING, $message);
+    }
+}
+
 if (! function_exists("bp_in_array")) {
  function bp_in_array($field, $array) {
     if (is_array($array)) {
@@ -78,6 +91,21 @@ function e2g_ssl_intercept_is_enabled(array $config): bool
         }
 
         return false;
+    }
+}
+
+if (!function_exists('e2g_extract_certmanager_item')) {
+    function e2g_extract_certmanager_item($certmanager_result)
+    {
+        if (!is_array($certmanager_result)) {
+            return false;
+        }
+
+        if (array_key_exists('item', $certmanager_result)) {
+            return is_array($certmanager_result['item']) ? $certmanager_result['item'] : false;
+        }
+
+        return $certmanager_result;
     }
 }
 
@@ -233,7 +261,7 @@ function e2g_copy_sample_if_needed($sample_path, $target_path, array $options = 
     }
 
     @chmod($target_path, 0640);
-    log_error("{$options['log_prefix']} Updated {$target_path} from sample " . basename($sample_path));
+    e2g_log_info("{$options['log_prefix']} Updated {$target_path} from sample " . basename($sample_path));
 
     return true;
 }
@@ -851,7 +879,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         log_error("[E2guardian] - Aborting config file generation");
 		return;
 	} else {
-		log_error("[E2guardian] - Save settings package call pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
+		e2g_log_info("[E2guardian] - Save settings package call pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
 	}
 
 	// assign xml arrays
@@ -1163,8 +1191,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	}
 
         $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
-	$ca_cert = lookup_ca($e2guardian["dca"]);
-	if ($ca_cert != false) {
+	$ca_cert = e2g_extract_certmanager_item(lookup_ca($e2guardian["dca"]));
+	if ($ca_cert !== false) {
 		if (base64_decode($ca_cert['prv'])) {
 			file_put_contents("/etc/ssl/demoCA/private/cakey.pem", base64_decode($ca_cert['prv']));
 			$ca_pk = "caprivatekeypath = '/etc/ssl/demoCA/private/cakey.pem'";
@@ -1183,8 +1211,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		}
 		$cert_key = "certprivatekeypath = '{$certprivatekeypath}' ";
 		/*
-		$svr_cert = lookup_cert($e2guardian_config["dcert"]);
-		if ($svr_cert != false) {
+		$svr_cert = e2g_extract_certmanager_item(lookup_cert($e2guardian_config["dcert"]));
+		if ($svr_cert !== false) {
 			if (base64_decode($svr_cert['prv'])) {
 				file_put_contents("/etc/ssl/demoCA/private/serverkey.pem", base64_decode($svr_cert['prv']) . base64_decode($svr_cert['crt']));
 				$cert_key = "certprivatekeypath = '/etc/ssl/demoCA/private/serverkey.pem' ";
@@ -2178,16 +2206,17 @@ EOF;
 	file_put_contents("/root/e2guardian_custom.script", base64_decode($e2guardian_blacklist['custom_script']), LOCK_EX);
 	if ($_POST["force_download"]) {
 		log_error("Blacklist update process started");
-		file_notice("E2guardian",$error,"E2guardian - " . gettext("Blacklist update process started"), "");
+		file_notice("E2guardian", $error, "E2guardian - " . gettext("Blacklist update process started"), "");
 		if ($e2guardian_blacklist['enable_custom_script']) {
 			mwexec_bg("/root/e2guardian_custom.script");
-                } else {
-                        mwexec_bg(E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist");
-                }
+		} else {
+			require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
+			fetch_blacklist();
+		}
 	}
 
 	//Update blacklist categories on Acls
-	if ($_POST["force_update"] || $_POST["liston"]) {
+	if (!$_POST["force_download"] && ($_POST["force_update"] || $_POST["liston"])) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		extract_black_list();
 	}
@@ -2218,11 +2247,11 @@ EOF;
 
 
 	//log rotation script
-    	log_error("Checking log rotation");
+	e2g_log_info("Checking log rotation");
 	$lrt_file = E2GUARDIAN_WWWDIR . "/e2guardian_logrotate.php";
 	$cron_cmd = E2GUARDIAN_BINDIR . "/php -q {$lrt_file}";
 	if ($logrotate == "on") {
-        log_error("Log rotate on");
+        e2g_log_info("Log rotate on");
 		e2g_check_cron($cron_cmd, "create", $cronminute, $cronhour);
 	} else {
 		file_put_contents($lrt_file, "", LOCK_EX);
@@ -2603,17 +2632,17 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 		if (is_process_running('e2guardian')) {
 			switch ($e2g_cfg['applyaction']){
 				case "rc.d":
-					log_error("Restarting e2g with rc.d script");
+					e2g_log_info("Restarting e2g with rc.d script");
 					mwexec("$script stop");
 					sleep(2);
                      			mwexec_bg("$script start");
 					break;
 				case "-r":
-					log_error("Sending USR1 to e2g processes");
+					e2g_log_info("Sending USR1 to e2g processes");
                                         mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
 					break;
 				default:
-					log_error("Restarting e2g by sending -Q action to e2g binaries");
+					e2g_log_info("Restarting e2g by sending -Q action to e2g binaries");
                                         mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
 					break;
 			}
@@ -2890,16 +2919,12 @@ function isValidXmlElementName($elementName)
 }
 
 function e2guardian_php_install_command() {
-	sync_package_e2guardian("no", true);
 	echo "Checking Blacklist...\n";
 	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 
-	if (file_exists(E2GUARDIAN_PKGDIR . "/blacklist.tgz")) {
-		extract_black_list();
-	} else {
-        	fetch_blacklist(false, true);
-	}
-        echo "Blacklist check done, continuing package config sync.\n";
+	fetch_blacklist(false, true);
+	echo "Blacklist check done, continuing package config sync.\n";
+	sync_package_e2guardian("no", true);
 	clear_subsystem_dirty('e2guardian');
 }
 

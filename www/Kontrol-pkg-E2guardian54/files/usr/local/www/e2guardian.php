@@ -41,30 +41,196 @@ if (!defined('E2GUARDIAN_DIR')) {
 }
 require_once(E2GUARDIAN_DIR . "/pkg/e2guardian.inc");
 
+function e2g_blacklist_notice($message) {
+        $error = null;
+        file_notice("E2guardian", $error, "E2guardian - " . gettext($message), "");
+}
+
+function e2g_blacklist_lock() {
+        $lock_handle = @fopen('/tmp/e2guardian-blacklist.lock', 'c');
+        if ($lock_handle === false || !@flock($lock_handle, LOCK_EX | LOCK_NB)) {
+                if (is_resource($lock_handle)) {
+                        @fclose($lock_handle);
+                }
+                e2g_blacklist_notice("A blacklist update is already running.");
+                return false;
+        }
+        return $lock_handle;
+}
+
+function e2g_blacklist_unlock($lock_handle) {
+        if (is_resource($lock_handle)) {
+                @flock($lock_handle, LOCK_UN);
+                @fclose($lock_handle);
+        }
+}
+
+function e2g_blacklist_reload_service() {
+        if (!function_exists('is_process_running') || !is_process_running('e2guardian')) {
+                return;
+        }
+
+        e2g_log_info("E2guardian - restarting service after blacklist update.");
+        if (function_exists('e2g_stop_watchdog_processes')) {
+                e2g_stop_watchdog_processes();
+        }
+
+        $script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+        if (file_exists($script)) {
+                mwexec($script . ' stop');
+                sleep(2);
+                mwexec_bg($script . ' start');
+        } elseif (function_exists('e2guardian_start')) {
+                e2guardian_start("no", false, true);
+        }
+}
+
+function e2g_blacklist_remove_temp_dir($temp_dir) {
+        if (!is_string($temp_dir) || !is_dir($temp_dir)) {
+                return;
+        }
+        $temp_prefix = rtrim(sys_get_temp_dir(), '/') . '/e2guardian-blacklist-';
+        $basename = basename($temp_dir);
+        if (strpos($temp_dir, $temp_prefix) === 0 || strpos($basename, '.blacklists.extract.') === 0) {
+                e2g_delTree($temp_dir);
+        }
+}
+
+function e2g_blacklist_validate_archive($blacklist_file) {
+        $entries = array();
+        exec('/usr/bin/tar -tzf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
+        if ($return !== 0 || empty($entries)) {
+                return false;
+        }
+        foreach ($entries as $entry) {
+                $entry = str_replace('\\', '/', trim($entry));
+                if ($entry === '' || $entry === '.' || substr($entry, 0, 1) === '/') {
+                        return false;
+                }
+                foreach (explode('/', $entry) as $component) {
+                        if ($component === '..') {
+                                return false;
+                        }
+                }
+        }
+        return true;
+}
+
+function e2g_blacklist_create_temp_dir($parent_dir = null) {
+        if (is_string($parent_dir) && is_dir($parent_dir)) {
+                $temp_dir = @tempnam($parent_dir, '.blacklists.extract.');
+        } else {
+                $temp_dir = @tempnam(sys_get_temp_dir(), 'e2guardian-blacklist-');
+        }
+        if ($temp_dir === false) {
+                return false;
+        }
+        @unlink($temp_dir);
+        if (!@mkdir($temp_dir, 0700)) {
+                return false;
+        }
+        return $temp_dir;
+}
+
+function e2g_blacklist_tree_has_lists($dir) {
+        if (!is_dir($dir)) {
+                return false;
+        }
+        if (is_file($dir . '/global_usage')) {
+                return true;
+        }
+        foreach (array_diff(scandir($dir), array('.', '..')) as $entry) {
+                $path = $dir . '/' . $entry;
+                if (is_file($path) && in_array($entry, array('domains', 'urls'), true)) {
+                        return true;
+                }
+                if (is_dir($path) && e2g_blacklist_tree_has_lists($path)) {
+                        return true;
+                }
+        }
+        return false;
+}
+
+function e2g_blacklist_find_source_dir($temp_dir) {
+        $candidates = array(
+                $temp_dir . '/BL',
+                $temp_dir . '/blacklists/BL',
+                $temp_dir . '/blacklists'
+        );
+        foreach ($candidates as $candidate) {
+                if (e2g_blacklist_tree_has_lists($candidate)) {
+                        return $candidate;
+                }
+        }
+
+        $dirs = array();
+        foreach (array_diff(scandir($temp_dir), array('.', '..')) as $entry) {
+                $path = $temp_dir . '/' . $entry;
+                if (is_dir($path)) {
+                        $dirs[] = $path;
+                }
+        }
+        if (count($dirs) === 1 && e2g_blacklist_tree_has_lists($dirs[0])) {
+                return $dirs[0];
+        }
+        if (e2g_blacklist_tree_has_lists($temp_dir)) {
+                return $temp_dir;
+        }
+        return false;
+}
+
+function e2g_blacklist_prepare_tree($temp_dir) {
+        $source_dir = e2g_blacklist_find_source_dir($temp_dir);
+        if ($source_dir === false || !is_dir($source_dir)) {
+                return false;
+        }
+        $prepared_dir = $temp_dir . '/.prepared-blacklists';
+        if (!@mkdir($prepared_dir, 0700)) {
+                return false;
+        }
+        if ($source_dir === $temp_dir) {
+                if (!@mkdir($prepared_dir . '/BL', 0700)) {
+                        return false;
+                }
+                foreach (array_diff(scandir($temp_dir), array('.', '..', '.prepared-blacklists')) as $entry) {
+                        if (!@rename($temp_dir . '/' . $entry, $prepared_dir . '/BL/' . $entry)) {
+                                return false;
+                        }
+                }
+                return $prepared_dir;
+        }
+        if (!@rename($source_dir, $prepared_dir . '/BL')) {
+                return false;
+        }
+        return $prepared_dir;
+}
+
 function fetch_blacklist($log_notice = true, $install_process = false) {
         global $config, $g;
-        $blacklist_file = E2GUARDIAN_PKGDIR . "/blacklist.tgz";
-        if (is_array($config['installedpackages']['e2guardianblacklist']) && is_array($config['installedpackages']['e2guardianblacklist']['config'])) {
-                $url = $config['installedpackages']['e2guardianblacklist']['config'][0]['url'];
-                $uw = "Found a previous install, checking Blacklist config...";
-        } else {
-                $uw = "Found a clean install, reading default access lists...";
-	}
-	if ($install_process == true) {
-		update_output_window($uw);
-	}
-	if (isset($url) && is_url($url)) {
-		if ($log_notice == true) {
-			print "file download start..";
-                        unlink_if_exists($blacklist_file);
-                        exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
+        $lock_handle = e2g_blacklist_lock();
+        if ($lock_handle === false) {
+                return false;
+        }
+        try {
+                $blacklist_file = E2GUARDIAN_PKGDIR . "/blacklist.tgz";
+                if (is_array($config['installedpackages']['e2guardianblacklist']) && is_array($config['installedpackages']['e2guardianblacklist']['config'])) {
+                        $url = $config['installedpackages']['e2guardianblacklist']['config'][0]['url'];
+                        $uw = "Found a previous install, checking Blacklist config...";
                 } else {
-                        //install process
-                        if (file_exists($blacklist_file)) {
-                                update_output_window("Found previous blacklist database, skipping download...");
-                                $return = 0;
+                        $uw = "Found a clean install, reading default access lists...";
+                }
+                if ($install_process == true) {
+                        update_output_window($uw);
+                }
+                if (isset($url) && is_url($url)) {
+                        if ($log_notice == true) {
+                                print "file download start..";
+                                unlink_if_exists($blacklist_file);
+                                exec("/usr/bin/fetch -o " . escapeshellarg($blacklist_file) . " " . escapeshellarg($url), $output, $return);
                         } else {
+                                //install process
                                 update_output_window("Fetching blacklist");
+                                unlink_if_exists($blacklist_file);
                                 if (function_exists('download_file_with_progress_bar')) {
                                         download_file_with_progress_bar($url, $blacklist_file);
                                 } else {
@@ -74,184 +240,117 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
                                         $return = 0;
                                 }
                         }
-                }
-                if ($return == 0) {
-			extract_black_list($log_notice);
-		} else {
-			file_notice("E2guardian",$error,"E2guardian" . gettext("Could not fetch blacklists from url"), "");
-		}
-	} else {
-		if ($install_process == true) {
-			read_lists(false, $uw);
-		} elseif (!empty($url)) {
-			file_notice("E2guardian",$error,"E2guardian" . gettext("Blacklist url is invalid."), "");
-		}
-	}
-}
-function e2g_blacklist_archive_is_safe($blacklist_file) {
-        $entries = array();
-        exec('/usr/bin/tar -tzf ' . escapeshellarg($blacklist_file) . ' 2>&1', $entries, $return);
-        if ($return !== 0 || empty($entries)) {
-                return false;
-        }
-
-        foreach ($entries as $entry) {
-                $entry = trim((string)$entry);
-                if ($entry === '') {
-                        continue;
-                }
-
-                if ($entry[0] === '/' || strpos($entry, "\0") !== false) {
-                        return false;
-                }
-
-                $parts = explode('/', $entry);
-                foreach ($parts as $part) {
-                        if ($part === '..') {
-                                return false;
+                        if ($return == 0) {
+                                return extract_black_list($log_notice, $lock_handle);
+                        }
+                        file_notice("E2guardian", $error, "E2guardian" . gettext("Could not fetch blacklists from url"), "");
+                } else {
+                        if ($install_process == true) {
+                                read_lists(false, $uw);
+                        } elseif (!empty($url)) {
+                                file_notice("E2guardian", $error, "E2guardian" . gettext("Blacklist url is invalid."), "");
                         }
                 }
+        } finally {
+                e2g_blacklist_unlock($lock_handle);
         }
-
-        return true;
-}
-
-function e2g_blacklist_tree_has_lists($dir) {
-        if (!is_dir($dir)) {
-                return false;
-        }
-
-        if (is_file($dir . '/global_usage')) {
-                return true;
-        }
-
-        $entries = array_diff(scandir($dir), array('.', '..'));
-        foreach ($entries as $entry) {
-                $path = $dir . '/' . $entry;
-                if (is_file($path) && in_array($entry, array('domains', 'urls'), true)) {
-                        return true;
-                }
-                if (is_dir($path) && e2g_blacklist_tree_has_lists($path)) {
-                        return true;
-                }
-        }
-
         return false;
 }
 
-function e2g_find_blacklist_source_dir($extract_dir) {
-        $candidates = array(
-                $extract_dir . '/BL',
-                $extract_dir . '/blacklists/BL',
-                $extract_dir . '/blacklists'
-        );
+function extract_black_list($log_notice = true, $lock_handle = null, $options = array()) {
+        $owns_lock = false;
+        if (!is_resource($lock_handle)) {
+                $lock_handle = e2g_blacklist_lock();
+                if ($lock_handle === false) {
+                        return false;
+                }
+                $owns_lock = true;
+        }
 
-        foreach ($candidates as $candidate) {
-                if (e2g_blacklist_tree_has_lists($candidate)) {
-                        return $candidate;
+        $temp_dir = false;
+        try {
+                if (!empty($options['hold_lock_seconds'])) {
+                        sleep((int)$options['hold_lock_seconds']);
+                }
+                $blacklist_file = $options['blacklist_file'] ?? E2GUARDIAN_PKGDIR . "/blacklist.tgz";
+                if (!file_exists($blacklist_file)) {
+                        e2g_blacklist_notice("Downloaded blacklists not found.");
+                        return false;
+                }
+                if (!e2g_blacklist_validate_archive($blacklist_file)) {
+                        e2g_blacklist_notice("Blacklist archive is invalid, empty, or contains unsafe paths or links.");
+                        return false;
+                }
+
+                $lists_dir = $options['lists_dir'] ?? E2GUARDIAN_ETCDIR . "/lists";
+                $blacklists_dir = $lists_dir . '/blacklists';
+                $blacklists_old_dir = $lists_dir . '/blacklists.old';
+                $target_bl_dir = $blacklists_dir . '/BL';
+                $backup_bl_dir = $blacklists_dir . '/BL.old.' . getmypid();
+                if (!is_dir($lists_dir) && !@mkdir($lists_dir, 0755, true)) {
+                        e2g_blacklist_notice("Could not create the E2guardian lists directory.");
+                        return false;
+                }
+                if (!is_dir($blacklists_dir) && !@mkdir($blacklists_dir, 0755, true)) {
+                        e2g_blacklist_notice("Could not create the E2guardian blacklist directory.");
+                        return false;
+                }
+
+                $temp_dir = e2g_blacklist_create_temp_dir($lists_dir);
+                if ($temp_dir === false) {
+                        e2g_blacklist_notice("Could not create a temporary blacklist extraction directory.");
+                        return false;
+                }
+                exec('/usr/bin/tar -xzf ' . escapeshellarg($blacklist_file) . ' -C ' . escapeshellarg($temp_dir) . ' 2>&1', $output, $return);
+                if ($return !== 0) {
+                        e2g_blacklist_notice("Could not extract blacklist archive.");
+                        return false;
+                }
+
+                $prepared_dir = e2g_blacklist_prepare_tree($temp_dir);
+                if ($prepared_dir === false || !is_dir($prepared_dir)) {
+                        e2g_blacklist_notice("Could not determine Blacklist extract dir. Categories not updated.");
+                        return false;
+                }
+
+                if (is_dir($blacklists_old_dir) && !is_dir($target_bl_dir)) {
+                        if (!@rename($blacklists_old_dir, $target_bl_dir)) {
+                                e2g_blacklist_notice("Could not restore the previous blacklist tree.");
+                                return false;
+                        }
+                } elseif (is_dir($blacklists_old_dir)) {
+                        e2g_delTree($blacklists_old_dir);
+                }
+                e2g_delTree($backup_bl_dir);
+                if (is_dir($target_bl_dir) && !@rename($target_bl_dir, $backup_bl_dir)) {
+                        e2g_blacklist_notice("Could not preserve the previous blacklist tree.");
+                        return false;
+                }
+                $simulate_install_failure = !empty($options['simulate_install_failure']);
+                if ($simulate_install_failure || !@rename($prepared_dir . '/BL', $target_bl_dir)) {
+                        if (!is_dir($target_bl_dir) && is_dir($backup_bl_dir)) {
+                                @rename($backup_bl_dir, $target_bl_dir);
+                        }
+                        e2g_blacklist_notice("Could not install the new blacklist tree; the previous tree was restored.");
+                        return false;
+                }
+
+                if (empty($options['skip_read_lists'])) {
+                        read_lists($log_notice);
+                        if (empty($options['skip_reload'])) {
+                                e2g_blacklist_reload_service();
+                        }
+                }
+                if (is_dir($backup_bl_dir)) {
+                        e2g_delTree($backup_bl_dir);
+                }
+                return true;
+        } finally {
+                e2g_blacklist_remove_temp_dir($temp_dir);
+                if ($owns_lock) {
+                        e2g_blacklist_unlock($lock_handle);
                 }
         }
-
-        $dirs = array();
-        $entries = array_diff(scandir($extract_dir), array('.', '..'));
-        foreach ($entries as $entry) {
-                $path = $extract_dir . '/' . $entry;
-                if (is_dir($path)) {
-                        $dirs[] = $path;
-                }
-        }
-
-        if (count($dirs) === 1 && e2g_blacklist_tree_has_lists($dirs[0])) {
-                return $dirs[0];
-        }
-
-        if (e2g_blacklist_tree_has_lists($extract_dir)) {
-                return $extract_dir;
-        }
-
-        return '';
-}
-
-function extract_black_list($log_notice=true) {
-        $blacklist_file = E2GUARDIAN_PKGDIR . "/blacklist.tgz";
-        if (!file_exists($blacklist_file)) {
-                file_notice("E2guardian", $error, "E2guardian" . gettext("Downloaded blacklists not found"), "");
-                return;
-        }
-
-        if (!e2g_blacklist_archive_is_safe($blacklist_file)) {
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Blacklist archive is invalid or contains unsafe paths."), "");
-                return;
-        }
-
-        $lists_dir = E2GUARDIAN_ETCDIR . "/lists";
-        $blacklists_dir = $lists_dir . "/blacklists";
-        if (!is_dir($blacklists_dir) && !@mkdir($blacklists_dir, 0755, true) && !is_dir($blacklists_dir)) {
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not create blacklist target directory."), "");
-                return;
-        }
-
-        $pid = getmypid();
-        $extract_dir = $lists_dir . '/.blacklists.extract.' . $pid;
-        $new_parent = $lists_dir . '/.blacklists.new.' . $pid;
-        $new_bl = $new_parent . '/BL';
-        $target_bl = $blacklists_dir . '/BL';
-        $backup_bl = $blacklists_dir . '/BL.old.' . $pid;
-
-        e2g_delTree($extract_dir);
-        e2g_delTree($new_parent);
-        e2g_delTree($backup_bl);
-
-        if (!@mkdir($extract_dir, 0755, true) || !@mkdir($new_parent, 0755, true)) {
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not create temporary blacklist directory."), "");
-                return;
-        }
-
-        exec('/usr/bin/tar -xzf ' . escapeshellarg($blacklist_file) . ' -C ' . escapeshellarg($extract_dir) . ' 2>&1', $output, $return);
-        if ($return !== 0) {
-                e2g_delTree($extract_dir);
-                e2g_delTree($new_parent);
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not extract blacklist archive."), "");
-                return;
-        }
-
-        $source_dir = e2g_find_blacklist_source_dir($extract_dir);
-        if ($source_dir === '') {
-                e2g_delTree($extract_dir);
-                e2g_delTree($new_parent);
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not determine Blacklist extract dir. Categories not updated"), "");
-                return;
-        }
-
-        if (!@rename($source_dir, $new_bl)) {
-                e2g_delTree($extract_dir);
-                e2g_delTree($new_parent);
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not stage blacklist content."), "");
-                return;
-        }
-
-        if (is_dir($target_bl) && !@rename($target_bl, $backup_bl)) {
-                e2g_delTree($extract_dir);
-                e2g_delTree($new_parent);
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not backup current blacklist content."), "");
-                return;
-        }
-
-        if (!@rename($new_bl, $target_bl)) {
-                if (is_dir($backup_bl)) {
-                        @rename($backup_bl, $target_bl);
-                }
-                e2g_delTree($extract_dir);
-                e2g_delTree($new_parent);
-                file_notice("E2guardian", $error, "E2guardian - " . gettext("Could not install blacklist content."), "");
-                return;
-        }
-
-        read_lists($log_notice);
-
-        e2g_delTree($backup_bl);
-        e2g_delTree($extract_dir);
-        e2g_delTree($new_parent);
 }
 
 function read_lists($log_notice=true, $uw="") {
