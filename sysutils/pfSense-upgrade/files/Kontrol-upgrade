@@ -961,6 +961,18 @@ pkg_upgrade() {
 				_exec "pkg-static install -f pkg" \
 				    "Reinstalling pkg due to ABI change"
 
+				# pkg 2.x no longer accepts ALTABI and may invalidate
+				# repository catalogues written by pkg 1.x.  Rebuild the
+				# configuration for the newly installed binary and refresh
+				# its catalogues before asking it to upgrade the core set.
+				# Without this, a major-version upgrade can report that the
+				# repositories cannot be opened, advance to the next stage
+				# without installing the base packages, and require another
+				# boot to recover.
+				abi_setup
+				_exec "pkg-static update -f" \
+				    "Refreshing repositories after pkg upgrade"
+
 				# Upgrade core packages
 				_exec "pkg-static upgrade -r ${product}-core" \
 				    "Upgrading necessary core packages"
