@@ -175,20 +175,18 @@ EOF
 offline_repo_enable() {
 	local _repo_dir="/var/cache/pkg/${product}-upgrade-repo"
 	local _pkg_conf="${_repo_dir}/pkg.conf"
-	local _pkg_version
+	local _pkg_config_format="${1:-altabi}"
 
 	if [ -f "${_repo_dir}/repos/${product}-offline.conf" ]; then
 		# Use a complete, dedicated pkg configuration.  Passing an
 		# array-valued REPOS_DIR through `pkg -o` is not portable between pkg
 		# 1.x and 2.x and resulted in "No active remote repositories
 		# configured" with pkg 1.20.
-		_pkg_version=$(/usr/local/sbin/pkg-static query %v pkg 2>/dev/null)
 		cat > "${_pkg_conf}" << EOF
 ABI=${ABI}
 REPOS_DIR=["${_repo_dir}/repos"]
 EOF
-		if [ "$(/usr/local/sbin/pkg-static version -t \
-		    "${_pkg_version}" 2.0.6 2>/dev/null)" != "<" ]; then
+		if [ "${_pkg_config_format}" = "osversion" ]; then
 			echo "OSVERSION=${OSVERSION}" >> "${_pkg_conf}"
 		else
 			echo "ALTABI=${ALTABI}" >> "${_pkg_conf}"
@@ -1031,14 +1029,19 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "2" ]; then
+		local _core_repo="${product}-core"
+		local _upgrade_repo="${product}"
+
 		# Stage 2 is intentionally executed before normal network setup.  The
 		# complete transaction was downloaded at stage 1, so never reach out to
 		# the Internet here.
 		if [ -n "${is_pkg_locked}" ]; then
-			offline_repo_enable || {
+			offline_repo_enable altabi || {
 				_echo "ERROR: Offline upgrade repository is missing"
 				_exit 1
 			}
+			_core_repo="${product}-offline"
+			_upgrade_repo="${product}-offline"
 
 			# The dedicated configuration contains only the new file://
 			# repository, whose
@@ -1087,23 +1090,34 @@ pkg_upgrade() {
 				# Upgrade pkg
 				pkg_unlock pkg
 				_pkg annotate -q -D ${kernel_pkg} new_major
+
+				# The old pkg process uses the dedicated -C configuration,
+				# so the global configuration can be switched immediately
+				# before extraction.  Package scripts started by the newly
+				# installed pkg will then never see the obsolete ALTABI key.
+				cat > /usr/local/etc/pkg.conf << EOF
+ABI=${ABI}
+OSVERSION=${OSVERSION}
+EOF
 				_exec "pkg_static install -f pkg" \
 				    "Reinstalling pkg due to ABI change"
 
 				# pkg 2.x cannot use the catalogue database written by pkg
 				# 1.x.  Rebuild it from the offline repository generated at
 				# stage 1; networking is not configured at this point.
-				abi_setup
-				offline_repo_enable || {
+				# Switch the dedicated configuration before calling abi_setup:
+				# pkg 2.x rejects ALTABI while reading any configuration.
+				offline_repo_enable osversion || {
 					_echo "ERROR: Unable to configure offline" \
 					    "repository for new pkg"
 					_exit 1
 				}
+				abi_setup
 				_exec "pkg_static update -f" \
 				    "Loading offline repository after pkg upgrade"
 
 				# Upgrade core packages
-				_exec "pkg_static upgrade -r ${product}-core" \
+				_exec "pkg_static upgrade -r ${_core_repo}" \
 				    "Upgrading necessary core packages"
 
 				# Update the U-boot at stage 2 if it was not
@@ -1123,14 +1137,15 @@ pkg_upgrade() {
 				/etc/rc.php_ini_setup >/dev/null 2>&1
 			else
 				# Upgrade core packages
-				_exec "pkg_static upgrade -r ${product}-core" \
+				_exec "pkg_static upgrade -r ${_core_repo}" \
 				    "Upgrading necessary core packages"
 			fi
 
 			_exec "/etc/rc.d/ldconfig onestart" \
 			    "Updating ldconfig" mute ignore_result
 
-			_exec "pkg_static upgrade${dont_update}${_force} -r ${product}" \
+			_exec "pkg_static upgrade${dont_update}${_force} \
+			    -r ${_upgrade_repo}" \
 			    "Upgrading necessary packages"
 			delete_annotation=""
 
@@ -1166,7 +1181,7 @@ pkg_upgrade() {
 	if [ "${next_stage}" = "3" ]; then
 		# The second reboot also reaches this code before interfaces are
 		# configured.  Finish add-on packages from the same local transaction.
-		offline_repo_enable || {
+		offline_repo_enable osversion || {
 			_echo "ERROR: Offline upgrade repository is missing at final stage"
 			_exit 1
 		}
