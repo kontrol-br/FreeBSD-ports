@@ -111,8 +111,102 @@ _exec() {
 }
 
 _pkg() {
-	/usr/local/sbin/pkg-static "$@" 2>/dev/null
+	/usr/local/sbin/pkg-static ${pkg_config_option} "$@" 2>/dev/null
 	return $?
+}
+
+# Keep every pkg invocation on the same repository set.  During a major ABI
+# upgrade stage 2 runs before the interfaces and DNS resolver are configured,
+# so it must use the repository assembled in the package cache at stage 1.
+pkg_static() {
+	/usr/local/sbin/pkg-static ${pkg_config_option} "$@"
+}
+
+offline_repo_prepare() {
+	local _repo_dir="/var/cache/pkg/${product}-upgrade-repo"
+	local _packages_dir="${_repo_dir}/packages"
+	local _repos_dir="${_repo_dir}/repos"
+	local _pkg_file _pkg_abi _target_osmajor
+
+	rm -rf "${_repo_dir}"
+	mkdir -p "${_packages_dir}" "${_repos_dir}"
+
+	# /var/cache/pkg can also contain packages left by earlier operations for
+	# the running ABI.  A repository containing both the old and target ABI is
+	# rejected by pkg while its catalogue is processed.  Stage only packages
+	# for the target FreeBSD major selected by the repository configuration.
+	_target_osmajor=$(echo "${ABI}" | \
+	    awk -F: 'tolower($1)=="freebsd" { print $2 }')
+	for _pkg_file in $(find /var/cache/pkg -type f \
+	    \( -name '*.pkg' -o -name '*.txz' \) \
+	    ! -path "${_repo_dir}/*"); do
+		_pkg_abi=$(/usr/local/sbin/pkg-static query -F "${_pkg_file}" \
+		    %q 2>/dev/null | tr '[:upper:]' '[:lower:]')
+		case "${_pkg_abi}" in
+			freebsd:${_target_osmajor}:*)
+				ln -f "${_pkg_file}" \
+				    "${_packages_dir}/$(basename "${_pkg_file}")" \
+				    2>/dev/null || \
+				    cp -f "${_pkg_file}" "${_packages_dir}/"
+				;;
+		esac
+	done
+
+	if ! find "${_packages_dir}" -type f \
+	    \( -name '*.pkg' -o -name '*.txz' \) | grep -q .; then
+		_echo "ERROR: No cached packages match target ABI ${ABI}"
+		_exit 1
+	fi
+
+	# Generate fresh metadata from the filtered transaction so the target pkg
+	# binary does not need the old catalogue or the network during early boot.
+	_exec "pkg_static repo ${_packages_dir}" \
+	    "Preparing offline upgrade repository"
+
+	cat > "${_repos_dir}/${product}-offline.conf" << EOF
+${product}-offline: {
+	url: "file://${_packages_dir}",
+	enabled: yes,
+	signature_type: "none"
+}
+EOF
+}
+
+offline_repo_enable() {
+	local _repo_dir="/var/cache/pkg/${product}-upgrade-repo"
+	local _pkg_conf="${_repo_dir}/pkg.conf"
+	local _pkg_version
+
+	if [ -f "${_repo_dir}/repos/${product}-offline.conf" ]; then
+		# Use a complete, dedicated pkg configuration.  Passing an
+		# array-valued REPOS_DIR through `pkg -o` is not portable between pkg
+		# 1.x and 2.x and resulted in "No active remote repositories
+		# configured" with pkg 1.20.
+		_pkg_version=$(/usr/local/sbin/pkg-static query %v pkg 2>/dev/null)
+		cat > "${_pkg_conf}" << EOF
+ABI=${ABI}
+REPOS_DIR=["${_repo_dir}/repos"]
+EOF
+		if [ "$(/usr/local/sbin/pkg-static version -t \
+		    "${_pkg_version}" 2.0.6 2>/dev/null)" != "<" ]; then
+			echo "OSVERSION=${OSVERSION}" >> "${_pkg_conf}"
+		else
+			echo "ALTABI=${ALTABI}" >> "${_pkg_conf}"
+		fi
+
+		pkg_config_option="-C ${_pkg_conf}"
+		export pkg_config_option
+		return 0
+	fi
+
+	return 1
+}
+
+offline_repo_remove() {
+	local _repo_dir="/var/cache/pkg/${product}-upgrade-repo"
+
+	unset pkg_config_option
+	rm -rf "${_repo_dir}"
 }
 
 # pkg 2.0.6 removed ALTABI.  Newer pkg versions need the target ABI and
@@ -188,7 +282,7 @@ pkg_with_pb() {
 		done
 	fi
 
-	_exec "pkg-static ${_event_pipe} ${_cmd}" "${_msg}"
+	_exec "pkg_static ${_event_pipe} ${_cmd}" "${_msg}"
 	nc_pid=""
 }
 
@@ -213,7 +307,7 @@ pkg_lock() {
 			if [ "${_locked}" != "0" ]; then
 				continue
 			fi
-			_exec "pkg-static lock ${_pkg_name}" \
+			_exec "pkg_static lock ${_pkg_name}" \
 			    "Locking package ${_pkg_name}" mute
 		done
 	done
@@ -232,7 +326,7 @@ pkg_unlock() {
 			if [ "${_locked}" != "1" ]; then
 				continue
 			fi
-			_exec "pkg-static unlock ${_pkg_name}" \
+			_exec "pkg_static unlock ${_pkg_name}" \
 			    "Unlocking package ${_pkg_name}" mute
 		done
 	done
@@ -240,24 +334,24 @@ pkg_unlock() {
 
 set_vital_flag() {
 	for _package in "$@"; do
-		local _vflag=$(pkg-static query %V ${_package} 2>/dev/null)
+		local _vflag=$(pkg_static query %V ${_package} 2>/dev/null)
 
 		[ "${_vflag}" != "0" ] \
 		    && continue
 
-		_exec "pkg-static set -y -v 1 ${_package}" \
+		_exec "pkg_static set -y -v 1 ${_package}" \
 		    "Setting vital flag on ${_package}" mute
 	done
 }
 
 unset_vital_flag() {
 	for _package in "$@"; do
-		local _vflag=$(pkg-static query %V ${_package} 2>/dev/null)
+		local _vflag=$(pkg_static query %V ${_package} 2>/dev/null)
 
 		[ "${_vflag}" = "0" ] \
 		    && continue
 
-		_exec "pkg-static set -y -v 0 ${_package}" \
+		_exec "pkg_static set -y -v 0 ${_package}" \
 		    "Removing vital flag from ${_package}" mute
 	done
 }
@@ -432,7 +526,7 @@ pkg_update() {
 	/usr/local/bin/php -r 'require_once("pkg-utils.inc");update_repos();'
 	abi_setup
 
-	_exec "pkg-static update${_force}" "Updating repositories metadata" \
+	_exec "pkg_static update${_force}" "Updating repositories metadata" \
 	    ${_mute} "" do_not_exit
 
 	if [ $? -ne 0 -a -z "${_do_not_bootstrap}" ]; then
@@ -478,7 +572,7 @@ pkg_upgrade_repo() {
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
 		pkg_unlock pkg
-		_exec "pkg-static upgrade${dont_update} pkg" "Upgrading pkg" \
+		_exec "pkg_static upgrade${dont_update} pkg" "Upgrading pkg" \
 		    mute
 		reinstall_pkg=""
 		pkg_update force
@@ -503,7 +597,7 @@ pkg_upgrade_repo() {
 
 	cp /usr/local/etc/pkg/repos/${product}.conf /tmp/${product}.conf.copy
 	if !(is_ce && repo_is_plus_upgrade) ; then
-		_exec "pkg-static upgrade${dont_update}${_force} ${_repo_pkg}" \
+		_exec "pkg_static upgrade${dont_update}${_force} ${_repo_pkg}" \
 		    "Upgrading ${_repo_pkg}" mute
 	fi
 	abi_setup
@@ -515,7 +609,7 @@ pkg_upgrade_repo() {
 		# New repo may contain newer pkg
 		if [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]
 		then
-			_exec "pkg-static upgrade pkg" "Upgrading pkg" mute
+			_exec "pkg_static upgrade pkg" "Upgrading pkg" mute
 			pkg_update force
 		fi
 	fi
@@ -524,7 +618,7 @@ pkg_upgrade_repo() {
 
 upgrade_available() {
 	# XXX locked packages message should be printed on stderr by pkg?
-	local _lines=$(pkg-static upgrade${dont_update} -nq "$@" 2>/dev/null \
+	local _lines=$(pkg_static upgrade${dont_update} -nq "$@" 2>/dev/null \
 	    | sed -e '/^$/d; /is locked and may not be modified/d' \
 	    | wc -l)
 
@@ -550,16 +644,16 @@ pkg_set_origin() {
 		# Don't try to change it when target package is not present
 		# anymore
 		if [ -z "${_origin_target}" ]; then
-			_exec "pkg-static set -A 1 ${_pkg_source}" \
+			_exec "pkg_static set -A 1 ${_pkg_source}" \
 			    "Scheduling package ${_pkg_source} for removal"
 			continue
 		fi
 
-		_exec "pkg-static set -o ${_origin_source}:${_origin_target} \
+		_exec "pkg_static set -o ${_origin_source}:${_origin_target} \
 		    ${_pkg_source}" \
 		    "Update origin ${_origin_source} -> ${_origin_target}" \
 		    mute
-		_exec "pkg-static set -n ${_pkg_source}:${_pkg_target} \
+		_exec "pkg_static set -n ${_pkg_source}:${_pkg_target} \
 		    ${_pkg_source}" \
 		    "Update name ${_pkg_source} -> ${_pkg_target}" \
 		    mute
@@ -703,7 +797,7 @@ pkg_upgrade() {
 		# and return a special code 99 used by wrapper to run newer
 		# version again using the same parameters
 		if [ "$(compare_pkg_version ${product}-upgrade)" != "=" ]; then
-			_exec "pkg-static upgrade${dont_update} -f \
+			_exec "pkg_static upgrade${dont_update} -f \
 			    ${product}-upgrade" "Upgrading ${product}-upgrade" \
 			    mute
 			_exit 99
@@ -740,11 +834,11 @@ pkg_upgrade() {
 
 		# Old versions used to lock kernel and uboot, make sure we
 		# get it reverted
-		if pkg-static lock -l 2>&1 | grep -q "kernel"; then
+		if pkg_static lock -l 2>&1 | grep -q "kernel"; then
 			pkg_unlock ${kernel_pkg}
 		fi
 		if [ -n "${uboot_pkg}" ] && \
-		    pkg-static lock -l 2>&1 | grep -q "u-boot"; then
+		    pkg_static lock -l 2>&1 | grep -q "u-boot"; then
 			pkg_unlock ${uboot_pkg}
 		fi
 
@@ -765,7 +859,7 @@ pkg_upgrade() {
 		esac
 
 		if [ -n "${dry_run}" ]; then
-			_exec "pkg-static upgrade${dont_update} -nq" "" nomute \
+			_exec "pkg_static upgrade${dont_update} -nq" "" nomute \
 			    ignore_result do_not_exit
 			_exit 0
 		fi
@@ -787,7 +881,7 @@ pkg_upgrade() {
 
 		if [ -z "${yes}" ]; then
 			# Show user which packages are going to be upgraded
-			_exec "pkg-static upgrade${dont_update}${_force} -nq" \
+			_exec "pkg_static upgrade${dont_update}${_force} -nq" \
 			    "" nomute ignore_result do_not_exit
 
 			_echo ""
@@ -834,6 +928,13 @@ pkg_upgrade() {
 		# Download all upgrade packages first
 		fetch_upgrade_packages ${_force}
 
+		# A new pkg and the remaining target-ABI packages are installed at
+		# early boot, before networking exists.  Preserve them as a real local
+		# repository instead of relying on the old pkg catalogue database.
+		if [ -n "${NEW_MAJOR}" ]; then
+			offline_repo_prepare
+		fi
+
 		# Then lock it again
 		if [ -n "${NEW_MAJOR}" ]; then
 			pkg_lock pkg
@@ -848,7 +949,7 @@ pkg_upgrade() {
 				rm -f /tmp/loader.rc.local >/dev/null 2>&1
 				[ -f /boot/loader.rc.local ] \
 				    && cp /boot/loader.rc.local /tmp 2>/dev/null
-				_exec "pkg-static delete ${product}-SG-3100" \
+				_exec "pkg_static delete ${product}-SG-3100" \
 				    "Removing ${product}-SG-3100" mute \
 				    ignore_result
 				[ -f /tmp/loader.rc.local ] \
@@ -858,7 +959,7 @@ pkg_upgrade() {
 			# failing for some reason on armv[67] even with the
 			# proper dependency version registered
 			if upgrade_available ${product}-rc; then
-				_exec "pkg-static upgrade -U ${product}-rc" \
+				_exec "pkg_static upgrade -U ${product}-rc" \
 				    "Upgrading ${product}-rc"
 			fi
 			# In the past /boot/loader.conf was part of kernel pkg
@@ -870,7 +971,7 @@ pkg_upgrade() {
 				_restore_loaderconf=1
 				cp -fp /boot/loader.conf /tmp/loader.conf.backup
 			fi
-			_exec "pkg-static upgrade -U ${kernel_pkg}" \
+			_exec "pkg_static upgrade -U ${kernel_pkg}" \
 			    "Upgrading ${product} kernel"
 			if [ -n "${_restore_loaderconf}" ]; then
 				cp -fp /tmp/loader.conf.backup /boot/loader.conf
@@ -895,7 +996,7 @@ pkg_upgrade() {
 		# available.  It requires new kernel and base to be in place.
 		if [ -z "${NEW_MAJOR}" -a -n "${uboot_pkg}" ] &&
 		    upgrade_available ${uboot_pkg}; then
-			_exec "pkg-static upgrade -U ${uboot_pkg}" \
+			_exec "pkg_static upgrade -U ${uboot_pkg}" \
 			    "Upgrading ${product} u-boot"
 			if [ -n "${uboot_update}" -a -x ${uboot_update} ]; then
 				${uboot_update}
@@ -910,12 +1011,12 @@ pkg_upgrade() {
 
 				# This package was removed from remote repo
 				# Make sure it's uninstalled
-				_exec "pkg-static set -A 1 ${_package}" \
+				_exec "pkg_static set -A 1 ${_package}" \
 				    "Scheduling package ${_package} for removal"
 			done
 		fi
 
-		_exec "pkg-static autoremove" "Removing unnecessary packages" \
+		_exec "pkg_static autoremove" "Removing unnecessary packages" \
 		    mute ignore_result
 
 		if [ -n "${NEW_MAJOR}" ]; then
@@ -930,6 +1031,25 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "2" ]; then
+		# Stage 2 is intentionally executed before normal network setup.  The
+		# complete transaction was downloaded at stage 1, so never reach out to
+		# the Internet here.
+		if [ -n "${is_pkg_locked}" ]; then
+			offline_repo_enable || {
+				_echo "ERROR: Offline upgrade repository is missing"
+				_exit 1
+			}
+
+			# The dedicated configuration contains only the new file://
+			# repository, whose
+			# catalogue has not been registered in PKG_DBDIR yet.  Load it before
+			# any upgrade_available() query.  Otherwise that query sees no remote
+			# packages, stage 2 is incorrectly considered complete, and the code
+			# advances to stage 3 without installing pkg, base, or PHP.
+			_exec "pkg_static update -f" \
+			    "Loading offline repository for upgrade stage"
+		fi
+
 		pkg_lock "${pkg_prefix}*"
 		unlock_additional_pkgs=1
 
@@ -952,29 +1072,38 @@ pkg_upgrade() {
 			_force=" -f"
 		fi
 
+		# A major upgrade must always have work pending at stage 2.  Never
+		# advance the persistent stage annotation (or reboot) if the local
+		# transaction cannot be seen; leave next_stage=2 so the condition can
+		# be diagnosed and retried safely.
+		if [ -n "${is_pkg_locked}" ] && ! upgrade_available; then
+			_echo "ERROR: Offline repository contains no pending major upgrade"
+			_exit 1
+		fi
+
 		if upgrade_available; then
 			delete_annotation=1
 			if [ -n "${is_pkg_locked}" ]; then
 				# Upgrade pkg
 				pkg_unlock pkg
 				_pkg annotate -q -D ${kernel_pkg} new_major
-				_exec "pkg-static install -f pkg" \
+				_exec "pkg_static install -f pkg" \
 				    "Reinstalling pkg due to ABI change"
 
-				# pkg 2.x no longer accepts ALTABI and may invalidate
-				# repository catalogues written by pkg 1.x.  Rebuild the
-				# configuration for the newly installed binary and refresh
-				# its catalogues before asking it to upgrade the core set.
-				# Without this, a major-version upgrade can report that the
-				# repositories cannot be opened, advance to the next stage
-				# without installing the base packages, and require another
-				# boot to recover.
+				# pkg 2.x cannot use the catalogue database written by pkg
+				# 1.x.  Rebuild it from the offline repository generated at
+				# stage 1; networking is not configured at this point.
 				abi_setup
-				_exec "pkg-static update -f" \
-				    "Refreshing repositories after pkg upgrade"
+				offline_repo_enable || {
+					_echo "ERROR: Unable to configure offline" \
+					    "repository for new pkg"
+					_exit 1
+				}
+				_exec "pkg_static update -f" \
+				    "Loading offline repository after pkg upgrade"
 
 				# Upgrade core packages
-				_exec "pkg-static upgrade -r ${product}-core" \
+				_exec "pkg_static upgrade -r ${product}-core" \
 				    "Upgrading necessary core packages"
 
 				# Update the U-boot at stage 2 if it was not
@@ -982,7 +1111,7 @@ pkg_upgrade() {
 				# $MAJOR update.
 				if [ -n "${uboot_pkg}" ] &&
 				    upgrade_available ${uboot_pkg}; then
-					_exec "pkg-static upgrade -U ${uboot_pkg}" \
+					_exec "pkg_static upgrade -U ${uboot_pkg}" \
 					    "Upgrading ${product} u-boot"
 					if [ -n "${uboot_update}" -a \
 					    -x ${uboot_update} ]; then
@@ -994,14 +1123,14 @@ pkg_upgrade() {
 				/etc/rc.php_ini_setup >/dev/null 2>&1
 			else
 				# Upgrade core packages
-				_exec "pkg-static upgrade -r ${product}-core" \
+				_exec "pkg_static upgrade -r ${product}-core" \
 				    "Upgrading necessary core packages"
 			fi
 
 			_exec "/etc/rc.d/ldconfig onestart" \
 			    "Updating ldconfig" mute ignore_result
 
-			_exec "pkg-static upgrade${dont_update}${_force} -r ${product}" \
+			_exec "pkg_static upgrade${dont_update}${_force} -r ${product}" \
 			    "Upgrading necessary packages"
 			delete_annotation=""
 
@@ -1035,15 +1164,24 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "3" ]; then
+		# The second reboot also reaches this code before interfaces are
+		# configured.  Finish add-on packages from the same local transaction.
+		offline_repo_enable || {
+			_echo "ERROR: Offline upgrade repository is missing at final stage"
+			_exit 1
+		}
+
 		# Stage 2 keeps additional packages locked while base system and
-		# core packages are upgraded. Refresh metadata before the final
-		# pass so package upgrades pending only for add-on packages are
-		# not skipped when this stage is executed with -U during boot.
-		pkg_update force mute
+		# core packages are upgraded. Refresh only the local metadata before
+		# the final pass. pkg_update() also runs the remote repository setup
+		# helper, which is deliberately unavailable during early boot.
+		abi_setup
+		_exec "pkg_static update -f" \
+		    "Reloading offline repository for final upgrade stage" mute
 
 		if upgrade_available; then
 			delete_annotation=1
-			_exec "pkg-static upgrade${dont_update}" \
+			_exec "pkg_static upgrade${dont_update}" \
 			    "Upgrading necessary packages"
 			delete_annotation=""
 		fi
@@ -1054,9 +1192,10 @@ pkg_upgrade() {
 		_pkg annotate -q -D ${kernel_pkg} next_stage
 
 		# cleanup caches
-		_exec "pkg-static autoremove" "Removing unnecessary packages" \
+		_exec "pkg_static autoremove" "Removing unnecessary packages" \
 		    mute ignore_result
-		_exec "pkg-static clean" "Cleanup pkg cache" mute ignore_result
+		_exec "pkg_static clean" "Cleanup pkg cache" mute ignore_result
+		offline_repo_remove
 	fi
 
 	gitsync=$(read_xml_tag.sh boolean system/gitsync/synconupgrade)
@@ -1123,7 +1262,7 @@ check_upgrade() {
 	local _mute="$1"
 	local _skip_update="$2"
 	local _meta_pkg=$(get_meta_pkg_name)
-	local _core_pkgs=$(pkg-static query -e \
+	local _core_pkgs=$(pkg_static query -e \
 	    "%n ~ ${product}-kernel-* || %n ~ ${product}-base*" %n 2>/dev/null)
 
 	# Do not upgrade while wg interfaces are assigned
@@ -1174,7 +1313,7 @@ check_upgrade() {
 is_pkg_installed() {
 	local _pkg_name="${1}"
 
-	pkg-static info -e ${_pkg_name} 2>/dev/null
+	pkg_static info -e ${_pkg_name} 2>/dev/null
 	return $?
 }
 
@@ -1260,7 +1399,7 @@ pkg_install() {
 
 	pkg_with_pb "${_cmd}${dry_run:+ }${dry_run} ${_pkg_name}" \
 	    "${_msg} ${_pkg_name}"
-	_exec "pkg-static clean" "Cleaning up cache" mute ignore_result
+	_exec "pkg_static clean" "Cleaning up cache" mute ignore_result
 }
 
 # Reinstall every pfSense-pkg-* package
@@ -1289,13 +1428,13 @@ pkg_delete() {
 
 	pkg_with_pb "delete${dry_run:+ }${dry_run} ${_pkg_name}" \
 	    "Removing ${_pkg_name}"
-	_exec "pkg-static autoremove" "Removing stale packages" mute \
+	_exec "pkg_static autoremove" "Removing stale packages" mute \
 	    ignore_result
 }
 
 # Delete every pfSense-pkg-* package
 pkg_delete_all() {
-	for _package in $(pkg-static query -e '%a == 0' %n); do
+	for _package in $(pkg_static query -e '%a == 0' %n); do
 		case ${_package} in "${pkg_prefix}"* )
 			_echo "Removing ${_package}"
 			pkg_delete ${_package}
