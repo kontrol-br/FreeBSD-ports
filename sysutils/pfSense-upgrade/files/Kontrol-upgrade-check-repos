@@ -1,6 +1,6 @@
 #!/bin/sh
-# Query explicitly published direct-upgrade repositories without touching the
-# active pkg configuration or package database.
+# Query explicitly authorized direct-upgrade repositories without changing the
+# active pkg configuration, its repository symlink, or the installed database.
 
 PKG_STATIC=${PKG_STATIC:-/usr/local/sbin/pkg-static}
 REPO_TEMPLATE_DIR=${REPO_TEMPLATE_DIR:-/usr/local/share/Kontrol/pkg/repos}
@@ -19,15 +19,46 @@ trap 'cleanup' 0 1 2 15
 
 field()
 {
-	sed -n "s/^${2}=\([A-Za-z0-9_.-]*\)$/\1/p" "${1}" | sed -n '1p'
+	awk -F= -v key="${2}" '
+		$1 == key { count++; value=$2; if (NF != 2 || value !~ /^[A-Za-z0-9_.-]+$/) bad=1 }
+		END { if (count == 1 && !bad) print value }
+	' "${1}"
 }
 
 installed_version()
 {
-	PKG_DBDIR=${REAL_PKG_DBDIR} "${PKG_STATIC}" query %v "${1}" 2>/dev/null
+	PKG_DBDIR=${REAL_PKG_DBDIR} pkg_clean_env -C /dev/null query %v "${1}"
+}
+
+# Kontrol-upgrade exports the active repository ABI and legacy ALTABI.  pkg's
+# ABI parser does not overwrite inherited variables when reading -C, so those
+# values would defeat the isolated config and ALTABI would make pkg abort.
+pkg_clean_env()
+{
+	env -u ABI -u ALTABI -u OSVERSION "${PKG_STATIC}" "$@"
+}
+
+# signature_policy=none is intentionally narrow: it is accepted only from a
+# package-managed .target marker and is applied only to the disposable copy.
+# This permits querying a known unsigned release catalog, but gives that
+# catalog no authority to install anything.
+prepare_unsigned_copy()
+{
+	input=$1 output=$2
+	awk '
+		/^[[:space:]]*signature_type[[:space:]]*:/ {
+			sub(/signature_type[[:space:]]*:[[:space:]]*"?[A-Za-z0-9_-]+"?/, "signature_type: none")
+			changed++
+		}
+		{ print }
+		END { if (changed == 0) exit 1 }
+	' "${input}" > "${output}" || return 1
+	# Reject a partial rewrite when a template contains multiple repositories.
+	! grep -Eq '^[[:space:]]*signature_type[[:space:]]*:.*(fingerprints|pubkey)' "${output}"
 }
 
 best=""
+best_template=""
 had_eligible=no
 had_failure=no
 for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
@@ -40,34 +71,45 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 	had_eligible=yes
 	version=$(field "${marker}" version)
 	template=$(field "${marker}" template)
+	signature_policy=$(field "${marker}" signature_policy)
 	case "${version}:${template}" in
 		*[!A-Za-z0-9_.:-]*|:*) had_failure=yes; continue ;;
 	esac
+	case "${signature_policy}" in
+		fingerprints|none) ;;
+		*) had_failure=yes; continue ;;
+	esac
 	conf=${REPO_TEMPLATE_DIR}/${template}.conf
 	abi_file=${REPO_TEMPLATE_DIR}/${template}.abi
-	altabi_file=${REPO_TEMPLATE_DIR}/${template}.altabi
-	if [ ! -f "${conf}" ] || [ ! -s "${abi_file}" ] || [ ! -s "${altabi_file}" ]; then
-		had_failure=yes
-		continue
-	fi
+	[ -f "${conf}" ] && [ -s "${abi_file}" ] || { had_failure=yes; continue; }
 
 	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
-	[ "$("${PKG_STATIC}" version -t "${version}" "${current}" 2>/dev/null)" = ">" ] || continue
+	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || continue
 
 	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { had_failure=yes; continue; }
 	tmpdirs="${tmpdirs} ${dir}"
-	mkdir -p "${dir}/db" "${dir}/repos"
-	cp "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
-	abi=$(cat "${abi_file}")
-	altabi=$(cat "${altabi_file}")
+	mkdir -p "${dir}/db" "${dir}/repos" || { had_failure=yes; continue; }
+	if [ "${signature_policy}" = none ]; then
+		prepare_unsigned_copy "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
+	else
+		cp "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
+	fi
+	abi=$(sed -n '1p' "${abi_file}")
+	case "${abi}" in
+		FreeBSD:[0-9]*:[A-Za-z0-9_]*) ;;
+		*) had_failure=yes; continue ;;
+	esac
+	os_major=${abi#FreeBSD:}; os_major=${os_major%%:*}
+	case "${os_major}" in *[!0-9]*|'') had_failure=yes; continue ;; esac
+	osversion=$((os_major * 100000))
 	cat > "${dir}/pkg.conf" <<PKGCONF
 PKG_DBDIR: "${dir}/db";
 REPOS_DIR: [ "${dir}/repos" ];
 ABI: "${abi}";
-ALTABI: "${altabi}";
+OSVERSION: ${osversion};
 PKGCONF
 
-	if ! "${PKG_STATIC}" -C "${dir}/pkg.conf" update -f >/dev/null 2>&1; then
+	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f; then
 		had_failure=yes
 		continue
 	fi
@@ -75,21 +117,26 @@ PKGCONF
 	valid=yes
 	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
 		local_version=$(installed_version "${package}") || { valid=no; break; }
-		remote_version=$("${PKG_STATIC}" -C "${dir}/pkg.conf" rquery -U %v "${package}" 2>/dev/null) || { valid=no; break; }
+		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { valid=no; break; }
 		[ -n "${remote_version}" ] || { valid=no; break; }
-		[ "$("${PKG_STATIC}" version -t "${remote_version}" "${local_version}" 2>/dev/null)" = ">" ] || { valid=no; break; }
+		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { valid=no; break; }
 	done
 	if [ "${valid}" != yes ]; then
 		had_failure=yes
 		continue
 	fi
-	if [ -z "${best}" ] || [ "$("${PKG_STATIC}" version -t "${version}" "${best}" 2>/dev/null)" = ">" ]; then
+	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t "${version}" "${best}")" = ">" ]; then
 		best=${version}
+		best_template=${template}
 	fi
 done
 
 if [ -n "${best}" ]; then
-	echo "${best}"
+	if [ "${KONTROL_UPGRADE_OUTPUT:-version}" = template ]; then
+		printf '%s|%s\n' "${best}" "${best_template}"
+	else
+		echo "${best}"
+	fi
 	exit 2
 fi
 [ "${had_eligible}" = yes ] && [ "${had_failure}" = yes ] && exit 1
