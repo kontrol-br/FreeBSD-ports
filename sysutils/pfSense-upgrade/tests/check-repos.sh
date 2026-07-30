@@ -12,13 +12,17 @@ grep -q '^template=Kontrol-repo-upgrade$' \
 	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target"
 cat > "${MOCK}" <<'MOCKEOF'
 #!/bin/sh
+[ -z "${ABI:-}" ] && [ -z "${ALTABI:-}" ] && [ -z "${OSVERSION:-}" ] || {
+	echo "inherited ABI environment reached pkg-static" >&2
+	exit 1
+}
 printf '%s\n' "$*" >> "${CALL_LOG}"
+conf=; if [ "$1" = -C ]; then conf=$2; shift 2; fi
 if [ "$1" = version ]; then
 	[ "$4" = "$3" ] && echo = && exit 0
 	awk -v a="$3" -v b="$4" 'BEGIN { print ((a+0)<(b+0))?"<":">" }'
 	exit 0
 fi
-conf=; if [ "$1" = -C ]; then conf=$2; shift 2; fi
 case "$1:$2" in
 	query:%v)
 		case "$3" in Kontrol|Kontrol-base|Kontrol-kernel-Kontrol) echo 2.7.2;; *) exit 1;; esac ;;
@@ -75,7 +79,8 @@ CONF
 	before=$(find "${dir}" -type f -exec sha256sum {} + | sort | sha256sum)
 	set +e
 	mkdir -p "${dir}/snap"
-	output=$(CALL_LOG=${ROOT}/calls SNAP_DIR=${dir}/snap PKG_STATIC=${MOCK} REPO_TEMPLATE_DIR=${dir}/repos \
+	output=$(ABI=FreeBSD:14:amd64 ALTABI=freebsd:14:x86:64 OSVERSION=1400097 \
+	    CALL_LOG=${ROOT}/calls SNAP_DIR=${dir}/snap PKG_STATIC=${MOCK} REPO_TEMPLATE_DIR=${dir}/repos \
 	    REAL_PKG_DBDIR=${dir}/realdb TMPDIR=${dir}/tmp "${CHECK}" 2>"${dir}/stderr")
 	rc=$?
 	set -e

@@ -39,7 +39,15 @@ field()
 
 installed_version()
 {
-	PKG_DBDIR=${REAL_PKG_DBDIR} "${PKG_STATIC}" query %v "${1}"
+	PKG_DBDIR=${REAL_PKG_DBDIR} pkg_clean_env -C /dev/null query %v "${1}"
+}
+
+# Kontrol-upgrade exports the active repository ABI and legacy ALTABI.  pkg's
+# ABI parser does not overwrite inherited variables when reading -C, so those
+# values would defeat the isolated config and ALTABI would make pkg abort.
+pkg_clean_env()
+{
+	env -u ABI -u ALTABI -u OSVERSION "${PKG_STATIC}" "$@"
 }
 
 # signature_policy=none is intentionally narrow: it is accepted only from a
@@ -89,7 +97,7 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 
 	current=$(installed_version "${PRODUCT}") || { debug "cannot read installed ${PRODUCT} version from ${REAL_PKG_DBDIR}"; had_failure=yes; continue; }
 	debug "authorized target version=${version} template=${template} signature_policy=${signature_policy} installed=${current}"
-	[ "$("${PKG_STATIC}" version -t "${version}" "${current}")" = ">" ] || { debug "target is not newer than installed version"; continue; }
+	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || { debug "target is not newer than installed version"; continue; }
 
 	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { debug "mktemp failed under ${TMP_ROOT}"; had_failure=yes; continue; }
 	tmpdirs="${tmpdirs} ${dir}"
@@ -116,7 +124,7 @@ ABI: "${abi}";
 OSVERSION: ${osversion};
 PKGCONF
 
-	if ! "${PKG_STATIC}" -C "${dir}/pkg.conf" update -f; then
+	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f; then
 		debug "pkg update failed for target=${version} configuration=${dir}/pkg.conf"
 		had_failure=yes
 		continue
@@ -125,16 +133,16 @@ PKGCONF
 	valid=yes
 	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
 		local_version=$(installed_version "${package}") || { debug "cannot read installed version for package=${package}"; valid=no; break; }
-		remote_version=$("${PKG_STATIC}" -C "${dir}/pkg.conf" rquery -U %v "${package}") || { debug "remote query failed for package=${package} target=${version}"; valid=no; break; }
+		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { debug "remote query failed for package=${package} target=${version}"; valid=no; break; }
 		[ -n "${remote_version}" ] || { debug "empty remote version for package=${package} target=${version}"; valid=no; break; }
 		debug "package=${package} installed=${local_version} remote=${remote_version}"
-		[ "$("${PKG_STATIC}" version -t "${remote_version}" "${local_version}")" = ">" ] || { debug "package=${package} is not newer in target=${version}"; valid=no; break; }
+		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { debug "package=${package} is not newer in target=${version}"; valid=no; break; }
 	done
 	if [ "${valid}" != yes ]; then
 		had_failure=yes
 		continue
 	fi
-	if [ -z "${best}" ] || [ "$("${PKG_STATIC}" version -t "${version}" "${best}")" = ">" ]; then
+	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t "${version}" "${best}")" = ">" ]; then
 		best=${version}
 		debug "selected best target=${best}"
 	fi
