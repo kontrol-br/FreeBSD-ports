@@ -1,0 +1,6 @@
+managed_by=Kontrol-repo
+eligible=yes
+supported_direct=yes
+channel=release
+version=2.9.0
+template=pfSense-repo-upgrade

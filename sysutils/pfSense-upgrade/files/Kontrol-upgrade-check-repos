@@ -1,0 +1,96 @@
+#!/bin/sh
+# Query explicitly published direct-upgrade repositories without touching the
+# active pkg configuration or package database.
+
+PKG_STATIC=${PKG_STATIC:-/usr/local/sbin/pkg-static}
+REPO_TEMPLATE_DIR=${REPO_TEMPLATE_DIR:-/usr/local/share/Kontrol/pkg/repos}
+REAL_PKG_DBDIR=${REAL_PKG_DBDIR:-${PKG_DBDIR:-/var/db/pkg}}
+PRODUCT=${PRODUCT:-Kontrol}
+TMP_ROOT=${TMPDIR:-/tmp}
+tmpdirs=""
+
+cleanup()
+{
+	for dir in ${tmpdirs}; do
+		rm -rf "${dir}"
+	done
+}
+trap 'cleanup' 0 1 2 15
+
+field()
+{
+	sed -n "s/^${2}=\([A-Za-z0-9_.-]*\)$/\1/p" "${1}" | sed -n '1p'
+}
+
+installed_version()
+{
+	PKG_DBDIR=${REAL_PKG_DBDIR} "${PKG_STATIC}" query %v "${1}" 2>/dev/null
+}
+
+best=""
+had_eligible=no
+had_failure=no
+for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
+	[ -f "${marker}" ] || continue
+	[ "$(field "${marker}" managed_by)" = "Kontrol-repo" ] || continue
+	[ "$(field "${marker}" eligible)" = "yes" ] || continue
+	[ "$(field "${marker}" supported_direct)" = "yes" ] || continue
+	[ "$(field "${marker}" channel)" = "release" ] || continue
+
+	had_eligible=yes
+	version=$(field "${marker}" version)
+	template=$(field "${marker}" template)
+	case "${version}:${template}" in
+		*[!A-Za-z0-9_.:-]*|:*) had_failure=yes; continue ;;
+	esac
+	conf=${REPO_TEMPLATE_DIR}/${template}.conf
+	abi_file=${REPO_TEMPLATE_DIR}/${template}.abi
+	altabi_file=${REPO_TEMPLATE_DIR}/${template}.altabi
+	if [ ! -f "${conf}" ] || [ ! -s "${abi_file}" ] || [ ! -s "${altabi_file}" ]; then
+		had_failure=yes
+		continue
+	fi
+
+	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
+	[ "$("${PKG_STATIC}" version -t "${version}" "${current}" 2>/dev/null)" = ">" ] || continue
+
+	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { had_failure=yes; continue; }
+	tmpdirs="${tmpdirs} ${dir}"
+	mkdir -p "${dir}/db" "${dir}/repos"
+	cp "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
+	abi=$(cat "${abi_file}")
+	altabi=$(cat "${altabi_file}")
+	cat > "${dir}/pkg.conf" <<PKGCONF
+PKG_DBDIR: "${dir}/db";
+REPOS_DIR: [ "${dir}/repos" ];
+ABI: "${abi}";
+ALTABI: "${altabi}";
+PKGCONF
+
+	if ! "${PKG_STATIC}" -C "${dir}/pkg.conf" update -f >/dev/null 2>&1; then
+		had_failure=yes
+		continue
+	fi
+
+	valid=yes
+	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
+		local_version=$(installed_version "${package}") || { valid=no; break; }
+		remote_version=$("${PKG_STATIC}" -C "${dir}/pkg.conf" rquery -U %v "${package}" 2>/dev/null) || { valid=no; break; }
+		[ -n "${remote_version}" ] || { valid=no; break; }
+		[ "$("${PKG_STATIC}" version -t "${remote_version}" "${local_version}" 2>/dev/null)" = ">" ] || { valid=no; break; }
+	done
+	if [ "${valid}" != yes ]; then
+		had_failure=yes
+		continue
+	fi
+	if [ -z "${best}" ] || [ "$("${PKG_STATIC}" version -t "${version}" "${best}" 2>/dev/null)" = ">" ]; then
+		best=${version}
+	fi
+done
+
+if [ -n "${best}" ]; then
+	echo "${best}"
+	exit 2
+fi
+[ "${had_eligible}" = yes ] && [ "${had_failure}" = yes ] && exit 1
+exit 0

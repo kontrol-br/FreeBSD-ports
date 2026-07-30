@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-upgrade
 PORTVERSION=	1.3.3
-PORTREVISION=	# empty
+PORTREVISION=	1
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -17,6 +17,7 @@ NO_MTREE=	yes
 NO_BUILD=	yes
 
 PLIST_FILES=	libexec/Kontrol-upgrade \
+		libexec/Kontrol-upgrade-check-repos \
 		sbin/Kontrol-upgrade
 
 do-extract:
@@ -28,6 +29,8 @@ do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
 	${MKDIR} ${STAGEDIR}${PREFIX}/share/Kontrol
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade \
+		${STAGEDIR}${PREFIX}/libexec
+	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade-check-repos \
 		${STAGEDIR}${PREFIX}/libexec
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade.wrapper \
 		${STAGEDIR}${PREFIX}/sbin/Kontrol-upgrade
