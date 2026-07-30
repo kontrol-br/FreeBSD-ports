@@ -83,6 +83,10 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 		fingerprints|none) ;;
 		*) debug "invalid signature_policy=${signature_policy:-<empty>}"; had_failure=yes; continue ;;
 	esac
+	case "${signature_policy}" in
+		fingerprints|none) ;;
+		*) had_failure=yes; continue ;;
+	esac
 	conf=${REPO_TEMPLATE_DIR}/${template}.conf
 	abi_file=${REPO_TEMPLATE_DIR}/${template}.abi
 	[ -f "${conf}" ] && [ -s "${abi_file}" ] || { debug "missing template=${conf} or ABI file=${abi_file}"; had_failure=yes; continue; }
