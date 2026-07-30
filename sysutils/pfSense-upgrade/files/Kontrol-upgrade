@@ -994,6 +994,15 @@ pkg_upgrade() {
 				_echo "ERROR: Offline upgrade repository is missing"
 				_exit 1
 			}
+
+			# REPOS_DIR now contains only the new file:// repository, whose
+			# catalogue has not been registered in PKG_DBDIR yet.  Load it before
+			# any upgrade_available() query.  Otherwise that query sees no remote
+			# packages, stage 2 is incorrectly considered complete, and the code
+			# advances to stage 3 without installing pkg, base, or PHP.
+			abi_setup
+			_exec "pkg_static update -f" \
+			    "Loading offline repository for upgrade stage"
 		fi
 
 		pkg_lock "${pkg_prefix}*"
@@ -1016,6 +1025,15 @@ pkg_upgrade() {
 		local _force=""
 		if ! cmp -s ${pkg_set_version} ${running_pkg_set_version}; then
 			_force=" -f"
+		fi
+
+		# A major upgrade must always have work pending at stage 2.  Never
+		# advance the persistent stage annotation (or reboot) if the local
+		# transaction cannot be seen; leave next_stage=2 so the condition can
+		# be diagnosed and retried safely.
+		if [ -n "${is_pkg_locked}" ] && ! upgrade_available; then
+			_echo "ERROR: Offline repository contains no pending major upgrade"
+			_exit 1
 		fi
 
 		if upgrade_available; then
@@ -1098,7 +1116,10 @@ pkg_upgrade() {
 	if [ "${next_stage}" = "3" ]; then
 		# The second reboot also reaches this code before interfaces are
 		# configured.  Finish add-on packages from the same local transaction.
-		offline_repo_enable
+		offline_repo_enable || {
+			_echo "ERROR: Offline upgrade repository is missing at final stage"
+			_exit 1
+		}
 
 		# Stage 2 keeps additional packages locked while base system and
 		# core packages are upgraded. Refresh only the local metadata before
