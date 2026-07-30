@@ -4,3 +4,4 @@ supported_direct=yes
 channel=release
 version=2.9.0
 template=pfSense-repo-upgrade
+signature_policy=none
