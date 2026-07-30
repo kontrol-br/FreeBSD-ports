@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.4.18
-PORTREVISION=   # empty
+PORTREVISION=   1
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -14,7 +14,7 @@ WWW=		https://e2guardian.org
 
 LICENSE=	GPLv2
 
-RUN_DEPENDS+=   openssl111>=1.1.1w_2:security/openssl111
+RUN_DEPENDS+=   openssl>=1.1.1w_2:security/openssl
 
 LIB_DEPENDS=	libpcre.so:devel/pcre
 
