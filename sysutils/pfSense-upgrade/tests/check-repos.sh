@@ -162,6 +162,36 @@ No packages were changed." ]
 ln -sfn "${ROOT}/require/templates/upgrade290.conf" \
 	"${ROOT}/require/active/Kontrol.conf"
 [ -z "$("${REQUIRE}")" ]
+
+# The GUI socket exists before an early preflight error, allowing the legacy
+# page to poll the text log instead of remaining on its initialization text.
+START_PROGRESS=${ROOT}/start-progress.sh
+awk '/^start_progress_listener\(\)/,/^}/' \
+	"${HERE}/../files/Kontrol-upgrade" > "${ROOT}/start-progress-function"
+cat > "${ROOT}/nc" <<'MOCK_NC'
+#!/bin/sh
+socket=$2
+: > "${socket}"
+sleep 30
+MOCK_NC
+chmod +x "${ROOT}/nc"
+cat > "${START_PROGRESS}" <<PROGRESS_HEAD
+#!/bin/sh
+PATH=${ROOT}:\${PATH}
+progress_socket=${ROOT}/gui.sock
+progress_file=${ROOT}/gui.json
+nc_pid=
+PROGRESS_HEAD
+cat "${ROOT}/start-progress-function" >> "${START_PROGRESS}"
+cat >> "${START_PROGRESS}" <<'PROGRESS_TAIL'
+start_progress_listener
+[ -e "${progress_socket}" ]
+kill "${nc_pid}"
+wait "${nc_pid}" 2>/dev/null || :
+PROGRESS_TAIL
+chmod +x "${START_PROGRESS}"
+"${START_PROGRESS}"
+[ "$(grep -c '^start_progress_listener$' "${HERE}/../files/Kontrol-upgrade")" -eq 1 ]
 grep -q 'signature_type: none' "${ROOT}/direct_290/snap"/repo.*.conf
 [ "$(grep -c 'signature_type: none' "${ROOT}/direct_290/snap"/repo.*.conf)" -eq 2 ]
 grep -q 'signature_type: "fingerprints"' "${ROOT}/signed_target/snap"/repo.*.conf

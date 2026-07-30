@@ -159,24 +159,28 @@ notice() {
 	    file_notice('${product}-Upgrade', '${msg}', 'Upgrade', '', 1, true);"
 }
 
+start_progress_listener() {
+	[ -n "${progress_socket}" ] || return 0
+	if [ -n "${nc_pid}" ] && ps -p ${nc_pid} >/dev/null 2>&1 \
+	    && [ -e "${progress_socket}" ]; then
+		return 0
+	fi
+	[ -e "${progress_socket}" ] && rm -f "${progress_socket}"
+	nc -lU "${progress_socket}" >> "${progress_file}" &
+	nc_pid=$!
+	while [ ! -e "${progress_socket}" ]; do
+		sleep 0.1
+	done
+}
+
 pkg_with_pb() {
 	local _event_pipe=""
 	local _cmd="${1}"
 	local _msg="${2}"
 
 	if [ -n "${progress_socket}" ]; then
-		if [ -e "${progress_socket}" ]; then
-			rm -f ${progress_socket}
-		fi
-
+		start_progress_listener
 		_event_pipe="-o EVENT_PIPE=${progress_socket}"
-
-		nc -lU ${progress_socket} >> ${progress_file} &
-		nc_pid=$!
-
-		while [ ! -e "${progress_socket}" ]; do
-			sleep 0.1
-		done
 	fi
 
 	_exec "pkg-static ${_event_pipe} ${_cmd}" "${_msg}"
@@ -1660,6 +1664,11 @@ progress_file=${logfile%.*}.json
 if [ -e "${progress_file}" ]; then
 	rm -f ${progress_file}
 fi
+
+# Create the GUI synchronization socket before any preflight can fail.  The
+# legacy update page waits for this socket before it starts polling the text
+# log, so an early validation error would otherwise leave it at "initializes".
+start_progress_listener
 
 arch=$(uname -p)
 
