@@ -570,9 +570,7 @@ pkg_set_origin() {
 require_direct_upgrade_repo() {
 	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
 	local _target
-	_target=$(KONTROL_UPGRADE_OUTPUT=template \
-	    KONTROL_UPGRADE_DEBUG=${upgrade_debug:-no} \
-	    KONTROL_UPGRADE_DEBUG_LOG=${logfile} ${_check_repos})
+	_target=$(KONTROL_UPGRADE_OUTPUT=template ${_check_repos})
 	local _rc=$?
 	case "${_rc}" in
 		0)
@@ -1221,8 +1219,7 @@ check_upgrade() {
 	# Kontrol-repo in isolated pkg databases.
 	local _upgrade_target
 	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
-	_upgrade_target=$(KONTROL_UPGRADE_DEBUG=${upgrade_debug:-no} \
-	    KONTROL_UPGRADE_DEBUG_LOG=${logfile} ${_check_repos})
+	_upgrade_target=$(${_check_repos})
 	local _target_rc=$?
 	case "${_target_rc}" in
 		2)
@@ -1626,7 +1623,7 @@ fi
 
 # Force debug if /cf/conf/upgrade_debug is present
 [ -f "/cf/conf/upgrade_debug" ] \
-	&& { stdout=''; upgrade_debug=yes; }
+	&& stdout=''
 
 # Set default action when no parameter is set
 : ${action:="upgrade"}

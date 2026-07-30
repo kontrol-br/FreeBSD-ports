@@ -92,32 +92,33 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 		fingerprints|none) ;;
 		*) debug "invalid signature_policy=${signature_policy:-<empty>}"; had_failure=yes; continue ;;
 	esac
+	case "${signature_policy}" in
+		fingerprints|none) ;;
+		*) had_failure=yes; continue ;;
+	esac
 	conf=${REPO_TEMPLATE_DIR}/${template}.conf
 	abi_file=${REPO_TEMPLATE_DIR}/${template}.abi
-	[ -f "${conf}" ] && [ -s "${abi_file}" ] || { debug "missing template=${conf} or ABI file=${abi_file}"; had_failure=yes; continue; }
+	[ -f "${conf}" ] && [ -s "${abi_file}" ] || { had_failure=yes; continue; }
 
-	current=$(installed_version "${PRODUCT}") || { debug "cannot read installed ${PRODUCT} version from ${REAL_PKG_DBDIR}"; had_failure=yes; continue; }
-	debug "authorized target version=${version} template=${template} signature_policy=${signature_policy} installed=${current}"
-	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || { debug "target is not newer than installed version"; continue; }
+	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
+	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || continue
 
 	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { debug "mktemp failed under ${TMP_ROOT}"; had_failure=yes; continue; }
 	tmpdirs="${tmpdirs} ${dir}"
-	debug "created isolated environment=${dir}"
-	mkdir -p "${dir}/db" "${dir}/repos" || { debug "cannot create isolated database or repository directory"; had_failure=yes; continue; }
+	mkdir -p "${dir}/db" "${dir}/repos" || { had_failure=yes; continue; }
 	if [ "${signature_policy}" = none ]; then
-		prepare_unsigned_copy "${conf}" "${dir}/repos/${template}.conf" || { debug "failed to rewrite every signature_type in temporary copy"; had_failure=yes; continue; }
+		prepare_unsigned_copy "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
 	else
-		cp "${conf}" "${dir}/repos/${template}.conf" || { debug "failed to copy repository template"; had_failure=yes; continue; }
+		cp "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
 	fi
 	abi=$(sed -n '1p' "${abi_file}")
 	case "${abi}" in
 		FreeBSD:[0-9]*:[A-Za-z0-9_]*) ;;
-		*) debug "invalid ABI=${abi:-<empty>}"; had_failure=yes; continue ;;
+		*) had_failure=yes; continue ;;
 	esac
 	os_major=${abi#FreeBSD:}; os_major=${os_major%%:*}
-	case "${os_major}" in *[!0-9]*|'') debug "cannot derive OSVERSION from ABI=${abi}"; had_failure=yes; continue ;; esac
+	case "${os_major}" in *[!0-9]*|'') had_failure=yes; continue ;; esac
 	osversion=$((os_major * 100000))
-	debug "isolated pkg configuration ABI=${abi} OSVERSION=${osversion}"
 	cat > "${dir}/pkg.conf" <<PKGCONF
 PKG_DBDIR: "${dir}/db";
 REPOS_DIR: [ "${dir}/repos" ];
@@ -126,18 +127,16 @@ OSVERSION: ${osversion};
 PKGCONF
 
 	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f; then
-		debug "pkg update failed for target=${version} configuration=${dir}/pkg.conf"
 		had_failure=yes
 		continue
 	fi
 
 	valid=yes
 	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
-		local_version=$(installed_version "${package}") || { debug "cannot read installed version for package=${package}"; valid=no; break; }
-		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { debug "remote query failed for package=${package} target=${version}"; valid=no; break; }
-		[ -n "${remote_version}" ] || { debug "empty remote version for package=${package} target=${version}"; valid=no; break; }
-		debug "package=${package} installed=${local_version} remote=${remote_version}"
-		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { debug "package=${package} is not newer in target=${version}"; valid=no; break; }
+		local_version=$(installed_version "${package}") || { valid=no; break; }
+		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { valid=no; break; }
+		[ -n "${remote_version}" ] || { valid=no; break; }
+		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { valid=no; break; }
 	done
 	if [ "${valid}" != yes ]; then
 		had_failure=yes
@@ -146,12 +145,10 @@ PKGCONF
 	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t "${version}" "${best}")" = ">" ]; then
 		best=${version}
 		best_template=${template}
-		debug "selected best target=${best}"
 	fi
 done
 
 if [ -n "${best}" ]; then
-	debug "completed: upgrade target=${best}"
 	if [ "${KONTROL_UPGRADE_OUTPUT:-version}" = template ]; then
 		printf '%s|%s\n' "${best}" "${best_template}"
 	else
