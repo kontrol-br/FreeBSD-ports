@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.9.0
-PORTREVISION= 3
+PORTREVISION=	4
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -30,7 +30,7 @@ PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
 .include <bsd.port.pre.mk>
 
 MIRROR_TYPE?=	srv
-PFSENSE_REPOS?=	pfSense-repo pfSense-repo-previous pfSense-repo-devel
+PFSENSE_REPOS?=	Kontrol-repo Kontrol-repo-previous Kontrol-repo-devel
 PFSENSE_REPOS_${ARCH}?=	${PFSENSE_REPOS}
 PFSENSE_DEFAULT_REPO?=	Kontrol-repo
 PFSENSE_DEFAULT_REPO_${ARCH}?=	${PFSENSE_DEFAULT_REPO}
@@ -69,6 +69,14 @@ ALTABI_ARCH_OLD=${ALTABI_ARCH}
 .endif
 
 DEFAULT_ALTABI=	${OPSYS:tl}:${OSREL:C/\..*//}:${ALTABI_ARCH}
+
+# Repository templates are overlaid by the product builder.  Keep explicit
+# target OS versions here as a safe fallback when an overlay omits an
+# .osversion file; using the build jail's OSVERSION would make rollback
+# repositories advertise the current FreeBSD major.
+Kontrol-repo_OSVERSION=		1600000
+Kontrol-repo-previous_OSVERSION=	1500000
+Kontrol-repo-devel_OSVERSION=	1400000
 
 .if defined(PKG_REPO_BRANCH_DEVEL_${ARCH}) && !empty(PKG_REPO_BRANCH_DEVEL_${ARCH})
 PKG_REPO_BRANCH_DEVEL=${PKG_REPO_BRANCH_DEVEL_${ARCH}}
@@ -138,7 +146,7 @@ do-install:
 		${INSTALL_DATA} ${WRKSRC}/${f}.osversion \
 			${STAGEDIR}${DATADIR}/pkg/repos; \
 	else \
-		${ECHO_CMD} ${OSVERSION} \
+		${ECHO_CMD} ${${f}_OSVERSION:U${OSVERSION}} \
 			> ${STAGEDIR}${DATADIR}/pkg/repos/${f}.osversion; \
 	fi
 .endfor
