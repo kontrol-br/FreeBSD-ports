@@ -1201,10 +1201,12 @@ EOF
 			delete_annotation=""
 		fi
 
-		# Reinstall only installed, repository-backed GUI add-ons.  This runs
-		# after PHP and the config API are final and is safe to repeat after a
-		# reboot at the stage boundary.
-		reconcile_additional_packages || _exit 1
+		# Packages installed from the temporary repository retain its name in
+		# pkg's %R field.  The Package Manager deliberately displays add-ons
+		# only when %R matches ${product}; normalize it before rc.bootup calls
+		# register_all_installed_packages().  Package scripts cannot do that at
+		# this point because rc.packages exits while php-fpm is not running.
+		restore_additional_package_repositories
 
 		# Cleanup a possible crash report created during PHP upgrade
 		rm -f /tmp/PHP_errors.log
@@ -1382,6 +1384,21 @@ compare_pkg_version() {
 
 	echo ${_version}
 	return 0
+}
+
+restore_additional_package_repositories() {
+	local _package
+
+	for _package in $(_pkg query -e \
+	    "%R == '${product}-offline'" %n); do
+		case ${_package} in
+		"${pkg_prefix}"*)
+			_exec "pkg_static set -r \
+			    ${product}-offline:${product} ${_package}" \
+			    "Restoring repository metadata for ${_package}"
+			;;
+		esac
+	done
 }
 
 pkg_install() {
