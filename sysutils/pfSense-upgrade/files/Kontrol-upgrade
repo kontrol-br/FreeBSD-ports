@@ -1162,7 +1162,8 @@ check_upgrade() {
 	# Kontrol-repo in isolated pkg databases.
 	local _upgrade_target
 	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
-	_upgrade_target=$(${_check_repos})
+	_upgrade_target=$(KONTROL_UPGRADE_DEBUG=${upgrade_debug:-no} \
+	    KONTROL_UPGRADE_DEBUG_LOG=${logfile} ${_check_repos})
 	local _target_rc=$?
 	case "${_target_rc}" in
 		2)
@@ -1483,6 +1484,7 @@ while getopts 46b:cdfi:hp:l:nr:RuUy opt; do
 			;;
 		d)
 			stdout=''
+			upgrade_debug=yes
 			;;
 		f)
 			force=1
@@ -1565,7 +1567,7 @@ fi
 
 # Force debug if /cf/conf/upgrade_debug is present
 [ -f "/cf/conf/upgrade_debug" ] \
-    && stdout=''
+	&& { stdout=''; upgrade_debug=yes; }
 
 # Set default action when no parameter is set
 : ${action:="upgrade"}

@@ -103,6 +103,22 @@ grep -q 'signature_type: none' "${ROOT}/direct_290/snap"/repo.*.conf
 grep -q 'signature_type: "fingerprints"' "${ROOT}/signed_target/snap"/repo.*.conf
 grep -q 'signature_type: "fingerprints"' "${ROOT}/direct_290/repos/upgrade290.conf"
 
+# Debug mode explains the exact failing phase without contaminating stdout.
+DEBUG_LOG=${ROOT}/debug.log
+set +e
+debug_output=$(CALL_LOG=${ROOT}/calls SNAP_DIR=${ROOT}/no_fallback/snap PKG_STATIC=${MOCK} \
+	REPO_TEMPLATE_DIR=${ROOT}/no_fallback/repos REAL_PKG_DBDIR=${ROOT}/realdb \
+	TMPDIR=${ROOT}/no_fallback/tmp KONTROL_UPGRADE_DEBUG=yes \
+	KONTROL_UPGRADE_DEBUG_LOG=${DEBUG_LOG} AVAILABLE_upgrade290=no \
+	"${CHECK}" 2>/dev/null)
+debug_rc=$?
+set -e
+[ "${debug_rc}" -eq 1 ]
+[ -z "${debug_output}" ]
+grep -q 'authorized target version=2.9.0' "${DEBUG_LOG}"
+grep -q 'pkg update failed for target=2.9.0' "${DEBUG_LOG}"
+grep -q 'eligible targets failed verification' "${DEBUG_LOG}"
+
 # Exercise the real check_upgrade caller function with its dependencies mocked.
 CALLER=${ROOT}/caller.sh
 awk '/^check_upgrade\(\)/,/^}/' "${HERE}/../files/Kontrol-upgrade" > "${ROOT}/check-function"
