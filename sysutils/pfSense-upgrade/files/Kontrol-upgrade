@@ -1540,6 +1540,7 @@ while getopts 46b:cdfi:hp:l:nr:RuUy opt; do
 			;;
 		d)
 			stdout=''
+			upgrade_debug=yes
 			;;
 		f)
 			force=1

@@ -9,6 +9,16 @@ PRODUCT=${PRODUCT:-Kontrol}
 TMP_ROOT=${TMPDIR:-/tmp}
 tmpdirs=""
 
+debug()
+{
+	[ "${KONTROL_UPGRADE_DEBUG:-no}" = yes ] || return 0
+	message="Kontrol-upgrade-check-repos[$$]: $*"
+	printf '%s\n' "${message}" >&2
+	if [ -n "${KONTROL_UPGRADE_DEBUG_LOG:-}" ]; then
+		printf '%s\n' "${message}" >> "${KONTROL_UPGRADE_DEBUG_LOG}"
+	fi
+}
+
 cleanup()
 {
 	for dir in ${tmpdirs}; do
@@ -16,6 +26,8 @@ cleanup()
 	done
 }
 trap 'cleanup' 0 1 2 15
+
+debug "start templates=${REPO_TEMPLATE_DIR} real_db=${REAL_PKG_DBDIR} tmp_root=${TMP_ROOT}"
 
 field()
 {
@@ -63,17 +75,22 @@ had_eligible=no
 had_failure=no
 for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 	[ -f "${marker}" ] || continue
-	[ "$(field "${marker}" managed_by)" = "Kontrol-repo" ] || continue
-	[ "$(field "${marker}" eligible)" = "yes" ] || continue
-	[ "$(field "${marker}" supported_direct)" = "yes" ] || continue
-	[ "$(field "${marker}" channel)" = "release" ] || continue
+	debug "examining marker=${marker}"
+	[ "$(field "${marker}" managed_by)" = "Kontrol-repo" ] || { debug "ignored marker: managed_by is not Kontrol-repo"; continue; }
+	[ "$(field "${marker}" eligible)" = "yes" ] || { debug "ignored marker: eligible is not yes"; continue; }
+	[ "$(field "${marker}" supported_direct)" = "yes" ] || { debug "ignored marker: supported_direct is not yes"; continue; }
+	[ "$(field "${marker}" channel)" = "release" ] || { debug "ignored marker: channel is not release"; continue; }
 
 	had_eligible=yes
 	version=$(field "${marker}" version)
 	template=$(field "${marker}" template)
 	signature_policy=$(field "${marker}" signature_policy)
 	case "${version}:${template}" in
-		*[!A-Za-z0-9_.:-]*|:*) had_failure=yes; continue ;;
+		*[!A-Za-z0-9_.:-]*|:*) debug "invalid version or template metadata"; had_failure=yes; continue ;;
+	esac
+	case "${signature_policy}" in
+		fingerprints|none) ;;
+		*) debug "invalid signature_policy=${signature_policy:-<empty>}"; had_failure=yes; continue ;;
 	esac
 	case "${signature_policy}" in
 		fingerprints|none) ;;
@@ -86,7 +103,7 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
 	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || continue
 
-	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { had_failure=yes; continue; }
+	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { debug "mktemp failed under ${TMP_ROOT}"; had_failure=yes; continue; }
 	tmpdirs="${tmpdirs} ${dir}"
 	mkdir -p "${dir}/db" "${dir}/repos" || { had_failure=yes; continue; }
 	if [ "${signature_policy}" = none ]; then
@@ -139,5 +156,6 @@ if [ -n "${best}" ]; then
 	fi
 	exit 2
 fi
-[ "${had_eligible}" = yes ] && [ "${had_failure}" = yes ] && exit 1
+[ "${had_eligible}" = yes ] && [ "${had_failure}" = yes ] && { debug "completed: eligible targets failed verification"; exit 1; }
+debug "completed: no direct upgrade available"
 exit 0
