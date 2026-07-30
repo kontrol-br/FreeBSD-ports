@@ -563,6 +563,58 @@ pkg_set_origin() {
 	done
 }
 
+require_direct_upgrade_repo() {
+	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
+	local _target
+	_target=$(KONTROL_UPGRADE_OUTPUT=template \
+	    KONTROL_UPGRADE_DEBUG=${upgrade_debug:-no} \
+	    KONTROL_UPGRADE_DEBUG_LOG=${logfile} ${_check_repos})
+	local _rc=$?
+	case "${_rc}" in
+		0)
+			return 0
+			;;
+		2)
+			;;
+		*)
+			echo "Unable to verify the supported upgrade repository" >&2
+			_exit 1
+			;;
+	esac
+
+	case "${_target}" in
+		*'|'*) ;;
+		*)
+			echo "Invalid supported upgrade repository metadata" >&2
+			_exit 1
+			;;
+	esac
+	local _version=${_target%%|*}
+	local _template=${_target#*|}
+	case "${_version}:${_template}" in
+		*[!A-Za-z0-9_.:-]*|:*)
+			echo "Invalid supported upgrade repository metadata" >&2
+			_exit 1
+			;;
+	esac
+	local _template_dir=${KONTROL_REPO_TEMPLATE_DIR:-/usr/local/share/${product}/pkg/repos}
+	local _active_dir=${KONTROL_REPO_ACTIVE_DIR:-/usr/local/etc/pkg/repos}
+	local _target_conf="${_template_dir}/${_template}.conf"
+	[ -f "${_target_conf}" ] || {
+		echo "Supported upgrade repository template is missing" >&2
+		_exit 1
+	}
+	local _active_conf="${_active_dir}/${product}.conf"
+	local _selected_conf=$(realpath -q "${_active_conf}")
+	local _required_conf=$(realpath -q "${_target_conf}")
+	if [ -z "${_selected_conf}" ] || [ "${_selected_conf}" != "${_required_conf}" ]; then
+		_echo "ERROR: ${product} ${_version} is available, but the active repository is not set to ${_version}."
+		_echo "Select the ${product} ${_version} repository on the upgrade page and try again."
+		_echo "No packages were changed."
+		_exit 1
+	fi
+}
+
 pkg_upgrade() {
 	# figure out which kernel variant is running
 	export kernel_pkg=$(_pkg query %n $(_pkg info \
@@ -676,6 +728,9 @@ pkg_upgrade() {
 			rm -f ${logfile}
 		fi
 
+		# The 2.7.2 GUI cannot select a direct target automatically.  Refuse to
+		# reinstall the current release until the user explicitly selects it.
+		require_direct_upgrade_repo
 		pkg_update force
 
 		# Lock pkg to avoid having pkg binary for version N+1 installed

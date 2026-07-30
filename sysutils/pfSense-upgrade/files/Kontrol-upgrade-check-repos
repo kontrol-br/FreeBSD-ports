@@ -70,6 +70,7 @@ prepare_unsigned_copy()
 }
 
 best=""
+best_template=""
 had_eligible=no
 had_failure=no
 for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
@@ -144,13 +145,18 @@ PKGCONF
 	fi
 	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t "${version}" "${best}")" = ">" ]; then
 		best=${version}
+		best_template=${template}
 		debug "selected best target=${best}"
 	fi
 done
 
 if [ -n "${best}" ]; then
 	debug "completed: upgrade target=${best}"
-	echo "${best}"
+	if [ "${KONTROL_UPGRADE_OUTPUT:-version}" = template ]; then
+		printf '%s|%s\n' "${best}" "${best_template}"
+	else
+		echo "${best}"
+	fi
 	exit 2
 fi
 [ "${had_eligible}" = yes ] && [ "${had_failure}" = yes ] && { debug "completed: eligible targets failed verification"; exit 1; }

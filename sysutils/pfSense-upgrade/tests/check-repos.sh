@@ -108,6 +108,60 @@ run_case irrelevant_failure 2 2.9.0 broken281,2.8.1,no,no,no upgrade290,2.9.0,ye
 # An unsigned query is allowed only by an explicit, strictly valid policy.
 run_case unsigned_not_authorized 1 '' upgrade290,2.9.0,yes,yes,yes,invalid
 run_case signed_target 2 2.9.0 upgrade290,2.9.0,yes,yes,yes,fingerprints
+
+set +e
+mkdir -p "${ROOT}/template-snap"
+template_output=$(ABI=FreeBSD:14:amd64 ALTABI=freebsd:14:x86:64 \
+	CALL_LOG=${ROOT}/calls SNAP_DIR=${ROOT}/template-snap PKG_STATIC=${MOCK} \
+	REPO_TEMPLATE_DIR=${ROOT}/direct_290/repos REAL_PKG_DBDIR=${ROOT}/realdb \
+	TMPDIR=${ROOT}/direct_290/tmp KONTROL_UPGRADE_OUTPUT=template "${CHECK}" 2>/dev/null)
+template_rc=$?
+set -e
+[ "${template_rc}" -eq 2 ]
+[ "${template_output}" = '2.9.0|upgrade290' ]
+
+# Starting the real upgrade (not -c) refuses to reinstall from the old repo.
+REQUIRE=${ROOT}/require.sh
+awk '/^require_direct_upgrade_repo\(\)/,/^}/' \
+	"${HERE}/../files/Kontrol-upgrade" > "${ROOT}/require-function"
+mkdir -p "${ROOT}/require/templates" "${ROOT}/require/active"
+: > "${ROOT}/require/templates/current.conf"
+: > "${ROOT}/require/templates/upgrade290.conf"
+ln -s "${ROOT}/require/templates/current.conf" \
+	"${ROOT}/require/active/Kontrol.conf"
+cat > "${ROOT}/target-helper" <<'TARGET_HELPER'
+#!/bin/sh
+echo '2.9.0|upgrade290'
+exit 2
+TARGET_HELPER
+chmod +x "${ROOT}/target-helper"
+cat > "${REQUIRE}" <<REQUIRE_HEAD
+#!/bin/sh
+product=Kontrol
+logfile=/dev/null
+KONTROL_CHECK_REPOS=${ROOT}/target-helper
+KONTROL_REPO_TEMPLATE_DIR=${ROOT}/require/templates
+KONTROL_REPO_ACTIVE_DIR=${ROOT}/require/active
+export KONTROL_CHECK_REPOS KONTROL_REPO_TEMPLATE_DIR KONTROL_REPO_ACTIVE_DIR
+_echo() { echo "\$*"; }
+_exit() { exit "\$1"; }
+REQUIRE_HEAD
+cat "${ROOT}/require-function" >> "${REQUIRE}"
+printf '%s\n' 'require_direct_upgrade_repo' >> "${REQUIRE}"
+chmod +x "${REQUIRE}"
+set +e
+require_output=$("${REQUIRE}")
+require_rc=$?
+set -e
+[ "${require_rc}" -eq 1 ]
+[ "${require_output}" = "ERROR: Kontrol 2.9.0 is available, but the active repository is not set to 2.9.0.
+Select the Kontrol 2.9.0 repository on the upgrade page and try again.
+No packages were changed." ]
+[ "$(readlink "${ROOT}/require/active/Kontrol.conf")" = \
+	"${ROOT}/require/templates/current.conf" ]
+ln -sfn "${ROOT}/require/templates/upgrade290.conf" \
+	"${ROOT}/require/active/Kontrol.conf"
+[ -z "$("${REQUIRE}")" ]
 grep -q 'signature_type: none' "${ROOT}/direct_290/snap"/repo.*.conf
 [ "$(grep -c 'signature_type: none' "${ROOT}/direct_290/snap"/repo.*.conf)" -eq 2 ]
 grep -q 'signature_type: "fingerprints"' "${ROOT}/signed_target/snap"/repo.*.conf
