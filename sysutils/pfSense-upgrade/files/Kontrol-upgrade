@@ -124,21 +124,48 @@ pkg_static() {
 
 offline_repo_prepare() {
 	local _repo_dir="/var/cache/pkg/${product}-upgrade-repo"
+	local _packages_dir="${_repo_dir}/packages"
 	local _repos_dir="${_repo_dir}/repos"
+	local _pkg_file _pkg_abi _target_osmajor
 
 	rm -rf "${_repo_dir}"
-	mkdir -p "${_repos_dir}"
+	mkdir -p "${_packages_dir}" "${_repos_dir}"
 
-	# All packages selected by the solver were fetched immediately before
-	# this call.  Generate fresh repository metadata from those packages so
-	# that the target pkg binary does not need to read the old pkg database or
-	# contact the remote repository during early boot.
-	_exec "pkg_static repo -o ${_repo_dir} /var/cache/pkg" \
+	# /var/cache/pkg can also contain packages left by earlier operations for
+	# the running ABI.  A repository containing both the old and target ABI is
+	# rejected by pkg while its catalogue is processed.  Stage only packages
+	# for the target FreeBSD major selected by the repository configuration.
+	_target_osmajor=$(echo "${ABI}" | \
+	    awk -F: 'tolower($1)=="freebsd" { print $2 }')
+	for _pkg_file in $(find /var/cache/pkg -type f \
+	    \( -name '*.pkg' -o -name '*.txz' \) \
+	    ! -path "${_repo_dir}/*"); do
+		_pkg_abi=$(/usr/local/sbin/pkg-static query -F "${_pkg_file}" \
+		    %q 2>/dev/null | tr '[:upper:]' '[:lower:]')
+		case "${_pkg_abi}" in
+			freebsd:${_target_osmajor}:*)
+				ln -f "${_pkg_file}" \
+				    "${_packages_dir}/$(basename "${_pkg_file}")" \
+				    2>/dev/null || \
+				    cp -f "${_pkg_file}" "${_packages_dir}/"
+				;;
+		esac
+	done
+
+	if ! find "${_packages_dir}" -type f \
+	    \( -name '*.pkg' -o -name '*.txz' \) | grep -q .; then
+		_echo "ERROR: No cached packages match target ABI ${ABI}"
+		_exit 1
+	fi
+
+	# Generate fresh metadata from the filtered transaction so the target pkg
+	# binary does not need the old catalogue or the network during early boot.
+	_exec "pkg_static repo ${_packages_dir}" \
 	    "Preparing offline upgrade repository"
 
 	cat > "${_repos_dir}/${product}-offline.conf" << EOF
 ${product}-offline: {
-	url: "file://${_repo_dir}",
+	url: "file://${_packages_dir}",
 	enabled: yes,
 	signature_type: "none"
 }
