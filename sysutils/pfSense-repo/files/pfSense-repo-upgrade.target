@@ -3,5 +3,8 @@ eligible=yes
 supported_direct=yes
 channel=release
 version=2.9.0
-template=pfSense-repo-upgrade
+# Package builds rename the repository templates to the product name.  Keep
+# this value in sync with the installed Kontrol-repo-upgrade.{conf,abi} files,
+# rather than with their pfSense-named ports source templates.
+template=Kontrol-repo-upgrade
 signature_policy=none

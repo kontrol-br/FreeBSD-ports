@@ -5,6 +5,11 @@ CHECK=${HERE}/../files/Kontrol-upgrade-check-repos
 ROOT=$(mktemp -d /tmp/Kontrol-upgrade-test.XXXXXX)
 trap 'rm -rf "${ROOT}"' EXIT HUP INT TERM
 MOCK=${ROOT}/pkg-static
+
+# The packaged marker must name the product-renamed installed templates.  A
+# source-tree pfSense name makes every real Kontrol check fail before pkg runs.
+grep -q '^template=Kontrol-repo-upgrade$' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target"
 cat > "${MOCK}" <<'MOCKEOF'
 #!/bin/sh
 printf '%s\n' "$*" >> "${CALL_LOG}"
