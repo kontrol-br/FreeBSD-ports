@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.7.2
-PORTREVISION=	6
+PORTREVISION=	7
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -31,7 +31,7 @@ PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
 .include <bsd.port.pre.mk>
 
 MIRROR_TYPE?=	srv
-PFSENSE_REPOS?=	pfSense-repo pfSense-repo-previous pfSense-repo-upgrade
+PFSENSE_REPOS?=	pfSense-repo pfSense-repo-upgrade
 PFSENSE_REPOS_${ARCH}?=	${PFSENSE_REPOS}
 PFSENSE_DEFAULT_REPO?=	pfSense-repo
 PFSENSE_DEFAULT_REPO_${ARCH}?=	${PFSENSE_DEFAULT_REPO}
@@ -43,6 +43,7 @@ TMP_PLIST_FILES=${PFSENSE_REPOS_${ARCH}:C/$/.conf/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.abi/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.altabi/}
 PLIST_FILES=	${TMP_PLIST_FILES:C/^/%%DATADIR%%\/pkg\/repos\//} \
+		%%DATADIR%%/pkg/repos/pfSense-repo-upgrade.target \
 		${DEFAULT_REPO}.default \
 		${DATADIR}/next_pkg_set_version
 DEFAULT_ABI=	${OPSYS}:${OSREL:C/\..*//}:${ARCH}
@@ -123,6 +124,8 @@ do-install:
 	${TOUCH} ${STAGEDIR}${DEFAULT_REPO}.default
 	${MKDIR} ${STAGEDIR}${DATADIR}/keys/pkg/trusted/
 	${INSTALL_DATA} ${FILESDIR}/usr/local/share/Kontrol/keys/pkg/trusted/pkg.kontrol.com.br.20180421 ${STAGEDIR}${DATADIR}/keys/pkg/trusted/pkg.kontrol.com.br.20180421
+	${INSTALL_DATA} ${WRKSRC}/pfSense-repo-upgrade.target \
+		${STAGEDIR}${DATADIR}/pkg/repos
 .for f in ${PFSENSE_REPOS_${ARCH}}
 	${INSTALL_DATA} ${WRKSRC}/${f}.conf ${STAGEDIR}${DATADIR}/pkg/repos
 	${INSTALL_DATA} ${WRKSRC}/${f}.descr ${STAGEDIR}${DATADIR}/pkg/repos

@@ -1150,6 +1150,26 @@ check_upgrade() {
 		return 2
 	done
 
+	# The active 2.7.2 repository intentionally remains selected.  Only after
+	# it is known to be current, inspect direct-release targets published by
+	# Kontrol-repo in isolated pkg databases.
+	local _upgrade_target
+	_upgrade_target=$(/usr/local/libexec/Kontrol-upgrade-check-repos)
+	local _target_rc=$?
+	case "${_target_rc}" in
+		2)
+			[ -z "${_mute}" ] && _echo \
+			    "${_upgrade_target} version of ${product} is available"
+			return 2
+			;;
+		0)
+			;;
+		*)
+			echo "Unable to verify the supported upgrade repository" >&2
+			return 1
+			;;
+	esac
+
 	[ -z "${_mute}" ] \
 	    && _echo "Your system is up to date"
 	return 0
