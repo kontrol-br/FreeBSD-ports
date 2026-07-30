@@ -446,6 +446,7 @@ pkg_update() {
 }
 
 pkg_upgrade_repo() {
+	local _check_only="${1}"
 	# A pkg binary built for the target FreeBSD major cannot run on the
 	# currently installed base.  Keep pkg pinned while only the repository
 	# package is synchronized; stage 2 replaces it after the new kernel/base
@@ -488,6 +489,10 @@ pkg_upgrade_repo() {
 			return
 			;;
 		*)
+			if [ "${_check_only}" = "check_only" ]; then
+				echo "ERROR: Unable to compare version of ${_repo_pkg}" >&2
+				return 1
+			fi
 			_echo "ERROR: Unable to compare version of ${_repo_pkg}"
 			_exit 1
 	esac
@@ -1127,7 +1132,9 @@ check_upgrade() {
 	[ -z "${_skip_update}" ] \
 	    && pkg_update "" mute
 
-	pkg_upgrade_repo
+	# Failure to compare the active repository package must not prevent the
+	# read-only direct-target check.  Other actions retain the old fatal path.
+	pkg_upgrade_repo check_only || :
 
 	local _version_compare=""
 	for _package in ${_meta_pkg} ${_core_pkgs}; do
@@ -1154,7 +1161,9 @@ check_upgrade() {
 	# it is known to be current, inspect direct-release targets published by
 	# Kontrol-repo in isolated pkg databases.
 	local _upgrade_target
-	_upgrade_target=$(/usr/local/libexec/Kontrol-upgrade-check-repos)
+	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
+	_upgrade_target=$(KONTROL_UPGRADE_DEBUG=${upgrade_debug:-no} \
+	    KONTROL_UPGRADE_DEBUG_LOG=${logfile} ${_check_repos})
 	local _target_rc=$?
 	case "${_target_rc}" in
 		2)
@@ -1417,13 +1426,7 @@ if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
 fi
 
 product_version=$(cat /etc/version)
-do_not_send_uniqueid=$(read_xml_tag.sh boolean system/do_not_send_uniqueid)
-if [ "${do_not_send_uniqueid}" != "true" ]; then
-	uniqueid=$(gnid)
-	export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
-else
-	export HTTP_USER_AGENT="${product}/${product_version}"
-fi
+export HTTP_USER_AGENT="${product}/${product_version}"
 
 validate_repo_conf
 
@@ -1481,6 +1484,7 @@ while getopts 46b:cdfi:hp:l:nr:RuUy opt; do
 			;;
 		d)
 			stdout=''
+			upgrade_debug=yes
 			;;
 		f)
 			force=1
@@ -1563,14 +1567,14 @@ fi
 
 # Force debug if /cf/conf/upgrade_debug is present
 [ -f "/cf/conf/upgrade_debug" ] \
-    && stdout=''
+	&& { stdout=''; upgrade_debug=yes; }
 
 # Set default action when no parameter is set
 : ${action:="upgrade"}
 
 if pgrep -qF ${pid_file} >/dev/null 2>&1; then
 	echo "Another instance is already running... Aborting!"
-	exit 1
+	exit 75
 fi
 
 echo $$ > ${pid_file}
