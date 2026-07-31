@@ -32,6 +32,8 @@
 	<name>e2guardian</name>
 	<version>0.9.2</version>
 	<title>Services: E2guardian</title>
+	<delete_string>E2guardian: removed a configuration item.</delete_string>
+	<addedit_string>E2guardian: changed settings.</addedit_string>
 	<include_file>/usr/local/pkg/e2guardian.inc</include_file>
 	<menu>
 		<name>E2guardian Proxy</name>
