@@ -150,7 +150,8 @@ set -e
 [ "${template_rc}" -eq 2 ]
 [ "${template_output}" = '2.9.0|upgrade290' ]
 
-# Starting the real upgrade (not -c) refuses to reinstall from the old repo.
+# Starting the real upgrade (not -c) activates the verified target. Detection
+# remains read-only; GUI confirmation is the authorization boundary.
 REQUIRE=${ROOT}/require.sh
 awk '/^require_direct_upgrade_repo\(\)/,/^}/' \
 	"${HERE}/../files/Kontrol-upgrade" > "${ROOT}/require-function"
@@ -175,6 +176,7 @@ KONTROL_REPO_ACTIVE_DIR=${ROOT}/require/active
 export KONTROL_CHECK_REPOS KONTROL_REPO_TEMPLATE_DIR KONTROL_REPO_ACTIVE_DIR
 _echo() { echo "\$*"; }
 _exit() { exit "\$1"; }
+abi_setup() { echo abi_setup >> ${ROOT}/require/calls; }
 REQUIRE_HEAD
 cat "${ROOT}/require-function" >> "${REQUIRE}"
 printf '%s\n' 'require_direct_upgrade_repo' >> "${REQUIRE}"
@@ -183,12 +185,11 @@ set +e
 require_output=$("${REQUIRE}")
 require_rc=$?
 set -e
-[ "${require_rc}" -eq 1 ]
-[ "${require_output}" = "ERROR: Kontrol 2.9.0 is available, but the active repository is not set to 2.9.0.
-Select the Kontrol 2.9.0 repository on the upgrade page and try again.
-No packages were changed." ]
+[ "${require_rc}" -eq 0 ]
+[ "${require_output}" = "Selected Kontrol 2.9.0 upgrade repository" ]
 [ "$(readlink "${ROOT}/require/active/Kontrol.conf")" = \
-	"${ROOT}/require/templates/current.conf" ]
+	"${ROOT}/require/templates/upgrade290.conf" ]
+[ "$(cat "${ROOT}/require/calls")" = abi_setup ]
 ln -sfn "${ROOT}/require/templates/upgrade290.conf" \
 	"${ROOT}/require/active/Kontrol.conf"
 [ -z "$("${REQUIRE}")" ]
