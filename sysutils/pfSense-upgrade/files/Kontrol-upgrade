@@ -176,8 +176,19 @@ offline_repo_enable() {
 	local _repo_dir="/var/cache/pkg/${product}-upgrade-repo"
 	local _pkg_conf="${_repo_dir}/pkg.conf"
 	local _pkg_config_format="${1:-altabi}"
+	local _repo_name="${2:-${product}-offline}"
 
 	if [ -f "${_repo_dir}/repos/${product}-offline.conf" ]; then
+		# Core packages use the private name while add-ons are locked in
+		# stage 2.  Stage 3 switches the same file repository to the normal
+		# product name so pkg records the repository expected by get_pkg_info().
+		cat > "${_repo_dir}/repos/${product}-offline.conf" << EOF
+${_repo_name}: {
+	url: "file://${_repo_dir}/packages",
+	enabled: yes,
+	signature_type: "none"
+}
+EOF
 		# Use a complete, dedicated pkg configuration.  Passing an
 		# array-valued REPOS_DIR through `pkg -o` is not portable between pkg
 		# 1.x and 2.x and resulted in "No active remote repositories
@@ -1181,7 +1192,7 @@ EOF
 	if [ "${next_stage}" = "3" ]; then
 		# The second reboot also reaches this code before interfaces are
 		# configured.  Finish add-on packages from the same local transaction.
-		offline_repo_enable osversion || {
+		offline_repo_enable osversion "${product}" || {
 			_echo "ERROR: Offline upgrade repository is missing at final stage"
 			_exit 1
 		}
