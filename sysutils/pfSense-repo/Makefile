@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.8.1
-PORTREVISION=	5
+PORTREVISION=	7
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -41,9 +41,10 @@ DEFAULT_REPO=	${DATADIR}/pkg/repos/${PFSENSE_DEFAULT_REPO_${ARCH}}.conf
 TMP_PLIST_FILES=${PFSENSE_REPOS_${ARCH}:C/$/.conf/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.descr/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.abi/} \
-		${PFSENSE_REPOS_${ARCH}:C/$/.altabi/}
+		${PFSENSE_REPOS_${ARCH}:C/$/.altabi/} \
+		${PFSENSE_REPOS_${ARCH}:C/$/.osversion/} \
+		${PFSENSE_REPOS_${ARCH}:M*-upgrade:C/$/.target/}
 PLIST_FILES=	${TMP_PLIST_FILES:C/^/%%DATADIR%%\/pkg\/repos\//} \
-		%%DATADIR%%/pkg/repos/pfSense-repo-upgrade.target \
 		${DEFAULT_REPO}.default \
 		${DATADIR}/next_pkg_set_version
 DEFAULT_ABI=	${OPSYS}:${OSREL:C/\..*//}:${ARCH}
@@ -117,6 +118,11 @@ do-build:
 			-e "s,%%ARCH_OLD%%,${ALTABI_ARCH_OLD},g" \
 			${WRKSRC}/${f}.altabi; \
 	fi
+	@if [ -f ${WRKSRC}/${f}.target ]; then \
+		${REINPLACE_CMD} -i '' \
+			-e "s,%%PRODUCT_NAME%%,${PRODUCT_NAME},g" \
+			${WRKSRC}/${f}.target; \
+	fi
 .endfor
 
 do-install:
@@ -124,8 +130,6 @@ do-install:
 	${TOUCH} ${STAGEDIR}${DEFAULT_REPO}.default
 	${MKDIR} ${STAGEDIR}${DATADIR}/keys/pkg/trusted/
 	${INSTALL_DATA} ${FILESDIR}/usr/local/share/Kontrol/keys/pkg/trusted/pkg.kontrol.com.br.20180421 ${STAGEDIR}${DATADIR}/keys/pkg/trusted/pkg.kontrol.com.br.20180421
-	${INSTALL_DATA} ${WRKSRC}/pfSense-repo-upgrade.target \
-		${STAGEDIR}${DATADIR}/pkg/repos
 .for f in ${PFSENSE_REPOS_${ARCH}}
 	${INSTALL_DATA} ${WRKSRC}/${f}.conf ${STAGEDIR}${DATADIR}/pkg/repos
 	${INSTALL_DATA} ${WRKSRC}/${f}.descr ${STAGEDIR}${DATADIR}/pkg/repos
@@ -138,6 +142,14 @@ do-install:
 		${INSTALL_DATA} ${WRKSRC}/${f}.altabi ${STAGEDIR}${DATADIR}/pkg/repos; \
 	else \
 		${ECHO_CMD} ${DEFAULT_ALTABI} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.altabi; \
+	fi
+	if [ -f ${WRKSRC}/${f}.osversion ]; then \
+		${INSTALL_DATA} ${WRKSRC}/${f}.osversion ${STAGEDIR}${DATADIR}/pkg/repos; \
+	else \
+		${ECHO_CMD} ${OSVERSION} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.osversion; \
+	fi
+	if [ -f ${WRKSRC}/${f}.target ]; then \
+		${INSTALL_DATA} ${WRKSRC}/${f}.target ${STAGEDIR}${DATADIR}/pkg/repos; \
 	fi
 .endfor
 	${ECHO_CMD} ${PFSENSE_PKG_SET_VERSION} \

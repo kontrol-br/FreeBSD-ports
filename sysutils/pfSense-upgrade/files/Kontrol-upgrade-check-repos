@@ -92,12 +92,9 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 		fingerprints|none) ;;
 		*) debug "invalid signature_policy=${signature_policy:-<empty>}"; had_failure=yes; continue ;;
 	esac
-	case "${signature_policy}" in
-		fingerprints|none) ;;
-		*) had_failure=yes; continue ;;
-	esac
 	conf=${REPO_TEMPLATE_DIR}/${template}.conf
 	abi_file=${REPO_TEMPLATE_DIR}/${template}.abi
+	osversion_file=${REPO_TEMPLATE_DIR}/${template}.osversion
 	[ -f "${conf}" ] && [ -s "${abi_file}" ] || { had_failure=yes; continue; }
 
 	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
@@ -118,7 +115,13 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 	esac
 	os_major=${abi#FreeBSD:}; os_major=${os_major%%:*}
 	case "${os_major}" in *[!0-9]*|'') had_failure=yes; continue ;; esac
-	osversion=$((os_major * 100000))
+	if [ -s "${osversion_file}" ]; then
+		osversion=$(sed -n '1p' "${osversion_file}")
+	else
+		osversion=$((os_major * 100000))
+	fi
+	case "${osversion}" in *[!0-9]*|'') had_failure=yes; continue ;; esac
+	[ "$((osversion / 100000))" -eq "${os_major}" ] || { had_failure=yes; continue; }
 	cat > "${dir}/pkg.conf" <<PKGCONF
 PKG_DBDIR: "${dir}/db";
 REPOS_DIR: [ "${dir}/repos" ];

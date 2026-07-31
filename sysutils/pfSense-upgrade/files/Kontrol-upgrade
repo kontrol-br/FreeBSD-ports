@@ -276,6 +276,7 @@ repo_is_plus_upgrade() {
 abi_setup() {
 	local _freebsd_version=$(uname -r)
 	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
+	local _current_osmajor=${_freebsd_version%%.*}
 
 	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
 	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
@@ -311,8 +312,22 @@ abi_setup() {
 	fi
 
 	# Make sure pkg.conf is set properly so GUI can work
+	local _target_osmajor=$(echo "${ABI}" | awk -F: \
+	    'tolower($1) == "freebsd" { print $2 }')
+	if [ -f ${_repo_abi_file%%.conf}.osversion ]; then
+		OSVERSION=$(cat ${_repo_abi_file%%.conf}.osversion)
+	else
+		OSVERSION=${_target_osmajor}00000
+	fi
 	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-	echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+	if [ "${_target_osmajor}" -ge 15 ] 2>/dev/null; then
+		# FreeBSD 15 pkg rejects the legacy lower-case ALTABI.  OSVERSION
+		# must describe the target repository while crossing an OS major.
+		echo "OSVERSION=${OSVERSION}" \
+		    >> /usr/local/etc/pkg.conf
+	else
+		echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+	fi
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
@@ -345,14 +360,14 @@ EOF
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" -o "${CUR_ABI}" = "${ALTABI}" ] ; then
+	if [ "${_current_osmajor}" = "${_target_osmajor}" ]; then
 		NEW_MAJOR=""
 	else
 		NEW_MAJOR=1
 		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
+	export CUR_ABI CUR_ALTABI ABI ALTABI OSVERSION NEW_MAJOR
 }
 
 get_pkg_repo_url() {
@@ -730,8 +745,8 @@ pkg_upgrade() {
 			rm -f ${logfile}
 		fi
 
-		# The 2.7.2 GUI cannot select a direct target automatically.  Refuse to
-		# reinstall the current release until the user explicitly selects it.
+		# Refuse to reinstall 2.8.1 until its GUI has selected the verified
+		# 2.9.0 target repository.
 		require_direct_upgrade_repo
 		pkg_update force
 
@@ -1214,7 +1229,7 @@ check_upgrade() {
 		return 2
 	done
 
-	# The active 2.7.2 repository intentionally remains selected.  Only after
+	# The active 2.8.1 repository intentionally remains selected.  Only after
 	# it is known to be current, inspect direct-release targets published by
 	# Kontrol-repo in isolated pkg databases.
 	local _upgrade_target
