@@ -1,8 +1,8 @@
 # $FreeBSD$
 
 PORTNAME=	pfSense-repo
-DISTVERSION=	2.8.1
-PORTREVISION=	1
+DISTVERSION=	2.7.2
+PORTREVISION=	12
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -22,38 +22,55 @@ SUB_LIST=	PORTNAME=${PORTNAME} \
 		PRODUCT_NAME=${PRODUCT_NAME} \
 		DEFAULT_REPO=${DEFAULT_REPO}
 
-DATADIR=	${PREFIX}/share/pfSense
+PRODUCT_NAME?=	pfSense
+DATADIR=	${PREFIX}/share/${PRODUCT_NAME}
 
 # Flag used to detect when we want to reinstall all packages during upgrade
 PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
 
 .include <bsd.port.pre.mk>
 
-MIRROR_TYPE?=	none
-PFSENSE_REPOS?=	Kontrol-repo Kontrol-repo-previous
-DIRECT_REPOS=	Kontrol-repo-upgrade
+MIRROR_TYPE?=	srv
+PFSENSE_REPOS?=	pfSense-repo pfSense-repo-upgrade
 PFSENSE_REPOS_${ARCH}?=	${PFSENSE_REPOS}
-PFSENSE_REPOS_${ARCH}+=	${DIRECT_REPOS}
-PFSENSE_DEFAULT_REPO?=	pfSense-repo-devel
+PFSENSE_DEFAULT_REPO?=	pfSense-repo
 PFSENSE_DEFAULT_REPO_${ARCH}?=	${PFSENSE_DEFAULT_REPO}
 SIGNATURE_TYPE?=	fingerprints
-SUB_LIST+=	REPO_FILES="${PFSENSE_REPOS_${ARCH}}"
+PKG_REPO_BRANCH_UPGRADE?=	v2_9_0
 DEFAULT_REPO=	${DATADIR}/pkg/repos/${PFSENSE_DEFAULT_REPO_${ARCH}}.conf
 TMP_PLIST_FILES=${PFSENSE_REPOS_${ARCH}:C/$/.conf/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.descr/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.abi/} \
-		${PFSENSE_REPOS_${ARCH}:C/$/.osversion/} \
-		${DIRECT_REPOS:C/$/.target/}
+		${PFSENSE_REPOS_${ARCH}:C/$/.altabi/}
 PLIST_FILES=	${TMP_PLIST_FILES:C/^/%%DATADIR%%\/pkg\/repos\//} \
+		%%DATADIR%%/pkg/repos/pfSense-repo-upgrade.target \
 		${DEFAULT_REPO}.default \
 		${DATADIR}/next_pkg_set_version
 DEFAULT_ABI=	${OPSYS}:${OSREL:C/\..*//}:${ARCH}
 
+.if ${ARCH} == "aarch64"
+ALTABI_ARCH=	aarch64:64
+.elif ${ARCH} == "amd64"
+ALTABI_ARCH=	x86:64
+.elif ${ARCH} == "i386"
+ALTABI_ARCH=	x86:32
+.elif ${ARCH} == "armv6"
+ALTABI_ARCH=	32:el:eabi:hardfp
+.elif ${ARCH} == "armv7"
+ALTABI_ARCH=	32:el:eabi:softfp
+.else
+.error "Invalid arch: ${ARCH}"
+.endif
+
 .if ${ARCH} == "armv7"
 ARCH_OLD=	armv6
+ALTABI_ARCH_OLD=32:el:eabi:hardfp
 .else
 ARCH_OLD=	${ARCH}
+ALTABI_ARCH_OLD=${ALTABI_ARCH}
 .endif
+
+DEFAULT_ALTABI=	${OPSYS:tl}:${OSREL:C/\..*//}:${ALTABI_ARCH}
 
 .if defined(PKG_REPO_BRANCH_DEVEL_${ARCH}) && !empty(PKG_REPO_BRANCH_DEVEL_${ARCH})
 PKG_REPO_BRANCH_DEVEL=${PKG_REPO_BRANCH_DEVEL_${ARCH}}
@@ -80,6 +97,7 @@ do-build:
 		-e "s/%%MIRROR_TYPE%%/${MIRROR_TYPE}/" \
 		-e "s,%%PKG_REPO_BRANCH_DEVEL%%,${PKG_REPO_BRANCH_DEVEL},g" \
 		-e "s,%%PKG_REPO_BRANCH_RELEASE%%,${PKG_REPO_BRANCH_RELEASE},g" \
+		-e "s,%%PKG_REPO_BRANCH_UPGRADE%%,${PKG_REPO_BRANCH_UPGRADE},g" \
 		-e "s,%%PKG_REPO_SERVER_DEVEL%%,${PKG_REPO_SERVER_DEVEL},g" \
 		-e "s,%%PKG_REPO_SERVER_RELEASE%%,${PKG_REPO_SERVER_RELEASE},g" \
 		-e "s,%%POUDRIERE_PORTS_NAME%%,${POUDRIERE_PORTS_NAME},g" \
@@ -93,15 +111,21 @@ do-build:
 			-e "s,%%ARCH_OLD%%,${ARCH_OLD},g" \
 			${WRKSRC}/${f}.abi; \
 	fi
-	@if [ -f ${WRKSRC}/${f}.target ]; then \
-		${REINPLACE_CMD} -i '' -e "s,%%PRODUCT_NAME%%,${PRODUCT_NAME},g" \
-			${WRKSRC}/${f}.target; \
+	@if [ -f ${WRKSRC}/${f}.altabi ]; then \
+		${REINPLACE_CMD} -i '' \
+			-e "s,%%ARCH%%,${ALTABI_ARCH},g" \
+			-e "s,%%ARCH_OLD%%,${ALTABI_ARCH_OLD},g" \
+			${WRKSRC}/${f}.altabi; \
 	fi
 .endfor
 
 do-install:
 	${MKDIR} ${STAGEDIR}${DATADIR}/pkg/repos
 	${TOUCH} ${STAGEDIR}${DEFAULT_REPO}.default
+	${MKDIR} ${STAGEDIR}${DATADIR}/keys/pkg/trusted/
+	${INSTALL_DATA} ${FILESDIR}/usr/local/share/Kontrol/keys/pkg/trusted/pkg.kontrol.com.br.20180421 ${STAGEDIR}${DATADIR}/keys/pkg/trusted/pkg.kontrol.com.br.20180421
+	${INSTALL_DATA} ${WRKSRC}/pfSense-repo-upgrade.target \
+		${STAGEDIR}${DATADIR}/pkg/repos
 .for f in ${PFSENSE_REPOS_${ARCH}}
 	${INSTALL_DATA} ${WRKSRC}/${f}.conf ${STAGEDIR}${DATADIR}/pkg/repos
 	${INSTALL_DATA} ${WRKSRC}/${f}.descr ${STAGEDIR}${DATADIR}/pkg/repos
@@ -110,13 +134,10 @@ do-install:
 	else \
 		${ECHO_CMD} ${DEFAULT_ABI} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.abi; \
 	fi
-	if [ -f ${WRKSRC}/${f}.osversion ]; then \
-		${INSTALL_DATA} ${WRKSRC}/${f}.osversion ${STAGEDIR}${DATADIR}/pkg/repos; \
+	if [ -f ${WRKSRC}/${f}.altabi ]; then \
+		${INSTALL_DATA} ${WRKSRC}/${f}.altabi ${STAGEDIR}${DATADIR}/pkg/repos; \
 	else \
-		${ECHO_CMD} ${OSVERSION} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.osversion; \
-	fi
-	if [ -f ${WRKSRC}/${f}.target ]; then \
-		${INSTALL_DATA} ${WRKSRC}/${f}.target ${STAGEDIR}${DATADIR}/pkg/repos; \
+		${ECHO_CMD} ${DEFAULT_ALTABI} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.altabi; \
 	fi
 .endfor
 	${ECHO_CMD} ${PFSENSE_PKG_SET_VERSION} \

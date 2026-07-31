@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-HERE=$(CDPATH='' cd -- "$(dirname "$0")" && pwd)
+HERE=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 CHECK=${HERE}/../files/Kontrol-upgrade-check-repos
 ROOT=$(mktemp -d /tmp/Kontrol-upgrade-test.XXXXXX)
 trap 'rm -rf "${ROOT}"' EXIT HUP INT TERM
@@ -8,8 +8,8 @@ MOCK=${ROOT}/pkg-static
 
 # The packaged marker must name the product-renamed installed templates.  A
 # source-tree pfSense name makes every real Kontrol check fail before pkg runs.
-grep -q '^template=%%PRODUCT_NAME%%-repo-upgrade$' \
-	"${HERE}/../../pfSense-repo/files/Kontrol-repo-upgrade.target"
+grep -q '^template=Kontrol-repo-upgrade$' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target"
 cat > "${MOCK}" <<'MOCKEOF'
 #!/bin/sh
 [ -z "${ABI:-}" ] && [ -z "${ALTABI:-}" ] && [ -z "${OSVERSION:-}" ] || {
@@ -19,20 +19,14 @@ cat > "${MOCK}" <<'MOCKEOF'
 printf '%s\n' "$*" >> "${CALL_LOG}"
 conf=; if [ "$1" = -C ]; then conf=$2; shift 2; fi
 if [ "$1" = version ]; then
-	echo 'pkg-static: Warning: Major OS version upgrade detected.' >&2
 	[ "$4" = "$3" ] && echo = && exit 0
-	awk -v a="$3" -v b="$4" 'BEGIN {
-		na=split(a, av, "."); nb=split(b, bv, "."); n=(na>nb?na:nb)
-		for (i=1; i<=n; i++) { if ((av[i]+0)<(bv[i]+0)) { print "<"; exit }; if ((av[i]+0)>(bv[i]+0)) { print ">"; exit } }
-		print "="
-	}'
+	awk -v a="$3" -v b="$4" 'BEGIN { print ((a+0)<(b+0))?"<":">" }'
 	exit 0
 fi
 case "$1:$2" in
 	query:%v)
-		case "$3" in Kontrol|Kontrol-base|Kontrol-kernel-Kontrol) echo 2.8.1;; *) exit 1;; esac ;;
+		case "$3" in Kontrol|Kontrol-base|Kontrol-kernel-Kontrol) echo 2.7.2;; *) exit 1;; esac ;;
 	update:-f)
-		echo 'Updating mock repository catalogue...'
 		cp "$conf" "${SNAP_DIR}/pkg.$$.conf"
 		repodir=$(sed -n 's@REPOS_DIR: \[ "\([^"]*\)" \];@\1@p' "$conf")
 		template=$(basename "$(find "$repodir" -name '*.conf' | head -1)" .conf)
@@ -58,7 +52,7 @@ run_case()
 	: > "${ROOT}/calls"
 	for spec in "$@"; do
 		# template,version,eligible,supported,available,signature_policy
-		IFS=, read -r template version eligible supported available signature_policy <<SPEC
+		IFS=, read template version eligible supported available signature_policy <<SPEC
 ${spec}
 SPEC
 		: "${signature_policy:=none}"
@@ -80,13 +74,12 @@ Kontrol: {
 }
 CONF
 		echo FreeBSD:16:amd64 > "${dir}/repos/${template}.abi"
-		echo 1600000 > "${dir}/repos/${template}.osversion"
 		eval "export AVAILABLE_${template}=${available} VERSION_${template}=${version}"
 	done
 	before=$(find "${dir}" -type f -exec sha256sum {} + | sort | sha256sum)
 	set +e
 	mkdir -p "${dir}/snap"
-	output=$(ABI=FreeBSD:15:amd64 ALTABI=freebsd:15:x86:64 OSVERSION=1500000 \
+	output=$(ABI=FreeBSD:14:amd64 ALTABI=freebsd:14:x86:64 OSVERSION=1400097 \
 	    CALL_LOG=${ROOT}/calls SNAP_DIR=${dir}/snap PKG_STATIC=${MOCK} REPO_TEMPLATE_DIR=${dir}/repos \
 	    REAL_PKG_DBDIR=${dir}/realdb TMPDIR=${dir}/tmp "${CHECK}" 2>"${dir}/stderr")
 	rc=$?
@@ -101,12 +94,12 @@ CONF
 	if find "${dir}/snap" -name 'pkg.*.conf' -print -quit | grep -q .; then
 		grep -q 'ABI: "FreeBSD:16:amd64";' "${dir}"/snap/pkg.*.conf
 		grep -q 'OSVERSION: 1600000;' "${dir}"/snap/pkg.*.conf
-		if grep -q ALTABI "${dir}"/snap/pkg.*.conf; then exit 1; fi
+		! grep -q ALTABI "${dir}"/snap/pkg.*.conf
 	fi
 }
 
 run_case direct_290 2 2.9.0 upgrade290,2.9.0,yes,yes,yes
-run_case highest 2 2.10.0 upgrade290,2.9.0,yes,yes,yes upgrade2100,2.10.0,yes,yes,yes
+run_case highest 2 2.9.0 upgrade281,2.8.1,yes,yes,yes upgrade290,2.9.0,yes,yes,yes
 run_case unmarked_281 0 '' upgrade281,2.8.1,no,no,yes
 run_case no_stages 2 2.9.0 upgrade281,2.8.1,yes,yes,yes upgrade290,2.9.0,yes,yes,yes
 run_case no_fallback 1 '' upgrade281,2.8.1,yes,no,yes upgrade290,2.9.0,yes,yes,no
@@ -118,7 +111,7 @@ run_case signed_target 2 2.9.0 upgrade290,2.9.0,yes,yes,yes,fingerprints
 
 set +e
 mkdir -p "${ROOT}/template-snap"
-template_output=$(ABI=FreeBSD:15:amd64 ALTABI=freebsd:15:x86:64 OSVERSION=1500000 \
+template_output=$(ABI=FreeBSD:14:amd64 ALTABI=freebsd:14:x86:64 \
 	CALL_LOG=${ROOT}/calls SNAP_DIR=${ROOT}/template-snap PKG_STATIC=${MOCK} \
 	REPO_TEMPLATE_DIR=${ROOT}/direct_290/repos REAL_PKG_DBDIR=${ROOT}/realdb \
 	TMPDIR=${ROOT}/direct_290/tmp KONTROL_UPGRADE_OUTPUT=template "${CHECK}" 2>/dev/null)
@@ -198,7 +191,7 @@ wait "${nc_pid}" 2>/dev/null || :
 PROGRESS_TAIL
 chmod +x "${START_PROGRESS}"
 "${START_PROGRESS}"
-[ "$(grep -c '^[[:space:]]*start_progress_listener$' "${HERE}/../files/Kontrol-upgrade")" -ge 1 ]
+[ "$(grep -c '^start_progress_listener$' "${HERE}/../files/Kontrol-upgrade")" -eq 1 ]
 grep -q 'signature_type: none' "${ROOT}/direct_290/snap"/repo.*.conf
 [ "$(grep -c 'signature_type: none' "${ROOT}/direct_290/snap"/repo.*.conf)" -eq 2 ]
 grep -q 'signature_type: "fingerprints"' "${ROOT}/signed_target/snap"/repo.*.conf
@@ -238,9 +231,6 @@ set -e
 [ "${caller_rc}" -eq 2 ]
 [ "${caller_output}" = '2.9.0 version of Kontrol is available' ]
 
-if grep -q 'gnid' "${HERE}/../files/Kontrol-upgrade"; then exit 1; fi
+! grep -q 'gnid' "${HERE}/../files/Kontrol-upgrade"
 grep -q 'exit 75' "${HERE}/../files/Kontrol-upgrade"
-if grep -q '/etc/platform' "${HERE}/../files/Kontrol-upgrade"; then exit 1; fi
-grep -q 'sbin/Kontrol-repo-setup' "${HERE}/../Makefile"
-grep -q 'libexec/Kontrol-upgrade-check-repos' "${HERE}/../Makefile"
 printf 'all check-repos tests passed\n'

@@ -111,7 +111,7 @@ _exec() {
 }
 
 _pkg() {
-	pkg-static "$@" 2>/dev/null
+	/usr/local/sbin/pkg-static "$@" 2>/dev/null
 	return $?
 }
 
@@ -159,22 +159,6 @@ notice() {
 	    file_notice('${product}-Upgrade', '${msg}', 'Upgrade', '', 1, true);"
 }
 
-pkg_with_pb() {
-	local _event_pipe=""
-	local _cmd="${1}"
-	local _msg="${2}"
-
-	if [ -n "${progress_socket}" ]; then
-		_event_pipe="-o EVENT_PIPE=${progress_socket}"
-		if [ -z "${nc_pid}" ]; then
-			start_progress_listener
-		fi
-	fi
-
-	_exec "pkg-static ${_event_pipe} ${_cmd}" "${_msg}"
-	nc_pid=""
-}
-
 start_progress_listener() {
 	[ -n "${progress_socket}" ] || return 0
 	if [ -n "${nc_pid}" ] && ps -p ${nc_pid} >/dev/null 2>&1 \
@@ -187,6 +171,20 @@ start_progress_listener() {
 	while [ ! -e "${progress_socket}" ]; do
 		sleep 0.1
 	done
+}
+
+pkg_with_pb() {
+	local _event_pipe=""
+	local _cmd="${1}"
+	local _msg="${2}"
+
+	if [ -n "${progress_socket}" ]; then
+		start_progress_listener
+		_event_pipe="-o EVENT_PIPE=${progress_socket}"
+	fi
+
+	_exec "pkg-static ${_event_pipe} ${_cmd}" "${_msg}"
+	nc_pid=""
 }
 
 fetch_upgrade_packages() {
@@ -278,7 +276,6 @@ repo_is_plus_upgrade() {
 abi_setup() {
 	local _freebsd_version=$(uname -r)
 	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
-	local _cur_osmajor="${_freebsd_version%%.*}"
 
 	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
 	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
@@ -307,26 +304,15 @@ abi_setup() {
 		ABI=${CUR_ABI}
 	fi
 
-	local _target_osmajor=$(echo "${ABI}" | \
-	    awk -F: 'tolower($1)=="freebsd" { print $2 }')
-
-	if [ -f ${_repo_abi_file%%.conf}.osversion ]; then
-		OSVERSION=$(cat ${_repo_abi_file%%.conf}.osversion)
-	elif [ -n "${_target_osmajor}" ]; then
-		# FreeBSD kern.osreldate format for major fallback (e.g. 14 -> 1400000)
-		OSVERSION="${_target_osmajor}00000"
+	if [ -f ${_repo_abi_file%%.conf}.altabi ]; then
+		ALTABI=$(cat ${_repo_abi_file%%.conf}.altabi)
 	else
-		OSVERSION=$(sysctl -n kern.osreldate)
+		ALTABI=${CUR_ALTABI}
 	fi
 
 	# Make sure pkg.conf is set properly so GUI can work
-	if [ "${_target_osmajor}" -ge 15 ] 2>/dev/null; then
-		echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-		echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
-	else
-		echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-		echo "ALTABI=${CUR_ALTABI}" >> /usr/local/etc/pkg.conf
-	fi
+	echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
+	echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
 	AUTH_CERT="/etc/ssl/pfSense-repo-custom.cert"
@@ -359,14 +345,14 @@ EOF
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" -o "${_cur_osmajor}" = "${_target_osmajor}" ] ; then
+	if [ "${CUR_ABI}" = "${ABI}" -o "${CUR_ABI}" = "${ALTABI}" ] ; then
 		NEW_MAJOR=""
 	else
 		NEW_MAJOR=1
 		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_ALTABI ABI OSVERSION NEW_MAJOR
+	export CUR_ABI CUR_ALTABI ABI ALTABI NEW_MAJOR
 }
 
 get_pkg_repo_url() {
@@ -465,17 +451,27 @@ pkg_update() {
 
 pkg_upgrade_repo() {
 	local _check_only="${1}"
-	if [ "${_check_only}" = "check_only" ]; then
-		case "$(compare_pkg_version_check ${product}-repo)" in
-			'<'|'='|'>') return 0 ;;
-			*)
-				echo "ERROR: Unable to compare version of ${product}-repo" >&2
-				return 1
-				;;
-		esac
+	# A pkg binary built for the target FreeBSD major cannot run on the
+	# currently installed base.  Keep pkg pinned while only the repository
+	# package is synchronized; stage 2 replaces it after the new kernel/base
+	# have booted.
+	local _restore_pkg_lock=""
+	if [ -n "${NEW_MAJOR}" ]; then
+		local _pkg_locked=$(_pkg query %k pkg)
+		if [ "${_pkg_locked}" = "0" ]; then
+			pkg_lock pkg
+			_restore_pkg_lock=1
+		fi
 	fi
-	if [ -n "${reinstall_pkg}" ] \
-	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
+
+	local _upgrade_pkg=""
+	if [ -z "${NEW_MAJOR}" ]; then
+		if [ -n "${reinstall_pkg}" ] \
+		    || [ "$(compare_pkg_version pkg)" = "<" ]; then
+			_upgrade_pkg=1
+		fi
+	fi
+	if [ -n "${_upgrade_pkg}" ]; then
 		pkg_unlock pkg
 		_exec "pkg-static upgrade${dont_update} pkg" "Upgrading pkg" \
 		    mute
@@ -493,6 +489,7 @@ pkg_upgrade_repo() {
 			local _force=" -f"
 			;;
 		"=")
+			[ -n "${_restore_pkg_lock}" ] && pkg_unlock pkg
 			return
 			;;
 		*)
@@ -523,6 +520,7 @@ pkg_upgrade_repo() {
 		fi
 	fi
 	rm -f /tmp/${product}.conf.copy
+	[ -n "${_restore_pkg_lock}" ] && pkg_unlock pkg
 }
 
 upgrade_available() {
@@ -567,6 +565,56 @@ pkg_set_origin() {
 		    "Update name ${_pkg_source} -> ${_pkg_target}" \
 		    mute
 	done
+}
+
+require_direct_upgrade_repo() {
+	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
+	local _target
+	_target=$(KONTROL_UPGRADE_OUTPUT=template ${_check_repos})
+	local _rc=$?
+	case "${_rc}" in
+		0)
+			return 0
+			;;
+		2)
+			;;
+		*)
+			echo "Unable to verify the supported upgrade repository" >&2
+			_exit 1
+			;;
+	esac
+
+	case "${_target}" in
+		*'|'*) ;;
+		*)
+			echo "Invalid supported upgrade repository metadata" >&2
+			_exit 1
+			;;
+	esac
+	local _version=${_target%%|*}
+	local _template=${_target#*|}
+	case "${_version}:${_template}" in
+		*[!A-Za-z0-9_.:-]*|:*)
+			echo "Invalid supported upgrade repository metadata" >&2
+			_exit 1
+			;;
+	esac
+	local _template_dir=${KONTROL_REPO_TEMPLATE_DIR:-/usr/local/share/${product}/pkg/repos}
+	local _active_dir=${KONTROL_REPO_ACTIVE_DIR:-/usr/local/etc/pkg/repos}
+	local _target_conf="${_template_dir}/${_template}.conf"
+	[ -f "${_target_conf}" ] || {
+		echo "Supported upgrade repository template is missing" >&2
+		_exit 1
+	}
+	local _active_conf="${_active_dir}/${product}.conf"
+	local _selected_conf=$(realpath -q "${_active_conf}")
+	local _required_conf=$(realpath -q "${_target_conf}")
+	if [ -z "${_selected_conf}" ] || [ "${_selected_conf}" != "${_required_conf}" ]; then
+		_echo "ERROR: ${product} ${_version} is available, but the active repository is not set to ${_version}."
+		_echo "Select the ${product} ${_version} repository on the upgrade page and try again."
+		_echo "No packages were changed."
+		_exit 1
+	fi
 }
 
 pkg_upgrade() {
@@ -682,6 +730,9 @@ pkg_upgrade() {
 			rm -f ${logfile}
 		fi
 
+		# The 2.7.2 GUI cannot select a direct target automatically.  Refuse to
+		# reinstall the current release until the user explicitly selects it.
+		require_direct_upgrade_repo
 		pkg_update force
 
 		# Lock pkg to avoid having pkg binary for version N+1 installed
@@ -1036,12 +1087,6 @@ pkg_upgrade() {
 	fi
 
 	if [ "${next_stage}" = "3" ]; then
-		# Stage 2 keeps additional packages locked while base system and
-		# core packages are upgraded. Refresh metadata before the final
-		# pass so package upgrades pending only for add-on packages are
-		# not skipped when this stage is executed with -U during boot.
-		pkg_update force mute
-
 		if upgrade_available; then
 			delete_annotation=1
 			_exec "pkg-static upgrade${dont_update}" \
@@ -1126,7 +1171,6 @@ check_upgrade() {
 	local _meta_pkg=$(get_meta_pkg_name)
 	local _core_pkgs=$(pkg-static query -e \
 	    "%n ~ ${product}-kernel-* || %n ~ ${product}-base*" %n 2>/dev/null)
-	local _active_compare_failed=""
 
 	# Do not upgrade while wg interfaces are assigned
 	if sed '/<interfaces>/,/<\/interfaces>/!d' /cf/conf/config.xml \
@@ -1142,16 +1186,16 @@ check_upgrade() {
 		    "upgrading."
 	fi
 
-	# Do not let an active FreeBSD 16 repository selection make the FreeBSD 15
-	# installed-package comparison abort before isolated target discovery.
-	case "$(compare_pkg_version_check ${product}-repo)" in
-		'<'|'='|'>') ;;
-		*) _active_compare_failed=1 ;;
-	esac
+	[ -z "${_skip_update}" ] \
+	    && pkg_update "" mute
+
+	# Failure to compare the active repository package must not prevent the
+	# read-only direct-target check.  Other actions retain the old fatal path.
+	pkg_upgrade_repo check_only || :
 
 	local _version_compare=""
 	for _package in ${_meta_pkg} ${_core_pkgs}; do
-		_version_compare=$(compare_pkg_version_check ${_package})
+		_version_compare=$(compare_pkg_version ${_package})
 		case "${_version_compare}" in
 			=)
 				continue
@@ -1161,9 +1205,6 @@ check_upgrade() {
 				    && _echo "Your system is on a newer version"
 				return 0
 				;;
-			'<')
-				;;
-			*) _active_compare_failed=1; continue ;;
 		esac
 
 		local _new_version=$(_pkg rquery -U %v ${_package})
@@ -1173,7 +1214,7 @@ check_upgrade() {
 		return 2
 	done
 
-	# The active 2.8.1 repository intentionally remains selected.  Only after
+	# The active 2.7.2 repository intentionally remains selected.  Only after
 	# it is known to be current, inspect direct-release targets published by
 	# Kontrol-repo in isolated pkg databases.
 	local _upgrade_target
@@ -1187,10 +1228,6 @@ check_upgrade() {
 			return 2
 			;;
 		0)
-			if [ -n "${_active_compare_failed}" ]; then
-				echo "Unable to verify versions from the active repository" >&2
-				return 1
-			fi
 			;;
 		*)
 			echo "Unable to verify the supported upgrade repository" >&2
@@ -1201,68 +1238,6 @@ check_upgrade() {
 	[ -z "${_mute}" ] \
 	    && _echo "Your system is up to date"
 	return 0
-}
-
-compare_pkg_version_check() {
-	local _pkg_name="${1}"
-	local _lver=""
-	local _rver=""
-
-	[ -n "${_pkg_name}" ] || { echo '!'; return 1; }
-	_lver=$(_pkg query %v "${_pkg_name}") || { echo '!'; return 1; }
-	_rver=$(_pkg rquery -U %v "${_pkg_name}") || { echo '!'; return 1; }
-	[ -n "${_lver}" ] && [ -n "${_rver}" ] || { echo '!'; return 1; }
-	_pkg version -t "${_lver}" "${_rver}" || { echo '!'; return 1; }
-}
-
-require_direct_upgrade_repo() {
-	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
-	local _target
-	_target=$(KONTROL_UPGRADE_OUTPUT=template ${_check_repos})
-	local _rc=$?
-	case "${_rc}" in
-		0)
-			return 0
-			;;
-		2)
-			;;
-		*)
-			echo "Unable to verify the supported upgrade repository" >&2
-			_exit 1
-			;;
-	esac
-
-	case "${_target}" in
-		*'|'*) ;;
-		*)
-			echo "Invalid supported upgrade repository metadata" >&2
-			_exit 1
-			;;
-	esac
-	local _version=${_target%%|*}
-	local _template=${_target#*|}
-	case "${_version}:${_template}" in
-		*[!A-Za-z0-9_.:-]*|:*)
-			echo "Invalid supported upgrade repository metadata" >&2
-			_exit 1
-			;;
-	esac
-	local _template_dir=${KONTROL_REPO_TEMPLATE_DIR:-/usr/local/share/${product}/pkg/repos}
-	local _active_dir=${KONTROL_REPO_ACTIVE_DIR:-/usr/local/etc/pkg/repos}
-	local _target_conf="${_template_dir}/${_template}.conf"
-	[ -f "${_target_conf}" ] || {
-		echo "Supported upgrade repository template is missing" >&2
-		_exit 1
-	}
-	local _active_conf="${_active_dir}/${product}.conf"
-	local _selected_conf=$(realpath -q "${_active_conf}")
-	local _required_conf=$(realpath -q "${_target_conf}")
-	if [ -z "${_selected_conf}" ] || [ "${_selected_conf}" != "${_required_conf}" ]; then
-		_echo "ERROR: ${product} ${_version} is available, but the active repository is not set to ${_version}."
-		_echo "Select the ${product} ${_version} repository on the upgrade page and try again."
-		_echo "No packages were changed."
-		_exit 1
-	fi
 }
 
 is_pkg_installed() {
@@ -1498,6 +1473,7 @@ export product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
 export product_label=$(php -n /usr/local/sbin/read_global_var product_label Kontrol)
 export pkg_prefix=$(php -n /usr/local/sbin/read_global_var pkg_prefix \
     Kontrol-pkg-)
+export platform=$(cat /etc/platform)
 
 USE_MFS_TMPVAR=$(read_xml_tag.sh boolean system/use_mfs_tmpvar)
 if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
@@ -1564,6 +1540,7 @@ while getopts 46b:cdfi:hp:l:nr:RuUy opt; do
 			;;
 		d)
 			stdout=''
+			upgrade_debug=yes
 			;;
 		f)
 			force=1
@@ -1646,7 +1623,7 @@ fi
 
 # Force debug if /cf/conf/upgrade_debug is present
 [ -f "/cf/conf/upgrade_debug" ] \
-    && stdout=''
+	&& stdout=''
 
 # Set default action when no parameter is set
 : ${action:="upgrade"}
@@ -1685,12 +1662,10 @@ if [ -e "${progress_file}" ]; then
 	rm -f ${progress_file}
 fi
 
-if [ "${action}" = "upgrade" ]; then
-	start_progress_listener
-	if ! require_direct_upgrade_repo; then
-		_exit 1
-	fi
-fi
+# Create the GUI synchronization socket before any preflight can fail.  The
+# legacy update page waits for this socket before it starts polling the text
+# log, so an early validation error would otherwise leave it at "initializes".
+start_progress_listener
 
 arch=$(uname -p)
 

@@ -20,30 +20,16 @@ fi
 
 REPO_PATH=/usr/local/etc/pkg/repos
 REPO_CONF=${REPO_PATH}/%%PRODUCT_NAME%%.conf
-REPO_SHARE_DIR=/usr/local/share/%%PRODUCT_NAME%%/pkg/repos
 
-if [ -d "${REPO_SHARE_DIR}" ]; then
-	for repo_file in "${REPO_SHARE_DIR}"/*; do
-		[ -e "${repo_file}" ] || continue
-		base=$(basename "${repo_file}")
-		case "${base}" in
-			*.conf|*.descr|*.abi|*.altabi|*.osversion|*.target)
-				repo_name="${base%.*}"
-				keep_repo=""
-				# shellcheck disable=SC2043
-				for allowed_repo in %%REPO_FILES%%; do
-					if [ "${repo_name}" = "${allowed_repo}" ]; then
-						keep_repo=1
-						break
-					fi
-				done
-				if [ -z "${keep_repo}" ]; then
-					rm -f "${repo_file}"
-				fi
-				;;
-		esac
-	done
-fi
+# These names were shipped by older revisions of this package.  Do not use a
+# wildcard here: administrators may keep private repository templates beside
+# the package-managed ones.
+MANAGED_REPO_DIR=/usr/local/share/%%PRODUCT_NAME%%/pkg/repos
+for old in pfSense-repo-previous.conf pfSense-repo-previous.descr \
+    pfSense-repo-previous.abi pfSense-repo-previous.altabi \
+    pfSense-repo-previous.target; do
+	rm -f "${MANAGED_REPO_DIR}/${old}"
+done
 
 if [ ! -f "%%DEFAULT_REPO%%" ]; then
 	echo "===> ERROR: Default repo conf not found!"
@@ -61,42 +47,11 @@ fi
 PKG_CONF="/usr/local/etc/pkg.conf"
 REAL_CONF=$(readlink ${REPO_CONF})
 
-ABI_FILE="${REAL_CONF%%.conf}.abi"
-ALTABI_FILE="${REAL_CONF%%.conf}.altabi"
-OSVERSION_FILE="${REAL_CONF%%.conf}.osversion"
-TARGET_OSMAJOR=""
+ABI=$(cat ${REAL_CONF%%.conf}.abi)
+ALTABI=$(cat ${REAL_CONF%%.conf}.altabi)
 
-if [ -f "${ABI_FILE}" ]; then
-	ABI=$(/bin/cat "${ABI_FILE}")
-else
-	ABI="FreeBSD:$(/usr/bin/uname -r | /usr/bin/cut -d. -f1):$(/usr/bin/uname -p)"
-fi
-
-TARGET_OSMAJOR=$(/bin/echo "${ABI}" | /usr/bin/awk -F: 'tolower($1)=="freebsd" { print $2 }')
-
-if [ -f "${OSVERSION_FILE}" ]; then
-	OSVERSION=$(/bin/cat "${OSVERSION_FILE}")
-elif [ -n "${TARGET_OSMAJOR}" ]; then
-	OSVERSION="${TARGET_OSMAJOR}00000"
-else
-	OSVERSION=$(/sbin/sysctl -n kern.osreldate)
-fi
-
-if [ -f "${ALTABI_FILE}" ]; then
-	ALTABI=$(/bin/cat "${ALTABI_FILE}")
-else
-	ALTABI=""
-fi
-
-if [ "${TARGET_OSMAJOR}" -ge 15 ] 2>/dev/null; then
-	echo "ABI=${ABI}" > ${PKG_CONF}
-	echo "OSVERSION=${OSVERSION}" >> ${PKG_CONF}
-else
-	echo "ABI=${ABI}" > ${PKG_CONF}
-	if [ -n "${ALTABI}" ]; then
-		echo "ALTABI=${ALTABI}" >> ${PKG_CONF}
-	fi
-fi
+echo "ABI=${ABI}" > ${PKG_CONF}
+echo "ALTABI=${ALTABI}" >> ${PKG_CONF}
 
 # Help users to fix fstab before risk moving to FreeBSD 11
 if /usr/bin/grep -q -E '/dev/ad[[:digit:]]' /etc/fstab; then

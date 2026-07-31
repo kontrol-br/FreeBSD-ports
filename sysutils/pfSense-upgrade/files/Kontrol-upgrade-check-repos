@@ -19,7 +19,6 @@ debug()
 	fi
 }
 
-# shellcheck disable=SC2317
 cleanup()
 {
 	for dir in ${tmpdirs}; do
@@ -40,8 +39,7 @@ field()
 
 installed_version()
 {
-	PKG_DBDIR=${REAL_PKG_DBDIR} pkg_clean_env -C /dev/null \
-	    query %v "${1}" 2>/dev/null
+	PKG_DBDIR=${REAL_PKG_DBDIR} pkg_clean_env -C /dev/null query %v "${1}"
 }
 
 # Kontrol-upgrade exports the active repository ABI and legacy ALTABI.  pkg's
@@ -94,16 +92,16 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 		fingerprints|none) ;;
 		*) debug "invalid signature_policy=${signature_policy:-<empty>}"; had_failure=yes; continue ;;
 	esac
+	case "${signature_policy}" in
+		fingerprints|none) ;;
+		*) had_failure=yes; continue ;;
+	esac
 	conf=${REPO_TEMPLATE_DIR}/${template}.conf
 	abi_file=${REPO_TEMPLATE_DIR}/${template}.abi
-	osversion_file=${REPO_TEMPLATE_DIR}/${template}.osversion
-	if [ ! -f "${conf}" ] || [ ! -s "${abi_file}" ] || [ ! -s "${osversion_file}" ]; then
-		had_failure=yes
-		continue
-	fi
+	[ -f "${conf}" ] && [ -s "${abi_file}" ] || { had_failure=yes; continue; }
 
 	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
-	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}" 2>/dev/null)" = ">" ] || continue
+	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || continue
 
 	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { debug "mktemp failed under ${TMP_ROOT}"; had_failure=yes; continue; }
 	tmpdirs="${tmpdirs} ${dir}"
@@ -118,8 +116,9 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 		FreeBSD:[0-9]*:[A-Za-z0-9_]*) ;;
 		*) had_failure=yes; continue ;;
 	esac
-	osversion=$(sed -n '1p' "${osversion_file}")
-	case "${osversion}" in 16[0-9][0-9][0-9][0-9][0-9]) ;; *) had_failure=yes; continue ;; esac
+	os_major=${abi#FreeBSD:}; os_major=${os_major%%:*}
+	case "${os_major}" in *[!0-9]*|'') had_failure=yes; continue ;; esac
+	osversion=$((os_major * 100000))
 	cat > "${dir}/pkg.conf" <<PKGCONF
 PKG_DBDIR: "${dir}/db";
 REPOS_DIR: [ "${dir}/repos" ];
@@ -127,9 +126,7 @@ ABI: "${abi}";
 OSVERSION: ${osversion};
 PKGCONF
 
-	# pkg writes catalogue progress to stdout.  Keep helper stdout machine-only:
-	# callers parse either VERSION or VERSION|TEMPLATE from it.
-	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f >/dev/null 2>&1; then
+	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f; then
 		had_failure=yes
 		continue
 	fi
@@ -137,18 +134,15 @@ PKGCONF
 	valid=yes
 	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
 		local_version=$(installed_version "${package}") || { valid=no; break; }
-		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U \
-		    %v "${package}" 2>/dev/null) || { valid=no; break; }
+		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { valid=no; break; }
 		[ -n "${remote_version}" ] || { valid=no; break; }
-		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" \
-		    "${local_version}" 2>/dev/null)" = ">" ] || { valid=no; break; }
+		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { valid=no; break; }
 	done
 	if [ "${valid}" != yes ]; then
 		had_failure=yes
 		continue
 	fi
-	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t \
-	    "${version}" "${best}" 2>/dev/null)" = ">" ]; then
+	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t "${version}" "${best}")" = ">" ]; then
 		best=${version}
 		best_template=${template}
 	fi

@@ -1,8 +1,8 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-upgrade
-PORTVERSION=	2.3.1
-PORTREVISION= 4
+PORTVERSION=	1.3.3
+PORTREVISION=	11
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -18,10 +18,7 @@ NO_BUILD=	yes
 
 PLIST_FILES=	libexec/Kontrol-upgrade \
 		libexec/Kontrol-upgrade-check-repos \
-		sbin/Kontrol-repo-setup \
 		sbin/Kontrol-upgrade
-
-.include <bsd.port.pre.mk>
 
 do-extract:
 	@${MKDIR} ${WRKSRC}
@@ -31,8 +28,6 @@ do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/sbin
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
 	${MKDIR} ${STAGEDIR}${PREFIX}/share/Kontrol
-	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-repo-setup \
-		${STAGEDIR}${PREFIX}/sbin
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade \
 		${STAGEDIR}${PREFIX}/libexec
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade-check-repos \
@@ -40,4 +35,4 @@ do-install:
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade.wrapper \
 		${STAGEDIR}${PREFIX}/sbin/Kontrol-upgrade
 
-.include <bsd.port.post.mk>
+.include <bsd.port.mk>
