@@ -1,0 +1,98 @@
+#!/bin/sh
+# Keep the repository symlink and pkg ABI settings in sync with the branch
+# selected by the RELENG_2_8_1 PHP package manager.  This implementation is
+# deliberately local-only; Kontrol does not ship Netgate's repoc service.
+
+usage()
+{
+	cat <<EOF >&2
+Usage: $(basename "$0") [-hU]
+	-h  Show this help
+	-U  Do not refresh remote repository settings (accepted for compatibility)
+EOF
+}
+
+while getopts hU option; do
+	case "${option}" in
+		h) usage; exit 0 ;;
+		U) ;; # There is no proprietary remote settings service to refresh.
+		*) usage; exit 1 ;;
+	esac
+done
+shift $((OPTIND - 1))
+[ "$#" -eq 0 ] || { usage; exit 1; }
+
+PHP=${PHP:-/usr/local/bin/php}
+READ_XML_TAG=${READ_XML_TAG:-/usr/local/sbin/read_xml_tag.sh}
+PRODUCT=${PRODUCT:-$("${PHP}" -n /usr/local/sbin/read_global_var product_name Kontrol)}
+LOCALBASE=${LOCALBASE:-/usr/local}
+# pkg_repos_path in RELENG_2_8_1 can still contain the obsolete certificate
+# directory (/usr/local/etc/<product>/pkg/repos).  Repository templates are
+# package data and are always installed below share/<product>/pkg/repos.
+TEMPLATE_DIR=${TEMPLATE_DIR:-${LOCALBASE}/share/${PRODUCT}/pkg/repos}
+ACTIVE_DIR=${ACTIVE_DIR:-/usr/local/etc/pkg/repos}
+ACTIVE_CONF=${ACTIVE_DIR}/${PRODUCT}.conf
+PKG_CONF=${PKG_CONF:-/usr/local/etc/pkg.conf}
+if [ "${REPO_SELECTION+x}" = x ]; then
+	selection=${REPO_SELECTION}
+else
+	selection=$("${READ_XML_TAG}" string system/pkg_repo_conf_path)
+fi
+
+default_repo()
+{
+	for marker in "${TEMPLATE_DIR}"/*.conf.default; do
+		[ -f "${marker}" ] && { printf '%s\n' "${marker%.default}"; return; }
+	done
+	printf '%s\n' "${TEMPLATE_DIR}/${PRODUCT}-repo.conf"
+}
+
+resolve_repo()
+{
+	case "${selection}" in
+		/*)
+			[ -f "${selection}" ] && { printf '%s\n' "${selection}"; return; }
+			# Older XML stores the former /usr/local/etc/Kontrol/pkg path.
+			# Preserve the selected basename while relocating it to DATADIR.
+			candidate=${TEMPLATE_DIR}/${selection##*/}
+			;;
+		[Dd]efault) candidate=${TEMPLATE_DIR}/${PRODUCT}-repo.conf ;;
+		'') default_repo; return ;;
+		*) candidate=${TEMPLATE_DIR}/${PRODUCT}-repo-$(printf '%s' "${selection}" | \
+			tr '[:upper:]' '[:lower:]').conf ;;
+	esac
+	[ -f "${candidate:-}" ] && printf '%s\n' "${candidate}" || default_repo
+}
+
+repo=$(resolve_repo)
+[ -f "${repo}" ] || { echo "Repository template not found: ${repo}" >&2; exit 1; }
+mkdir -p "${ACTIVE_DIR}"
+ln -sfn "${repo}" "${ACTIVE_CONF}"
+
+abi_file=${repo%.conf}.abi
+osversion_file=${repo%.conf}.osversion
+if [ -s "${abi_file}" ]; then
+	abi=$(sed -n '1p' "${abi_file}")
+else
+	abi=FreeBSD:$(uname -r | cut -d. -f1):$(uname -p)
+fi
+osmajor=${abi#FreeBSD:}; osmajor=${osmajor%%:*}
+if [ -s "${osversion_file}" ]; then
+	osversion=$(sed -n '1p' "${osversion_file}")
+else
+	osversion=${osmajor}00000
+fi
+case "${abi}:${osversion}" in
+	FreeBSD:[0-9]*:[A-Za-z0-9_]*:[0-9]*) ;;
+	*) echo "Invalid ABI metadata for ${repo}" >&2; exit 1 ;;
+esac
+
+{
+	printf 'ABI=%s\n' "${abi}"
+	if [ "${osmajor}" -ge 15 ] 2>/dev/null; then
+		printf 'OSVERSION=%s\n' "${osversion}"
+	else
+		altabi_file=${repo%.conf}.altabi
+		[ -s "${altabi_file}" ] && printf 'ALTABI=%s\n' "$(sed -n '1p' "${altabi_file}")"
+	fi
+} > "${PKG_CONF}"

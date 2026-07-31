@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.8.1
-PORTREVISION=	7
+PORTREVISION=	9
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -31,10 +31,12 @@ PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
 .include <bsd.port.pre.mk>
 
 MIRROR_TYPE?=	srv
-PFSENSE_REPOS?=	pfSense-repo pfSense-repo-upgrade
+PFSENSE_REPOS?=	pfSense-repo-previous pfSense-repo
 PFSENSE_REPOS_${ARCH}?=	${PFSENSE_REPOS}
-PFSENSE_DEFAULT_REPO?=	pfSense-repo
-PFSENSE_DEFAULT_REPO_${ARCH}?=	${PFSENSE_DEFAULT_REPO}
+# RELENG_2_8_1 renders these sources as Kontrol-repo-previous/Kontrol-repo.
+# Derive the default from the rendered list so a make.conf value left over
+# from 2.9 cannot make the FreeBSD 16 repository active during installation.
+PFSENSE_DEFAULT_REPO_${ARCH}=	${PFSENSE_REPOS_${ARCH}:M*-previous}
 SIGNATURE_TYPE?=	fingerprints
 PKG_REPO_BRANCH_UPGRADE?=	v2_9_0
 DEFAULT_REPO=	${DATADIR}/pkg/repos/${PFSENSE_DEFAULT_REPO_${ARCH}}.conf
@@ -43,7 +45,7 @@ TMP_PLIST_FILES=${PFSENSE_REPOS_${ARCH}:C/$/.conf/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.abi/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.altabi/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.osversion/} \
-		${PFSENSE_REPOS_${ARCH}:M*-upgrade:C/$/.target/}
+		${PFSENSE_REPOS_${ARCH}:N*-previous:C/$/.target/}
 PLIST_FILES=	${TMP_PLIST_FILES:C/^/%%DATADIR%%\/pkg\/repos\//} \
 		${DEFAULT_REPO}.default \
 		${DATADIR}/next_pkg_set_version

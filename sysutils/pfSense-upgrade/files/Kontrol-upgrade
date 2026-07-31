@@ -1488,7 +1488,6 @@ export product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
 export product_label=$(php -n /usr/local/sbin/read_global_var product_label Kontrol)
 export pkg_prefix=$(php -n /usr/local/sbin/read_global_var pkg_prefix \
     Kontrol-pkg-)
-export platform=$(cat /etc/platform)
 
 USE_MFS_TMPVAR=$(read_xml_tag.sh boolean system/use_mfs_tmpvar)
 if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
