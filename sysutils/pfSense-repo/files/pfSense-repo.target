@@ -3,5 +3,5 @@ eligible=yes
 supported_direct=yes
 channel=release
 version=2.9.0
-template=%%PRODUCT_NAME%%-repo-upgrade
+template=%%PRODUCT_NAME%%-repo
 signature_policy=fingerprints
