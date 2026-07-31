@@ -2432,11 +2432,11 @@ EOF;
 function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*", $month = "*", $wday = "*"){
 
 	//Remove current job
-	install_cron_job ($cron_cmd, false);
-	install_cron_job ($cron_cmd . ' > /dev/null', false);
+	install_cron_job($cron_cmd, false, "0", "*", "*", "*", "*", "root", false);
+	install_cron_job($cron_cmd . ' > /dev/null', false, "0", "*", "*", "*", "*", "root", false);
 	if ($action == "create") {
 		//Install a new job
-		install_cron_job ($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday , "root");
+		install_cron_job($cron_cmd . ' > /dev/null', true, $min, $hour, $mday, $month, $wday, "root", false);
 	}
 }
 
