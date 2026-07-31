@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.8.1
-PORTREVISION=	# empty
+PORTREVISION=	1
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -30,8 +30,10 @@ PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
 .include <bsd.port.pre.mk>
 
 MIRROR_TYPE?=	none
-PFSENSE_REPOS?=	pfSense-repo pfSense-repo-previous
+PFSENSE_REPOS?=	Kontrol-repo Kontrol-repo-previous
+DIRECT_REPOS=	Kontrol-repo-upgrade
 PFSENSE_REPOS_${ARCH}?=	${PFSENSE_REPOS}
+PFSENSE_REPOS_${ARCH}+=	${DIRECT_REPOS}
 PFSENSE_DEFAULT_REPO?=	pfSense-repo-devel
 PFSENSE_DEFAULT_REPO_${ARCH}?=	${PFSENSE_DEFAULT_REPO}
 SIGNATURE_TYPE?=	fingerprints
@@ -39,7 +41,9 @@ SUB_LIST+=	REPO_FILES="${PFSENSE_REPOS_${ARCH}}"
 DEFAULT_REPO=	${DATADIR}/pkg/repos/${PFSENSE_DEFAULT_REPO_${ARCH}}.conf
 TMP_PLIST_FILES=${PFSENSE_REPOS_${ARCH}:C/$/.conf/} \
 		${PFSENSE_REPOS_${ARCH}:C/$/.descr/} \
-		${PFSENSE_REPOS_${ARCH}:C/$/.abi/}
+		${PFSENSE_REPOS_${ARCH}:C/$/.abi/} \
+		${PFSENSE_REPOS_${ARCH}:C/$/.osversion/} \
+		${DIRECT_REPOS:C/$/.target/}
 PLIST_FILES=	${TMP_PLIST_FILES:C/^/%%DATADIR%%\/pkg\/repos\//} \
 		${DEFAULT_REPO}.default \
 		${DATADIR}/next_pkg_set_version
@@ -89,6 +93,10 @@ do-build:
 			-e "s,%%ARCH_OLD%%,${ARCH_OLD},g" \
 			${WRKSRC}/${f}.abi; \
 	fi
+	@if [ -f ${WRKSRC}/${f}.target ]; then \
+		${REINPLACE_CMD} -i '' -e "s,%%PRODUCT_NAME%%,${PRODUCT_NAME},g" \
+			${WRKSRC}/${f}.target; \
+	fi
 .endfor
 
 do-install:
@@ -101,6 +109,14 @@ do-install:
 		${INSTALL_DATA} ${WRKSRC}/${f}.abi ${STAGEDIR}${DATADIR}/pkg/repos; \
 	else \
 		${ECHO_CMD} ${DEFAULT_ABI} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.abi; \
+	fi
+	if [ -f ${WRKSRC}/${f}.osversion ]; then \
+		${INSTALL_DATA} ${WRKSRC}/${f}.osversion ${STAGEDIR}${DATADIR}/pkg/repos; \
+	else \
+		${ECHO_CMD} ${OSVERSION} > ${STAGEDIR}${DATADIR}/pkg/repos/${f}.osversion; \
+	fi
+	if [ -f ${WRKSRC}/${f}.target ]; then \
+		${INSTALL_DATA} ${WRKSRC}/${f}.target ${STAGEDIR}${DATADIR}/pkg/repos; \
 	fi
 .endfor
 	${ECHO_CMD} ${PFSENSE_PKG_SET_VERSION} \

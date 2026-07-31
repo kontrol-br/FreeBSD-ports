@@ -1,0 +1,7 @@
+managed_by=%%PRODUCT_NAME%%-repo
+eligible=yes
+supported_direct=yes
+channel=release
+version=2.9.0
+template=%%PRODUCT_NAME%%-repo-upgrade
+signature_policy=fingerprints
