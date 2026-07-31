@@ -12,6 +12,12 @@ grep -q '^template=%%PRODUCT_NAME%%-repo-upgrade$' \
 	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target"
 grep -q '^PKG_REPO_BRANCH_UPGRADE?=[[:space:]]*v2_9_0$' \
 	"${HERE}/../../pfSense-repo/Makefile"
+grep -q '^PKG_REPO_BRANCH_CURRENT=[[:space:]]*v2_8_1$' \
+	"${HERE}/../../pfSense-repo/Makefile"
+grep -q '%%PKG_REPO_BRANCH_CURRENT%%' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo.conf"
+! grep -q '%%PKG_REPO_BRANCH_UPGRADE%%' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo.conf"
 [ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.abi")" = \
 	'FreeBSD:15:%%ARCH%%' ]
 [ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.osversion")" = 1500000 ]
@@ -254,5 +260,6 @@ set -e
 [ "${caller_output}" = '2.9.0 version of Kontrol is available' ]
 
 ! grep -q 'gnid' "${HERE}/../files/Kontrol-upgrade"
+! grep -q '/etc/platform' "${HERE}/../files/Kontrol-upgrade"
 grep -q 'exit 75' "${HERE}/../files/Kontrol-upgrade"
 printf 'all check-repos tests passed\n'

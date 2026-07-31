@@ -2,7 +2,7 @@
 
 PORTNAME=	pfSense-repo
 DISTVERSION=	2.8.1
-PORTREVISION=	7
+PORTREVISION=	8
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -36,6 +36,10 @@ PFSENSE_REPOS_${ARCH}?=	${PFSENSE_REPOS}
 PFSENSE_DEFAULT_REPO?=	pfSense-repo
 PFSENSE_DEFAULT_REPO_${ARCH}?=	${PFSENSE_DEFAULT_REPO}
 SIGNATURE_TYPE?=	fingerprints
+# This port is the installed 2.8.1 repository package.  Keep its default
+# template on the running release even when the build environment is already
+# producing the next release; only the explicit upgrade template may use it.
+PKG_REPO_BRANCH_CURRENT=	v2_8_1
 PKG_REPO_BRANCH_UPGRADE?=	v2_9_0
 DEFAULT_REPO=	${DATADIR}/pkg/repos/${PFSENSE_DEFAULT_REPO_${ARCH}}.conf
 TMP_PLIST_FILES=${PFSENSE_REPOS_${ARCH}:C/$/.conf/} \
@@ -97,6 +101,7 @@ do-build:
 		-e "s,%%ARCH_OLD%%,${ARCH_OLD},g" \
 		-e "s/%%MIRROR_TYPE%%/${MIRROR_TYPE}/" \
 		-e "s,%%PKG_REPO_BRANCH_DEVEL%%,${PKG_REPO_BRANCH_DEVEL},g" \
+		-e "s,%%PKG_REPO_BRANCH_CURRENT%%,${PKG_REPO_BRANCH_CURRENT},g" \
 		-e "s,%%PKG_REPO_BRANCH_RELEASE%%,${PKG_REPO_BRANCH_RELEASE},g" \
 		-e "s,%%PKG_REPO_BRANCH_UPGRADE%%,${PKG_REPO_BRANCH_UPGRADE},g" \
 		-e "s,%%PKG_REPO_SERVER_DEVEL%%,${PKG_REPO_SERVER_DEVEL},g" \
