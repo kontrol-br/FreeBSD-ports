@@ -61,6 +61,7 @@ case "$1:$2" in
 		template=$(basename "$(find "$repodir" -name '*.conf' | head -1)" .conf)
 		cp "$repodir/$template.conf" "${SNAP_DIR}/repo.$$.conf"
 		eval "available=\${AVAILABLE_${template}:-yes}"
+		echo "Updating ${template} repository catalogue..."
 		[ "$available" = yes ] || exit 1 ;;
 	rquery:-U)
 		repodir=$(sed -n 's@REPOS_DIR: \[ "\([^"]*\)" \];@\1@p' "$conf")
@@ -264,6 +265,7 @@ set -e
 
 ! grep -q 'gnid' "${HERE}/../files/Kontrol-upgrade"
 ! grep -q '/etc/platform' "${HERE}/../files/Kontrol-upgrade"
+grep -q 'unset ALTABI' "${HERE}/../files/Kontrol-upgrade"
 grep -q 'sbin/Kontrol-repo-setup' "${HERE}/../Makefile"
 grep -q 'exit 75' "${HERE}/../files/Kontrol-upgrade"
 printf 'all check-repos tests passed\n'

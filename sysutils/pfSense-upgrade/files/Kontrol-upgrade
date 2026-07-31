@@ -325,8 +325,12 @@ abi_setup() {
 		# must describe the target repository while crossing an OS major.
 		echo "OSVERSION=${OSVERSION}" \
 		    >> /usr/local/etc/pkg.conf
+		# pkg 2.x rejects ALTABI even when ABI/OSVERSION are also present.
+		# Do not leave the value exported by an earlier repository selection.
+		unset ALTABI
 	else
 		echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+		export ALTABI
 	fi
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
@@ -367,7 +371,7 @@ EOF
 		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_ALTABI ABI ALTABI OSVERSION NEW_MAJOR
+	export CUR_ABI CUR_ALTABI ABI OSVERSION NEW_MAJOR
 }
 
 get_pkg_repo_url() {
