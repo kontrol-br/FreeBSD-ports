@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-E2guardian54
 PORTVERSION=	6.6.26
-PORTREVISION=	# empty
+PORTREVISION=	3
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty

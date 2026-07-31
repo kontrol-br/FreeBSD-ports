@@ -31,6 +31,8 @@
 	<name>e2guardiansearchacl</name>
 	<version>1.0</version>
 	<title>Services: E2guardian - Access Lists</title>
+	<delete_string>E2guardian: removed a configuration item.</delete_string>
+	<addedit_string>E2guardian: changed settings.</addedit_string>
 	<include_file>/usr/local/pkg/e2guardian.inc</include_file>
 	<tabs>
 		<tab>
