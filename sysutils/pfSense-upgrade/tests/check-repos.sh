@@ -6,10 +6,24 @@ ROOT=$(mktemp -d /tmp/Kontrol-upgrade-test.XXXXXX)
 trap 'rm -rf "${ROOT}"' EXIT HUP INT TERM
 MOCK=${ROOT}/pkg-static
 
-# The packaged marker must name the product-renamed installed templates.  A
-# source-tree pfSense name makes every real Kontrol check fail before pkg runs.
-grep -q '^template=Kontrol-repo-upgrade$' \
+# The marker is rendered with the product-renamed installed template.  A
+# literal source-tree pfSense name makes every real Kontrol check fail.
+grep -q '^template=%%PRODUCT_NAME%%-repo-upgrade$' \
 	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target"
+grep -q '^PKG_REPO_BRANCH_UPGRADE?=[[:space:]]*v2_9_0$' \
+	"${HERE}/../../pfSense-repo/Makefile"
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.abi")" = \
+	'FreeBSD:15:%%ARCH%%' ]
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.osversion")" = 1500000 ]
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.abi")" = \
+	'FreeBSD:16:%%ARCH%%' ]
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.osversion")" = 1600000 ]
+sed 's/%%PRODUCT_NAME%%/Kontrol/g' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target" \
+	> "${ROOT}/Kontrol-repo-upgrade.target"
+grep -q '^managed_by=Kontrol-repo$' "${ROOT}/Kontrol-repo-upgrade.target"
+grep -q '^template=Kontrol-repo-upgrade$' "${ROOT}/Kontrol-repo-upgrade.target"
+grep -q '^signature_policy=fingerprints$' "${ROOT}/Kontrol-repo-upgrade.target"
 cat > "${MOCK}" <<'MOCKEOF'
 #!/bin/sh
 [ -z "${ABI:-}" ] && [ -z "${ALTABI:-}" ] && [ -z "${OSVERSION:-}" ] || {
@@ -20,12 +34,19 @@ printf '%s\n' "$*" >> "${CALL_LOG}"
 conf=; if [ "$1" = -C ]; then conf=$2; shift 2; fi
 if [ "$1" = version ]; then
 	[ "$4" = "$3" ] && echo = && exit 0
-	awk -v a="$3" -v b="$4" 'BEGIN { print ((a+0)<(b+0))?"<":">" }'
+	awk -v a="$3" -v b="$4" 'BEGIN {
+		na=split(a, av, "."); nb=split(b, bv, "."); n=(na>nb?na:nb)
+		for (i=1; i<=n; i++) {
+			if ((av[i]+0)<(bv[i]+0)) { print "<"; exit }
+			if ((av[i]+0)>(bv[i]+0)) { print ">"; exit }
+		}
+		print "="
+	}'
 	exit 0
 fi
 case "$1:$2" in
 	query:%v)
-		case "$3" in Kontrol|Kontrol-base|Kontrol-kernel-Kontrol) echo 2.7.2;; *) exit 1;; esac ;;
+		case "$3" in Kontrol|Kontrol-base|Kontrol-kernel-Kontrol) echo 2.8.1;; *) exit 1;; esac ;;
 	update:-f)
 		cp "$conf" "${SNAP_DIR}/pkg.$$.conf"
 		repodir=$(sed -n 's@REPOS_DIR: \[ "\([^"]*\)" \];@\1@p' "$conf")
@@ -74,12 +95,13 @@ Kontrol: {
 }
 CONF
 		echo FreeBSD:16:amd64 > "${dir}/repos/${template}.abi"
+		echo 1600000 > "${dir}/repos/${template}.osversion"
 		eval "export AVAILABLE_${template}=${available} VERSION_${template}=${version}"
 	done
 	before=$(find "${dir}" -type f -exec sha256sum {} + | sort | sha256sum)
 	set +e
 	mkdir -p "${dir}/snap"
-	output=$(ABI=FreeBSD:14:amd64 ALTABI=freebsd:14:x86:64 OSVERSION=1400097 \
+	output=$(ABI=FreeBSD:15:amd64 ALTABI=freebsd:15:x86:64 OSVERSION=1500000 \
 	    CALL_LOG=${ROOT}/calls SNAP_DIR=${dir}/snap PKG_STATIC=${MOCK} REPO_TEMPLATE_DIR=${dir}/repos \
 	    REAL_PKG_DBDIR=${dir}/realdb TMPDIR=${dir}/tmp "${CHECK}" 2>"${dir}/stderr")
 	rc=$?
@@ -99,7 +121,7 @@ CONF
 }
 
 run_case direct_290 2 2.9.0 upgrade290,2.9.0,yes,yes,yes
-run_case highest 2 2.9.0 upgrade281,2.8.1,yes,yes,yes upgrade290,2.9.0,yes,yes,yes
+run_case highest 2 2.10.0 upgrade290,2.9.0,yes,yes,yes upgrade2100,2.10.0,yes,yes,yes
 run_case unmarked_281 0 '' upgrade281,2.8.1,no,no,yes
 run_case no_stages 2 2.9.0 upgrade281,2.8.1,yes,yes,yes upgrade290,2.9.0,yes,yes,yes
 run_case no_fallback 1 '' upgrade281,2.8.1,yes,no,yes upgrade290,2.9.0,yes,yes,no
@@ -111,7 +133,7 @@ run_case signed_target 2 2.9.0 upgrade290,2.9.0,yes,yes,yes,fingerprints
 
 set +e
 mkdir -p "${ROOT}/template-snap"
-template_output=$(ABI=FreeBSD:14:amd64 ALTABI=freebsd:14:x86:64 \
+template_output=$(ABI=FreeBSD:15:amd64 ALTABI=freebsd:15:x86:64 \
 	CALL_LOG=${ROOT}/calls SNAP_DIR=${ROOT}/template-snap PKG_STATIC=${MOCK} \
 	REPO_TEMPLATE_DIR=${ROOT}/direct_290/repos REAL_PKG_DBDIR=${ROOT}/realdb \
 	TMPDIR=${ROOT}/direct_290/tmp KONTROL_UPGRADE_OUTPUT=template "${CHECK}" 2>/dev/null)
