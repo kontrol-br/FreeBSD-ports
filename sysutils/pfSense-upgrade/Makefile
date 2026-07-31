@@ -17,7 +17,7 @@ NO_MTREE=	yes
 NO_BUILD=	yes
 
 PLIST_FILES=	libexec/Kontrol-upgrade \
-		libexec/Kontrol-upgrade-direct \
+		libexec/Kontrol-upgrade-check-repos \
 		sbin/Kontrol-repo-setup \
 		sbin/Kontrol-upgrade
 
@@ -35,7 +35,7 @@ do-install:
 		${STAGEDIR}${PREFIX}/sbin
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade \
 		${STAGEDIR}${PREFIX}/libexec
-	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade-direct \
+	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade-check-repos \
 		${STAGEDIR}${PREFIX}/libexec
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade.wrapper \
 		${STAGEDIR}${PREFIX}/sbin/Kontrol-upgrade

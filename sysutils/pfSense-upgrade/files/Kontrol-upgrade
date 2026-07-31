@@ -177,8 +177,11 @@ pkg_with_pb() {
 
 start_progress_listener() {
 	[ -n "${progress_socket}" ] || return 0
-	[ -n "${nc_pid}" ] && return 0
-	[ ! -e "${progress_socket}" ] || rm -f "${progress_socket}"
+	if [ -n "${nc_pid}" ] && ps -p ${nc_pid} >/dev/null 2>&1 \
+	    && [ -e "${progress_socket}" ]; then
+		return 0
+	fi
+	[ -e "${progress_socket}" ] && rm -f "${progress_socket}"
 	nc -lU "${progress_socket}" >> "${progress_file}" &
 	nc_pid=$!
 	while [ ! -e "${progress_socket}" ]; do
@@ -461,6 +464,16 @@ pkg_update() {
 }
 
 pkg_upgrade_repo() {
+	local _check_only="${1}"
+	if [ "${_check_only}" = "check_only" ]; then
+		case "$(compare_pkg_version ${product}-repo)" in
+			'<'|'='|'>') return 0 ;;
+			*)
+				echo "ERROR: Unable to compare version of ${product}-repo" >&2
+				return 1
+				;;
+		esac
+	fi
 	if [ -n "${reinstall_pkg}" ] \
 	    || [ -z "${NEW_MAJOR}" -a "$(compare_pkg_version pkg)" = "<" ]; then
 		pkg_unlock pkg
@@ -483,6 +496,10 @@ pkg_upgrade_repo() {
 			return
 			;;
 		*)
+			if [ "${_check_only}" = "check_only" ]; then
+				echo "ERROR: Unable to compare version of ${_repo_pkg}" >&2
+				return 1
+			fi
 			_echo "ERROR: Unable to compare version of ${_repo_pkg}"
 			_exit 1
 	esac
@@ -1124,12 +1141,9 @@ check_upgrade() {
 		    "upgrading."
 	fi
 
-	# Check-only operation is deliberately read-only.  It uses the active
-	# repository catalog already present in the real pkg database, then lets
-	# the isolated helper inspect package-managed future release targets.
-	if [ "$(compare_pkg_version ${product}-repo)" = "" ]; then
-		echo "Unable to compare ${product}-repo in active repository" >&2
-	fi
+	# Failure to compare the active repository package must not prevent the
+	# read-only direct-target check.  Other actions retain the old fatal path.
+	pkg_upgrade_repo check_only || :
 
 	local _version_compare=""
 	for _package in ${_meta_pkg} ${_core_pkgs}; do
@@ -1158,42 +1172,80 @@ check_upgrade() {
 		return 2
 	done
 
-	/usr/local/libexec/${product}-upgrade-direct
-	local _direct_rc=$?
-	[ "${_direct_rc}" -ne 2 ] || return 2
+	# The active 2.8.1 repository intentionally remains selected.  Only after
+	# it is known to be current, inspect direct-release targets published by
+	# Kontrol-repo in isolated pkg databases.
+	local _upgrade_target
+	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
+	_upgrade_target=$(${_check_repos})
+	local _target_rc=$?
+	case "${_target_rc}" in
+		2)
+			[ -z "${_mute}" ] && _echo \
+			    "${_upgrade_target} version of ${product} is available"
+			return 2
+			;;
+		0)
+			;;
+		*)
+			echo "Unable to verify the supported upgrade repository" >&2
+			return 1
+			;;
+	esac
 
 	[ -z "${_mute}" ] \
 	    && _echo "Your system is up to date"
 	return 0
 }
 
-direct_upgrade_preflight() {
-	local _output=""
-	local _rc=0
-	local _version=""
-	local _marker=""
-	local _template=""
-	local _expected=""
-	local _active=""
+require_direct_upgrade_repo() {
+	local _check_repos=${KONTROL_CHECK_REPOS:-/usr/local/libexec/Kontrol-upgrade-check-repos}
+	local _target
+	_target=$(KONTROL_UPGRADE_OUTPUT=template ${_check_repos})
+	local _rc=$?
+	case "${_rc}" in
+		0)
+			return 0
+			;;
+		2)
+			;;
+		*)
+			echo "Unable to verify the supported upgrade repository" >&2
+			_exit 1
+			;;
+	esac
 
-	_output=$(/usr/local/libexec/${product}-upgrade-direct 2>>"${logfile}")
-	_rc=$?
-	if [ "${_rc}" -ne 2 ]; then
-		_echo "Upgrade preflight failed: unable to validate the authorized direct-release target."
-		return 1
+	case "${_target}" in
+		*'|'*) ;;
+		*)
+			echo "Invalid supported upgrade repository metadata" >&2
+			_exit 1
+			;;
+	esac
+	local _version=${_target%%|*}
+	local _template=${_target#*|}
+	case "${_version}:${_template}" in
+		*[!A-Za-z0-9_.:-]*|:*)
+			echo "Invalid supported upgrade repository metadata" >&2
+			_exit 1
+			;;
+	esac
+	local _template_dir=${KONTROL_REPO_TEMPLATE_DIR:-/usr/local/share/${product}/pkg/repos}
+	local _active_dir=${KONTROL_REPO_ACTIVE_DIR:-/usr/local/etc/pkg/repos}
+	local _target_conf="${_template_dir}/${_template}.conf"
+	[ -f "${_target_conf}" ] || {
+		echo "Supported upgrade repository template is missing" >&2
+		_exit 1
+	}
+	local _active_conf="${_active_dir}/${product}.conf"
+	local _selected_conf=$(realpath -q "${_active_conf}")
+	local _required_conf=$(realpath -q "${_target_conf}")
+	if [ -z "${_selected_conf}" ] || [ "${_selected_conf}" != "${_required_conf}" ]; then
+		_echo "ERROR: ${product} ${_version} is available, but the active repository is not set to ${_version}."
+		_echo "Select the ${product} ${_version} repository on the upgrade page and try again."
+		_echo "No packages were changed."
+		_exit 1
 	fi
-	_version=${_output%% *}
-	_marker="/usr/local/share/${product}/pkg/repos/${product}-repo-upgrade.target"
-	[ -f "${_marker}" ] || return 1
-	grep -qx "version=${_version}" "${_marker}" || return 1
-	_template=$(sed -n 's/^template=//p' "${_marker}")
-	[ "${_template}" = "${product}-repo-upgrade" ] || return 1
-	_expected="/usr/local/share/${product}/pkg/repos/${_template}.conf"
-	_active=$(readlink -f "/usr/local/etc/pkg/repos/${product}.conf" 2>/dev/null)
-	[ "${_active}" = "${_expected}" ] && return 0
-
-	_echo "Upgrade preflight failed: select the ${_version} repository in System Update and try again."
-	return 1
 }
 
 is_pkg_installed() {
@@ -1429,7 +1481,7 @@ export product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
 export product_label=$(php -n /usr/local/sbin/read_global_var product_label Kontrol)
 export pkg_prefix=$(php -n /usr/local/sbin/read_global_var pkg_prefix \
     Kontrol-pkg-)
-export platform=$(cat /etc/platform)
+export platform=$(cat /etc/platform 2>/dev/null || echo unknown)
 
 USE_MFS_TMPVAR=$(read_xml_tag.sh boolean system/use_mfs_tmpvar)
 if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
@@ -1619,7 +1671,7 @@ fi
 
 if [ "${action}" = "upgrade" ]; then
 	start_progress_listener
-	if ! direct_upgrade_preflight; then
+	if ! require_direct_upgrade_repo; then
 		_exit 1
 	fi
 fi
