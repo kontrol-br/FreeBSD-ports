@@ -8,22 +8,30 @@ MOCK=${ROOT}/pkg-static
 
 # The marker is rendered with the product-renamed installed template.  A
 # literal source-tree pfSense name makes every real Kontrol check fail.
-grep -q '^template=%%PRODUCT_NAME%%-repo-upgrade$' \
-	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target"
+grep -q '^template=%%PRODUCT_NAME%%-repo$' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo.target"
 grep -q '^PKG_REPO_BRANCH_UPGRADE?=[[:space:]]*v2_9_0$' \
 	"${HERE}/../../pfSense-repo/Makefile"
-[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.abi")" = \
+grep -q '^PFSENSE_DEFAULT_REPO_${ARCH}=[[:space:]]*${PFSENSE_REPOS_${ARCH}:M\*-previous}$' \
+	"${HERE}/../../pfSense-repo/Makefile"
+grep -q 'v2_8_1' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo-previous.conf"
+! grep -q 'v2_9_0' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo-previous.conf"
+grep -q '%%PKG_REPO_BRANCH_UPGRADE%%' \
+	"${HERE}/../../pfSense-repo/files/pfSense-repo.conf"
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo-previous.abi")" = \
 	'FreeBSD:15:%%ARCH%%' ]
-[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.osversion")" = 1500000 ]
-[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.abi")" = \
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo-previous.osversion")" = 1500000 ]
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.abi")" = \
 	'FreeBSD:16:%%ARCH%%' ]
-[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.osversion")" = 1600000 ]
+[ "$(cat "${HERE}/../../pfSense-repo/files/pfSense-repo.osversion")" = 1600000 ]
 sed 's/%%PRODUCT_NAME%%/Kontrol/g' \
-	"${HERE}/../../pfSense-repo/files/pfSense-repo-upgrade.target" \
-	> "${ROOT}/Kontrol-repo-upgrade.target"
-grep -q '^managed_by=Kontrol-repo$' "${ROOT}/Kontrol-repo-upgrade.target"
-grep -q '^template=Kontrol-repo-upgrade$' "${ROOT}/Kontrol-repo-upgrade.target"
-grep -q '^signature_policy=fingerprints$' "${ROOT}/Kontrol-repo-upgrade.target"
+	"${HERE}/../../pfSense-repo/files/pfSense-repo.target" \
+	> "${ROOT}/Kontrol-repo.target"
+grep -q '^managed_by=Kontrol-repo$' "${ROOT}/Kontrol-repo.target"
+grep -q '^template=Kontrol-repo$' "${ROOT}/Kontrol-repo.target"
+grep -q '^signature_policy=fingerprints$' "${ROOT}/Kontrol-repo.target"
 cat > "${MOCK}" <<'MOCKEOF'
 #!/bin/sh
 [ -z "${ABI:-}" ] && [ -z "${ALTABI:-}" ] && [ -z "${OSVERSION:-}" ] || {
@@ -142,7 +150,8 @@ set -e
 [ "${template_rc}" -eq 2 ]
 [ "${template_output}" = '2.9.0|upgrade290' ]
 
-# Starting the real upgrade (not -c) refuses to reinstall from the old repo.
+# Starting the real upgrade (not -c) activates the verified target. Detection
+# remains read-only; GUI confirmation is the authorization boundary.
 REQUIRE=${ROOT}/require.sh
 awk '/^require_direct_upgrade_repo\(\)/,/^}/' \
 	"${HERE}/../files/Kontrol-upgrade" > "${ROOT}/require-function"
@@ -167,6 +176,7 @@ KONTROL_REPO_ACTIVE_DIR=${ROOT}/require/active
 export KONTROL_CHECK_REPOS KONTROL_REPO_TEMPLATE_DIR KONTROL_REPO_ACTIVE_DIR
 _echo() { echo "\$*"; }
 _exit() { exit "\$1"; }
+abi_setup() { echo abi_setup >> ${ROOT}/require/calls; }
 REQUIRE_HEAD
 cat "${ROOT}/require-function" >> "${REQUIRE}"
 printf '%s\n' 'require_direct_upgrade_repo' >> "${REQUIRE}"
@@ -175,12 +185,11 @@ set +e
 require_output=$("${REQUIRE}")
 require_rc=$?
 set -e
-[ "${require_rc}" -eq 1 ]
-[ "${require_output}" = "ERROR: Kontrol 2.9.0 is available, but the active repository is not set to 2.9.0.
-Select the Kontrol 2.9.0 repository on the upgrade page and try again.
-No packages were changed." ]
+[ "${require_rc}" -eq 0 ]
+[ "${require_output}" = "Selected Kontrol 2.9.0 upgrade repository" ]
 [ "$(readlink "${ROOT}/require/active/Kontrol.conf")" = \
-	"${ROOT}/require/templates/current.conf" ]
+	"${ROOT}/require/templates/upgrade290.conf" ]
+[ "$(cat "${ROOT}/require/calls")" = abi_setup ]
 ln -sfn "${ROOT}/require/templates/upgrade290.conf" \
 	"${ROOT}/require/active/Kontrol.conf"
 [ -z "$("${REQUIRE}")" ]
@@ -254,5 +263,7 @@ set -e
 [ "${caller_output}" = '2.9.0 version of Kontrol is available' ]
 
 ! grep -q 'gnid' "${HERE}/../files/Kontrol-upgrade"
+! grep -q '/etc/platform' "${HERE}/../files/Kontrol-upgrade"
+grep -q 'sbin/Kontrol-repo-setup' "${HERE}/../Makefile"
 grep -q 'exit 75' "${HERE}/../files/Kontrol-upgrade"
 printf 'all check-repos tests passed\n'
