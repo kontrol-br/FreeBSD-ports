@@ -238,7 +238,7 @@ set -e
 
 if grep -q 'gnid' "${HERE}/../files/Kontrol-upgrade"; then exit 1; fi
 grep -q 'exit 75' "${HERE}/../files/Kontrol-upgrade"
-grep -q 'cat /etc/platform 2>/dev/null || echo unknown' "${HERE}/../files/Kontrol-upgrade"
+if grep -q '/etc/platform' "${HERE}/../files/Kontrol-upgrade"; then exit 1; fi
 grep -q 'sbin/Kontrol-repo-setup' "${HERE}/../Makefile"
 grep -q 'libexec/Kontrol-upgrade-check-repos' "${HERE}/../Makefile"
 printf 'all check-repos tests passed\n'
