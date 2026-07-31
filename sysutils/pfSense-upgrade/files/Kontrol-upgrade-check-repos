@@ -129,7 +129,9 @@ ABI: "${abi}";
 OSVERSION: ${osversion};
 PKGCONF
 
-	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f; then
+	# stdout is a machine-readable protocol consumed by Kontrol-upgrade.  pkg
+	# update prints catalogue progress there, which would corrupt version|template.
+	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f >/dev/null 2>&1; then
 		had_failure=yes
 		continue
 	fi
@@ -137,7 +139,7 @@ PKGCONF
 	valid=yes
 	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
 		local_version=$(installed_version "${package}") || { valid=no; break; }
-		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { valid=no; break; }
+		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}" 2>/dev/null) || { valid=no; break; }
 		[ -n "${remote_version}" ] || { valid=no; break; }
 		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { valid=no; break; }
 	done

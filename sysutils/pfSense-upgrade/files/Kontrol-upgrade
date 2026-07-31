@@ -325,8 +325,12 @@ abi_setup() {
 		# must describe the target repository while crossing an OS major.
 		echo "OSVERSION=${OSVERSION}" \
 		    >> /usr/local/etc/pkg.conf
+		# pkg 2.x rejects ALTABI even when ABI/OSVERSION are also present.
+		# Do not leave the value exported by an earlier repository selection.
+		unset ALTABI
 	else
 		echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+		export ALTABI
 	fi
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
@@ -367,7 +371,7 @@ EOF
 		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_ALTABI ABI ALTABI OSVERSION NEW_MAJOR
+	export CUR_ABI CUR_ALTABI ABI OSVERSION NEW_MAJOR
 }
 
 get_pkg_repo_url() {
@@ -624,11 +628,23 @@ require_direct_upgrade_repo() {
 	local _active_conf="${_active_dir}/${product}.conf"
 	local _selected_conf=$(realpath -q "${_active_conf}")
 	local _required_conf=$(realpath -q "${_target_conf}")
-	if [ -z "${_selected_conf}" ] || [ "${_selected_conf}" != "${_required_conf}" ]; then
-		_echo "ERROR: ${product} ${_version} is available, but the active repository is not set to ${_version}."
-		_echo "Select the ${product} ${_version} repository on the upgrade page and try again."
-		_echo "No packages were changed."
+	[ -n "${_required_conf}" ] || {
+		echo "Unable to resolve supported upgrade repository template" >&2
 		_exit 1
+	}
+	if [ "${_selected_conf}" != "${_required_conf}" ]; then
+		# Reaching the upgrade action means the user already confirmed the
+		# firmware update in the GUI.  RELENG_2_8_1 may still persist Previous
+		# (or a legacy path) even while displaying the isolated 2.9 detection.
+		# Activate only the package-managed target verified above.  This changes
+		# no package and allows the following pkg_update/fetch phase to run.
+		mkdir -p "${_active_dir}" || _exit 1
+		ln -sfn "${_required_conf}" "${_active_conf}" || _exit 1
+		# pkg_update invokes the legacy PHP update_repos() before its own
+		# abi_setup call, so write the target ABI first. Otherwise that initial
+		# pkg update sees FreeBSD 16 metadata through a FreeBSD 15 pkg.conf.
+		abi_setup
+		_echo "Selected ${product} ${_version} upgrade repository"
 	fi
 }
 
@@ -1488,7 +1504,6 @@ export product=$(php -n /usr/local/sbin/read_global_var product_name Kontrol)
 export product_label=$(php -n /usr/local/sbin/read_global_var product_label Kontrol)
 export pkg_prefix=$(php -n /usr/local/sbin/read_global_var pkg_prefix \
     Kontrol-pkg-)
-export platform=$(cat /etc/platform)
 
 USE_MFS_TMPVAR=$(read_xml_tag.sh boolean system/use_mfs_tmpvar)
 if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then

@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-upgrade
 PORTVERSION=	2.8.1
-PORTREVISION=	7
+PORTREVISION=	12
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -17,6 +17,7 @@ NO_MTREE=	yes
 NO_BUILD=	yes
 
 PLIST_FILES=	libexec/Kontrol-upgrade \
+		sbin/Kontrol-repo-setup \
 		libexec/Kontrol-upgrade-check-repos \
 		sbin/Kontrol-upgrade
 
@@ -28,6 +29,8 @@ do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/sbin
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
 	${MKDIR} ${STAGEDIR}${PREFIX}/share/Kontrol
+	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-repo-setup \
+		${STAGEDIR}${PREFIX}/sbin
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade \
 		${STAGEDIR}${PREFIX}/libexec
 	${INSTALL_SCRIPT} ${WRKSRC}/Kontrol-upgrade-check-repos \

@@ -7,14 +7,15 @@ uma correção feita somente neste port pode ser sobrescrita antes da compilaç�
 
 ## RELENG_2_8_1 do kontrol-br/pfsense
 
-O build do Kontrol 2.8.1 deve exportar as três branches abaixo em
-`tools/builder_defaults.sh`:
+O `RELENG_2_8_1` atualmente publica dois templates: `Kontrol-repo` é o destino
+2.9.0 selecionado na tela de upgrade e `Kontrol-repo-previous` é o sistema
+2.8.1 em execução. O port deriva o marcador padrão do sufixo `-previous`, sem
+depender de um `PFSENSE_DEFAULT_REPO` herdado do build 2.9.
+
+O build deve exportar as branches abaixo em `tools/builder_defaults.sh`:
 
 ```sh
-PKG_REPO_BRANCH_RELEASE="v2_8_1"
-PKG_REPO_BRANCH_PREVIOUS="v2_7_2"
 PKG_REPO_BRANCH_UPGRADE="v2_9_0"
-export PKG_REPO_BRANCH_RELEASE PKG_REPO_BRANCH_PREVIOUS
 export PKG_REPO_BRANCH_UPGRADE
 ```
 
@@ -30,27 +31,21 @@ Os templates canônicos de `tools/templates/pkg_repos` devem ser:
 
 | Arquivo | Branch/ABI | Uso |
 | --- | --- | --- |
-| `Kontrol-repo.conf` | `v2_8_1`, FreeBSD 15 | Atual e padrão |
-| `Kontrol-repo-previous.conf` | `v2_7_2`, FreeBSD 14 | Retorno à release anterior |
-| `Kontrol-repo-upgrade.conf` | `v2_9_0`, FreeBSD 16 | Detecção e upgrade para 2.9.0 |
+| `Kontrol-repo-previous.conf` | `v2_8_1`, FreeBSD 15 | Atual e padrão |
+| `Kontrol-repo.conf` | `v2_9_0`, FreeBSD 16 | Detecção e upgrade para 2.9.0 |
 
-O arquivo `Kontrol-repo.conf.default` precisa continuar associado ao
-`Kontrol-repo.conf` de 2.8.1. O template principal não pode apontar para 2.9.0:
-isso troca o repositório ativo quando o pacote `Kontrol-repo` é atualizado e
-expõe o FreeBSD 15 ao `pkg` compilado para FreeBSD 16.
+O arquivo `Kontrol-repo-previous.conf.default` precisa continuar associado ao
+template 2.8.1. `Kontrol-repo.conf` somente se torna ativo depois que o usuário
+confirma a branch 2.9.0 na tela de upgrade.
 
-Os templates devem usar `%%PKG_REPO_BRANCH_RELEASE%%`,
-`%%PKG_REPO_BRANCH_PREVIOUS%%` e `%%PKG_REPO_BRANCH_UPGRADE%%`, em vez de
-versões literais. A função que renderiza os templates, `setup_pkg_repo`, deve
-substituir as três variáveis. O `poudriere_bulk` deve copiar os mesmos templates
-para o port renomeado, sem trocar qual arquivo possui o marcador `.default`.
+O `poudriere_bulk` deve copiar os mesmos templates para o port renomeado sem
+trocar qual arquivo possui o marcador `.default`.
 
 `tools/conf/pfPorts/make.conf` também deve incluir o novo repositório no valor
 usado para gerar o conjunto do pacote:
 
 ```make
-PFSENSE_PKG_SET_VERSION=	Kontrol-repo Kontrol-repo-previous \
-				Kontrol-repo-upgrade
+PFSENSE_PKG_SET_VERSION=	Kontrol-repo-previous Kontrol-repo
 ```
 
 ## RELENG_2_9_0 do kontrol-br/pfsense
