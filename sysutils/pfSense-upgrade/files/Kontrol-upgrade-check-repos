@@ -40,7 +40,8 @@ field()
 
 installed_version()
 {
-	PKG_DBDIR=${REAL_PKG_DBDIR} pkg_clean_env -C /dev/null query %v "${1}"
+	PKG_DBDIR=${REAL_PKG_DBDIR} pkg_clean_env -C /dev/null \
+	    query %v "${1}" 2>/dev/null
 }
 
 # Kontrol-upgrade exports the active repository ABI and legacy ALTABI.  pkg's
@@ -102,7 +103,7 @@ for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
 	fi
 
 	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
-	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || continue
+	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}" 2>/dev/null)" = ">" ] || continue
 
 	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { debug "mktemp failed under ${TMP_ROOT}"; had_failure=yes; continue; }
 	tmpdirs="${tmpdirs} ${dir}"
@@ -126,7 +127,9 @@ ABI: "${abi}";
 OSVERSION: ${osversion};
 PKGCONF
 
-	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f; then
+	# pkg writes catalogue progress to stdout.  Keep helper stdout machine-only:
+	# callers parse either VERSION or VERSION|TEMPLATE from it.
+	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f >/dev/null 2>&1; then
 		had_failure=yes
 		continue
 	fi
@@ -134,15 +137,18 @@ PKGCONF
 	valid=yes
 	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
 		local_version=$(installed_version "${package}") || { valid=no; break; }
-		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { valid=no; break; }
+		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U \
+		    %v "${package}" 2>/dev/null) || { valid=no; break; }
 		[ -n "${remote_version}" ] || { valid=no; break; }
-		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { valid=no; break; }
+		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" \
+		    "${local_version}" 2>/dev/null)" = ">" ] || { valid=no; break; }
 	done
 	if [ "${valid}" != yes ]; then
 		had_failure=yes
 		continue
 	fi
-	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t "${version}" "${best}")" = ">" ]; then
+	if [ -z "${best}" ] || [ "$(pkg_clean_env -C /dev/null version -t \
+	    "${version}" "${best}" 2>/dev/null)" = ">" ]; then
 		best=${version}
 		best_template=${template}
 	fi

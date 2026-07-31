@@ -19,6 +19,7 @@ cat > "${MOCK}" <<'MOCKEOF'
 printf '%s\n' "$*" >> "${CALL_LOG}"
 conf=; if [ "$1" = -C ]; then conf=$2; shift 2; fi
 if [ "$1" = version ]; then
+	echo 'pkg-static: Warning: Major OS version upgrade detected.' >&2
 	[ "$4" = "$3" ] && echo = && exit 0
 	awk -v a="$3" -v b="$4" 'BEGIN {
 		na=split(a, av, "."); nb=split(b, bv, "."); n=(na>nb?na:nb)
@@ -31,6 +32,7 @@ case "$1:$2" in
 	query:%v)
 		case "$3" in Kontrol|Kontrol-base|Kontrol-kernel-Kontrol) echo 2.8.1;; *) exit 1;; esac ;;
 	update:-f)
+		echo 'Updating mock repository catalogue...'
 		cp "$conf" "${SNAP_DIR}/pkg.$$.conf"
 		repodir=$(sed -n 's@REPOS_DIR: \[ "\([^"]*\)" \];@\1@p' "$conf")
 		template=$(basename "$(find "$repodir" -name '*.conf' | head -1)" .conf)
