@@ -25,8 +25,11 @@ shift $((OPTIND - 1))
 PHP=${PHP:-/usr/local/bin/php}
 READ_XML_TAG=${READ_XML_TAG:-/usr/local/sbin/read_xml_tag.sh}
 PRODUCT=${PRODUCT:-$("${PHP}" -n /usr/local/sbin/read_global_var product_name Kontrol)}
-TEMPLATE_DIR=${TEMPLATE_DIR:-$("${PHP}" -n /usr/local/sbin/read_global_var \
-	pkg_repos_path "/usr/local/share/${PRODUCT}/pkg/repos")}
+LOCALBASE=${LOCALBASE:-/usr/local}
+# pkg_repos_path in RELENG_2_8_1 can still contain the obsolete certificate
+# directory (/usr/local/etc/<product>/pkg/repos).  Repository templates are
+# package data and are always installed below share/<product>/pkg/repos.
+TEMPLATE_DIR=${TEMPLATE_DIR:-${LOCALBASE}/share/${PRODUCT}/pkg/repos}
 ACTIVE_DIR=${ACTIVE_DIR:-/usr/local/etc/pkg/repos}
 ACTIVE_CONF=${ACTIVE_DIR}/${PRODUCT}.conf
 PKG_CONF=${PKG_CONF:-/usr/local/etc/pkg.conf}
@@ -47,7 +50,12 @@ default_repo()
 resolve_repo()
 {
 	case "${selection}" in
-		/*) [ -f "${selection}" ] && { printf '%s\n' "${selection}"; return; } ;;
+		/*)
+			[ -f "${selection}" ] && { printf '%s\n' "${selection}"; return; }
+			# Older XML stores the former /usr/local/etc/Kontrol/pkg path.
+			# Preserve the selected basename while relocating it to DATADIR.
+			candidate=${TEMPLATE_DIR}/${selection##*/}
+			;;
 		[Dd]efault) candidate=${TEMPLATE_DIR}/${PRODUCT}-repo.conf ;;
 		'') default_repo; return ;;
 		*) candidate=${TEMPLATE_DIR}/${PRODUCT}-repo-$(printf '%s' "${selection}" | \

@@ -42,4 +42,23 @@ run_setup Default
 grep -qx 'ABI=FreeBSD:16:amd64' "${ROOT}/pkg.conf"
 grep -qx 'OSVERSION=1600000' "${ROOT}/pkg.conf"
 
+# Never use RELENG_2_8_1's legacy pkg_repos_path under etc. When no explicit
+# test override is present, templates are package data below LOCALBASE/share.
+mkdir -p "${ROOT}/prefix/share/Kontrol/pkg"
+mv "${ROOT}/templates" "${ROOT}/prefix/share/Kontrol/pkg/repos"
+REPO_SELECTION=Previous PRODUCT=Kontrol LOCALBASE=${ROOT}/prefix \
+	ACTIVE_DIR=${ROOT}/active PKG_CONF=${ROOT}/pkg.conf "${SETUP}" -U
+[ "$(readlink "${ROOT}/active/Kontrol.conf")" = \
+	"${ROOT}/prefix/share/Kontrol/pkg/repos/Kontrol-repo-previous.conf" ]
+
+# Existing installations may have persisted the pre-DATADIR absolute path.
+# Its basename still identifies the selected branch and must not fall back to
+# Previous, or confirmation would silently remain on 2.8.1.
+REPO_SELECTION=/usr/local/etc/Kontrol/pkg/Kontrol-repo.conf PRODUCT=Kontrol \
+	LOCALBASE=${ROOT}/prefix ACTIVE_DIR=${ROOT}/active \
+	PKG_CONF=${ROOT}/pkg.conf "${SETUP}" -U
+[ "$(readlink "${ROOT}/active/Kontrol.conf")" = \
+	"${ROOT}/prefix/share/Kontrol/pkg/repos/Kontrol-repo.conf" ]
+grep -qx 'ABI=FreeBSD:16:amd64' "${ROOT}/pkg.conf"
+
 printf 'all repo-setup tests passed\n'
