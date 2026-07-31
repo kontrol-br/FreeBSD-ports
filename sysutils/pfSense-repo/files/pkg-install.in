@@ -27,9 +27,10 @@ if [ -d "${REPO_SHARE_DIR}" ]; then
 		[ -e "${repo_file}" ] || continue
 		base=$(basename "${repo_file}")
 		case "${base}" in
-			*.conf|*.descr|*.abi|*.altabi)
+			*.conf|*.descr|*.abi|*.altabi|*.osversion|*.target)
 				repo_name="${base%.*}"
 				keep_repo=""
+				# shellcheck disable=SC2043
 				for allowed_repo in %%REPO_FILES%%; do
 					if [ "${repo_name}" = "${allowed_repo}" ]; then
 						keep_repo=1

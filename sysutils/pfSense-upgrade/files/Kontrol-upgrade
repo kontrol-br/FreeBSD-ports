@@ -165,22 +165,25 @@ pkg_with_pb() {
 	local _msg="${2}"
 
 	if [ -n "${progress_socket}" ]; then
-		if [ -e "${progress_socket}" ]; then
-			rm -f ${progress_socket}
-		fi
-
 		_event_pipe="-o EVENT_PIPE=${progress_socket}"
-
-		nc -lU ${progress_socket} >> ${progress_file} &
-		nc_pid=$!
-
-		while [ ! -e "${progress_socket}" ]; do
-			sleep 0.1
-		done
+		if [ -z "${nc_pid}" ]; then
+			start_progress_listener
+		fi
 	fi
 
 	_exec "pkg-static ${_event_pipe} ${_cmd}" "${_msg}"
 	nc_pid=""
+}
+
+start_progress_listener() {
+	[ -n "${progress_socket}" ] || return 0
+	[ -n "${nc_pid}" ] && return 0
+	[ ! -e "${progress_socket}" ] || rm -f "${progress_socket}"
+	nc -lU "${progress_socket}" >> "${progress_file}" &
+	nc_pid=$!
+	while [ ! -e "${progress_socket}" ]; do
+		sleep 0.1
+	done
 }
 
 fetch_upgrade_packages() {
@@ -1121,10 +1124,12 @@ check_upgrade() {
 		    "upgrading."
 	fi
 
-	[ -z "${_skip_update}" ] \
-	    && pkg_update "" mute
-
-	pkg_upgrade_repo
+	# Check-only operation is deliberately read-only.  It uses the active
+	# repository catalog already present in the real pkg database, then lets
+	# the isolated helper inspect package-managed future release targets.
+	if [ "$(compare_pkg_version ${product}-repo)" = "" ]; then
+		echo "Unable to compare ${product}-repo in active repository" >&2
+	fi
 
 	local _version_compare=""
 	for _package in ${_meta_pkg} ${_core_pkgs}; do
@@ -1138,6 +1143,12 @@ check_upgrade() {
 				    && _echo "Your system is on a newer version"
 				return 0
 				;;
+			'<')
+				;;
+			*)
+				echo "Unable to compare ${_package} in active repository" >&2
+				continue
+				;;
 		esac
 
 		local _new_version=$(_pkg rquery -U %v ${_package})
@@ -1147,9 +1158,42 @@ check_upgrade() {
 		return 2
 	done
 
+	/usr/local/libexec/${product}-upgrade-direct
+	local _direct_rc=$?
+	[ "${_direct_rc}" -ne 2 ] || return 2
+
 	[ -z "${_mute}" ] \
 	    && _echo "Your system is up to date"
 	return 0
+}
+
+direct_upgrade_preflight() {
+	local _output=""
+	local _rc=0
+	local _version=""
+	local _marker=""
+	local _template=""
+	local _expected=""
+	local _active=""
+
+	_output=$(/usr/local/libexec/${product}-upgrade-direct 2>>"${logfile}")
+	_rc=$?
+	if [ "${_rc}" -ne 2 ]; then
+		_echo "Upgrade preflight failed: unable to validate the authorized direct-release target."
+		return 1
+	fi
+	_version=${_output%% *}
+	_marker="/usr/local/share/${product}/pkg/repos/${product}-repo-upgrade.target"
+	[ -f "${_marker}" ] || return 1
+	grep -qx "version=${_version}" "${_marker}" || return 1
+	_template=$(sed -n 's/^template=//p' "${_marker}")
+	[ "${_template}" = "${product}-repo-upgrade" ] || return 1
+	_expected="/usr/local/share/${product}/pkg/repos/${_template}.conf"
+	_active=$(readlink -f "/usr/local/etc/pkg/repos/${product}.conf" 2>/dev/null)
+	[ "${_active}" = "${_expected}" ] && return 0
+
+	_echo "Upgrade preflight failed: select the ${_version} repository in System Update and try again."
+	return 1
 }
 
 is_pkg_installed() {
@@ -1394,13 +1438,7 @@ if [ "${USE_MFS_TMPVAR}" = "true" -a ! -e /conf/ram_disks_failed ]; then
 fi
 
 product_version=$(cat /etc/version)
-do_not_send_uniqueid=$(read_xml_tag.sh boolean system/do_not_send_uniqueid)
-if [ "${do_not_send_uniqueid}" != "true" ]; then
-	uniqueid=$(gnid)
-	export HTTP_USER_AGENT="${product}/${product_version}:${uniqueid}"
-else
-	export HTTP_USER_AGENT="${product}/${product_version}"
-fi
+export HTTP_USER_AGENT="${product}/${product_version}"
 
 validate_repo_conf
 
@@ -1547,7 +1585,7 @@ fi
 
 if pgrep -qF ${pid_file} >/dev/null 2>&1; then
 	echo "Another instance is already running... Aborting!"
-	exit 1
+	exit 75
 fi
 
 echo $$ > ${pid_file}
@@ -1577,6 +1615,13 @@ progress_file=${logfile%.*}.json
 
 if [ -e "${progress_file}" ]; then
 	rm -f ${progress_file}
+fi
+
+if [ "${action}" = "upgrade" ]; then
+	start_progress_listener
+	if ! direct_upgrade_preflight; then
+		_exit 1
+	fi
 fi
 
 arch=$(uname -p)

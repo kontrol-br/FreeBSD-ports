@@ -1,0 +1,121 @@
+#!/bin/sh
+# Read-only discovery for package-managed direct release targets.
+
+product=${PRODUCT_NAME:-Kontrol}
+pkg_static=${PKG_STATIC:-/usr/local/sbin/pkg-static}
+repo_dir=${REPO_DIR:-/usr/local/share/${product}/pkg/repos}
+tmp_root=${TMPDIR:-/tmp}
+current_tmp=""
+
+cleanup()
+{
+	[ -z "${current_tmp}" ] || rm -rf "${current_tmp}"
+	current_tmp=""
+}
+trap 'cleanup; exit 1' HUP INT TERM
+trap cleanup EXIT
+
+diagnostic()
+{
+	echo "$*" >&2
+}
+
+marker_value()
+{
+	_key=$1
+	_file=$2
+	_count=$(awk -F= -v key="${_key}" '$1 == key { count++ } END { print count + 0 }' "${_file}")
+	[ "${_count}" -eq 1 ] || return 1
+	awk -F= -v key="${_key}" '$1 == key { sub(/^[^=]*=/, ""); print }' "${_file}"
+}
+
+pkg_isolated()
+{
+	/usr/bin/env -u ABI -u ALTABI -u OSVERSION "${pkg_static}" "$@"
+}
+
+check_target()
+{
+	_marker=$1
+	_managed=$(marker_value managed_by "${_marker}") || return 1
+	_eligible=$(marker_value eligible "${_marker}") || return 1
+	_direct=$(marker_value supported_direct "${_marker}") || return 1
+	_channel=$(marker_value channel "${_marker}") || return 1
+	_version=$(marker_value version "${_marker}") || return 1
+	_template=$(marker_value template "${_marker}") || return 1
+	_policy=$(marker_value signature_policy "${_marker}") || return 1
+
+	[ "${_managed}" = "${product}-repo" ] && [ "${_eligible}" = yes ] &&
+	    [ "${_direct}" = yes ] && [ "${_channel}" = release ] || return 1
+	echo "${_version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || return 1
+	echo "${_template}" | grep -Eq "^${product}-repo-[A-Za-z0-9_-]+$" || return 1
+	[ "$(basename "${_marker}")" = "${_template}.target" ] || return 1
+	case "${_policy}" in fingerprints|none) ;; *) return 1 ;; esac
+
+	_conf=${repo_dir}/${_template}.conf
+	_abi_file=${repo_dir}/${_template}.abi
+	_osversion_file=${repo_dir}/${_template}.osversion
+	[ -f "${_conf}" ] && [ -f "${_abi_file}" ] && [ -f "${_osversion_file}" ] || return 1
+	_abi=$(cat "${_abi_file}")
+	_osversion=$(cat "${_osversion_file}")
+	echo "${_abi}" | grep -Eq '^FreeBSD:16:[A-Za-z0-9_]+$' || return 1
+	echo "${_osversion}" | grep -Eq '^16[0-9]{5}$' || return 1
+
+	current_tmp=$(mktemp -d "${tmp_root%/}/${product}-upgrade.XXXXXX") || return 1
+	mkdir -p "${current_tmp}/db" "${current_tmp}/repos" || { cleanup; return 1; }
+	_tmp_conf=${current_tmp}/repos/${_template}.conf
+	cp "${_conf}" "${_tmp_conf}" || { cleanup; return 1; }
+
+	if [ "${_policy}" = none ]; then
+		# SECURITY: unsigned catalogs are permitted only by validated package
+		# metadata, and only in this disposable copy.  Both entries must change.
+		_count=$(grep -Ec '^[[:space:]]*signature_type:[[:space:]]*"?fingerprints"?,' "${_tmp_conf}")
+		[ "${_count}" -eq 2 ] || { cleanup; return 1; }
+		sed -i.upgrade -E 's/^([[:space:]]*signature_type:[[:space:]]*)"?fingerprints"?,/\1"none",/' "${_tmp_conf}" || { cleanup; return 1; }
+		_count=$(grep -Ec '^[[:space:]]*signature_type:[[:space:]]*"?none"?,' "${_tmp_conf}")
+		[ "${_count}" -eq 2 ] || { cleanup; return 1; }
+		rm -f "${_tmp_conf}.upgrade"
+	fi
+
+	cat > "${current_tmp}/pkg.conf" <<-EOF
+	PKG_DBDIR: "${current_tmp}/db";
+	REPOS_DIR: [ "${current_tmp}/repos" ];
+	ABI: "${_abi}";
+	OSVERSION: ${_osversion};
+	EOF
+
+	pkg_isolated -C "${current_tmp}/pkg.conf" update -f >/dev/null 2>&1 || {
+		diagnostic "Direct target ${_version} repository is unavailable"
+		cleanup
+		return 1
+	}
+
+	_newer=no
+	for _package in "${product}" "${product}-base" "${product}-kernel-${product}"; do
+		_installed=$(pkg_isolated -C /dev/null query %v "${_package}" 2>/dev/null) || { cleanup; return 1; }
+		_remote=$(pkg_isolated -C "${current_tmp}/pkg.conf" rquery -U %v "${_package}" 2>/dev/null) || { cleanup; return 1; }
+		_cmp=$(pkg_isolated version -t "${_installed}" "${_remote}" 2>/dev/null) || { cleanup; return 1; }
+		[ "${_cmp}" != '<' ] || _newer=yes
+	done
+	cleanup
+	[ "${_newer}" = yes ] || return 1
+
+	if [ -z "${best_version}" ]; then
+		best_version=${_version}
+	else
+		_cmp=$(pkg_isolated version -t "${best_version}" "${_version}" 2>/dev/null) || return 1
+		[ "${_cmp}" != '<' ] || best_version=${_version}
+	fi
+}
+
+best_version=""
+for marker in "${repo_dir}"/*.target; do
+	[ -f "${marker}" ] || continue
+	check_target "${marker}" || diagnostic "Ignoring unusable direct target: $(basename "${marker}")"
+done
+
+if [ -n "${best_version}" ]; then
+	echo "${best_version} version of ${product} is available"
+	exit 2
+fi
+exit 0
