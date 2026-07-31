@@ -21,15 +21,8 @@ fi
 REPO_PATH=/usr/local/etc/pkg/repos
 REPO_CONF=${REPO_PATH}/%%PRODUCT_NAME%%.conf
 
-# These names were shipped by older revisions of this package.  Do not use a
-# wildcard here: administrators may keep private repository templates beside
-# the package-managed ones.
-MANAGED_REPO_DIR=/usr/local/share/%%PRODUCT_NAME%%/pkg/repos
-for old in pfSense-repo-previous.conf pfSense-repo-previous.descr \
-    pfSense-repo-previous.abi pfSense-repo-previous.altabi \
-    pfSense-repo-previous.target; do
-	rm -f "${MANAGED_REPO_DIR}/${old}"
-done
+# Preserve both package-managed branches: the running 2.8.1 repository
+# and the explicitly selected 2.9.0 upgrade repository.
 
 if [ ! -f "%%DEFAULT_REPO%%" ]; then
 	echo "===> ERROR: Default repo conf not found!"
