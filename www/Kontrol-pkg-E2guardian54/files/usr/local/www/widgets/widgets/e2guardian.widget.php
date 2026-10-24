@@ -49,13 +49,13 @@ function e2g_close_table(){
 function e2guardian_show_dstats($count = 5) {
     $count2 = $count +1000;
     $log = "/var/log/e2guardian/dstats.log";
-    exec("/usr/bin/head -1 $log",$dstats);
-    exec("/usr/bin/tail -{$count2} $log | grep -v Httpw | tail -{$count}",$dstats);
-    for ($d = ($count -1); $d >= 0; $d--) {
-        print "<tr>\n";
-        $dstat = preg_replace("/\s+/"," ",$dstats[$d]);
+    $dstats = array();
+    exec("/usr/bin/tail -{$count2} $log | grep -vi httpw | tail -{$count}",$dstats);
+    for ($d = (count($dstats) - 1); $d >= 0; $d--) {
+        $dstat = preg_replace("/\s+/"," ",trim($dstats[$d]));
         $fields = explode(" ",$dstat);
-        if (is_numeric($fields[3])) {
+        if (isset($fields[3]) && is_numeric($fields[3])) {
+            print "<tr>\n";
             //$fields[0] = date('r', $fields[0]);
             print "<th style='text-align:right;'><a>" . date('H:i',$fields[0]) . "</a></th>\n";
             for ($i = 2; $i < 11; $i++) {

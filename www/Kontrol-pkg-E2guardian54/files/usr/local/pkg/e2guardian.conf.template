@@ -161,6 +161,7 @@ dstatinterval = {$dstatinterval}
 # it has a different port.
 #filterip =
 {$filterip}
+{$checkip}
 
 # the ports that e2guardian listens to.  Specify one line per filterip
 # line.  If both mapportstoips and mapauthtoports are set to 'on'
