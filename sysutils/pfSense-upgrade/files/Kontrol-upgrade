@@ -480,7 +480,12 @@ EOF
 		export IGNORE_OSVERSION=yes
 	fi
 
-	export CUR_ABI CUR_ALTABI ABI ALTABI OSVERSION NEW_MAJOR
+	if pkg_uses_osversion; then
+		unset CUR_ALTABI ALTABI
+		export CUR_ABI ABI OSVERSION NEW_MAJOR
+	else
+		export CUR_ABI CUR_ALTABI ABI ALTABI OSVERSION NEW_MAJOR
+	fi
 }
 
 get_pkg_repo_url() {
