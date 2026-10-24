@@ -687,6 +687,9 @@ generatedcertstart = 1733357721
 # Much logic has moved to storyboard files
 preauthstoryboard = '{$e2guardian_dir}/preauth.story'
 
+# Outbound Gateway Policy Routing rules file
+gatewayrules = '{$e2guardian_dir}/lists/gatewayrules'
+
 # Storyboard tracing
 # Warning - produces verbose output - do not use in production
 # Output goes to syslog (or stderr in debug mode)

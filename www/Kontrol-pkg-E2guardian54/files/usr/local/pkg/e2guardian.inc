@@ -28,6 +28,7 @@ require_once("pkg-utils.inc");
 require_once("services.inc");
 require_once("util.inc");
 require_once("filter.inc");
+require_once("gwlb.inc");
 $pfs_version = substr(trim(file_get_contents("/etc/version")),0,3);
 
 require_once("xmlrpc_client.inc");
@@ -708,6 +709,299 @@ function check_ca_hashes() {
 	}
 }
 
+function e2guardian_get_gateway_options() {
+	global $config;
+	$options = array();
+	$options[] = array(
+		'name' => 'default (System Default Route)',
+		'value' => 'default'
+	);
+
+	if (function_exists('get_gateways')) {
+		$gws = get_gateways();
+	} elseif (function_exists('return_gateways_array')) {
+		$gws = return_gateways_array();
+	} else {
+		$gws = array();
+	}
+
+	if (is_array($gws)) {
+		foreach ($gws as $gwname => $gw) {
+			if (($gw['ipprotocol'] ?? 'inet') !== 'inet') {
+				continue;
+			}
+			$name = $gw['name'] ?? $gwname;
+			if ($name === '' || $name === 'Null4' || $name === 'Null6') {
+				continue;
+			}
+			$gw_ip = $gw['gateway'] ?? '';
+			$if_descr = $gw['friendlyifdescr'] ?? ($gw['friendlyiface'] ?? '');
+			$label = "{$name}";
+			if ($if_descr !== '' || $gw_ip !== '') {
+				$label .= " (" . trim("{$if_descr} {$gw_ip}") . ")";
+			}
+			$options[] = array(
+				'name' => "Gateway: {$label}",
+				'value' => $name
+			);
+		}
+	}
+
+	$gwgroups = is_array($config['gateways']['gateway_group'] ?? null) ? $config['gateways']['gateway_group'] : array();
+	foreach ($gwgroups as $gwg) {
+		if (!is_array($gwg) || empty($gwg['name'])) {
+			continue;
+		}
+		$gname = $gwg['name'];
+		$descr = !empty($gwg['descr']) ? " - {$gwg['descr']}" : "";
+		$options[] = array(
+			'name' => "Gateway Group: {$gname}{$descr}",
+			'value' => $gname
+		);
+	}
+
+	return $options;
+}
+
+function e2guardian_expand_ip_spec($raw_value) {
+	global $config;
+	$out = array();
+	$tokens = preg_split('/[\s,;]+/', trim((string)$raw_value));
+	$aliases = is_array($config['aliases']['alias'] ?? null) ? $config['aliases']['alias'] : array();
+	$alias_map = array();
+	foreach ($aliases as $al) {
+		if (!empty($al['name']) && !empty($al['address'])) {
+			$alias_map[$al['name']] = $al;
+		}
+	}
+
+	foreach ($tokens as $tok) {
+		$tok = ltrim(trim($tok), '$');
+		if ($tok === '') {
+			continue;
+		}
+		if (isset($alias_map[$tok])) {
+			$al_addrs = preg_split('/\s+/', trim((string)$alias_map[$tok]['address']));
+			foreach ($al_addrs as $addr) {
+				$addr = trim($addr);
+				if ($addr === '') {
+					continue;
+				}
+				if (is_ipaddrv4($addr) || is_subnetv4($addr) || preg_match('/^\d{1,3}(?:\.\d{1,3}){3}-\d{1,3}(?:\.\d{1,3}){3}$/', $addr)) {
+					$out[] = $addr;
+				} elseif (is_hostname($addr)) {
+					$recs = @dns_get_record($addr, DNS_A);
+					if (is_array($recs)) {
+						foreach ($recs as $r) {
+							if (!empty($r['ip']) && is_ipaddrv4($r['ip'])) {
+								$out[] = $r['ip'];
+							}
+						}
+					}
+				}
+			}
+		} else {
+			$out[] = $tok;
+		}
+	}
+
+	return implode(',', array_unique($out));
+}
+
+function e2guardian_collect_gateway_metadata() {
+	global $config;
+	$gateways_meta = array();
+
+	if (function_exists('get_gateways')) {
+		$gws = get_gateways();
+	} elseif (function_exists('return_gateways_array')) {
+		$gws = return_gateways_array();
+	} else {
+		$gws = array();
+	}
+	$gw_status = function_exists('return_gateways_status') ? return_gateways_status(true) : array();
+
+	$tos_index = 1;
+	if (is_array($gws)) {
+		foreach ($gws as $gwname => $gw) {
+			if (($gw['ipprotocol'] ?? 'inet') !== 'inet') {
+				continue;
+			}
+			$name = $gw['name'] ?? $gwname;
+			if ($name === '' || $name === 'Null4' || $name === 'Null6') {
+				continue;
+			}
+			$friendly_if = $gw['friendlyiface'] ?? ($gw['interface'] ?? '');
+			$real_if = $gw['interface'] ?? '';
+			if ($real_if === '' || isset($config['interfaces'][$real_if])) {
+				$real_if = get_real_interface($friendly_if);
+			}
+			$local_ip = get_interface_ip($friendly_if);
+			$sn = get_interface_subnet($friendly_if);
+			if (empty($local_ip) && !empty($real_if)) {
+				$if_det = dg_get_real_interface_address($friendly_if);
+				if (!empty($if_det[0])) {
+					$local_ip = $if_det[0];
+				}
+			}
+			$gw_ip = $gw['gateway'] ?? '';
+			if ($gw_ip === 'dynamic' || !is_ipaddrv4($gw_ip)) {
+				$gw_ip = get_interface_gateway($friendly_if);
+			}
+			if (!is_ipaddrv4($local_ip) || !is_ipaddrv4($gw_ip) || empty($real_if)) {
+				continue;
+			}
+
+			$tos_val = ($tos_index * 4) & 0xFC;
+			if ($tos_val == 0) {
+				$tos_val = 4;
+			}
+			$tos_index++;
+			if ($tos_index > 60) {
+				$tos_index = 1;
+			}
+
+			$is_up = true;
+			if (isset($gw['force_down'])) {
+				$is_up = false;
+			} elseif (isset($gw_status[$name]['status'])) {
+				$st = strtolower((string)$gw_status[$name]['status']);
+				if ($st !== 'online' && $st !== 'none') {
+					$is_up = false;
+				}
+			}
+
+			$subnet_cidr = '';
+			if (is_ipaddrv4($local_ip) && is_numeric($sn) && $sn > 0 && $sn <= 32) {
+				$subnet_cidr = gen_subnet($local_ip, $sn) . '/' . $sn;
+			}
+
+			$gateways_meta[$name] = array(
+				'name' => $name,
+				'friendly_if' => $friendly_if,
+				'real_if' => $real_if,
+				'local_ip' => $local_ip,
+				'subnet_cidr' => $subnet_cidr,
+				'gw_ip' => $gw_ip,
+				'tos' => $tos_val,
+				'tos_hex' => sprintf('0x%02x', $tos_val),
+				'weight' => (isset($gw['weight']) && is_numeric($gw['weight']) && $gw['weight'] > 0) ? (int)$gw['weight'] : 1,
+				'up' => $is_up
+			);
+		}
+	}
+
+	return $gateways_meta;
+}
+
+function e2guardian_write_gateway_rules_file() {
+	global $config;
+	$e2guardian_dir = E2GUARDIAN_ETCDIR;
+	$lists_dir = $e2guardian_dir . "/lists";
+	if (!is_dir($lists_dir)) {
+		@mkdir($lists_dir, 0755, true);
+	}
+	$gw_file = $lists_dir . "/gatewayrules";
+
+	$rules_cfg = array();
+	if (isset($config['installedpackages']['e2guardiangateways']['config']) &&
+	    is_array($config['installedpackages']['e2guardiangateways']['config'])) {
+		$rules_cfg = $config['installedpackages']['e2guardiangateways']['config'];
+	}
+
+	$active_rules = array();
+	foreach ($rules_cfg as $rule) {
+		if (!is_array($rule)) {
+			continue;
+		}
+		if (!e2g_flag_is_enabled($rule['enabled'] ?? '')) {
+			continue;
+		}
+		$active_rules[] = $rule;
+	}
+
+	if (empty($active_rules)) {
+		file_put_contents($gw_file, "# Outbound Gateway Policy Rules (no active rules configured)\n", LOCK_EX);
+		return;
+	}
+
+	$gateways_meta = e2guardian_collect_gateway_metadata();
+	$lines = array();
+	$lines[] = "# Do not edit this file manually.";
+	$lines[] = "# Generated by E2guardian package on " . date('c');
+
+	foreach ($gateways_meta as $gw) {
+		$up_str = $gw['up'] ? 'up' : 'down';
+		$lines[] = "GATEWAY|{$gw['name']}|{$gw['real_if']}|{$gw['local_ip']}|{$gw['gw_ip']}|{$gw['tos_hex']}|{$up_str}";
+	}
+
+	$gwgroups = is_array($config['gateways']['gateway_group'] ?? null) ? $config['gateways']['gateway_group'] : array();
+	foreach ($gwgroups as $gwg) {
+		if (!is_array($gwg) || empty($gwg['name']) || empty($gwg['item']) || !is_array($gwg['item'])) {
+			continue;
+		}
+		$gname = $gwg['name'];
+		$member_specs = array();
+		foreach ($gwg['item'] as $item_str) {
+			$parts = explode('|', (string)$item_str);
+			$m_gw = trim($parts[0] ?? '');
+			$m_tier = isset($parts[1]) && is_numeric($parts[1]) ? (int)$parts[1] : 1;
+			if ($m_gw === '' || !isset($gateways_meta[$m_gw])) {
+				continue;
+			}
+			$m_weight = $gateways_meta[$m_gw]['weight'] ?? 1;
+			$m_up = $gateways_meta[$m_gw]['up'] ? 'up' : 'down';
+			$member_specs[] = "{$m_gw}:{$m_tier}:{$m_weight}:{$m_up}";
+		}
+		if (!empty($member_specs)) {
+			$lines[] = "GWGROUP|{$gname}|" . implode(',', $member_specs);
+		}
+	}
+
+	foreach ($active_rules as $rule) {
+		$rname = str_replace('|', '_', trim((string)($rule['name'] ?? 'rule')));
+		$stype = strtolower(trim((string)($rule['src_type'] ?? 'any')));
+		$sval = str_replace('|', ',', trim((string)($rule['src_value'] ?? '')));
+		if ($stype === 'ip') {
+			$sval = e2guardian_expand_ip_spec($sval);
+		} elseif ($stype === 'any') {
+			$sval = '*';
+		}
+
+		$dtype = strtolower(trim((string)($rule['dst_type'] ?? 'any')));
+		$dval = str_replace('|', ',', trim((string)($rule['dst_value'] ?? '')));
+		if ($dtype === 'ip') {
+			$dval = e2guardian_expand_ip_spec($dval);
+		} elseif ($dtype === 'any') {
+			$dval = '*';
+		}
+
+		$gw_target = str_replace('|', '', trim((string)($rule['gateway'] ?? 'default')));
+		if ($gw_target === '') {
+			$gw_target = 'default';
+		}
+
+		$lines[] = "RULE|{$stype}|{$sval}|{$dtype}|{$dval}|{$gw_target}|{$rname}";
+	}
+
+	file_put_contents($gw_file, implode("\n", $lines) . "\n", LOCK_EX);
+}
+
+function e2guardian_plugin_gateway($pluginparams) {
+	global $config;
+	$e2g_conf = $config['installedpackages']['e2guardian']['config'][0] ?? array();
+	if (($e2g_conf['enable'] ?? '') != 'on' && ($e2g_conf['enable_dg'] ?? '') != 'on') {
+		return;
+	}
+	if (empty($config['installedpackages']['e2guardiangateways']['config'])) {
+		return;
+	}
+	e2guardian_write_gateway_rules_file();
+	if (e2guardian_processes_running()) {
+		mwexec_bg(E2GUARDIAN_SBINDIR . "/e2guardian -g");
+	}
+}
+
 /*
  * E2guardian firewall rules configuration
  */
@@ -717,7 +1011,7 @@ function e2g_generate_rules($type) {
 	$e2g_conf = $config['installedpackages']['e2guardian']['config'][0];
 
 	// Do not install any firewall rules if E2guardian is disabled
-	if ($e2g_conf['enable'] != "on") {
+	if ($e2g_conf['enable'] != "on" && $e2g_conf['enable_dg'] != "on") {
 		log_error("[E2guardian] Installed but disabled. Not installing '{$type}' rules.");
 		return;
 	}
@@ -831,6 +1125,31 @@ function e2g_generate_rules($type) {
 			break;
 		case 'filter':
 		case 'rule':
+			/*
+			 * Outbound Gateway Policy Routing rules for E2guardian
+			 * Match packets tagged with each gateway's TOS mark and route-to the corresponding gateway
+			 */
+			$gw_rules_cfg = $config['installedpackages']['e2guardiangateways']['config'] ?? array();
+			$has_active_gw_rules = false;
+			if (is_array($gw_rules_cfg)) {
+				foreach ($gw_rules_cfg as $gw_rule) {
+					if (is_array($gw_rule) && e2g_flag_is_enabled($gw_rule['enabled'] ?? '')) {
+						$has_active_gw_rules = true;
+						break;
+					}
+				}
+			}
+			if ($has_active_gw_rules) {
+				$gateways_meta = e2guardian_collect_gateway_metadata();
+				if (!empty($gateways_meta)) {
+					$rules .= "# Setup E2guardian outbound gateway policy routing\n";
+					foreach ($gateways_meta as $gw) {
+						$not_dest = !empty($gw['subnet_cidr']) ? $gw['subnet_cidr'] : "({$gw['real_if']}:network)";
+						$rules .= "pass out quick route-to ( {$gw['real_if']} {$gw['gw_ip']} ) inet proto tcp from {$gw['local_ip']} to ! {$not_dest} tos {$gw['tos_hex']} flags S/SA keep state\n";
+					}
+					$rules .= "\n";
+				}
+			}
 			/*
 			 * Non-Transparent Proxy Interface(s)
 			 * Pass traffic to proxy ports on the proxy interface(s) when 'Allow Users on Interface' is enabled
@@ -2191,6 +2510,7 @@ EOF;
         file_put_contents($e2guardian_dir . "/lists/authplugins/portmap", $map_header . $port_map_body . "\n", LOCK_EX);
         file_put_contents($e2guardian_dir . "/lists/browser", $map_header . "#Populate this list with User-Agent rules when needed\n", LOCK_EX);
         file_put_contents($e2guardian_dir . "/lists/nomitm", $map_header . "#Populate this list with hosts that must bypass MITM inspection\n", LOCK_EX);
+	e2guardian_write_gateway_rules_file();
 	//Create/update userlist xml file
 	$ips_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_ips_header.template");
 	$user_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_users_header.template");
@@ -2629,7 +2949,7 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
         unlink_if_exists(E2GUARDIAN_RCDIR . '/e2guardian');
 	$squid_parent_pid = "/var/run/squid/e2gsquid.pid";
 
-	if ($e2g_cfg['enable'] == "on") {
+	if ($e2g_cfg['enable'] == "on" || $e2g_cfg['enable_dg'] == "on") {
                 chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0755);
                 copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $script);
 		chmod ($script, 0755);
@@ -2658,6 +2978,9 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
 		//force local squid daemon stop or start depending on config files
 		$parent_status = ( $e2g_cfg['parentmode'] == 'local' ? "stop" : "start");
 		mwexec_bg("$script_parent $parent_status");
+		if (function_exists('filter_configure')) {
+			filter_configure();
+		}
 	} else {
 		if (is_process_running('e2guardian')) {
 			log_error('E2guardian is disabled, stopping process...');
@@ -2856,6 +3179,48 @@ function e2guardian_validate_input($post, &$input_errors) {
                 }
         }
 
+	if (isset($post['src_type']) && isset($post['dst_type'])) {
+		$src_type = strtolower(trim((string)$post['src_type']));
+		$src_val = trim((string)($post['src_value'] ?? ''));
+		$dst_type = strtolower(trim((string)$post['dst_type']));
+		$dst_val = trim((string)($post['dst_value'] ?? ''));
+
+		if ($src_type !== 'any' && $src_val === '') {
+			$input_errors[] = "Source Value cannot be empty when Source Type is not Any.";
+		}
+		if ($dst_type !== 'any' && $dst_val === '') {
+			$input_errors[] = "Destination Value cannot be empty when Destination Type is not Any.";
+		}
+		if ($src_type === 'ip' && $src_val !== '') {
+			$tokens = preg_split('/[\s,;]+/', $src_val);
+			foreach ($tokens as $tok) {
+				$tok = ltrim(trim($tok), '$');
+				if ($tok === '') {
+					continue;
+				}
+				$is_valid_range = preg_match('/^\d{1,3}(?:\.\d{1,3}){3}-\d{1,3}(?:\.\d{1,3}){3}$/', $tok);
+				$is_valid_alias = function_exists('is_alias') && is_alias($tok);
+				if (!is_ipaddrv4($tok) && !is_subnetv4($tok) && !$is_valid_range && !$is_valid_alias) {
+					$input_errors[] = "Source Value '{$tok}' is not a valid IPv4 address, CIDR subnet, IPv4 range (start-end), or Firewall Alias.";
+				}
+			}
+		}
+		if ($dst_type === 'ip' && $dst_val !== '') {
+			$tokens = preg_split('/[\s,;]+/', $dst_val);
+			foreach ($tokens as $tok) {
+				$tok = ltrim(trim($tok), '$');
+				if ($tok === '') {
+					continue;
+				}
+				$is_valid_range = preg_match('/^\d{1,3}(?:\.\d{1,3}){3}-\d{1,3}(?:\.\d{1,3}){3}$/', $tok);
+				$is_valid_alias = function_exists('is_alias') && is_alias($tok);
+				if (!is_ipaddrv4($tok) && !is_subnetv4($tok) && !$is_valid_range && !$is_valid_alias) {
+					$input_errors[] = "Destination Value '{$tok}' is not a valid IPv4 address, CIDR subnet, IPv4 range (start-end), or Firewall Alias.";
+				}
+			}
+		}
+	}
+
         // check that the proxy port does not clash with WebGUI
         $port = ($settings['filterports'] ? $settings['filterports'] : 8080);
 	$port = $post['filterports'] ? $post['filterports'] : $port;
@@ -2990,7 +3355,7 @@ function e2guardian_export_sections() {
 		'e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist',
 		'e2guardianldap', 'e2guardiancontentacl', 'e2guardianfileacl', 'e2guardiangroups', 'e2guardianheaderacl',
 		'e2guardianlimits', 'e2guardianlog', 'e2guardianphraseacl', 'e2guardianpicsacl', 'e2guardiansearchacl',
-		'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips'
+		'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips', 'e2guardiangateways'
 	);
 }
 

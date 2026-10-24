@@ -4,6 +4,7 @@ pkg/e2guardian_blacklist.xml
 pkg/e2guardian_config.xml
 pkg/e2guardian_content_acl.xml
 pkg/e2guardian_file_acl.xml
+pkg/e2guardian_gateways.xml
 pkg/e2guardian_groups.xml
 pkg/e2guardian_header_acl.xml
 pkg/e2guardian_ldap.xml
