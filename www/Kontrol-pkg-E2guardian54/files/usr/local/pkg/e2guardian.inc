@@ -636,7 +636,7 @@ function e2g_check_logdeniedcgi($logdeniedcgi) {
 
 function e2g_watchdog_script($wpid, $wcmd, $winfo){
 	$wlog = "/var/log/e2guardian/start.log";
-	$wprocess = ($winfo == "e2guardian" ? "^/usr/local/sbin/e2guardian$" : "");
+	$wprocess = ($winfo == "e2guardian" ? "^/usr/local/sbin/e2guardian([[:space:]]|$)" : "");
 	$wscript = <<<EOF
 # watchdog script for {$winfo}
 	if [ -f {$wpid} ]; then
@@ -644,14 +644,14 @@ function e2g_watchdog_script($wpid, $wcmd, $winfo){
 		if [ -n "\${wpid_value}" ] && /bin/kill -0 "\${wpid_value}" 2>/dev/null; then
 			:
 		elif [ -n "{$wprocess}" ] && /usr/bin/pgrep -f "{$wprocess}" >/dev/null 2>&1; then
-			/usr/bin/pgrep -f "{$wprocess}" | /usr/bin/head -n1 > {$wpid}
+			:
 		else
 			{$wcmd}
 			echo "\$(date) {$winfo} start" >> {$wlog}
 		fi
 	else
 		if [ -n "{$wprocess}" ] && /usr/bin/pgrep -f "{$wprocess}" >/dev/null 2>&1; then
-			/usr/bin/pgrep -f "{$wprocess}" | /usr/bin/head -n1 > {$wpid}
+			:
 		else
 			{$wcmd}
 			echo "\$(date) {$winfo} start" >> {$wlog}
