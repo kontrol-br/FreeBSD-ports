@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-E2guardian54
 PORTVERSION=	6.6.26
-PORTREVISION=	6
+PORTREVISION=	7
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -13,7 +13,7 @@ COMMENT=	Kontrol E2guardian 5.4 management package
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	e2guardian>=5.4.20:www/e2guardian54 \
+RUN_DEPENDS=	e2guardian>=5.4.21:www/e2guardian54 \
 		${LOCALBASE}/sbin/clamd:security/clamav \
 		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss
 
@@ -56,6 +56,8 @@ do-install:
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_file_acl.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_groups.xml \
+		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_gateways.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_header_acl.xml \
 		${STAGEDIR}${PREFIX}/pkg
