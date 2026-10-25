@@ -1437,6 +1437,34 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 
         $e2guardian_dir = E2GUARDIAN_DIR . "/etc/e2guardian";
 
+        // Ensure all required directory structures exist
+        $required_dirs = array(
+                $e2guardian_dir,
+                $e2guardian_dir . '/downloadmanagers',
+                $e2guardian_dir . '/authplugins',
+                $e2guardian_dir . '/contentscanners',
+                $e2guardian_dir . '/lists',
+                $e2guardian_dir . '/lists/authplugins',
+                $e2guardian_dir . '/lists/contentscanners',
+                $e2guardian_dir . '/lists/downloadmanagers',
+                $e2guardian_dir . '/lists/bannedrooms'
+        );
+        foreach ($required_dirs as $rdir) {
+                if (!is_dir($rdir)) {
+                        @mkdir($rdir, 0755, true);
+                }
+        }
+
+        if (file_exists(E2GUARDIAN_SBINDIR . "/e2guardian")) {
+                @chmod(E2GUARDIAN_SBINDIR . "/e2guardian", 0755);
+        }
+
+        $rc_script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+        if (file_exists(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template')) {
+                @copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $rc_script);
+                @chmod($rc_script, 0755);
+        }
+
         $authplugins_dir = $e2guardian_dir . '/lists/authplugins';
         if (!is_dir($authplugins_dir)) {
                 @mkdir($authplugins_dir, 0755, true);
@@ -1470,15 +1498,17 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         }
 
         foreach ($files as $file) {
-                if (!file_exists($e2guardian_dir . $file.'.sample')) {
+                if (!file_exists($e2guardian_dir . $file.'.sample') && file_exists($e2guardian_dir . $file)) {
                         $new_file = "";
-                        $install_file = file($e2guardian_dir . $file);
-                        foreach ($install_file as $line) {
-				if (!preg_match("/Include/", $line)) {
-					$new_file .= $line;
-				}
-			}
-			file_put_contents($e2guardian_dir . $file.'.sample', $new_file, LOCK_EX);
+                        $install_file = @file($e2guardian_dir . $file);
+                        if (is_array($install_file)) {
+                                foreach ($install_file as $line) {
+                                        if (!preg_match("/Include/", $line)) {
+                                                $new_file .= $line;
+                                        }
+                                }
+                                file_put_contents($e2guardian_dir . $file.'.sample', $new_file, LOCK_EX);
+                        }
                 }
         }
 
@@ -1719,18 +1749,32 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		$count++;
 	}
 
-        $authplugin_samples = glob($e2guardian_dir . '/authplugins/*.conf.sample');
-        if ($authplugin_samples !== false) {
-                foreach ($authplugin_samples as $sample_path) {
-                        $target_path = substr($sample_path, 0, -7);
-                        e2g_copy_sample_if_needed(
-                                $sample_path,
-                                $target_path,
-                                array(
-                                        'require_strings' => array('story_function'),
-                                        'log_prefix' => '[E2guardian auth plugin]'
-                                )
-                        );
+        $standard_auth_plugins = array(
+                'ip' => "plugname = 'ip'\nstory_function = 'auth_ip'\n",
+                'port' => "plugname = 'port'\nstory_function = 'auth_port'\n",
+                'dnsauth' => "plugname = 'dnsauth'\nredirect_to_auth = 'yes'\n",
+                'ident' => "plugname = 'ident'\nstory_function = 'auth_ident'\n",
+                'proxy-basic' => "plugname = 'proxy-basic'\nstory_function = 'auth_proxy_basic'\n",
+                'proxy-digest' => "plugname = 'proxy-digest'\nstory_function = 'auth_proxy_digest'\n",
+                'proxy-header' => "plugname = 'proxy-header'\nstory_function = 'auth_proxy_header'\n",
+                'proxy-ntlm' => "plugname = 'proxy-ntlm'\nstory_function = 'auth_proxy_ntlm'\n"
+        );
+        foreach ($standard_auth_plugins as $pname => $pdefault) {
+                $sample_path = $e2guardian_dir . '/authplugins/' . $pname . '.conf.sample';
+                $target_path = $e2guardian_dir . '/authplugins/' . $pname . '.conf';
+                if (!file_exists($target_path)) {
+                        if (file_exists($sample_path)) {
+                                e2g_copy_sample_if_needed(
+                                        $sample_path,
+                                        $target_path,
+                                        array(
+                                                'require_strings' => array('story_function'),
+                                                'log_prefix' => '[E2guardian auth plugin]'
+                                        )
+                                );
+                        } else {
+                                @file_put_contents($target_path, $pdefault, LOCK_EX);
+                        }
                 }
         }
 
@@ -1738,23 +1782,51 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         foreach ($story_samples as $story_file) {
                 $sample_path = $e2guardian_dir . '/' . $story_file . '.sample';
                 $target_path = $e2guardian_dir . '/' . $story_file;
-                e2g_copy_sample_if_needed(
-                        $sample_path,
-                        $target_path,
-                        array(
-                                'compare_hash' => true,
-                                'log_prefix' => '[E2guardian story]'
-                        )
-                );
+                $default_template = E2GUARDIAN_PKGDIR . '/' . $story_file . '.default';
+                if (!file_exists($target_path)) {
+                        if (file_exists($sample_path)) {
+                                e2g_copy_sample_if_needed(
+                                        $sample_path,
+                                        $target_path,
+                                        array(
+                                                'compare_hash' => true,
+                                                'log_prefix' => '[E2guardian story]'
+                                        )
+                                );
+                        } elseif (file_exists($default_template)) {
+                                @copy($default_template, $target_path);
+                        } elseif (file_exists($target_path . '.pre54')) {
+                                @copy($target_path . '.pre54', $target_path);
+                        }
+                } elseif (file_exists($sample_path)) {
+                        e2g_copy_sample_if_needed(
+                                $sample_path,
+                                $target_path,
+                                array(
+                                        'compare_hash' => true,
+                                        'log_prefix' => '[E2guardian story]'
+                                )
+                        );
+                }
         }
 
         $download_manager_sample = $e2guardian_dir . '/downloadmanagers/default.conf.sample';
         $download_manager_target = $e2guardian_dir . '/downloadmanagers/default.conf';
-        e2g_copy_sample_if_needed(
-                $download_manager_sample,
-                $download_manager_target,
-                array('log_prefix' => '[E2guardian download manager]')
-        );
+        $download_manager_default = E2GUARDIAN_PKGDIR . '/default.conf.default';
+        if (!file_exists($download_manager_target)) {
+                if (file_exists($download_manager_sample)) {
+                        e2g_copy_sample_if_needed(
+                                $download_manager_sample,
+                                $download_manager_target,
+                                array('log_prefix' => '[E2guardian download manager]')
+                        );
+                } elseif (file_exists($download_manager_default)) {
+                        @copy($download_manager_default, $download_manager_target);
+                } else {
+                        $default_dm_cfg = "# The default download manager.\nplugname = 'default'\n";
+                        @file_put_contents($download_manager_target, $default_dm_cfg, LOCK_EX);
+                }
+        }
 
 	//URL ACL
 	//create a default setup if not exists
@@ -2700,11 +2772,20 @@ EOF;
 		}
 		//clamdscan.conf e2guardian file
                 $cconf = E2GUARDIAN_ETCDIR . "/contentscanners/clamdscan.conf";
-		$cconf_file = file_get_contents($cconf);
-		if (preg_match('/#clamdudsfile/', $cconf_file)) {
-			$cconf_file = preg_replace('/#clamdudsfile/', 'clamdudsfile', $cconf_file);
-			file_put_contents($cconf, $cconf_file, LOCK_EX);
-		}
+                if (!file_exists($cconf)) {
+                        if (file_exists($cconf . '.sample')) {
+                                @copy($cconf . '.sample', $cconf);
+                        } else {
+                                @file_put_contents($cconf, "plugname = 'clamdscan'\n#clamdudsfile = '/var/run/clamav/clamd.sock'\n", LOCK_EX);
+                        }
+                }
+                if (file_exists($cconf)) {
+                        $cconf_file = file_get_contents($cconf);
+                        if (preg_match('/#clamdudsfile/', $cconf_file)) {
+                                $cconf_file = preg_replace('/#clamdudsfile/', 'clamdudsfile', $cconf_file);
+                                file_put_contents($cconf, $cconf_file, LOCK_EX);
+                        }
+                }
 		//clamd conf file
 		$cconf = E2GUARDIAN_DIR . "/etc/clamd.conf";
 		$cconf_file = file_get_contents($cconf);
@@ -3289,12 +3370,21 @@ function isValidXmlElementName($elementName)
 }
 
 function e2guardian_php_install_command() {
+	if (file_exists(E2GUARDIAN_SBINDIR . "/e2guardian")) {
+		@chmod(E2GUARDIAN_SBINDIR . "/e2guardian", 0755);
+	}
+	$rc_script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+	if (file_exists(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template')) {
+		@copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $rc_script);
+		@chmod($rc_script, 0755);
+	}
 	echo "Checking Blacklist...\n";
 	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 
 	fetch_blacklist(false, true);
 	echo "Blacklist check done, continuing package config sync.\n";
 	sync_package_e2guardian("no", true);
+	e2guardian_start("no", false, true);
 	clear_subsystem_dirty('e2guardian');
 }
 
@@ -3317,9 +3407,10 @@ function e2guardian_php_deinstall_command() {
 		e2g_check_cron($cron_cmd, "remove");
 	}
 
-	echo "Disabling automtic parent squid script...\n";
+	echo "Stopping services and removing rc scripts...\n";
+	e2g_stop_watchdog_processes();
 	$ecmds = array("e2guardian squid parent" => E2GUARDIAN_RCDIR . "/e2parent.sh",
-		       "e2guradian" => E2GUARDIAN_RCDIR . "/e2guardian.sh");
+		       "e2guardian" => E2GUARDIAN_RCDIR . "/e2guardian.sh");
 	foreach ($ecmds as $einfo => $ecmd) {
 		if (file_exists($ecmd)) {
 			log_error("stopping $einfo..");
@@ -3328,20 +3419,9 @@ function e2guardian_php_deinstall_command() {
 		}
 	}
 
-	//prevent e2guardian binary from starting from watchdog during package uninstall
-	chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0444);
-
-        echo "Removing conf files...\n";
-        $rconfs = array('*sample', '*.conf', '*.story', 'lists/*', 'authplugins/*sample', 'authplugins/*.conf', 'contentscanners/*sample', 'downloadmanagers/*sample', 'downloadmanagers/*.conf');
-        foreach ($rconfs as $rm) {
-                foreach (glob(E2GUARDIAN_ETCDIR . '/' . $rm) as $path) {
-                        if (is_dir($path)) {
-                                e2g_delTree($path);
-                        } elseif (file_exists($path)) {
-                                @unlink($path);
-                        }
-                }
-        }
+	// Do NOT delete base configs, storyboards, plugins, or *.sample files from E2GUARDIAN_ETCDIR.
+	// In pfSense/FreeBSD, package deinstall is invoked on every upgrade and reinstall;
+	// wiping ETCDIR destroys files installed by the base e2guardian package.
 
 	clear_subsystem_dirty('e2guardian');
 }

@@ -22,6 +22,10 @@ pkg/e2guardian_rc.template
 pkg/e2guardian_users_footer.template
 pkg/e2guardian_users_header.template
 pkg/e2guardian_story.template
+pkg/common.story.default
+pkg/preauth.story.default
+pkg/site.story.default
+pkg/default.conf.default
 pkg/e2guardianfx.conf.template
 pkg/e2guardian_ips.xml
 pkg/e2guardian_users.xml
