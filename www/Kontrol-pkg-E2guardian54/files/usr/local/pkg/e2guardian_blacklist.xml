@@ -142,6 +142,7 @@
 			<description><![CDATA[Enter FTP, HTTP or LOCAL (Kontrol) URL blacklist archive.<br>
 				File must be in tar.gz or tgz format.]]></description>
 			<type>input</type>
+			<default_value>http://pkg.kontrol.com.br:8081/blacklist/blacklist.tar.gz</default_value>
 			<size>80</size>
 		</field>
 		<field>

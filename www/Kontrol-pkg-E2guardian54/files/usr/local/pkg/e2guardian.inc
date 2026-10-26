@@ -1676,6 +1676,11 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			'url' => "http://pkg.kontrol.com.br:8081/blacklist/blacklist.tar.gz",
  			'enable_custom_script' => "",
 			'update_script' => "");
+	} else if (isset($config['installedpackages']['e2guardianblacklist']['config'][0]['url'])) {
+		$cur_url = $config['installedpackages']['e2guardianblacklist']['config'][0]['url'];
+		if (strpos($cur_url, 'pkg.konntrol.com.br') !== false) {
+			$config['installedpackages']['e2guardianblacklist']['config'][0]['url'] = str_replace('pkg.konntrol.com.br', 'pkg.kontrol.com.br', $cur_url);
+		}
 	}
 
 	//loop on array
@@ -2966,6 +2971,56 @@ function e2guardian_force_restart() {
 
 	log_error('[E2guardian] e2guardian did not return after force restart start command');
 	return gettext('Force Restart executed, but E2guardian does not appear to be running. Check the E2guardian logs.');
+}
+
+function e2guardian_prepare_gateways_view() {
+	global $config, $evaledvar;
+
+	if (!is_array($evaledvar)) {
+		return;
+	}
+
+	foreach ($evaledvar as &$rule) {
+		$stype = strtolower(trim((string)($rule['src_type'] ?? $rule['srctype'] ?? 'any')));
+		$sval = trim((string)($rule['src_value'] ?? $rule['srcvalue'] ?? ''));
+		switch ($stype) {
+			case 'ip':
+				$rule['srctypedisp'] = gettext("IP / Subnet / Range");
+				$rule['srcvaluedisp'] = ($sval !== '') ? $sval : "*";
+				break;
+			case 'user':
+				$rule['srctypedisp'] = gettext("Authenticated User(s)");
+				$rule['srcvaluedisp'] = ($sval !== '') ? $sval : "*";
+				break;
+			case 'any':
+			default:
+				$rule['srctypedisp'] = gettext("Any Source");
+				$rule['srcvaluedisp'] = "*";
+				break;
+		}
+
+		$dtype = strtolower(trim((string)($rule['dst_type'] ?? $rule['dsttype'] ?? 'any')));
+		$dval = trim((string)($rule['dst_value'] ?? $rule['dstvalue'] ?? ''));
+		switch ($dtype) {
+			case 'domain':
+				$rule['dsttypedisp'] = gettext("Domain / Wildcard");
+				$rule['dstvaluedisp'] = ($dval !== '') ? $dval : "*";
+				break;
+			case 'url':
+				$rule['dsttypedisp'] = gettext("URL / Path");
+				$rule['dstvaluedisp'] = ($dval !== '') ? $dval : "*";
+				break;
+			case 'ip':
+				$rule['dsttypedisp'] = gettext("IP / Subnet / Range");
+				$rule['dstvaluedisp'] = ($dval !== '') ? $dval : "*";
+				break;
+			case 'any':
+			default:
+				$rule['dsttypedisp'] = gettext("Any Destination");
+				$rule['dstvaluedisp'] = "*";
+				break;
+		}
+	}
 }
 
 function e2guardian_check_config() {
