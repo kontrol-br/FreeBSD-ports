@@ -1,10 +1,10 @@
 <?php
 /*
 	sarg_frame.php
-	part of pfSense (https://www.pfSense.org/)
+	part of the Kontrol Sarg package
 	Copyright (C) 2012 Marcello Coutinho <marcellocoutinho@gmail.com>
 	Copyright (C) 2015 ESF, LLC
-	Copyright KONNTROL Tecnologia Epp - 2016-2021
+	Copyright (C) 2016-2026 Kontrol Tecnologia
 	All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -30,127 +30,183 @@
 */
 require_once("authgui.inc");
 
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+	session_start();
+}
 
-//Starting Cache Session - export to PDF process
-ob_start();
+function sarg_report_path($path) {
+	$path = str_replace('\\', '/', (string)$path);
+	$parts = array();
+	foreach (explode('/', $path) as $part) {
+		if ($part === '' || $part === '.') {
+			continue;
+		}
+		if ($part === '..') {
+			if (empty($parts)) {
+				return false;
+			}
+			array_pop($parts);
+			continue;
+		}
+		if (!preg_match('/^[A-Za-z0-9._-]+$/D', $part)) {
+			return false;
+		}
+		$parts[] = $part;
+	}
+	return implode('/', $parts);
+}
 
-function sarg_build_runtime_index($dir, $dsuffix = "") {
-	$items = array();
-	if (is_dir($dir)) {
-		foreach (glob($dir . "/*", GLOB_ONLYDIR) as $path) {
-			$name = basename($path);
-			if ($name == "images") {
-				continue;
-			}
-			if (file_exists($path . "/index.html") || file_exists($path . "/index.html.gz")) {
-				$items[] = array(
-					'name' => $name,
-					'mtime' => filemtime($path)
-				);
-			}
+function sarg_report_join($prefix, $path) {
+	return sarg_report_path(($prefix === '' ? '' : $prefix . '/') . $path);
+}
+
+function sarg_path_in_roots($path, $roots) {
+	$real = realpath($path);
+	if ($real === false) {
+		return false;
+	}
+	foreach ($roots as $root) {
+		$root = realpath($root);
+		if ($root !== false && ($real === $root || strpos($real, $root . DIRECTORY_SEPARATOR) === 0)) {
+			return $real;
 		}
 	}
-	usort($items, function($a, $b) {
-		return $b['mtime'] <=> $a['mtime'];
-	});
+	return false;
+}
 
-	$html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
-	$html .= '<title>Sarg Reports</title>';
-	$html .= '<style>body{font-family:Segoe UI,Arial,sans-serif;padding:12px;}';
-	$html .= 'table{border-collapse:collapse;width:100%;}';
-	$html .= 'th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left;}';
-	$html .= 'h2{margin-top:0;}</style></head><body>';
-	$html .= '<h2>Sarg Reports</h2>';
-	$html .= '<table><thead><tr><th>Directory</th><th>Last update</th></tr></thead><tbody>';
-
+function sarg_runtime_index($root) {
+	$items = array();
+	foreach ((array)glob($root . '/*', GLOB_ONLYDIR) as $path) {
+		$name = basename($path);
+		if ($name !== 'images' && (is_file($path . '/index.html') || is_file($path . '/index.html.gz'))) {
+			$items[$name] = filemtime($path);
+		}
+	}
+	arsort($items, SORT_NUMERIC);
+	$html = '<!doctype html><html><head><meta charset="UTF-8"><title>SARG reports</title></head><body>';
+	$html .= '<div class="report"><h2>E2guardian User Access Reports</h2><table><thead><tr><th>FILE/PERIOD</th><th>CREATION DATE</th></tr></thead><tbody>';
 	if (empty($items)) {
 		$html .= '<tr><td colspan="2">No reports found.</td></tr>';
 	} else {
-		foreach ($items as $item) {
-			$link = '/sarg_frame.php?dir=' . urlencode($dsuffix) . '&file=' . rawurlencode($item['name']) . '/index.html';
-			$html .= '<tr><td><a href="' . htmlspecialchars($link) . '">' . htmlspecialchars($item['name']) . '</a></td>';
-			$html .= '<td>' . date("Y-m-d H:i:s", $item['mtime']) . '</td></tr>';
+		foreach ($items as $name => $mtime) {
+			$html .= '<tr><td><a href="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '/index.html">' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '</a></td>';
+			$html .= '<td>' . date('Y-m-d H:i:s', $mtime) . '</td></tr>';
 		}
 	}
-	$html .= '</tbody></table></body></html>';
-	return $html;
+	return $html . '</tbody></table></div></body></html>';
 }
 
-
-$uname = posix_uname();
-if ($uname['machine'] == 'amd64') {
-	ini_set('memory_limit', '250M');
+$dir_suffix = isset($_GET['dir']) ? (string)$_GET['dir'] : '';
+if ($dir_suffix !== '' && !preg_match('/^[A-Za-z0-9_-]+$/D', $dir_suffix)) {
+	http_response_code(400);
+	exit('Invalid report directory.');
 }
 
-// local file inclusion check
-if(!empty($_REQUEST['file'])){
-        $_REQUEST['file']=preg_replace('/(\.+\/|\\\.*|\/{2,})*/',"", $_REQUEST['file']);
-}
+$report_root = '/usr/local/sarg-reports' . ($dir_suffix === '' ? '' : '/' . $dir_suffix);
+$allowed_roots = array($report_root, '/usr/local/sarg-reports', '/usr/local/etc/sarg/images');
 
-if (preg_match("/(\S+)\W(\w+.html)/", $_REQUEST['file'], $matches)) {
-	// URL format
-	// https://192.168.1.1/sarg_reports.php?file=2012Mar30-2012Mar30/index.html
-	$url = $matches[2];
-	$prefix = $matches[1];
-} else {
-	$url = "index.html";
-	$prefix = "";
-}
-
-$url = ($_REQUEST['file'] == "" ? "index.html" : $_REQUEST['file']);
-$dir = "/usr/local/sarg-reports";
-if ($_REQUEST['dir'] != "") {
-    $dsuffix = preg_replace("/\W/", "", $_REQUEST['dir']);
-    $dir .= "/" . $dsuffix;
-} else {
-    $dsuffix = "";
-}
-
-$rand = rand(100000000000, 999999999999);
-$report = "";
-
-if (file_exists("{$dir}/{$url}")) {
-	$report = file_get_contents("{$dir}/{$url}");
-} elseif (file_exists("{$dir}/{$url}.gz")) {
-	$data = gzfile("{$dir}/{$url}.gz");
-	$report = implode($data);
-	unset ($data);
-} elseif ($url == "index.html" && $prefix == "") {
-	$report = sarg_build_runtime_index($dir, $dsuffix);
-}
-if ($report != "" ) {
-	$pattern[0] = "/href=\W(\S+html)\W/";
-	$replace[0] = "href=/sarg_frame.php?dir=" . $dsuffix . "&prevent=" . $rand . "&file=$prefix/$1";
-	$pattern[1] = '/img src="\S+\W([a-zA-Z0-9.-]+.png)/';
-	$replace[1] = 'img src="/sarg-images/$1';
-	$pattern[2] = '@img src="([.a-z/]+)/(\w+\.\w+)@';
-	$replace[2] = 'img src="/sarg-images' . $prefix . '/$1/$2';
-	$pattern[3] = '/img src="([a-zA-Z0-9.-_]+).png/';
-	$replace[3] = 'img src="/sarg-images/temp/$1.' . $rand . '.png';
-	$pattern[4] = '/<head>/';
-	$replace[4] = '<head><META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE"><META HTTP-EQUIV="PRAGMA" CONTENT="NO-CACHE">';
-
-	// look for graph files inside reports.
-	if (preg_match_all('/img src="([a-zA-Z0-9._-]+).png/', $report, $images)) {
-		conf_mount_rw();
-		for ($x = 0; $x < count($images[1]); $x++) {
-			copy("{$dir}/{$prefix}/{$images[1][$x]}.png", "/usr/local/www/sarg-images/temp/{$images[1][$x]}.{$rand}.png");
-		}
-		conf_mount_ro();
+if (isset($_GET['asset'])) {
+	$asset = sarg_report_path($_GET['asset']);
+	if ($asset === false || !preg_match('/\.(?:png|gif|jpe?g|svg)$/iD', $asset)) {
+		http_response_code(400);
+		exit('Invalid report asset.');
 	}
-
-	print preg_replace($pattern, $replace, $report);
-
-
-
-} else {
-	print "Error: Could not find report index file.<br />Check and save Sarg settings and try to force Sarg schedule.";
+	$asset_file = sarg_path_in_roots($report_root . '/' . $asset, $allowed_roots);
+	if ($asset_file === false || !is_file($asset_file)) {
+		http_response_code(404);
+		exit('Report asset not found.');
+	}
+	$extension = strtolower(pathinfo($asset_file, PATHINFO_EXTENSION));
+	$types = array('png' => 'image/png', 'gif' => 'image/gif', 'jpg' => 'image/jpeg',
+		'jpeg' => 'image/jpeg', 'svg' => 'image/svg+xml');
+	header('Content-Type: ' . $types[$extension]);
+	header('Cache-Control: private, max-age=300');
+	readfile($asset_file);
+	exit;
 }
 
-$pdf = ob_get_clean();
-echo $pdf;
-$_SESSION['pdf'] = $pdf;
+$requested = isset($_GET['file']) && $_GET['file'] !== '' ? $_GET['file'] : 'index.html';
+$requested = sarg_report_path($requested);
+if ($requested === false || !preg_match('/\.html$/iD', $requested)) {
+	http_response_code(400);
+	exit('Invalid report file.');
+}
 
+$report_file = sarg_path_in_roots($report_root . '/' . $requested, array($report_root));
+$compressed = false;
+if ($report_file === false) {
+	$report_file = sarg_path_in_roots($report_root . '/' . $requested . '.gz', array($report_root));
+	$compressed = ($report_file !== false);
+}
+
+$report = false;
+if ($report_file !== false && is_file($report_file) && $compressed) {
+	$lines = gzfile($report_file);
+	$report = ($lines === false) ? '' : implode('', $lines);
+} elseif ($report_file !== false && is_file($report_file)) {
+	$report = file_get_contents($report_file);
+} elseif ($requested === 'index.html' && !isset($_GET['file'])) {
+	$report = sarg_runtime_index($report_root);
+} else {
+	http_response_code(404);
+	exit('The report was not found. Save the Sarg settings and run a schedule to generate it.');
+}
+
+if ($report === false || $report === '') {
+	http_response_code(500);
+	exit('The report could not be read.');
+}
+
+$prefix = dirname($requested);
+$prefix = ($prefix === '.') ? '' : $prefix;
+$base_query = array('dir' => $dir_suffix);
+
+$report = preg_replace_callback(
+	'/href=(["\'])(?![a-z][a-z0-9+.-]*:|\/|#)([^"\']+\.html)(?:[?#][^"\']*)?\1/i',
+	function ($match) use ($prefix, $base_query) {
+		$target = sarg_report_join($prefix, $match[2]);
+		if ($target === false) {
+			return 'href="#"';
+		}
+		$query = $base_query;
+		$query['file'] = $target;
+		return 'href="/sarg_frame.php?' . htmlspecialchars(http_build_query($query), ENT_QUOTES, 'UTF-8') . '"';
+	},
+	$report
+);
+
+$report = preg_replace_callback(
+	'/src=(["\'])(?!data:|[a-z][a-z0-9+.-]*:|\/)([^"\']+\.(?:png|gif|jpe?g|svg))\1/i',
+	function ($match) use ($prefix, $base_query) {
+		$target = sarg_report_join($prefix, $match[2]);
+		if ($target === false) {
+			return 'src=""';
+		}
+		$query = $base_query;
+		$query['asset'] = $target;
+		return 'src="/sarg_frame.php?' . htmlspecialchars(http_build_query($query), ENT_QUOTES, 'UTF-8') . '"';
+	},
+	$report
+);
+
+$head_assets = '<meta http-equiv="Cache-Control" content="no-cache">' .
+	'<meta name="viewport" content="width=device-width, initial-scale=1">' .
+	'<link rel="stylesheet" href="/sarg_report.css">' .
+	'<script defer src="/sarg_charts.js"></script>';
+if (stripos($report, '</head>') !== false) {
+	$report = preg_replace('/<\/head>/i', $head_assets . '</head>', $report, 1);
+} else {
+	$report = $head_assets . $report;
+}
+
+$_SESSION['pdf'] = $report;
+$toolbar = '<div class="sarg-report-toolbar"><button type="button" onclick="window.open(\'sarg_report_pdf.php\',\'_blank\')">Abrir versão para impressão</button></div>';
+if (stripos($report, '</body>') !== false) {
+	$report = preg_replace('/<\/body>/i', $toolbar . '</body>', $report, 1);
+} else {
+	$report .= $toolbar;
+}
+
+header('Content-Type: text/html; charset=UTF-8');
+echo $report;
 ?>
-<button class="btn btn-success" onclick=" window.open('sarg_report_pdf.php','_blank')"> Open FullScreen for PDF</button>

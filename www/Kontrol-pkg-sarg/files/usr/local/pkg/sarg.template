@@ -709,7 +709,7 @@ www_document_root /usr/local/www
 #     You can redirect the output to a file of your choice and edit
 #     it to your liking.
 #
-#external_css_file none
+external_css_file /sarg_report.css
 
 # TAG: user_authentication yes|no
 #     Allow user authentication in User Reports using .htaccess

@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-Sarg
-PORTVERSION=	0.7.12
+PORTVERSION=	0.8.0
 #PORTREVISION=	# empty
 CATEGORIES=	www
 MASTER_SITES=	# empty
@@ -18,7 +18,11 @@ DISABLE_VULNERABILITIES=	yes
 
 RUN_DEPENDS=	${LOCALBASE}/bin/sarg:www/sarg
 
+USES=		php:cli
+USE_PHP=	posix session zlib
+
 NO_BUILD=	yes
+NO_ARCH=	yes
 NO_MTREE=	yes
 
 SUB_FILES=	pkg-install pkg-deinstall
@@ -55,6 +59,10 @@ do-install:
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${DATADIR}/info.xml \
 		${STAGEDIR}${DATADIR}
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/sarg_sorttable.js \
+		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/sarg_report.css \
+		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/sarg_charts.js \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/sarg_report_pdf.php \
 		${STAGEDIR}${PREFIX}/www

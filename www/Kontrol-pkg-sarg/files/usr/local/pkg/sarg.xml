@@ -42,7 +42,7 @@
 	]]>
 	</copyright>
 	<name>sarg</name>
-	<version>0.6.6</version>
+	<version>%%PKGVERSION%%</version>
 	<title>Status: Sarg Settings</title>
 	<include_file>/usr/local/pkg/sarg.inc</include_file>
 	<menu>

@@ -47,12 +47,12 @@ define('DANSG_DIR', '/usr/local');
 $uname = posix_uname();
 
 // STATIC VARS
-$sarg_proxy['squid_rc'] = SQUID_DIR . '/etc/rc.d/squid.sh';
-$sarg_proxy['squid_config'] = '/var/squid/logs/access.log';
-$sarg_proxy['squidguard_config'] = SQGARD_DIR . '/etc/squidGuard/squidGuard.conf';
-$sarg_proxy['squidguard_block_log'] = '/var/squidGuard/log/block.log';
-$sarg_proxy['e2guardian_config'] = DANSG_DIR . '/etc/e2guardian/e2guardian.conf';
-$sarg_proxy['e2guardian_log'] = '/var/log/e2guardian/access.log';
+$GLOBALS['sarg_proxy']['squid_rc'] = SQUID_DIR . '/etc/rc.d/squid.sh';
+$GLOBALS['sarg_proxy']['squid_config'] = '/var/squid/logs/access.log';
+$GLOBALS['sarg_proxy']['squidguard_config'] = SQGARD_DIR . '/etc/squidGuard/squidGuard.conf';
+$GLOBALS['sarg_proxy']['squidguard_block_log'] = '/var/squidGuard/log/block.log';
+$GLOBALS['sarg_proxy']['e2guardian_config'] = DANSG_DIR . '/etc/e2guardian/e2guardian.conf';
+$GLOBALS['sarg_proxy']['e2guardian_log'] = '/var/log/e2guardian/access.log';
 // END STATIC VARS
 
 function sarg_text_area_decode($text) {
@@ -322,12 +322,13 @@ function sync_package_sarg() {
 	$sarguser = $config['installedpackages']['sarguser']['config'][0];
 	$access_log = $sarg['proxy_server'];
 	$sarg_title = ucfirst($sarg['proxy_server']);
+	$e2guardian_conf = 'none';
+	$e2guardian_filter_out_date = '# E2Guardian access.log is parsed natively by Sarg';
+	$squidguard_conf = 'squidguard_conf none';
+	$redirector_log_format = '';
 	switch ($sarg['proxy_server']) {
 		case 'e2guardian':
 			$access_log = $sarg_proxy['e2guardian_log'];
-			$e2guardian_conf = $sarg_proxy['e2guardian_config'];
-			$e2guardian_filter_out_date = "dansguardian_filter_out_date on";
-			$squidguard_conf = 'squidguard_conf none';
 			break;
 		case 'squidguard':
 			$squidguard_conf = 'squidguard_conf ' . $sarg_proxy['squidguard_config'];
@@ -445,12 +446,13 @@ function sync_package_sarg() {
 
 function sarg_validate_input($post, &$input_errors) {
 	global $config, $g;
-	// check dansguardian
+	// E2Guardian formats 1, 2 and 4 are parsed natively. Format 3 remains
+	// supported by Sarg's original Squid reader.
 	if ($_POST["proxy_server"] == "e2guardian") {
-		if (is_array($config['installedpackages']['e2guardianlog'])) {
-			if ($config['installedpackages']['e2guardianlog']['config'][0]['logfileformat'] != 3) {
-				$input_errors[] = 'Sarg is only compatible with e2guardian squid mode log';
-				$input_errors[] = 'Please change it on Services -> E2guardian -> Report and log -> Log file format';
+		if (is_array($config['installedpackages']['e2guardianlog']['config'])) {
+			$log_format = (string)$config['installedpackages']['e2guardianlog']['config'][0]['logfileformat'];
+			if (!in_array($log_format, array('1', '2', '3', '4'), true)) {
+				$input_errors[] = 'The selected E2Guardian log format is not supported. Use format 1, 2, 3 or 4.';
 			}
 		} else {
 			$input_errors[]='E2Guardian package is not installed';
