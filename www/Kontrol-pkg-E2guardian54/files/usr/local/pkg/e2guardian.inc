@@ -2191,11 +2191,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	if (!is_array($config['installedpackages']['e2guardianips']['config'])) {
 	    config_set_path("installedpackages/e2guardianips/config/0",array("exceptioniplist" => "", "bannediplist" => ""));
 	}
-	if ($config['installedpackages']['e2guardianips']['config'][0]['exceptioniplist'] == "" && file_exists($e2guardian_dir . '/lists/exceptioniplist.sample')) {
-		//$config['installedpackages']['e2guardianips']['config'][0]['exceptioniplist'] = base64_encode(file_get_contents($e2guardian_dir . '/lists/exceptioniplist.sample'));
-		config_set_path("installedpackages/e2guardianips/config/0/exceptioniplist",base64_encode(file_get_contents($e2guardian_dir . '/lists/exceptioniplist.sample')));
-		$load_samples++;
-	}
+	// Exception IP list is user-managed; do not reload sample defaults when emptied.
 	file_put_contents($e2guardian_dir . "/lists/exceptioniplist", e2_text_area_decode($config['installedpackages']['e2guardianips']['config'][0]['exceptioniplist']), LOCK_EX);
 	file_put_contents($e2guardian_dir . "/lists/bannediplist", e2_text_area_decode($config['installedpackages']['e2guardianips']['config'][0]['bannediplist']), LOCK_EX);
 

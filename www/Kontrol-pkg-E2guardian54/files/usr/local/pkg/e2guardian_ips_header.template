@@ -96,8 +96,7 @@
 	<field>
 			<fieldname>exceptioniplist</fieldname>
 			<fielddescr>Exception Ip List</fielddescr>
-			<description><![CDATA[Include ip addresses and or ip addresses/netmask of computers from which web access should not be filtered.<br>
-								  Leave empty to load e2guardian defaults.<br>This list does not works with DenyAll group mode.]]></description>
+			<description><![CDATA[Include ip addresses and or ip addresses/netmask of computers from which web access should not be filtered.<br>This list does not work with DenyAll group mode.]]></description>
 			<type>textarea</type>
 			<cols>80</cols>
 			<rows>11</rows>
@@ -106,8 +105,7 @@
 	<field>
 			<fieldname>bannediplist</fieldname>
 			<fielddescr>Banned Ip List</fielddescr>
-			<description><![CDATA[Include ip addresses and or ip addresses/netmask of computers from which web access should be Denied.<br>
-								  Leave empty to load e2guardian defaults.]]></description>
+			<description><![CDATA[Include ip addresses and or ip addresses/netmask of computers from which web access should be Denied.]]></description>
 			<type>textarea</type>
 			<cols>80</cols>
 			<rows>11</rows>
