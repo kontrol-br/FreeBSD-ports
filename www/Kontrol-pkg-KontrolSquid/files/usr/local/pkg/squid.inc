@@ -155,12 +155,12 @@ function squid_chown_recursive($dir, $user, $group) {
 function squid_enabled() {
 	global $config, $proxy_enabled;
 	$proxy_enabled = false;
-
-	if (is_array($config['installedpackages']['squid']['config'])) {
+	$squid_config = config_get_path('installedpackages/squid/config/0', array());
+	if (is_array($squid_config) && !empty($squid_config)) {
 		// check whether Squid is enabled ...
-		if ($config['installedpackages']['squid']['config'][0]['enable_squid'] == "on") {
+		if (($squid_config['enable_squid'] ?? '') == "on") {
 			// ... and has at least one interface configured ...
-			if (!empty($config['installedpackages']['squid']['config'][0]['active_interface'])) {
+			if (!empty($squid_config['active_interface'])) {
 				$proxy_enabled = true;
 			// ... or whether Squid reverse proxy is enabled
 			} elseif (squid_reverse_enabled()) {
@@ -189,9 +189,9 @@ function squid_gen_extra_ca() {
 
 	unlink_if_exists("{$capath}/*.0");
 
-	if (is_array($config['installedpackages']['squid']['config']) &&
-	    !empty($config['installedpackages']['squid']['config'][0]['extraca'])) {
-		$extraca = $config['installedpackages']['squid']['config'][0]['extraca'];
+	$squid_config = config_get_path('installedpackages/squid/config/0', array());
+	if (is_array($squid_config) && !empty($squid_config['extraca'])) {
+		$extraca = $squid_config['extraca'];
 		if ($extraca != 'none') {
 			$param = array('caref' => $extraca);
 			$cas = ca_chain_array($param);
@@ -211,17 +211,14 @@ function squid_dash_z($cache_action = 'none') {
 	global $config;
 
 	// We need cache configured after initial package install
-	if (!is_array($config['installedpackages']['squidcache']['config'])) {
+	$cache_config = config_get_path('installedpackages/squidcache/config', array());
+	if (!is_array($cache_config) || empty($cache_config)) {
 		log_error("[squid] 'Local Cache' not configured, disk cache will be disabled.");
 		log_error("[squid] Please, configure and save 'Local Cache' settings before enabling Squid proxy.");
 		return;
 	}
 
-	if (is_array($config['installedpackages']['squidcache'])) {
-		$cachesettings = $config['installedpackages']['squidcache']['config'][0];
-	} else {
-		$cachesettings = array();
-	}
+	$cachesettings = config_get_path('installedpackages/squidcache/config/0', array());
 	$cachedir = ($cachesettings['harddisk_cache_location'] ? $cachesettings['harddisk_cache_location'] : '/var/squid/cache');
 	$numdirs = ($cachesettings['level1_subdirs'] ? $cachesettings['level1_subdirs'] : 16);
 	if (is_dir($cachedir)) {
@@ -407,9 +404,8 @@ function squid_restart_services() {
 		return;
 	}
 
-	if (is_array($config['installedpackages']['squid']['config'])) {
-		$squid_config = $config['installedpackages']['squid']['config'][0];
-	} else {
+	$squid_config = config_get_path('installedpackages/squid/config/0', array());
+	if (!is_array($squid_config) || empty($squid_config)) {
 		return null;
 	}
 
@@ -660,18 +656,10 @@ function squid_deinstall_command() {
 function squid_upgrade_config() {
 	global $config;
 	/* migrate existing csv config fields */
-	if (is_array($config['installedpackages']['squidauth']['config'])) {
-		$settingsauth = $config['installedpackages']['squidauth']['config'][0];
-	}
-	if (is_array($config['installedpackages']['squidcache']['config'])) {
-		$settingscache = $config['installedpackages']['squidcache']['config'][0];
-	}
-	if (is_array($config['installedpackages']['squidnac']['config'])) {
-		$settingsnac = $config['installedpackages']['squidnac']['config'][0];
-	}
-	if (is_array($config['installedpackages']['squid']['config'])) {
-		$settingsgen = $config['installedpackages']['squid']['config'][0];
-	}
+	$settingsauth = config_get_path('installedpackages/squidauth/config/0', array());
+	$settingscache = config_get_path('installedpackages/squidcache/config/0', array());
+	$settingsnac = config_get_path('installedpackages/squidnac/config/0', array());
+	$settingsgen = config_get_path('installedpackages/squid/config/0', array());
 
 	/* migrate auth settings */
 	if (!empty($settingsauth['no_auth_hosts']) && strstr($settingsauth['no_auth_hosts'], ",")) {
@@ -763,14 +751,10 @@ function squid_upgrade_config() {
 function squid_validate_general($post, &$input_errors) {
 	global $config;
 
-	if (is_array($config['installedpackages']['squid'])) {
-		$settings = $config['installedpackages']['squid']['config'][0];
-	} else {
-		$settings = array();
-	}
+	$settings = config_get_path('installedpackages/squid/config/0', array());
 
 	// force users to configure cache
-	if (!is_array($config['installedpackages']['squidcache']['config'])) {
+	if (!is_array(config_get_path('installedpackages/squidcache/config', null))) {
 		$input_errors[] = "Please, configure and save 'Local Cache' settings first.";
 	}
 
@@ -839,7 +823,7 @@ function squid_validate_general($post, &$input_errors) {
 		$input_errors[] = 'Log location must not end with a / character.';
 	}
 
-	if ($post['log_dir']{0} != '/') {
+	if ($post['log_dir'][0] != '/') {
 		$input_errors[] = 'Log location must start with a / character.';
 	}
 
@@ -1041,7 +1025,7 @@ function squid_validate_cache($post, &$input_errors) {
 		$input_errors[] = 'Log location must not end with a / character.';
 	}
 
-	if ($post['harddisk_cache_location']{0} != '/') {
+	if ($post['harddisk_cache_location'][0] != '/') {
 		$input_errors[] = 'Log location must start with a / character.';
 	}
 
@@ -1211,11 +1195,7 @@ function squid_validate_auth($post, &$input_errors) {
 function squid_resync_general() {
 	global $g, $config, $valid_acls;
 
-	if (is_array($config['installedpackages']['squid'])) {
-		$settings = $config['installedpackages']['squid']['config'][0];
-	} else {
-		$settings = array();
-	}
+	$settings = config_get_path('installedpackages/squid/config/0', array());
 
 	$conf = "# This file is automatically generated by KONTROL-UTM\n";
 	$conf .= "# Do not edit manually !\n\n";
@@ -1567,11 +1547,7 @@ EOD;
 function squid_resync_cache() {
 	global $config, $g;
 
-	if (is_array($config['installedpackages']['squidcache'])) {
-		$settings = $config['installedpackages']['squidcache']['config'][0];
-	} else {
-		$settings = array();
-	}
+	$settings = config_get_path('installedpackages/squidcache/config/0', array());
 
 	// apply cache settings
 	$cachedir = ($settings['harddisk_cache_location'] ? $settings['harddisk_cache_location'] : '/var/squid/cache');
@@ -1588,7 +1564,7 @@ function squid_resync_cache() {
 	if (!isset($settings['harddisk_cache_system'])) {
 		if ($g['platform'] == "nanobsd") {
 			$disk_cache_system = 'null';
-		} elseif (!is_array($config['installedpackages']['squidcache']['config'])) {
+		} elseif (!is_array(config_get_path('installedpackages/squidcache/config', null))) {
 			log_error("[squid] 'Local Cache' not configured, disk cache will be disabled.");
 			log_error("[squid] Please, configure and save 'Local Cache' settings before enabling Squid proxy.");
 		} else {
@@ -1837,16 +1813,8 @@ function squid_resync_traffic() {
 	if (!is_array($valid_acls)) {
 		return;
 	}
-	if (is_array($config['installedpackages']['squidtraffic'])) {
-		$settings = $config['installedpackages']['squidtraffic']['config'][0];
-	} else {
-		$settings = array();
-	}
-	if (is_array($config['installedpackages']['squidnac']['config'])) {
-		$settingsnac = $config['installedpackages']['squidnac']['config'][0];
-	} else {
-		$settingsnac = array();
-	}
+	$settings = config_get_path('installedpackages/squidtraffic/config/0', array());
+	$settingsnac = config_get_path('installedpackages/squidnac/config/0', array());
 	$conf = '';
 	if (!empty($settings['quick_abort_min']) || ($settings['quick_abort_min']) == "0") {
 		$conf .= "quick_abort_min {$settings['quick_abort_min']} KB\n";
@@ -1938,23 +1906,14 @@ EOD;
 function squid_resync_auth() {
 	global $config, $valid_acls;
 	$write_config = 0;
-	if (!is_array($config['installedpackages']['squidauth']['config'])) {
-		init_config_arr(array('installedpackages', 'squidauth', 'config'));
-		$config['installedpackages']['squidauth']['config'][] = array('auth_method' => "none");
+	$auth_config = config_get_path('installedpackages/squidauth/config', null);
+	if (!is_array($auth_config) || empty($auth_config)) {
+		config_set_path('installedpackages/squidauth/config', array(array('auth_method' => 'none')));
 		$write_config++;
 	}
-	$settings = $config['installedpackages']['squidauth']['config'][0];
-	if (is_array($config['installedpackages']['squidnac']['config'])) {
-		$settingsnac = $config['installedpackages']['squidnac']['config'][0];
-	} else {
-		$settingsnac = array();
-	}
-
-	if (is_array($config['installedpackages']['squid']['config'])) {
-		$settingsconfig = $config['installedpackages']['squid']['config'][0];
-	} else {
-		$settingsconfig = array();
-	}
+	$settings = config_get_path('installedpackages/squidauth/config/0', array('auth_method' => 'none'));
+	$settingsnac = config_get_path('installedpackages/squidnac/config/0', array());
+	$settingsconfig = config_get_path('installedpackages/squid/config/0', array());
 
 	if ($write_config > 0) {
 		write_config(gettext("Squid authentication method not configured, setting to None explicitly."));
@@ -2515,8 +2474,8 @@ function squid_generate_rules($type) {
 function squid_sync_on_changes() {
 	global $config;
 
-	if (is_array($config['installedpackages']['squidsync']['config'])) {
-		$squid_sync = $config['installedpackages']['squidsync']['config'][0];
+	$squid_sync = config_get_path('installedpackages/squidsync/config/0', null);
+	if (is_array($squid_sync)) {
 		$synconchanges = $squid_sync['synconchanges'];
 		$synctimeout = $squid_sync['synctimeout'] ?: '250';
 		switch ($synconchanges) {
@@ -2775,9 +2734,8 @@ function squid_get_carp_list() {
 function squid_plugin_carp($pluginparams) {
 	global $config;
 	/* If squid is not configured, then stop */
-	if (is_array($config['installedpackages']['squid']['config'])) {
-		$squid_config = $config['installedpackages']['squid']['config'][0];
-	} else {
+	$squid_config = config_get_path('installedpackages/squid/config/0', array());
+	if (!is_array($squid_config) || empty($squid_config)) {
 		return null;
 	}
 	/* If there is no properly configured CARP status check IP, then stop */
