@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<pfsensepkgs>
+	<package>
+		<name>Kontrol-ID</name>
+		<internal_name>Kontrol-ID</internal_name>
+		<descr><![CDATA[Transparent Windows user identification for Squid and E2Guardian, with secure endpoint enrollment and a fallback login portal.]]></descr>
+		<pkginfolink>https://kontrol.com.br/</pkginfolink>
+		<version>%%PKGVERSION%%</version>
+		<configurationfile>kontrol_id.xml</configurationfile>
+	</package>
+</pfsensepkgs>

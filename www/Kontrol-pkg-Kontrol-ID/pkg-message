@@ -1,0 +1,14 @@
+[
+{ type: install
+  message: <<EOM
+A fresh Kontrol-ID installation uses safe defaults and remains disabled until
+it is enabled at Services > Kontrol-ID. Existing settings are preserved during
+upgrades. Generate an enrollment token on the Stations tab and provision at
+least one Windows endpoint before enforcing identity.
+
+Runtime databases in /var/db/kontrol-identity are intentionally preserved when
+the package is removed. Squid and E2Guardian integration blocks are removed by
+the package deinstall hook.
+EOM
+}
+]

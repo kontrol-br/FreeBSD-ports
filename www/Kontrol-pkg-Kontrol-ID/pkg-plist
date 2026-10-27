@@ -1,0 +1,15 @@
+libexec/kontrol-identity-helper
+pkg/kontrol_id.inc
+pkg/kontrol_id.xml
+pkg/kontrol_id_sync.xml
+www/kontrol_id_status.php
+www/kontrol_id_portal.php
+www/kontrol_id_enrollment.php
+www/kontrol-id/index.html
+www/kontrol-id/Kontrol-ID-Provisioner.exe
+/etc/inc/priv/kontrol_id.priv.inc
+share/Kontrol-pkg-Kontrol-ID/info.xml
+@dir www/kontrol-id
+@dir share/Kontrol-pkg-Kontrol-ID
+@dir /etc/inc/priv
+@dir /etc/inc

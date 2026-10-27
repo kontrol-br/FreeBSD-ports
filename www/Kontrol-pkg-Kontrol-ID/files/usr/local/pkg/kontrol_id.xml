@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE packagegui SYSTEM "../schema/packages.dtd">
+<?xml-stylesheet type="text/xsl" href="../xsl/package.xsl"?>
+<packagegui>
+	<copyright><![CDATA[
+/*
+ * Kontrol-ID package configuration
+ * Copyright (c) 2026 Kontrol
+ * Licensed under the Apache License, Version 2.0.
+ */
+	]]></copyright>
+	<name>kontrolid</name>
+	<title>Kontrol-ID: General Settings</title>
+	<include_file>/usr/local/pkg/kontrol_id.inc</include_file>
+	<menu>
+		<name>Kontrol-ID</name>
+		<tooltiptext>Transparent Windows user identification</tooltiptext>
+		<section>Services</section>
+		<url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url>
+	</menu>
+	<tabs>
+		<tab>
+			<text>General</text>
+			<url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url>
+			<active/>
+		</tab>
+		<tab>
+			<text>Stations and Sessions</text>
+			<url>/kontrol_id_status.php</url>
+		</tab>
+		<tab>
+			<text>XMLRPC Sync</text>
+			<url>/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0</url>
+		</tab>
+	</tabs>
+	<fields>
+		<field>
+			<name>Service</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Enable Kontrol-ID</fielddescr>
+			<fieldname>enable</fieldname>
+			<description><![CDATA[Enable identity enforcement after the PKI is created and Windows stations have been enrolled. Installation defaults to disabled to avoid interrupting Internet access.]]></description>
+			<type>checkbox</type>
+		</field>
+		<field>
+			<fielddescr>Configure Squid</fielddescr>
+			<fieldname>squid_integration</fieldname>
+			<description><![CDATA[Install a reversible package-integration block in the Squid configuration. No Squid source file is modified.]]></description>
+			<type>checkbox</type>
+			<default_value>on</default_value>
+		</field>
+		<field>
+			<fielddescr>Forward to E2Guardian</fielddescr>
+			<fieldname>e2guardian_integration</fieldname>
+			<description><![CDATA[Forward identified requests to E2Guardian and enable its proxy-basic authentication plugin.]]></description>
+			<type>checkbox</type>
+			<default_value>on</default_value>
+		</field>
+		<field>
+			<name>WinRM HTTPS</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>WinRM HTTPS Port</fielddescr>
+			<fieldname>winrm_port</fieldname>
+			<description>Native Windows WinRM HTTPS listener port.</description>
+			<type>input</type>
+			<default_value>5986</default_value>
+		</field>
+		<field>
+			<fielddescr>Connect Timeout</fielddescr>
+			<fieldname>connect_timeout_ms</fieldname>
+			<description>TCP and TLS connection timeout in milliseconds.</description>
+			<type>input</type>
+			<default_value>1200</default_value>
+		</field>
+		<field>
+			<fielddescr>Total Request Timeout</fielddescr>
+			<fieldname>request_timeout_ms</fieldname>
+			<description>Maximum duration of a WinRM identity request in milliseconds.</description>
+			<type>input</type>
+			<default_value>2500</default_value>
+		</field>
+		<field>
+			<fielddescr>Verify Certificate Chain</fielddescr>
+			<fieldname>verify_peer</fieldname>
+			<description>Require the endpoint certificate to be issued by the selected Kontrol-ID CA.</description>
+			<type>checkbox</type>
+			<default_value>on</default_value>
+		</field>
+		<field>
+			<fielddescr>Verify Endpoint Hostname</fielddescr>
+			<fieldname>verify_host</fieldname>
+			<description>Require the enrolled hostname to match the endpoint certificate SAN.</description>
+			<type>checkbox</type>
+			<default_value>on</default_value>
+		</field>
+		<field>
+			<name>Identity Cache</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Positive TTL</fielddescr>
+			<fieldname>positive_ttl</fieldname>
+			<description>Seconds to retain a successful automatic identity.</description>
+			<type>input</type>
+			<default_value>300</default_value>
+		</field>
+		<field>
+			<fielddescr>Negative TTL</fielddescr>
+			<fieldname>negative_ttl</fieldname>
+			<description>Seconds before retrying an unknown or unreachable station.</description>
+			<type>input</type>
+			<default_value>30</default_value>
+		</field>
+		<field>
+			<fielddescr>Stale Identity TTL</fielddescr>
+			<fieldname>stale_ttl</fieldname>
+			<description>Seconds a previous successful identity may be reused during a temporary endpoint failure.</description>
+			<type>input</type>
+			<default_value>900</default_value>
+		</field>
+		<field>
+			<fielddescr>Portal Session TTL</fielddescr>
+			<fieldname>portal_ttl</fieldname>
+			<description>Lifetime of a manually authenticated IP session in seconds.</description>
+			<type>input</type>
+			<default_value>28800</default_value>
+		</field>
+		<field>
+			<name>Unknown User Fallback</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Unknown Username</fielddescr>
+			<fieldname>unknown_user</fieldname>
+			<description>Identity returned to Squid when automatic identification is unavailable.</description>
+			<type>input</type>
+			<default_value>unknown</default_value>
+		</field>
+		<field>
+			<fielddescr>Unknown User Action</fielddescr>
+			<fieldname>unknown_action</fieldname>
+			<description>Portal redirects are reliable for HTTP. HTTPS also requires the Kontrol CA/SSL inspection or network captive-portal assistance.</description>
+			<type>select</type>
+			<default_value>portal</default_value>
+			<options>
+				<option><name>Redirect to login portal</name><value>portal</value></option>
+				<option><name>Deny access</name><value>deny</value></option>
+				<option><name>Allow as unknown</name><value>allow</value></option>
+			</options>
+		</field>
+		<field>
+			<fielddescr>Portal URL</fielddescr>
+			<fieldname>portal_url</fieldname>
+			<description>Leave empty to use the Kontrol WebGUI hostname and /kontrol_id_portal.php.</description>
+			<type>input</type>
+			<size>60</size>
+		</field>
+		<field>
+			<fielddescr>Administrator Message</fielddescr>
+			<fieldname>admin_contact</fieldname>
+			<description>Message shown when the user needs an account or administrative assistance.</description>
+			<type>textarea</type>
+			<cols>70</cols>
+			<rows>3</rows>
+		</field>
+		<field>
+			<name>Portal Authentication</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Authentication Server</fielddescr>
+			<fieldname>auth_server</fieldname>
+			<description><![CDATA[Exact name of an authentication server configured under System > User Manager > Authentication Servers. Use <strong>Local Database</strong> for Kontrol local users. LDAP/AD settings are reused directly.]]></description>
+			<type>input</type>
+			<default_value>Local Database</default_value>
+			<size>40</size>
+		</field>
+		<field>
+			<fielddescr>Local Allowed Group</fielddescr>
+			<fieldname>local_group</fieldname>
+			<description>Local Kontrol users must belong to this non-administrative group.</description>
+			<type>input</type>
+			<default_value>kontrol-internet-users</default_value>
+		</field>
+		<field>
+			<fielddescr>Allowed AD Groups</fielddescr>
+			<fieldname>ad_groups</fieldname>
+			<description>Comma-separated AD/LDAP group names. Matching is case-insensitive.</description>
+			<type>input</type>
+			<default_value>Domain Users</default_value>
+			<size>60</size>
+		</field>
+		<field>
+			<name>Diagnostics</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Debug Logging</fielddescr>
+			<fieldname>debug</fieldname>
+			<description>Log endpoint query failures to the system log. Passwords and certificates are never logged.</description>
+			<type>checkbox</type>
+		</field>
+	</fields>
+	<custom_php_validation_command>
+		kontrol_id_validate($_POST, $input_errors);
+	</custom_php_validation_command>
+	<custom_php_resync_config_command>
+		kontrol_id_resync();
+	</custom_php_resync_config_command>
+	<custom_php_install_command>
+		kontrol_id_install();
+	</custom_php_install_command>
+	<custom_php_deinstall_command>
+		kontrol_id_deinstall();
+	</custom_php_deinstall_command>
+</packagegui>

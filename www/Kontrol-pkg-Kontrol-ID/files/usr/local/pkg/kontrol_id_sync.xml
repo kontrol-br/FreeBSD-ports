@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE packagegui SYSTEM "../schema/packages.dtd">
+<?xml-stylesheet type="text/xsl" href="../xsl/package.xsl"?>
+<packagegui>
+	<copyright><![CDATA[Copyright (c) 2026 Kontrol. Licensed under Apache-2.0.]]></copyright>
+	<name>kontrolidsync</name>
+	<title>Kontrol-ID: XMLRPC Sync</title>
+	<include_file>/usr/local/pkg/kontrol_id.inc</include_file>
+	<tabs>
+		<tab><text>General</text><url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url></tab>
+		<tab><text>Stations and Sessions</text><url>/kontrol_id_status.php</url></tab>
+		<tab><text>XMLRPC Sync</text><url>/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0</url><active/></tab>
+	</tabs>
+	<fields>
+		<field><name>XMLRPC Configuration Synchronization</name><type>listtopic</type></field>
+		<field>
+			<fielddescr>Enable Sync</fielddescr>
+			<fieldname>synconchanges</fieldname>
+			<description><![CDATA[Use the system HA peer or explicitly configured replica hosts. Package settings and the package-owned CA/client certificate are synchronized. Runtime identity and portal sessions remain local to each node.]]></description>
+			<type>select</type>
+			<default_value>auto</default_value>
+			<options>
+				<option><name>Sync to configured system backup server</name><value>auto</value></option>
+				<option><name>Sync to hosts defined below</name><value>manual</value></option>
+				<option><name>Do not sync this package configuration</name><value>disabled</value></option>
+			</options>
+		</field>
+		<field>
+			<fielddescr>Sync Timeout</fielddescr>
+			<fieldname>synctimeout</fieldname>
+			<type>select</type>
+			<default_value>120</default_value>
+			<options>
+				<option><name>30 seconds</name><value>30</value></option>
+				<option><name>60 seconds</name><value>60</value></option>
+				<option><name>120 seconds</name><value>120</value></option>
+				<option><name>250 seconds</name><value>250</value></option>
+			</options>
+		</field>
+		<field>
+			<fielddescr>Replication Targets</fielddescr>
+			<fieldname>none</fieldname>
+			<type>rowhelper</type>
+			<rowhelper>
+				<rowhelperfield><fielddescr>Enable</fielddescr><fieldname>syncdestinenable</fieldname><type>checkbox</type></rowhelperfield>
+				<rowhelperfield>
+					<fielddescr>Protocol</fielddescr><fieldname>syncprotocol</fieldname><type>select</type><default_value>https</default_value>
+					<options><option><name>HTTPS</name><value>https</value></option><option><name>HTTP</name><value>http</value></option></options>
+				</rowhelperfield>
+				<rowhelperfield><fielddescr>IP Address/Hostname</fielddescr><fieldname>ipaddress</fieldname><type>input</type><required/></rowhelperfield>
+				<rowhelperfield><fielddescr>Port</fielddescr><fieldname>syncport</fieldname><type>input</type><default_value>443</default_value><required/></rowhelperfield>
+				<rowhelperfield><fielddescr>Username</fielddescr><fieldname>username</fieldname><type>input</type><default_value>admin</default_value><required/></rowhelperfield>
+				<rowhelperfield><fielddescr>Password</fielddescr><fieldname>password</fieldname><type>password</type><required/></rowhelperfield>
+			</rowhelper>
+		</field>
+	</fields>
+	<custom_php_resync_config_command>
+		kontrol_id_sync_on_changes();
+	</custom_php_resync_config_command>
+</packagegui>
