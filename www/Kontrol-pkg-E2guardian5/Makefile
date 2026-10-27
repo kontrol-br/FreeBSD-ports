@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-E2guardian5
 PORTVERSION=	0.6.5.1
-PORTREVISION=
+PORTREVISION=	1
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -17,7 +17,7 @@ RUN_DEPENDS=	${LOCALBASE}/sbin/e2guardian:www/e2guardian \
 		/usr/local/sbin/clamd:security/clamav \
 		/usr/local/share/certs/ca-root-nss.crt:security/ca_root_nss
 
-CONFLITS_WITH=	www/e2guardian5
+CONFLICTS_INSTALL=	Kontrol-pkg-E2guardian54
 
 NO_BUILD=	yes
 NO_MTREE=	yes
