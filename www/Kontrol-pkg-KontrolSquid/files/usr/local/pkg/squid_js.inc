@@ -29,22 +29,13 @@ require_once('config.inc');
  * depending on selected 'Authentication Method' value
  */
 function squid_print_javascript_auth() {
-	global $config;
-	if (is_array($config['installedpackages']['squid'])) {
-		$squidsettings = $config['installedpackages']['squid']['config'][0];
-	} else {
-		$squidsettings = array();
-	}
-	if (is_array($config['installedpackages']['squidauth']['config'])) {
-		$settingsauth = $config['installedpackages']['squidauth']['config'][0];
-	} else {
-		$settingsauth = array();
-	}
-	$transparent_proxy = ($squidsettings['transparent_proxy'] == 'on');
-	$auth_method = $settingsauth['auth_method'];
+	$squidsettings = config_get_path('installedpackages/squid/config/0', array());
+	$settingsauth = config_get_path('installedpackages/squidauth/config/0', array());
+	$transparent_proxy = (($squidsettings['transparent_proxy'] ?? '') == 'on');
+	$auth_method = $settingsauth['auth_method'] ?? 'none';
 
 	// No authentication for transparent proxy
-	if ($transparent_proxy and preg_match("/(local|ldap|radius|ntlm)/", $auth_method)) {
+	if ($transparent_proxy and preg_match("/(local|ldap|radius)/", $auth_method)) {
 		$javascript = <<< EOD
 <script type="text/javascript">
 //<![CDATA[

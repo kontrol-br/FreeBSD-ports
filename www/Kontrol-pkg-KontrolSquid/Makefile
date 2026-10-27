@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-KontrolSquid
 PORTVERSION=	0.1.12
-PORTREVISION=	15
+PORTREVISION=	16
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -16,9 +16,9 @@ LICENSE=	APACHE20
 RUN_DEPENDS=	squid>=0:www/squid \
 		squid_radius_auth>=0:www/squid_radius_auth \
 		c-icap-modules>=0:www/c-icap-modules \
-		squidclamav>=0:www/squidclamav \
-		samba416>=0:net/samba416 \
-		base64>=0:converters/base64
+		squidclamav>=0:www/squidclamav
+
+CONFLICTS_INSTALL=	pfSense-pkg-squid
 
 NO_BUILD=	yes
 NO_MTREE=	yes
@@ -33,9 +33,6 @@ do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/pkg
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/widgets/include
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/shortcuts
-	${MKDIR} ${STAGEDIR}${PREFIX}/etc
-	${MKDIR} ${STAGEDIR}/etc
-	${MKDIR} ${STAGEDIR}/root
 	${MKDIR} ${STAGEDIR}/etc/inc/priv
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/widgets/widgets
 	${MKDIR} ${STAGEDIR}${PREFIX}/www
@@ -99,24 +96,6 @@ do-install:
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/squid_log_parser.php \
 		${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/ad_remove.php \
-		${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/ad_join.php \
-			${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/ad_transparent.php \
-			${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/login2.php \
-					${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/etc/smb4.conf \
-			${STAGEDIR}${PREFIX}/etc
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/etc/krb5.conf \
-			${STAGEDIR}${PREFIX}/etc
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/bin/kontrolhelper \
-			${STAGEDIR}${PREFIX}/bin
-	${INSTALL_DATA} -m 0664 ${FILESDIR}/etc/nsswitch.conf \
-			${STAGEDIR}/etc
-	${INSTALL_DATA} -m 0660 ${FILESDIR}/root/kontrolid.db \
-			${STAGEDIR}/root
 	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/pkg/swapstate_check.php \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${DATADIR}/info.xml \

@@ -80,7 +80,7 @@
 		<field>
 			<fielddescr>Authentication Method</fielddescr>
 			<fieldname>auth_method</fieldname>
-			<description>Select an authentication method. This will allow users to be authenticated by local or external services.</description>
+			<description><![CDATA[Select local, LDAP or RADIUS authentication for an explicit proxy. Transparent Windows identification is managed separately under <strong>Services &gt; Kontrol-ID</strong>.]]></description>
 			<type>select</type>
 			<default_value>none</default_value>
 			<options>
@@ -89,9 +89,6 @@
 				<option><name>LDAP</name><value>ldap</value></option>
 				<option><name>RADIUS</name><value>radius</value></option>
 				<option><name>Captive Portal</name><value>cp</value></option>
-				<option><name>NTLM Kontrol-ID</name><value>ntlm</value></option>
-				<option><name>KERBEROS+NTLM Kontrol-ID</name><value>kerbntlm</value></option>
-				<option><name>TRANSPARENT Kontrol-ID</name><value>transparent</value></option>
 			</options>
 			<onchange>on_auth_method_changed()</onchange>
 		</field>
@@ -264,8 +261,9 @@
 	</custom_php_before_form_command>
 	<custom_php_after_head_command>
 		<![CDATA[
-		$transparent_proxy = ($config['installedpackages']['squid']['config'][0]['transparent_proxy'] == 'on');
-		if ($transparent_proxy and preg_match("/(local|ldap|radius|ntlm)/", $config['installedpackages']['squidauth']['config'][0]['auth_method'])) {
+		$transparent_proxy = (config_get_path('installedpackages/squid/config/0/transparent_proxy', '') == 'on');
+		$auth_method = config_get_path('installedpackages/squidauth/config/0/auth_method', 'none');
+		if ($transparent_proxy and preg_match("/(local|ldap|radius)/", $auth_method)) {
 			$input_errors[] = "Authentication cannot be enabled while transparent proxy mode is enabled";
 		}
 		squid_print_javascript_auth();

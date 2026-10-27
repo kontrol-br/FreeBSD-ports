@@ -673,6 +673,13 @@ function squid_upgrade_config() {
 			file_notice("squid", $msnt_msg, "Packages", "");
 			log_error("[squid] {$msnt_msg}");
 		}
+		if (in_array($settingsauth['auth_method'], array('transparent', 'ntlm', 'kerbntlm'), true)) {
+			$legacy_msg = "Legacy Kontrol-ID/NTLM authentication was replaced by the Services > Kontrol-ID package.";
+			file_notice("squid", $legacy_msg, "Packages", "");
+			log_error("[squid] {$legacy_msg}");
+			$settingsauth['auth_method'] = 'none';
+			config_set_path('installedpackages/squidauth/config/0', $settingsauth);
+		}
 	}
 
 	/* migrate cache settings */
@@ -853,7 +860,8 @@ function squid_validate_general($post, &$input_errors) {
 	unset($port, $webgui_port);
 
 	if ($post['transparent_proxy'] == 'on') {
-		if (preg_match("/(local|ldap|radius|ntlm|kerberos)/", $config['installedpackages']['squidauth']['config'][0]['auth_method'])) {
+		$auth_method = config_get_path('installedpackages/squidauth/config/0/auth_method', 'none');
+		if (preg_match("/(local|ldap|radius)/", $auth_method)) {
 			$input_errors[] = "Transparent mode cannot be enabled to use that authentication mode";
 		}
 		if (empty($post['transparent_active_interface'])) {
@@ -1144,7 +1152,7 @@ function squid_validate_auth($post, &$input_errors) {
 	unset($num_fields);
 
 	$auth_method = $post['auth_method'];
-	if (($auth_method != 'none') && ($auth_method != 'local') && ($auth_method != 'cp')  && ($auth_method != 'transparent') && ($auth_method != 'ntlm') && ($auth_method != 'kerbntlm')) {
+	if (($auth_method != 'none') && ($auth_method != 'local') && ($auth_method != 'cp')) {
 		$server = trim($post['auth_server']);
 		if (empty($server)) {
 			$input_errors[] = "'Authentication server' is required.";
@@ -1984,7 +1992,7 @@ function squid_resync_auth() {
 
 	$transparent_proxy = ($settingsconfig['transparent_proxy'] == 'on');
 	if ($transparent_proxy) {
-		if (preg_match ("/(none|cp|transparent)/", $settings['auth_method'])) {
+		if (preg_match ("/(none|cp)/", $settings['auth_method'])) {
 			$auth_method = $settings['auth_method'];
 		} else {
 			$auth_method = "none";
@@ -2039,10 +2047,6 @@ function squid_resync_auth() {
 		$auth_ttl = ($settings['auth_ttl'] ? $settings['auth_ttl'] : 5);
 		$processes = ($settings['auth_processes'] ? $settings['auth_processes'] : 25);
 		$prompt = ($settings['auth_prompt'] ? $settings['auth_prompt'] : 'Please enter your credentials to access the proxy');
-		$myhostname = strtolower(gethostname());
-		$mydomain = strtoupper( exec ('hostname -d'));
-		//$mydomain = strtoupper($mydomain);
-		//$finalhostname = strtolower($myhostname);
 		switch ($auth_method) {
 			case 'local':
 				$conf .= 'auth_param basic program ' . SQUID_LOCALBASE . '/libexec/squid/basic_ncsa_auth ' . SQUID_PASSWD . "\n";
@@ -2078,59 +2082,8 @@ function squid_resync_auth() {
 				$conf .= "external_acl_type check_cp {$helpers_num} ttl={$auth_ttl} %SRC " . SQUID_BASE . "/bin/check_ip.php\n";
 				$conf .= "acl password external check_cp\n";
 				break;
-				case 'transparent':
-						$conf .= "####  TRANSPARENT AUTHENTICATION HELPER-Configure credentials using text MENU - option 4 #### \n";
-						$conf .= "external_acl_type userip children-startup=50 children-max={$processes} children-idle=10 ttl={$auth_ttl} %SRC /usr/local/bin/kontrolhelper \n";
-						$conf .= "acl KONTROLACL external userip \n";
-						$conf .= "http_access allow KONTROLACL \n";
-						$conf .= "\n";
-						$conf .= "####SENDING CONNECTIONS TO E2GUARDIAN AFTER AUTH #### \n";
-						$conf .= "cache_peer 127.0.0.1 parent 8080 0 login=*:password no-digest no-netdb-exchange \n";
-						$conf .= "always_direct deny all \n";
-						$conf .= "never_direct allow all \n";
-					break;
-				case 'ntlm':
-						$conf .= "#### NTLM AUTHENTICATION ONLY #### \n";
-						$conf .= "auth_param ntlm program /usr/local/bin/ntlm_auth --helper-protocol=squid-2.5-ntlmssp \n";
-						$conf .= "auth_param ntlm children {$processes} startup=15 idle=5 \n";
-						$conf .= "auth_param ntlm keep_alive off \n";
-						$conf .= "\n";
-						$conf .= "#### STARTING CUSTOM ACLs #### \n";
-						$conf .= "acl auth proxy_auth REQUIRED \n";
-						$conf .= " \n";
-						$conf .= "#### STARTING CUSTOM AUTHORIZATION ACL ### \n";
-						$conf .= "http_access allow auth \n";
-						$conf .= " \n";
-						$conf .= "####SENDING CONNECTIONS TO E2GUARDIAN AFTER AUTH #### \n";
-						$conf .= "cache_peer 127.0.0.1 parent 8080 0 login=*:password no-digest no-netdb-exchange \n";
-						$conf .= "always_direct deny all \n";
-						$conf .= "never_direct allow all \n";
-					break;
-					case 'kerbntlm':
-						$conf .= "#### TRY KERBEROS Authentication #### \n";
-						$conf .= "auth_param negotiate program /usr/local/libexec/squid/negotiate_kerberos_auth -r -i -s HTTP/$myhostname@$mydomain \n";
-						$conf .= "auth_param negotiate children {$processes} startup=15 idle=5 \n";
-						$conf .= "auth_param negotiate keep_alive on \n";
-						$conf .= "\n";
-						$conf .= "#### NTLM AUTHENTICATION In case KERBEROS Failed #### \n";
-						$conf .= "auth_param ntlm program /usr/local/bin/ntlm_auth --helper-protocol=squid-2.5-ntlmssp \n";
-						$conf .= "auth_param ntlm children {$processes} startup=15 idle=5 \n";
-						$conf .= "auth_param ntlm keep_alive off \n";
-						$conf .= "\n";
-						$conf .= "#### STARTING CUSTOM ACLs #### \n";
-						$conf .= "acl auth proxy_auth REQUIRED \n";
-						$conf .= " \n";
-						$conf .= "#### STARTING CUSTOM AUTHORIZATION ACL ### \n";
-						$conf .= "http_access allow auth \n";
-						$conf .= " \n";
-						$conf .= "####SENDING CONNECTIONS TO E2GUARDIAN AFTER AUTH #### \n";
-						$conf .= "cache_peer 127.0.0.1 parent 8080 0 login=*:password no-digest no-netdb-exchange \n";
-						$conf .= "always_direct deny all \n";
-						$conf .= "never_direct allow all \n";
-					break;
-
 		}
-		if (($auth_method != 'cp') && ($auth_method != 'transparent') && ($auth_method != 'kerberos')){
+		if ($auth_method != 'cp') {
 		$conf .= <<< EOD
 auth_param basic children $processes
 auth_param basic realm $prompt
