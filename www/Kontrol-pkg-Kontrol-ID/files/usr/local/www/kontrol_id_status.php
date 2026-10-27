@@ -84,7 +84,7 @@ if (!empty($token_once)) {
 <div class="panel panel-default">
 	<div class="panel-heading"><h2 class="panel-title">Managed Traffic Chain</h2></div>
 	<div class="panel-body">
-		<p><strong>Client &rarr; Squid &rarr; Kontrol-ID helper &rarr; E2Guardian &rarr; Internet</strong></p>
+		<p><strong>Client &rarr; Squid + Kontrol-ID helper &rarr; E2Guardian ICAP &rarr; Internet</strong></p>
 		<p>
 			Mode: <strong><?=($settings['traffic_mode'] === 'http_https') ? 'Transparent HTTP + HTTPS inspection' : 'Transparent HTTP only'?></strong> &nbsp;
 			Interfaces: <strong><?=htmlspecialchars(kontrol_id_normalize_interfaces($settings['intercept_interfaces']) ?: 'not selected')?></strong> &nbsp;

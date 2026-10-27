@@ -11,6 +11,8 @@
 	]]></copyright>
 	<name>kontrolid</name>
 	<title>Kontrol-ID: General Settings</title>
+	<delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+	<addedit_string>Kontrol-ID: changed settings.</addedit_string>
 	<include_file>/usr/local/pkg/kontrol_id.inc</include_file>
 	<menu>
 		<name>Kontrol-ID</name>
@@ -51,9 +53,9 @@
 		<field>
 			<fielddescr>Traffic Flow</fielddescr>
 			<description><![CDATA[
-				<strong>Client &rarr; Squid transparent proxy &rarr; Kontrol-ID helper &rarr; E2Guardian &rarr; Internet</strong><br/>
-				Saving this page applies the complete chain. Squid is the only TLS interception point; E2Guardian listens only on
-				127.0.0.1:8080 and receives the identified, decrypted request. Previous Squid and E2Guardian values are saved and
+				<strong>Client &rarr; Squid transparent proxy + Kontrol-ID helper &rarr; E2Guardian ICAP &rarr; Internet</strong><br/>
+				Saving this page applies the complete chain. Squid is the only TLS interception point; E2Guardian listens for ICAP only on
+				127.0.0.1:1344 and receives the client IP, username and decrypted HTTP URL. Previous Squid and E2Guardian values are saved and
 				restored when managed integration is disabled.
 			]]></description>
 			<type>info</type>
@@ -99,7 +101,7 @@
 		<field>
 			<fielddescr>Manage E2Guardian Chain</fielddescr>
 			<fieldname>e2guardian_integration</fieldname>
-			<description><![CDATA[Enable E2Guardian on loopback, disable its independent transparent/MITM rules, forward identified Squid requests and enable proxy-basic identity reception.]]></description>
+			<description><![CDATA[Enable E2Guardian ICAP on loopback, disable its independent transparent/MITM rules and send the identified, decrypted Squid requests with their original client IP and username.]]></description>
 			<type>checkbox</type>
 			<default_value>on</default_value>
 		</field>

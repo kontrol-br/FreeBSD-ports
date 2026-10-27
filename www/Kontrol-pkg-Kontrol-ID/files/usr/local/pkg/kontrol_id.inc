@@ -10,6 +10,7 @@ require_once('xmlrpc_client.inc');
 define('KONTROL_ID_CONF', '/usr/local/etc/kontrol-identity.conf');
 define('KONTROL_ID_DB_DIR', '/var/db/kontrol-identity');
 define('KONTROL_ID_DB', KONTROL_ID_DB_DIR . '/identity.db');
+define('KONTROL_ID_PKI_BACKUP', KONTROL_ID_DB_DIR . '/pki-backup.json');
 define('KONTROL_ID_PKI_DIR', '/var/etc/kontrol-id');
 define('KONTROL_ID_CA_FILE', KONTROL_ID_PKI_DIR . '/ca.pem');
 define('KONTROL_ID_CLIENT_CERT', KONTROL_ID_PKI_DIR . '/client.crt');
@@ -17,6 +18,8 @@ define('KONTROL_ID_CLIENT_KEY', KONTROL_ID_PKI_DIR . '/client.key');
 define('KONTROL_ID_GROUP', 'kontrol-internet-users');
 define('KONTROL_ID_BEGIN', '# BEGIN KONTROL-ID');
 define('KONTROL_ID_END', '# END KONTROL-ID');
+define('KONTROL_ID_E2G_BEGIN', '# BEGIN KONTROL-ID ICAP SSL BUMP');
+define('KONTROL_ID_E2G_END', '# END KONTROL-ID ICAP SSL BUMP');
 
 function kontrol_id_defaults() {
 	return array(
@@ -52,6 +55,8 @@ function kontrol_id_defaults() {
 		'previous_squid_auth_method' => '',
 		'previous_squid_config' => '',
 		'previous_e2guardian_config' => '',
+		'previous_e2guardian_auth_plugin' => '',
+		'e2guardian_auth_snapshot_taken' => '',
 		'dependency_defaults_initialized' => ''
 	);
 }
@@ -191,11 +196,97 @@ function kontrol_id_ensure_group() {
 	return true;
 }
 
+function kontrol_id_snapshot_value($encoded_snapshot, $field) {
+	$decoded = base64_decode((string)$encoded_snapshot, true);
+	$snapshot = ($decoded === false) ? null : json_decode($decoded, true);
+	if (!is_array($snapshot) || !isset($snapshot[$field]) ||
+		empty($snapshot[$field]['exists'])) {
+		return null;
+	}
+	return $snapshot[$field]['value'] ?? null;
+}
+
+function kontrol_id_certificate_matches_ca($certificate, $ca) {
+	if (empty($certificate['crt']) || empty($certificate['prv']) || empty($ca['crt'])) {
+		return false;
+	}
+	$certificate_pem = base64_decode($certificate['crt'], true);
+	$ca_pem = base64_decode($ca['crt'], true);
+	if ($certificate_pem === false || $ca_pem === false) {
+		return false;
+	}
+	$ca_public_key = @openssl_pkey_get_public($ca_pem);
+	return $ca_public_key !== false && @openssl_x509_verify($certificate_pem, $ca_public_key) === 1;
+}
+
+function kontrol_id_load_pki_backup() {
+	if (!file_exists(KONTROL_ID_PKI_BACKUP)) {
+		return array();
+	}
+	$backup = json_decode((string)file_get_contents(KONTROL_ID_PKI_BACKUP), true);
+	if (!is_array($backup) || !is_array($backup['ca'] ?? null) ||
+		!is_array($backup['client'] ?? null) ||
+		!kontrol_id_certificate_matches_ca($backup['client'], $backup['ca'])) {
+		return array();
+	}
+	return $backup;
+}
+
+function kontrol_id_append_config_item_if_missing($section, $item) {
+	foreach (config_get_path($section, array()) as $current) {
+		if (($current['refid'] ?? '') === ($item['refid'] ?? '')) {
+			return false;
+		}
+	}
+	config_set_path($section . '/', $item);
+	return true;
+}
+
+function kontrol_id_save_pki_backup($ca, $client) {
+	if (!kontrol_id_certificate_matches_ca($client, $ca) || !is_dir(KONTROL_ID_DB_DIR)) {
+		return;
+	}
+	$tmp = KONTROL_ID_PKI_BACKUP . '.tmp';
+	file_put_contents($tmp, json_encode(array('ca' => $ca, 'client' => $client)), LOCK_EX);
+	@chown($tmp, 'root');
+	@chgrp($tmp, 'wheel');
+	@chmod($tmp, 0600);
+	rename($tmp, KONTROL_ID_PKI_BACKUP);
+}
+
 function kontrol_id_ensure_pki() {
 	$settings = kontrol_id_get_settings();
 	$changed = false;
 	$ca_lookup = !empty($settings['ca_ref']) ? lookup_ca($settings['ca_ref']) : array();
 	$ca = kontrol_id_extract_item($ca_lookup);
+	if (empty($ca['crt']) || empty($ca['prv'])) {
+		$backup = kontrol_id_load_pki_backup();
+		if (!empty($backup)) {
+			kontrol_id_append_config_item_if_missing('ca', $backup['ca']);
+			kontrol_id_append_config_item_if_missing('cert', $backup['client']);
+			$ca = $backup['ca'];
+			$settings['ca_ref'] = $ca['refid'];
+			$settings['client_cert_ref'] = $backup['client']['refid'];
+			$changed = true;
+			log_error('[Kontrol-ID] Restored package PKI from the protected runtime backup.');
+		}
+	}
+	if (empty($ca['crt']) || empty($ca['prv'])) {
+		$preferred_refs = array(
+			config_get_path('installedpackages/squid/config/0/dca', ''),
+			kontrol_id_snapshot_value($settings['previous_squid_config'] ?? '', 'dca')
+		);
+		foreach (array_unique(array_filter($preferred_refs)) as $preferred_ref) {
+			$preferred_ca = kontrol_id_extract_item(lookup_ca($preferred_ref));
+			if (!empty($preferred_ca['crt']) && !empty($preferred_ca['prv'])) {
+				$ca = $preferred_ca;
+				$settings['ca_ref'] = $preferred_ref;
+				$changed = true;
+				log_error('[Kontrol-ID] Reusing the pre-existing Squid certificate authority.');
+				break;
+			}
+		}
+	}
 	if (empty($ca['crt']) || empty($ca['prv'])) {
 		$ca = array(
 			'refid' => uniqid(),
@@ -218,6 +309,18 @@ function kontrol_id_ensure_pki() {
 
 	$cert_lookup = !empty($settings['client_cert_ref']) ? lookup_cert($settings['client_cert_ref']) : array();
 	$client = kontrol_id_extract_item($cert_lookup);
+	if (!kontrol_id_certificate_matches_ca($client, $ca)) {
+		$client = array();
+		foreach (config_get_path('cert', array()) as $candidate) {
+			if (($candidate['descr'] ?? '') === 'Kontrol-ID WinRM Client' &&
+				kontrol_id_certificate_matches_ca($candidate, $ca)) {
+				$client = $candidate;
+				$settings['client_cert_ref'] = $candidate['refid'];
+				$changed = true;
+				break;
+			}
+		}
+	}
 	if (empty($client['crt']) || empty($client['prv'])) {
 		$client = array(
 			'refid' => uniqid(),
@@ -292,6 +395,7 @@ function kontrol_id_write_pki() {
 		@chgrp($file, 'proxy');
 		@chmod($file, 0640);
 	}
+	kontrol_id_save_pki_backup($ca, $client);
 }
 
 function kontrol_id_ini_value($value) {
@@ -405,7 +509,7 @@ function kontrol_id_squid_managed_fields() {
 
 function kontrol_id_e2guardian_managed_fields() {
 	return array(
-		'enable', 'interface', 'filterports', 'applyaction', 'transparent_proxy',
+		'enable', 'interface', 'filterports', 'icapport', 'allow_interface', 'applyaction', 'transparent_proxy',
 		'transparent_active_interface', 'enablessl', 'ssl_proxy',
 		'ssl_proxy_port', 'dca', 'parentmode', 'proxyip', 'proxyport'
 	);
@@ -431,9 +535,27 @@ function kontrol_id_squid_block() {
 		$lines[] = 'http_access deny kontrol_identity kontrol_identity_unknown';
 	}
 	if ($settings['e2guardian_integration'] === 'on') {
-		$lines[] = 'cache_peer 127.0.0.1 parent 8080 0 login=*:password no-digest no-netdb-exchange';
-		$lines[] = 'always_direct deny all';
-		$lines[] = 'never_direct allow all';
+		/* Squid performs the TLS bump. E2Guardian receives the resulting HTTP
+		 * request and response over ICAP, including the real client IP and the
+		 * username returned by the Kontrol-ID external ACL helper. */
+		$lines[] = 'icap_enable on';
+		$lines[] = 'adaptation_send_client_ip on';
+		$lines[] = 'adaptation_send_username on';
+		$lines[] = 'icap_client_username_encode off';
+		$lines[] = 'icap_client_username_header X-Client-Username';
+		$lines[] = 'icap_preview_enable on';
+		$lines[] = 'icap_preview_size 1024';
+		$lines[] = 'adaptation_masterx_shared_names X-ICAP-E2G';
+		/* CONNECT only establishes the tunnel and often contains a destination
+		 * IP. Filter the decrypted HTTP request instead so reports contain the
+		 * requested hostname and URL without duplicate CONNECT-only rows. */
+		$lines[] = 'acl kontrol_e2g_connect method CONNECT';
+		$lines[] = 'icap_service kontrol_e2g_req reqmod_precache icap://127.0.0.1:1344/request bypass=off';
+		$lines[] = 'adaptation_access kontrol_e2g_req deny kontrol_e2g_connect';
+		$lines[] = 'adaptation_access kontrol_e2g_req allow all';
+		$lines[] = 'icap_service kontrol_e2g_resp respmod_precache icap://127.0.0.1:1344/response bypass=off';
+		$lines[] = 'adaptation_access kontrol_e2g_resp deny kontrol_e2g_connect';
+		$lines[] = 'adaptation_access kontrol_e2g_resp allow all';
 	}
 	$lines[] = KONTROL_ID_END;
 	return implode(';', $lines) . ';';
@@ -448,8 +570,11 @@ function kontrol_id_squid_conflicts($custom_options, $with_e2guardian) {
 		strpos($directives, '/kontrolhelper') !== false) {
 		$conflicts[] = 'a manually configured or legacy Kontrol-ID helper';
 	}
-	if ($with_e2guardian && preg_match('/^\s*cache_peer\s+(127\.0\.0\.1|localhost)\s+parent\s+8080\b/im', $directives)) {
-		$conflicts[] = 'an existing E2Guardian cache_peer on 127.0.0.1:8080';
+	if ($with_e2guardian && (
+		preg_match('/^\s*cache_peer\s+(127\.0\.0\.1|localhost)\s+parent\s+8080\b/im', $directives) ||
+		preg_match('/^\s*icap_service\s+\S+\s+\S+\s+icap:\/\/(127\.0\.0\.1|localhost):1344\/(request|response)\b/im', $directives)
+	)) {
+		$conflicts[] = 'an existing manual E2Guardian proxy or ICAP chain on loopback';
 	}
 	return $conflicts;
 }
@@ -533,15 +658,24 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 		$e2g = array();
 	}
 	$plugins = array_filter(array_map('trim', explode(',', $e2g['auth_plugin'] ?? '')));
-	$has_plugin = in_array('proxy-basic.conf', $plugins, true);
-	if ($enabled && !$has_plugin) {
-		$plugins[] = 'proxy-basic.conf';
-		$settings['e2g_proxy_basic_added'] = 'on';
-	} elseif (!$enabled && $settings['e2g_proxy_basic_added'] === 'on') {
+	/* Versions through 0.3 used proxy-basic with E2Guardian as a parent
+	 * proxy. ICAP carries identity natively. Preserve the administrator's
+	 * complete plug-in selection, but suppress proxy-basic while the managed
+	 * ICAP chain is active. */
+	if ($enabled) {
+		if (($settings['e2guardian_auth_snapshot_taken'] ?? '') !== 'on') {
+			$settings['previous_e2guardian_auth_plugin'] = base64_encode($e2g['auth_plugin'] ?? '');
+			$settings['e2guardian_auth_snapshot_taken'] = 'on';
+		}
 		$plugins = array_values(array_diff($plugins, array('proxy-basic.conf')));
 		$settings['e2g_proxy_basic_added'] = '';
+		$e2g['auth_plugin'] = implode(',', array_unique($plugins));
+	} elseif (($settings['e2guardian_auth_snapshot_taken'] ?? '') === 'on') {
+		$restored_plugins = base64_decode((string)$settings['previous_e2guardian_auth_plugin'], true);
+		$e2g['auth_plugin'] = ($restored_plugins === false) ? '' : $restored_plugins;
+		$settings['previous_e2guardian_auth_plugin'] = '';
+		$settings['e2guardian_auth_snapshot_taken'] = '';
 	}
-	$e2g['auth_plugin'] = implode(',', array_unique($plugins));
 
 	$e2g_general = config_get_path('installedpackages/e2guardian/config/0', array());
 	if (!is_array($e2g_general)) {
@@ -559,6 +693,8 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 		$e2g_general['enable'] = 'on';
 		$e2g_general['interface'] = 'lo0';
 		$e2g_general['filterports'] = '8080';
+		$e2g_general['icapport'] = '1344';
+		$e2g_general['allow_interface'] = 'on';
 		$e2g_general['applyaction'] = 'rc.d';
 		$e2g_general['transparent_proxy'] = '';
 		$e2g_general['transparent_active_interface'] = '';
@@ -577,6 +713,31 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 	config_set_path('installedpackages/e2guardianconfig/config/0', $e2g);
 	config_set_path('installedpackages/e2guardian/config/0', $e2g_general);
 	kontrol_id_set_settings($settings);
+}
+
+function kontrol_id_apply_e2guardian_storybook($enabled) {
+	$path = '/usr/local/etc/e2guardian/site.story';
+	if (!file_exists($path)) {
+		return;
+	}
+	$contents = (string)file_get_contents($path);
+	$pattern = '/\R?' . preg_quote(KONTROL_ID_E2G_BEGIN, '/') .
+		'.*?' . preg_quote(KONTROL_ID_E2G_END, '/') . '\R?/s';
+	$contents = preg_replace($pattern, "\n", $contents);
+	$contents = rtrim($contents) . "\n";
+	if ($enabled) {
+		$contents .= "\n" . KONTROL_ID_E2G_BEGIN . "\n" .
+			"# Squid has already decrypted HTTPS before submitting it over ICAP.\n" .
+			"function(icapsquidbump)\n" .
+			"if(true) return true\n" .
+			KONTROL_ID_E2G_END . "\n";
+	}
+	$tmp = $path . '.kontrol-id.tmp';
+	file_put_contents($tmp, $contents, LOCK_EX);
+	@chown($tmp, 'root');
+	@chgrp($tmp, 'wheel');
+	@chmod($tmp, 0644);
+	rename($tmp, $path);
 }
 
 function kontrol_id_chain_status() {
@@ -600,9 +761,14 @@ function kontrol_id_chain_status() {
 			($e2g['enable'] ?? '') === 'on' &&
 			($e2g['interface'] ?? '') === 'lo0' &&
 			($e2g['filterports'] ?? '') === '8080' &&
-			strpos($e2g_config['auth_plugin'] ?? '', 'proxy-basic.conf') !== false &&
-			strpos($squid['custom_options'] ?? '', 'parent 8080') !== false,
-			'detail' => 'Squid -> identity -> E2Guardian on 127.0.0.1:8080')
+			($e2g['icapport'] ?? '') === '1344' &&
+			strpos($squid['custom_options'] ?? '', 'icap://127.0.0.1:1344/request') !== false &&
+			strpos($squid['custom_options'] ?? '', 'adaptation_send_client_ip on') !== false &&
+			strpos($squid['custom_options'] ?? '', 'adaptation_send_username on') !== false &&
+			strpos($squid['custom_options'] ?? '', 'adaptation_masterx_shared_names X-ICAP-E2G') !== false &&
+			strpos($squid['custom_options'] ?? '', 'adaptation_access kontrol_e2g_req deny kontrol_e2g_connect') !== false &&
+			strpos((string)@file_get_contents('/usr/local/etc/e2guardian/site.story'), KONTROL_ID_E2G_BEGIN) !== false,
+			'detail' => 'Squid sends URL, client IP and identity to E2Guardian ICAP on 127.0.0.1:1344')
 	);
 	if ($settings['traffic_mode'] === 'http_https') {
 		$checks[] = array(
@@ -705,6 +871,9 @@ function kontrol_id_resync($sync = true) {
 				unset($_POST['__csrf_magic']);
 			}
 		}
+		kontrol_id_apply_e2guardian_storybook(
+			$enabled && $settings['e2guardian_integration'] === 'on'
+		);
 		if (function_exists('e2guardian_start')) {
 			e2guardian_start('no', false, true);
 			if (function_exists('e2guardian_wait_for_process_state')) {
@@ -743,6 +912,7 @@ function kontrol_id_deinstall() {
 		kontrol_id_set_settings($settings);
 		kontrol_id_apply_squid_integration(false);
 		kontrol_id_apply_e2guardian_integration(false);
+		kontrol_id_apply_e2guardian_storybook(false);
 		write_config('Kontrol-ID integrations removed.');
 		@unlink(KONTROL_ID_CONF);
 		@unlink(KONTROL_ID_CA_FILE);

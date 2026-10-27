@@ -5,10 +5,12 @@
 	<copyright><![CDATA[Copyright (c) 2026 Kontrol. Licensed under Apache-2.0.]]></copyright>
 	<name>kontrolidsync</name>
 	<title>Kontrol-ID: XMLRPC Sync</title>
+	<delete_string>Kontrol-ID: removed an XMLRPC synchronization setting.</delete_string>
+	<addedit_string>Kontrol-ID: changed XMLRPC synchronization settings.</addedit_string>
 	<include_file>/usr/local/pkg/kontrol_id.inc</include_file>
 	<tabs>
 		<tab><text>General</text><url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url></tab>
-		<tab><text>Stations and Sessions</text><url>/kontrol_id_status.php</url></tab>
+		<tab><text>Status and Enrollment</text><url>/kontrol_id_status.php</url></tab>
 		<tab><text>XMLRPC Sync</text><url>/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0</url><active/></tab>
 	</tabs>
 	<fields>
