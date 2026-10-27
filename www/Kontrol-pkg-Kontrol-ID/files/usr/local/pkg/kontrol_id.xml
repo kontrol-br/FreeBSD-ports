@@ -25,7 +25,7 @@
 			<active/>
 		</tab>
 		<tab>
-			<text>Stations and Sessions</text>
+			<text>Status and Enrollment</text>
 			<url>/kontrol_id_status.php</url>
 		</tab>
 		<tab>
@@ -45,16 +45,61 @@
 			<type>checkbox</type>
 		</field>
 		<field>
-			<fielddescr>Configure Squid</fielddescr>
+			<name>Managed Traffic Chain</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Traffic Flow</fielddescr>
+			<description><![CDATA[
+				<strong>Client &rarr; Squid transparent proxy &rarr; Kontrol-ID helper &rarr; E2Guardian &rarr; Internet</strong><br/>
+				Saving this page applies the complete chain. Squid is the only TLS interception point; E2Guardian listens only on
+				127.0.0.1:8080 and receives the identified, decrypted request. Previous Squid and E2Guardian values are saved and
+				restored when managed integration is disabled.
+			]]></description>
+			<type>info</type>
+		</field>
+		<field>
+			<fielddescr>Transparent Traffic</fielddescr>
+			<fieldname>traffic_mode</fieldname>
+			<description><![CDATA[
+				HTTP-only interception is the safe onboarding mode. HTTP + HTTPS enables Squid SSL Bump and automatically selects
+				the internal Kontrol-ID CA. Every inspected client must first be enrolled so the CA is installed in Windows.
+			]]></description>
+			<type>select</type>
+			<default_value>http_only</default_value>
+			<options>
+				<option><name>Transparent HTTP only (onboarding)</name><value>http_only</value></option>
+				<option><name>Transparent HTTP + HTTPS inspection</name><value>http_https</value></option>
+			</options>
+		</field>
+		<field>
+			<fielddescr>Intercept Interface(s)</fielddescr>
+			<fieldname>intercept_interfaces</fieldname>
+			<description><![CDATA[Interfaces where Kontrol-ID automatically configures the Squid HTTP/HTTPS redirect rules.]]></description>
+			<type>interfaces_selection</type>
+			<default_value>lan</default_value>
+			<hideinterfaceregex>loopback</hideinterfaceregex>
+			<multiple/>
+		</field>
+		<field>
+			<fielddescr>Inspection CA</fielddescr>
+			<description><![CDATA[
+				The package-owned <strong>Kontrol-ID Internal CA</strong> is selected in Squid automatically and its private key remains
+				on the appliance. The Windows provisioner installs only the public CA certificate in the Trusted Root store.
+			]]></description>
+			<type>info</type>
+		</field>
+		<field>
+			<fielddescr>Manage Squid</fielddescr>
 			<fieldname>squid_integration</fieldname>
-			<description><![CDATA[Install a reversible package-integration block in the Squid configuration. No Squid source file is modified.]]></description>
+			<description><![CDATA[Enable Squid, apply transparent interception and install the reversible Kontrol-ID external ACL block.]]></description>
 			<type>checkbox</type>
 			<default_value>on</default_value>
 		</field>
 		<field>
-			<fielddescr>Forward to E2Guardian</fielddescr>
+			<fielddescr>Manage E2Guardian Chain</fielddescr>
 			<fieldname>e2guardian_integration</fieldname>
-			<description><![CDATA[Forward identified requests to E2Guardian and enable its proxy-basic authentication plugin.]]></description>
+			<description><![CDATA[Enable E2Guardian on loopback, disable its independent transparent/MITM rules, forward identified Squid requests and enable proxy-basic identity reception.]]></description>
 			<type>checkbox</type>
 			<default_value>on</default_value>
 		</field>

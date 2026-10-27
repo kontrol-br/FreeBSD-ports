@@ -3,7 +3,7 @@
 require_once('guiconfig.inc');
 require_once('/usr/local/pkg/kontrol_id.inc');
 
-$pgtitle = array('Services', 'Kontrol-ID', 'Stations and Sessions');
+$pgtitle = array('Services', 'Kontrol-ID', 'Status and Enrollment');
 $token_once = '';
 $savemsg = '';
 
@@ -54,12 +54,21 @@ $webcert_ref = config_get_path('system/webgui/ssl-certref');
 $webcert = $webcert_ref ? kontrol_id_extract_item(lookup_cert($webcert_ref)) : array();
 $web_fingerprint = !empty($webcert['crt']) ? strtoupper(openssl_x509_fingerprint(base64_decode($webcert['crt']), 'sha256')) : '';
 $settings = kontrol_id_get_settings();
+$chain_status = kontrol_id_chain_status();
+$chain_ok = !empty($chain_status);
+foreach ($chain_status as $check) {
+	if (!$check['ok']) {
+		$chain_ok = false;
+		break;
+	}
+}
+$identity_ca = kontrol_id_extract_item(lookup_ca($settings['ca_ref']));
 
 include('head.inc');
 
 $tab_array = array();
 $tab_array[] = array('General', false, '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0');
-$tab_array[] = array('Stations and Sessions', true, '/kontrol_id_status.php');
+$tab_array[] = array('Status and Enrollment', true, '/kontrol_id_status.php');
 $tab_array[] = array('XMLRPC Sync', false, '/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0');
 display_top_tabs($tab_array);
 
@@ -71,6 +80,36 @@ if (!empty($token_once)) {
 		htmlspecialchars($token_once) . '</code>', 'info');
 }
 ?>
+
+<div class="panel panel-default">
+	<div class="panel-heading"><h2 class="panel-title">Managed Traffic Chain</h2></div>
+	<div class="panel-body">
+		<p><strong>Client &rarr; Squid &rarr; Kontrol-ID helper &rarr; E2Guardian &rarr; Internet</strong></p>
+		<p>
+			Mode: <strong><?=($settings['traffic_mode'] === 'http_https') ? 'Transparent HTTP + HTTPS inspection' : 'Transparent HTTP only'?></strong> &nbsp;
+			Interfaces: <strong><?=htmlspecialchars(kontrol_id_normalize_interfaces($settings['intercept_interfaces']) ?: 'not selected')?></strong> &nbsp;
+			CA: <strong><?=htmlspecialchars($identity_ca['descr'] ?? 'unavailable')?></strong>
+		</p>
+		<div class="alert alert-<?=$chain_ok ? 'success' : 'warning'?>">
+			<?=$chain_ok ? 'The saved configuration matches the complete managed chain.' : 'The managed chain has configuration drift. Review the failed checks below and save General Settings to reapply it.'?>
+		</div>
+		<div class="table-responsive">
+		<table class="table table-striped table-hover">
+			<thead><tr><th>Component</th><th>Status</th><th>Expected configuration</th></tr></thead>
+			<tbody>
+			<?php foreach ($chain_status as $check): ?>
+			<tr>
+				<td><?=htmlspecialchars($check['name'])?></td>
+				<td><?=$check['ok'] ? '<span class="label label-success">OK</span>' : '<span class="label label-danger">Needs attention</span>'?></td>
+				<td><?=htmlspecialchars($check['detail'])?></td>
+			</tr>
+			<?php endforeach; ?>
+			</tbody>
+		</table>
+		</div>
+		<p class="help-block">Kontrol-ID owns these integration values while enabled. Use <a href="/pkg_edit.php?xml=kontrol_id.xml&amp;id=0">General Settings</a> to change the traffic mode or interfaces.</p>
+	</div>
+</div>
 
 <div class="panel panel-default">
 	<div class="panel-heading"><h2 class="panel-title">Windows Provisioning</h2></div>

@@ -23,6 +23,8 @@ function kontrol_id_defaults() {
 		'enable' => '',
 		'squid_integration' => 'on',
 		'e2guardian_integration' => 'on',
+		'traffic_mode' => 'http_only',
+		'intercept_interfaces' => 'lan',
 		'winrm_port' => '5986',
 		'connect_timeout_ms' => '1200',
 		'request_timeout_ms' => '2500',
@@ -48,6 +50,8 @@ function kontrol_id_defaults() {
 		'pki_owned' => '',
 		'e2g_proxy_basic_added' => '',
 		'previous_squid_auth_method' => '',
+		'previous_squid_config' => '',
+		'previous_e2guardian_config' => '',
 		'dependency_defaults_initialized' => ''
 	);
 }
@@ -349,6 +353,64 @@ function kontrol_id_remove_squid_block($value) {
 	return trim($value, "; \t\r\n");
 }
 
+function kontrol_id_normalize_interfaces($value) {
+	if (is_array($value)) {
+		$interfaces = $value;
+	} else {
+		$interfaces = explode(',', (string)$value);
+	}
+	$interfaces = array_values(array_unique(array_filter(array_map('trim', $interfaces))));
+	return implode(',', $interfaces);
+}
+
+function kontrol_id_snapshot_config(array $config, array $fields) {
+	$snapshot = array();
+	foreach ($fields as $field) {
+		$snapshot[$field] = array(
+			'exists' => array_key_exists($field, $config),
+			'value' => $config[$field] ?? null
+		);
+	}
+	return base64_encode(json_encode($snapshot));
+}
+
+function kontrol_id_restore_config(array $config, $encoded_snapshot) {
+	$decoded = base64_decode((string)$encoded_snapshot, true);
+	if ($decoded === false) {
+		return $config;
+	}
+	$snapshot = json_decode($decoded, true);
+	if (!is_array($snapshot)) {
+		return $config;
+	}
+	foreach ($snapshot as $field => $saved) {
+		if (!is_array($saved) || empty($saved['exists'])) {
+			unset($config[$field]);
+		} else {
+			$config[$field] = $saved['value'];
+		}
+	}
+	return $config;
+}
+
+function kontrol_id_squid_managed_fields() {
+	return array(
+		'enable_squid', 'active_interface', 'proxy_port', 'allow_interface',
+		'transparent_proxy', 'transparent_active_interface', 'ssl_proxy',
+		'ssl_active_interface', 'ssl_proxy_port', 'sslproxy_mitm_mode',
+		'sslproxy_compatibility_mode', 'dhparams_size', 'dca',
+		'sslcrtd_children'
+	);
+}
+
+function kontrol_id_e2guardian_managed_fields() {
+	return array(
+		'enable', 'interface', 'filterports', 'applyaction', 'transparent_proxy',
+		'transparent_active_interface', 'enablessl', 'ssl_proxy',
+		'ssl_proxy_port', 'dca', 'parentmode', 'proxyip', 'proxyport'
+	);
+}
+
 function kontrol_id_squid_block() {
 	$settings = kontrol_id_get_settings();
 	$portal = preg_replace('/[\s;]/', '', kontrol_id_portal_url());
@@ -405,6 +467,12 @@ function kontrol_id_apply_squid_integration($enabled) {
 
 	$squid['custom_options'] = kontrol_id_remove_squid_block($squid['custom_options'] ?? '');
 	if ($enabled) {
+		if (empty($settings['previous_squid_config'])) {
+			$settings['previous_squid_config'] = kontrol_id_snapshot_config(
+				$squid,
+				kontrol_id_squid_managed_fields()
+			);
+		}
 		$method = $auth['auth_method'] ?? 'none';
 		if ($method !== 'none') {
 			throw new Exception("Squid authentication method '{$method}' is incompatible with Kontrol-ID.");
@@ -418,8 +486,39 @@ function kontrol_id_apply_squid_integration($enabled) {
 		}
 		$squid['custom_options'] = trim($squid['custom_options'], ';') .
 			(empty($squid['custom_options']) ? '' : ';') . kontrol_id_squid_block();
+
+		$interfaces = kontrol_id_normalize_interfaces($settings['intercept_interfaces']);
+		if (empty($interfaces)) {
+			$interfaces = 'lan';
+		}
+		$active_interfaces = kontrol_id_normalize_interfaces(
+			trim(($squid['active_interface'] ?? '') . ',' . $interfaces, ',')
+		);
+		$squid['enable_squid'] = 'on';
+		$squid['active_interface'] = $active_interfaces;
+		$squid['proxy_port'] = !empty($squid['proxy_port']) ? $squid['proxy_port'] : '3128';
+		$squid['allow_interface'] = 'on';
+		$squid['transparent_proxy'] = 'on';
+		$squid['transparent_active_interface'] = $interfaces;
+		if ($settings['traffic_mode'] === 'http_https') {
+			$squid['ssl_proxy'] = 'on';
+			$squid['ssl_active_interface'] = $interfaces;
+			$squid['ssl_proxy_port'] = '3129';
+			$squid['sslproxy_mitm_mode'] = 'splicewhitelist';
+			$squid['sslproxy_compatibility_mode'] = 'modern';
+			$squid['dhparams_size'] = '2048';
+			$squid['dca'] = $settings['ca_ref'];
+			$squid['sslcrtd_children'] = '5';
+		} else {
+			$squid['ssl_proxy'] = '';
+			$squid['ssl_active_interface'] = '';
+		}
 	} elseif (!empty($settings['previous_squid_auth_method'])) {
 		$settings['previous_squid_auth_method'] = '';
+	}
+	if (!$enabled && !empty($settings['previous_squid_config'])) {
+		$squid = kontrol_id_restore_config($squid, $settings['previous_squid_config']);
+		$settings['previous_squid_config'] = '';
 	}
 
 	config_set_path('installedpackages/squid/config/0', $squid);
@@ -443,8 +542,84 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 		$settings['e2g_proxy_basic_added'] = '';
 	}
 	$e2g['auth_plugin'] = implode(',', array_unique($plugins));
+
+	$e2g_general = config_get_path('installedpackages/e2guardian/config/0', array());
+	if (!is_array($e2g_general)) {
+		$e2g_general = array();
+	}
+	if ($enabled) {
+		if (empty($settings['previous_e2guardian_config'])) {
+			$settings['previous_e2guardian_config'] = kontrol_id_snapshot_config(
+				$e2g_general,
+				kontrol_id_e2guardian_managed_fields()
+			);
+		}
+		/* Squid is the only TLS interception point.  E2Guardian receives the
+		 * already decrypted and identified HTTP stream on loopback. */
+		$e2g_general['enable'] = 'on';
+		$e2g_general['interface'] = 'lo0';
+		$e2g_general['filterports'] = '8080';
+		$e2g_general['applyaction'] = 'rc.d';
+		$e2g_general['transparent_proxy'] = '';
+		$e2g_general['transparent_active_interface'] = '';
+		$e2g_general['enablessl'] = '';
+		$e2g_general['ssl_proxy'] = '';
+		$e2g_general['parentmode'] = 'direct';
+		$e2g_general['proxyip'] = '';
+		$e2g_general['proxyport'] = '';
+	} elseif (!empty($settings['previous_e2guardian_config'])) {
+		$e2g_general = kontrol_id_restore_config(
+			$e2g_general,
+			$settings['previous_e2guardian_config']
+		);
+		$settings['previous_e2guardian_config'] = '';
+	}
 	config_set_path('installedpackages/e2guardianconfig/config/0', $e2g);
+	config_set_path('installedpackages/e2guardian/config/0', $e2g_general);
 	kontrol_id_set_settings($settings);
+}
+
+function kontrol_id_chain_status() {
+	$settings = kontrol_id_get_settings();
+	$squid = config_get_path('installedpackages/squid/config/0', array());
+	$e2g = config_get_path('installedpackages/e2guardian/config/0', array());
+	$e2g_config = config_get_path('installedpackages/e2guardianconfig/config/0', array());
+	$ca = !empty($settings['ca_ref']) ? kontrol_id_extract_item(lookup_ca($settings['ca_ref'])) : array();
+	$expected_interfaces = kontrol_id_normalize_interfaces($settings['intercept_interfaces']);
+	$checks = array(
+		array('name' => 'Kontrol-ID', 'ok' => $settings['enable'] === 'on', 'detail' => 'Identity enforcement enabled'),
+		array('name' => 'Squid helper', 'ok' =>
+			($squid['enable_squid'] ?? '') === 'on' &&
+			strpos($squid['custom_options'] ?? '', KONTROL_ID_BEGIN) !== false,
+			'detail' => 'External identity ACL installed'),
+		array('name' => 'Transparent HTTP', 'ok' =>
+			($squid['transparent_proxy'] ?? '') === 'on' &&
+			kontrol_id_normalize_interfaces($squid['transparent_active_interface'] ?? '') === $expected_interfaces,
+			'detail' => 'Squid intercepts ' . ($expected_interfaces ?: 'no interface')),
+		array('name' => 'E2Guardian chain', 'ok' =>
+			($e2g['enable'] ?? '') === 'on' &&
+			($e2g['interface'] ?? '') === 'lo0' &&
+			($e2g['filterports'] ?? '') === '8080' &&
+			strpos($e2g_config['auth_plugin'] ?? '', 'proxy-basic.conf') !== false &&
+			strpos($squid['custom_options'] ?? '', 'parent 8080') !== false,
+			'detail' => 'Squid -> identity -> E2Guardian on 127.0.0.1:8080')
+	);
+	if ($settings['traffic_mode'] === 'http_https') {
+		$checks[] = array(
+			'name' => 'Transparent HTTPS',
+			'ok' => ($squid['ssl_proxy'] ?? '') === 'on' &&
+				($squid['dca'] ?? '') === ($settings['ca_ref'] ?? '') &&
+				!empty($ca['crt']) && !empty($ca['prv']) &&
+				kontrol_id_normalize_interfaces($squid['ssl_active_interface'] ?? '') === $expected_interfaces,
+			'detail' => 'Squid uses the Kontrol-ID CA and blocks QUIC so HTTPS cannot bypass TLS inspection'
+		);
+		$checks[] = array(
+			'name' => 'No double TLS inspection',
+			'ok' => empty($e2g['enablessl']) && empty($e2g['ssl_proxy']) && empty($e2g['transparent_proxy']),
+			'detail' => 'E2Guardian MITM and transparent redirects are disabled'
+		);
+	}
+	return $checks;
 }
 
 function kontrol_id_validate($post, &$input_errors) {
@@ -470,27 +645,24 @@ function kontrol_id_validate($post, &$input_errors) {
 		$input_errors[] = 'Portal URL is invalid.';
 	}
 	if (($post['enable'] ?? '') === 'on') {
+		if (empty(kontrol_id_normalize_interfaces($post['intercept_interfaces'] ?? ''))) {
+			$input_errors[] = 'Select at least one interface for transparent interception.';
+		}
+		if (($post['e2guardian_integration'] ?? '') === 'on' && ($post['squid_integration'] ?? '') !== 'on') {
+			$input_errors[] = 'E2Guardian forwarding requires managed Squid integration.';
+		}
 		$method = config_get_path('installedpackages/squidauth/config/0/auth_method', 'none');
 		if ($method !== 'none') {
 			$input_errors[] = "Squid authentication method '{$method}' must be disabled before enabling Kontrol-ID.";
 		}
 		if (($post['squid_integration'] ?? '') === 'on') {
 			$squid = config_get_path('installedpackages/squid/config/0', array());
-			if (($squid['enable_squid'] ?? '') !== 'on' || empty($squid['active_interface'])) {
-				$input_errors[] = 'Enable Squid and select at least one proxy interface before enabling Kontrol-ID integration.';
-			}
 			$conflicts = kontrol_id_squid_conflicts(
 				$squid['custom_options'] ?? '',
 				($post['e2guardian_integration'] ?? '') === 'on'
 			);
 			if (!empty($conflicts)) {
 				$input_errors[] = 'Remove ' . implode(' and ', $conflicts) . ' from Squid custom options before enabling managed integration.';
-			}
-		}
-		if (($post['e2guardian_integration'] ?? '') === 'on') {
-			$e2g = config_get_path('installedpackages/e2guardian/config/0', array());
-			if (($e2g['enable'] ?? '') !== 'on' && ($e2g['enable_dg'] ?? '') !== 'on') {
-				$input_errors[] = 'Enable E2Guardian before enabling Kontrol-ID forwarding.';
 			}
 		}
 		if (auth_get_authserver($post['auth_server'] ?? 'Local Database') === null) {
@@ -511,17 +683,39 @@ function kontrol_id_resync($sync = true) {
 	kontrol_id_apply_squid_integration($enabled && $settings['squid_integration'] === 'on');
 	kontrol_id_apply_e2guardian_integration($enabled && $settings['e2guardian_integration'] === 'on');
 	write_config('Kontrol-ID configuration updated.');
+	/* Package generators still read the legacy global configuration array.
+	 * Reload it so their runtime files and firewall rules see the values just
+	 * written through config_set_path(). */
+	if (function_exists('config_read_file')) {
+		config_read_file(true, false);
+	}
 
+	if (file_exists('/usr/local/pkg/e2guardian.inc')) {
+		require_once('/usr/local/pkg/e2guardian.inc');
+		if (function_exists('sync_package_e2guardian')) {
+			$had_csrf = isset($_POST['__csrf_magic']);
+			$previous_csrf = $_POST['__csrf_magic'] ?? null;
+			if (!$had_csrf || empty($previous_csrf)) {
+				$_POST['__csrf_magic'] = 'kontrol-id-managed-resync';
+			}
+			sync_package_e2guardian('no', false);
+			if ($had_csrf) {
+				$_POST['__csrf_magic'] = $previous_csrf;
+			} else {
+				unset($_POST['__csrf_magic']);
+			}
+		}
+		if (function_exists('e2guardian_start')) {
+			e2guardian_start('no', false, true);
+			if (function_exists('e2guardian_wait_for_process_state')) {
+				e2guardian_wait_for_process_state(true, 10);
+			}
+		}
+	}
 	if (file_exists('/usr/local/pkg/squid.inc')) {
 		require_once('/usr/local/pkg/squid.inc');
 		if (function_exists('squid_resync')) {
 			squid_resync('yes');
-		}
-	}
-	if (file_exists('/usr/local/pkg/e2guardian.inc')) {
-		require_once('/usr/local/pkg/e2guardian.inc');
-		if (function_exists('sync_package_e2guardian')) {
-			sync_package_e2guardian('no', false);
 		}
 	}
 	if ($sync) {

@@ -87,6 +87,22 @@ function sq_text_area_decode($text, $idn=false) {
 	}
 }
 
+/*
+ * pfSense/Kontrol certificate-manager lookups on newer releases return
+ * metadata plus the actual CA/certificate in the "item" element.  Older
+ * releases returned the item directly.  Keep both API shapes supported so
+ * SSL interception does not reject a valid internal CA as keyless.
+ */
+function squid_extract_certmanager_item($lookup) {
+	if (!is_array($lookup)) {
+		return false;
+	}
+	if (array_key_exists('item', $lookup)) {
+		return is_array($lookup['item']) ? $lookup['item'] : false;
+	}
+	return $lookup;
+}
+
 /* Get interface IP and netmask for Squid interfaces */
 function squid_get_real_interface_address($iface, $proto = 'inet') {
 	if (!function_exists("get_interface_ip")) {
@@ -885,7 +901,7 @@ function squid_validate_general($post, &$input_errors) {
 		if ($post['dca'] == 'none') {
 			$input_errors[] = "SSL interception cannot be enabled without a CA.";
 		} else {
-			$dca = lookup_ca($post['dca']);
+			$dca = squid_extract_certmanager_item(lookup_ca($post['dca']));
 			if (!$dca) {
 				$input_errors[] = "Invalid SSL interception CA.";
 			}
@@ -1210,7 +1226,7 @@ function squid_resync_general() {
 	// Check ssl interception
 	if ($settings['ssl_proxy'] == 'on') {
 		squid_gen_extra_ca();
-		$srv_cert = lookup_ca($settings["dca"]);
+		$srv_cert = squid_extract_certmanager_item(lookup_ca($settings["dca"]));
 		if ($srv_cert != false) {
 			if (base64_decode($srv_cert['prv'])) {
 				if (file_exists(SQUID_LOCALBASE . "/libexec/squid/security_file_certgen")) {
@@ -1252,18 +1268,16 @@ function squid_resync_general() {
 					} elseif ($settings['dhparams_size'] == '1024') {
 						$sslproxy_dhparams = "tls-dh=prime256v1:/etc/dh-parameters.1024";
 					}
-					$sslproxy_options .= ",SINGLE_DH_USE,SINGLE_ECDH_USE";
 				} elseif (file_exists("/etc/dh-parameters.2048")) {
 					// Fallback options for defaults on install
 					$sslproxy_dhparams = "tls-dh=prime256v1:/etc/dh-parameters.2048";
-					$sslproxy_options .= ",SINGLE_DH_USE,SINGLE_ECDH_USE";
 				} else {
 					// Should never get here
 					$sslproxy_dhparams = "";
 				}
 				file_put_contents($crt_pk, unixnewlines(base64_decode($srv_cert['prv']) . "\n" . base64_decode($srv_cert['crt'])));
 				$sslcrtd_children = ($settings['sslcrtd_children'] ? $settings['sslcrtd_children'] : 5);
-				$ssl_interception .= "ssl-bump generate-host-certificates=on dynamic_cert_mem_cache_size=" . ($sslcrtd_children*2) . "MB cert={$crt_pk} cafile={$crt_cafile} capath={$crt_capath} cipher={$sslproxy_cipher} {$sslproxy_dhparams} options={$sslproxy_options}\n";
+				$ssl_interception .= "ssl-bump generate-host-certificates=on dynamic_cert_mem_cache_size=" . ($sslcrtd_children*2) . "MB cert={$crt_pk} tls-cafile={$crt_cafile} tls-capath={$crt_capath} cipher={$sslproxy_cipher} {$sslproxy_dhparams} options={$sslproxy_options}\n";
 				if ($squid4) {
 					$interception_checks = "sslcrtd_program " . SQUID_LOCALBASE . "/libexec/squid/security_file_certgen -s " . SQUID_SSL_DB . " -M 4MB -b 2048\n";
 					$interception_checks .= "tls_outgoing_options cafile={$crt_cafile}\n";
@@ -1406,7 +1420,6 @@ function squid_resync_general() {
 		}
 	}
 	$icp_port = ($settings['icp_port'] ? $settings['icp_port'] : 0);
-	$dns_v4_first = ($settings['dns_v4_first'] == "on" ? "on" : "off");
 	$piddir = "{$g['varrun_path']}/squid";
 	$pidfile = "{$piddir}/squid.pid";
 	if (!is_dir($piddir)) {
@@ -1459,7 +1472,6 @@ function squid_resync_general() {
 	$conf .= <<< EOD
 icp_port {$icp_port}
 digest_generation {$digest_generation}
-dns_v4_first {$dns_v4_first}
 pid_filename {$pidfile}
 cache_effective_user {$squid_uid}
 cache_effective_group {$squid_gid}
@@ -2283,6 +2295,23 @@ function squid_generate_rules($type) {
 	 * For PPPoE server, the $pppoe below is a pf macro, not a PHP variable, needs to be escaped.
 	 */
 	switch($type) {
+		case 'pfearly':
+			/* HTTP/3 uses QUIC over UDP/443 and would bypass the TCP SSL-Bump
+			 * listener. This must be an early rule because interface allow rules
+			 * are normally quick and would otherwise accept QUIC first. */
+			if (!empty($ssl_ifaces)) {
+				$rules .= "# Block HTTP/3 (QUIC) so HTTPS uses the transparent TLS proxy\n";
+				foreach ($ssl_ifaces as $iface) {
+					if ($listenproto != 'inet6') {
+						$rules .= "block return quick on $iface inet proto udp from any to any port 443\n";
+					}
+					if ($listenproto != 'inet') {
+						$rules .= "block return quick on $iface inet6 proto udp from any to any port 443\n";
+					}
+				}
+				$rules .= "\n";
+			}
+			break;
 		case 'nat':
 			// No NAT rules if transparent proxy is not enabled
 			if ($squid_conf['transparent_proxy'] != 'on') {
