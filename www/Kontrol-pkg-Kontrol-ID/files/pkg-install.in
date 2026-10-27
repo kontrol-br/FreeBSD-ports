@@ -1,5 +1,16 @@
 #!/bin/sh
 
+if [ "${2}" = "PRE-INSTALL" ]; then
+	for conflict in pfSense-pkg-squid Kontrol-pkg-E2guardian5; do
+		if /usr/local/sbin/pkg info -e "${conflict}"; then
+			echo "Kontrol-ID cannot be installed while ${conflict} is installed." >&2
+			echo "Remove the conflicting GUI package first; compatible shared runtime dependencies will be retained by pkg." >&2
+			exit 1
+		fi
+	done
+	exit 0
+fi
+
 if [ "${2}" != "POST-INSTALL" ]; then
 	exit 0
 fi

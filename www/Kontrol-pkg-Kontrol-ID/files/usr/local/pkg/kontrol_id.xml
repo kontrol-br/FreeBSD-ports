@@ -172,12 +172,23 @@
 			<type>listtopic</type>
 		</field>
 		<field>
+			<fielddescr>Directory Integration</fielddescr>
+			<description><![CDATA[
+				Kontrol-ID does not need to join the firewall to the Windows domain. Configure an LDAP/Active Directory server under
+				<a href="/system_authservers.php">System &gt; User Manager &gt; Authentication Servers</a>, then select it below.
+				The local database remains available for networks without Active Directory.
+			]]></description>
+			<type>info</type>
+		</field>
+		<field>
 			<fielddescr>Authentication Server</fielddescr>
 			<fieldname>auth_server</fieldname>
-			<description><![CDATA[Exact name of an authentication server configured under System > User Manager > Authentication Servers. Use <strong>Local Database</strong> for Kontrol local users. LDAP/AD settings are reused directly.]]></description>
-			<type>input</type>
+			<description><![CDATA[Select the Kontrol local database or an LDAP/AD authentication server already managed by the base system. Credentials are never copied into the Kontrol-ID package configuration.]]></description>
+			<type>select_source</type>
+			<source><![CDATA[kontrol_id_authserver_options()]]></source>
+			<source_name>name</source_name>
+			<source_value>value</source_value>
 			<default_value>Local Database</default_value>
-			<size>40</size>
 		</field>
 		<field>
 			<fielddescr>Local Allowed Group</fielddescr>

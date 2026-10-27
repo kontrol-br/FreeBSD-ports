@@ -3,8 +3,19 @@
   message: <<EOM
 A fresh Kontrol-ID installation uses safe defaults and remains disabled until
 it is enabled at Services > Kontrol-ID. Existing settings are preserved during
-upgrades. Generate an enrollment token on the Stations tab and provision at
-least one Windows endpoint before enforcing identity.
+upgrades. The package manager installs the matching Kontrol Squid and
+E2Guardian packages, including their transitive dependencies.
+
+Kontrol-ID cannot coexist with pfSense-pkg-squid or the legacy
+Kontrol-pkg-E2guardian5 GUI package because they own the same configuration
+files. Remove the conflicting GUI package before installing Kontrol-ID. Do not
+remove a shared squid, e2guardian or library package already required by the
+matching Kontrol package.
+
+The legacy domain-join Kontrol-ID pages are not used. Configure LDAP/Active
+Directory under System > User Manager > Authentication Servers, select that
+server under Services > Kontrol-ID, then generate an enrollment token on the
+Stations tab and provision at least one Windows endpoint before enforcement.
 
 Runtime databases in /var/db/kontrol-identity are intentionally preserved when
 the package is removed. Squid and E2Guardian integration blocks are removed by

@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
-PORTVERSION=	0.1.0
+PORTVERSION=	0.2.0
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -12,11 +12,13 @@ COMMENT=	Transparent user identity integration for Kontrol, Squid and E2Guardian
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	Kontrol-pkg-KontrolSquid>=0:www/Kontrol-pkg-KontrolSquid \
-		Kontrol-pkg-E2guardian54>=0:www/Kontrol-pkg-E2guardian54
+RUN_DEPENDS=	Kontrol-pkg-KontrolSquid>=0.1.12_16:www/Kontrol-pkg-KontrolSquid \
+		Kontrol-pkg-E2guardian54>=6.6.26_13:www/Kontrol-pkg-E2guardian54
 LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libsqlite3.so:databases/sqlite3 \
 		libxml2.so:textproc/libxml2
+
+CONFLICTS_INSTALL=	pfSense-pkg-squid Kontrol-pkg-E2guardian5
 
 USES=		compiler:c++17-lang localbase pkgconfig
 USE_CXXSTD=	c++17
