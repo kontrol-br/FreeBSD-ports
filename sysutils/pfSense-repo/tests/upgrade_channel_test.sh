@@ -7,7 +7,7 @@ MAKEFILE=${PORT}/Makefile
 INSTALL=${PORT}/files/pkg-install.in
 
 grep -Fq 'PORTREVISION=' "${MAKEFILE}"
-grep -Fq 'Kontrol-upgrade>=2.9.0_12:sysutils/pfSense-upgrade' "${MAKEFILE}"
+grep -Fq 'Kontrol-upgrade>=2.9.0_13:sysutils/pfSense-upgrade' "${MAKEFILE}"
 grep -Fq 'PKG_REPO_VERSION_UPGRADE is required' "${MAKEFILE}"
 grep -Fq 'PKG_REPO_OSMAJOR_UPGRADE is required' "${MAKEFILE}"
 grep -Fq 'PKG_REPO_OSVERSION_UPGRADE is required' "${MAKEFILE}"
