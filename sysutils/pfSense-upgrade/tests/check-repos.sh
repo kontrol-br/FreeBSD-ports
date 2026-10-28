@@ -1,10 +1,16 @@
 #!/bin/sh
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-CHECK=${HERE}/../files/Kontrol-upgrade-check-repos
+CHECK_SOURCE=${HERE}/../files/Kontrol-upgrade-check-repos
 ROOT=$(mktemp -d /tmp/Kontrol-upgrade-test.XXXXXX)
 trap 'rm -rf "${ROOT}"' EXIT HUP INT TERM
+CHECK=${ROOT}/Kontrol-upgrade-check-repos
 MOCK=${ROOT}/pkg-static
+
+# Match the executable mode applied by INSTALL_SCRIPT without changing the
+# source-tree file while the test runs.
+cp "${CHECK_SOURCE}" "${CHECK}"
+chmod +x "${CHECK}"
 
 # The packaged marker must name the product-renamed installed templates.  A
 # source-tree pfSense name makes every real Kontrol check fail before pkg runs.
