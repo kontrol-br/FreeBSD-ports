@@ -23,7 +23,8 @@ DB
 
 # Stage 3 now presents the cached repository as Kontrol before pkg performs the
 # real add-on upgrade.  pkg therefore records %R=Kontrol during installation.
-sed -i 's/|Kontrol-offline$/|Kontrol/' "${tmp}/pkgdb"
+sed 's/|Kontrol-offline$/|Kontrol/' "${tmp}/pkgdb" > "${tmp}/pkgdb.new"
+mv "${tmp}/pkgdb.new" "${tmp}/pkgdb"
 for package in Kontrol-pkg-Cron Kontrol-pkg-E2guardian54 \
     Kontrol-pkg-LCDproc Kontrol-pkg-node_exporter; do
 	[ "$(gui_packages | grep -cxF "${package}")" -eq 1 ]
@@ -44,7 +45,8 @@ annotation_line=$(grep -n '_pkg annotate -q -D ${kernel_pkg} next_stage' "${scri
 # Re-selecting the product repository at a resumed stage-3 boundary is
 # idempotent and package names/origins remain case-correct.
 cp "${tmp}/pkgdb" "${tmp}/before"
-sed -i 's/|Kontrol-offline$/|Kontrol/' "${tmp}/pkgdb"
+sed 's/|Kontrol-offline$/|Kontrol/' "${tmp}/pkgdb" > "${tmp}/pkgdb.new"
+mv "${tmp}/pkgdb.new" "${tmp}/pkgdb"
 cmp -s "${tmp}/before" "${tmp}/pkgdb"
 
 echo 'stage-3 repository identity tests: PASS'

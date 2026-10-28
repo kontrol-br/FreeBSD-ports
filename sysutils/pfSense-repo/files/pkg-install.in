@@ -35,13 +35,35 @@ if [ ! -L "${REPO_CONF}" ] || [ ! -f "${REPO_CONF}" ]; then
 fi
 
 PKG_CONF="/usr/local/etc/pkg.conf"
+PKG_CONF_TMP="${PKG_CONF}.tmp.$$"
 REAL_CONF=$(readlink ${REPO_CONF})
 
 ABI=$(cat ${REAL_CONF%%.conf}.abi)
 OSVERSION=$(cat ${REAL_CONF%%.conf}.osversion)
 
-echo "ABI=${ABI}" > ${PKG_CONF}
-echo "OSVERSION=${OSVERSION}" >> ${PKG_CONF}
+trap 'rm -f "${PKG_CONF_TMP}"' EXIT HUP INT TERM
+cat > "${PKG_CONF_TMP}" << EOF
+ABI=${ABI}
+OSVERSION=${OSVERSION}
+EOF
+chmod 644 "${PKG_CONF_TMP}"
+mv -f "${PKG_CONF_TMP}" "${PKG_CONF}"
+trap - EXIT HUP INT TERM
+
+# A completed major upgrade may leave the XML selection pointing at an
+# upgrade template which the new release package no longer ships.  Keep the
+# valid active symlink and XML state consistent.  Use the platform config API
+# and a description so this also avoids write_config() warnings.
+if [ -x /usr/local/bin/php ]; then
+	/usr/local/bin/php -r '
+		require_once("config.inc");
+		$path = config_get_path("system/pkg_repo_conf_path");
+		if (!empty($path) && !is_file($path)) {
+			config_set_path("system/pkg_repo_conf_path", "%%DEFAULT_REPO%%");
+			write_config("Normalize package repository after Kontrol-repo update.");
+		}
+	' >/dev/null 2>&1 || true
+fi
 
 # Help users to fix fstab before risk moving to FreeBSD 11
 if /usr/bin/grep -q -E '/dev/ad[[:digit:]]' /etc/fstab; then

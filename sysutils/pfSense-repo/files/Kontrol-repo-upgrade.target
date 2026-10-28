@@ -1,0 +1,7 @@
+managed_by=Kontrol-repo
+eligible=yes
+supported_direct=yes
+channel=release
+version=%%PKG_REPO_VERSION_UPGRADE%%
+template=Kontrol-repo-upgrade
+signature_policy=fingerprints

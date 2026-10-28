@@ -1,0 +1,151 @@
+#!/bin/sh
+# Inspect package-managed direct-upgrade targets without changing the active
+# repository, the real pkg database, or the appliance configuration.
+
+PKG_STATIC=${PKG_STATIC:-/usr/local/sbin/pkg-static}
+REPO_TEMPLATE_DIR=${REPO_TEMPLATE_DIR:-/usr/local/share/Kontrol/pkg/repos}
+REAL_PKG_DBDIR=${REAL_PKG_DBDIR:-${PKG_DBDIR:-/var/db/pkg}}
+PRODUCT=${PRODUCT:-Kontrol}
+TMP_ROOT=${TMPDIR:-/tmp}
+tmpdirs=""
+
+debug()
+{
+	[ "${KONTROL_UPGRADE_DEBUG:-no}" = yes ] || return 0
+	message="Kontrol-upgrade-check-repos[$$]: $*"
+	printf '%s\n' "${message}" >&2
+	[ -z "${KONTROL_UPGRADE_DEBUG_LOG:-}" ] || \
+		printf '%s\n' "${message}" >> "${KONTROL_UPGRADE_DEBUG_LOG}"
+}
+
+cleanup()
+{
+	for dir in ${tmpdirs}; do
+		rm -rf "${dir}"
+	done
+}
+trap 'cleanup' 0 1 2 15
+
+field()
+{
+	awk -F= -v key="${2}" '
+		$1 == key { count++; value=$2; if (NF != 2 || value !~ /^[A-Za-z0-9_.-]+$/) bad=1 }
+		END { if (count == 1 && !bad) print value }
+	' "${1}"
+}
+
+pkg_clean_env()
+{
+	env -u ABI -u ALTABI -u OSVERSION "${PKG_STATIC}" "$@"
+}
+
+installed_version()
+{
+	PKG_DBDIR=${REAL_PKG_DBDIR} pkg_clean_env -C /dev/null query %v "${1}"
+}
+
+# signature_policy=none is accepted only from the package-managed marker and
+# only in the disposable repository copy.  Production targets use fingerprints.
+prepare_unsigned_copy()
+{
+	input=$1 output=$2
+	awk '
+		/^[[:space:]]*signature_type[[:space:]]*:/ {
+			sub(/signature_type[[:space:]]*:[[:space:]]*"?[A-Za-z0-9_-]+"?/, "signature_type: none")
+			changed++
+		}
+		{ print }
+		END { if (changed == 0) exit 1 }
+	' "${input}" > "${output}" || return 1
+	! grep -Eq '^[[:space:]]*signature_type[[:space:]]*:.*(fingerprints|pubkey)' "${output}"
+}
+
+best=""
+best_template=""
+had_eligible=no
+had_failure=no
+for marker in "${REPO_TEMPLATE_DIR}"/*.target; do
+	[ -f "${marker}" ] || continue
+	[ "$(field "${marker}" managed_by)" = "Kontrol-repo" ] || continue
+	[ "$(field "${marker}" eligible)" = "yes" ] || continue
+	[ "$(field "${marker}" supported_direct)" = "yes" ] || continue
+	[ "$(field "${marker}" channel)" = "release" ] || continue
+
+	had_eligible=yes
+	version=$(field "${marker}" version)
+	template=$(field "${marker}" template)
+	signature_policy=$(field "${marker}" signature_policy)
+	case "${version}:${template}" in
+		*[!A-Za-z0-9_.:-]*|:*) had_failure=yes; continue ;;
+	esac
+	case "${signature_policy}" in
+		fingerprints|none) ;;
+		*) had_failure=yes; continue ;;
+	esac
+
+	conf=${REPO_TEMPLATE_DIR}/${template}.conf
+	abi_file=${REPO_TEMPLATE_DIR}/${template}.abi
+	osversion_file=${REPO_TEMPLATE_DIR}/${template}.osversion
+	[ -f "${conf}" ] && [ -s "${abi_file}" ] && \
+	    [ -s "${osversion_file}" ] || { had_failure=yes; continue; }
+
+	current=$(installed_version "${PRODUCT}") || { had_failure=yes; continue; }
+	[ "$(pkg_clean_env -C /dev/null version -t "${version}" "${current}")" = ">" ] || continue
+
+	abi=$(sed -n '1p' "${abi_file}")
+	case "${abi}" in
+		FreeBSD:[0-9]*:[A-Za-z0-9_]*) ;;
+		*) had_failure=yes; continue ;;
+	esac
+	os_major=${abi#FreeBSD:}; os_major=${os_major%%:*}
+	case "${os_major}" in *[!0-9]*|'') had_failure=yes; continue ;; esac
+	osversion=$(sed -n '1p' "${osversion_file}")
+	case "${osversion}" in *[!0-9]*|'') had_failure=yes; continue ;; esac
+	[ $((osversion / 100000)) -eq "${os_major}" ] || { had_failure=yes; continue; }
+
+	dir=$(mktemp -d "${TMP_ROOT}/Kontrol-upgrade.XXXXXX") || { had_failure=yes; continue; }
+	tmpdirs="${tmpdirs} ${dir}"
+	mkdir -p "${dir}/db" "${dir}/repos" || { had_failure=yes; continue; }
+	if [ "${signature_policy}" = none ]; then
+		prepare_unsigned_copy "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
+	else
+		cp "${conf}" "${dir}/repos/${template}.conf" || { had_failure=yes; continue; }
+	fi
+	cat > "${dir}/pkg.conf" <<PKGCONF
+PKG_DBDIR: "${dir}/db";
+REPOS_DIR: [ "${dir}/repos" ];
+ABI: "${abi}";
+OSVERSION: ${osversion};
+PKGCONF
+
+	if ! pkg_clean_env -C "${dir}/pkg.conf" update -f; then
+		had_failure=yes
+		continue
+	fi
+
+	valid=yes
+	for package in "${PRODUCT}" "${PRODUCT}-base" "${PRODUCT}-kernel-${PRODUCT}"; do
+		local_version=$(installed_version "${package}") || { valid=no; break; }
+		remote_version=$(pkg_clean_env -C "${dir}/pkg.conf" rquery -U %v "${package}") || { valid=no; break; }
+		[ -n "${remote_version}" ] || { valid=no; break; }
+		[ "$(pkg_clean_env -C /dev/null version -t "${remote_version}" "${local_version}")" = ">" ] || { valid=no; break; }
+	done
+	[ "${valid}" = yes ] || { had_failure=yes; continue; }
+	if [ -z "${best}" ] || \
+	    [ "$(pkg_clean_env -C /dev/null version -t "${version}" "${best}")" = ">" ]; then
+		best=${version}
+		best_template=${template}
+	fi
+done
+
+if [ -n "${best}" ]; then
+	if [ "${KONTROL_UPGRADE_OUTPUT:-version}" = template ]; then
+		printf '%s|%s\n' "${best}" "${best_template}"
+	else
+		echo "${best}"
+	fi
+	exit 2
+fi
+[ "${had_eligible}" = yes ] && [ "${had_failure}" = yes ] && exit 1
+debug "completed: no direct upgrade available"
+exit 0
