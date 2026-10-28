@@ -44,6 +44,17 @@ pkg_uses_osversion() {
 	[ "$(_pkg version -t "${_pkg_version}" 2.0.6)" != "<" ]
 }
 
+invalidate_version_cache() {
+	# destdir mode is used to build an isolated pkg configuration.  It must
+	# never modify the dashboard cache of the running firewall.
+	[ -n "${dbdir}" ] && return 0
+
+	local _cache_dir=${VERSION_CACHE_DIR:-/var/run}
+	local _cache_file="${_cache_dir}/${PRODUCT}_version"
+
+	rm -f "${_cache_file}" "${_cache_file}.rc"
+}
+
 get_default_repo() {
 	local _pkg_repo_files="${PLUS_CERT_BASE}/${PRODUCT}-repo-*.name"
 	for file in ${_pkg_repo_files}; do
@@ -318,6 +329,11 @@ validate_repo_conf
 # Fetch the repository data and setup the repository access.
 pfSense_repo_setup
 err=$?
+
+# A repository or ABI change makes the dashboard's cached update result
+# invalid.  The normal metadata refresh will repopulate it; until then the
+# widget performs a live check instead of displaying stale information.
+invalidate_version_cache
 
 # Exit codes:
 # 0 = okay

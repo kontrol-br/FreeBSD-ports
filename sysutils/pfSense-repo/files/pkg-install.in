@@ -65,6 +65,12 @@ if [ -x /usr/local/bin/php ]; then
 	' >/dev/null 2>&1 || true
 fi
 
+# The cached dashboard result belongs to the previous repository package.
+# Remove it so the widget cannot keep reporting an obsolete update status.
+VERSION_CACHE_DIR=${VERSION_CACHE_DIR:-/var/run}
+rm -f "${VERSION_CACHE_DIR}/%%PRODUCT_NAME%%_version" \
+	"${VERSION_CACHE_DIR}/%%PRODUCT_NAME%%_version.rc"
+
 # Help users to fix fstab before risk moving to FreeBSD 11
 if /usr/bin/grep -q -E '/dev/ad[[:digit:]]' /etc/fstab; then
 	echo "===> Fixing bad /etc/fstab"
