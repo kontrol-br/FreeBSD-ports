@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-repo
 DISTVERSION=	2.7.2
-PORTREVISION=	14
+PORTREVISION=	15
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -13,7 +13,7 @@ COMMENT=	Setup Kontrol pkg(8) repositories
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	Kontrol-upgrade>=1.3.3_14:sysutils/pfSense-upgrade
+RUN_DEPENDS=	Kontrol-upgrade>=1.3.3_15:sysutils/pfSense-upgrade
 
 NO_MTREE=	yes
 

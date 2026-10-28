@@ -80,6 +80,13 @@ pkg_uses_osversion() {
 	[ "$(_pkg version -t "${pkg_version}" 2.0.6)" != "<" ]
 }
 
+invalidate_version_cache() {
+	local cache_dir=${VERSION_CACHE_DIR:-/var/run}
+	local cache_file="${cache_dir}/${product}_version"
+
+	rm -f "${cache_file}" "${cache_file}.rc"
+}
+
 if [ -z "${no_update}" ] && [ -x "/usr/local/sbin/${product}-repoc-static" ]; then
 	"/usr/local/sbin/${product}-repoc-static" || {
 		echo "failed to refresh ${product} repository definitions" >&2
@@ -152,6 +159,11 @@ fi
 
 chmod 0644 "${pkg_conf_tmp}"
 mv -f "${pkg_conf_tmp}" "${pkg_conf}"
+
+# The previous result may describe another repository or ABI.  Remove it
+# before starting the compatible metadata refresh so the dashboard performs a
+# live check instead of displaying stale information.
+invalidate_version_cache
 
 # The 2.7.2 WebGUI starts its own metadata refresh without forwarding the
 # cross-major environment.  Start one compatible refresh here so the version
