@@ -24,14 +24,51 @@ done
 
 product=${0##*/}
 product=${product%-repo-setup}
+repo_dir="/usr/local/share/${product}/pkg/repos"
 repo_link="/usr/local/etc/pkg/repos/${product}.conf"
+repo_link_tmp="${repo_link}.tmp.$$"
 pkg_conf="/usr/local/etc/pkg.conf"
 pkg_conf_tmp="${pkg_conf}.tmp.$$"
 
 cleanup() {
-	rm -f "${pkg_conf_tmp}"
+	rm -f "${repo_link_tmp}" "${pkg_conf_tmp}"
 }
 trap cleanup EXIT HUP INT TERM
+
+resolve_repo_conf() {
+	local repo_conf repo_target repo_candidate
+
+	if repo_conf=$(realpath "${repo_link}" 2>/dev/null) && \
+	    [ -f "${repo_conf}" ]; then
+		echo "${repo_conf}"
+		return 0
+	fi
+
+	# Kontrol 2.7.2 pkg_switch_repo() treats the complete repository filename
+	# as a directory and appends a second filename.  Recover only that exact
+	# legacy shape and only when the outer, package-managed file exists.
+	repo_target=$(readlink "${repo_link}" 2>/dev/null) || return 1
+	case "${repo_target}" in
+	"${repo_dir}/${product}-repo"*.conf/"${product}-repo-"*.conf)
+		repo_candidate=${repo_target%%.conf/*}.conf
+		;;
+	*)
+		return 1
+		;;
+	esac
+
+	[ -f "${repo_candidate}" ] || return 1
+	repo_conf=$(realpath "${repo_candidate}") || return 1
+	case "${repo_conf}" in
+	"${repo_dir}/${product}-repo"*.conf) ;;
+	*) return 1 ;;
+	esac
+
+	ln -s "${repo_conf}" "${repo_link_tmp}" || return 1
+	mv -f "${repo_link_tmp}" "${repo_link}" || return 1
+	echo "recovered legacy repository link: ${repo_conf}" >&2
+	echo "${repo_conf}"
+}
 
 _pkg() {
 	/usr/local/sbin/pkg-static "$@" 2>/dev/null
@@ -54,7 +91,10 @@ fi
 	echo "repository configuration not found: ${repo_link}" >&2
 	exit 1
 }
-repo_conf=$(realpath "${repo_link}") || exit 1
+repo_conf=$(resolve_repo_conf) || {
+	echo "invalid repository configuration: ${repo_link}" >&2
+	exit 1
+}
 repo_base=${repo_conf%.conf}
 
 arch=$(uname -p)
@@ -112,5 +152,14 @@ fi
 
 chmod 0644 "${pkg_conf_tmp}"
 mv -f "${pkg_conf_tmp}" "${pkg_conf}"
+
+# The 2.7.2 WebGUI starts its own metadata refresh without forwarding the
+# cross-major environment.  Start one compatible refresh here so the version
+# cache is populated even when that legacy background refresh fails.
+if [ -n "${new_major}" ] && [ -x /etc/rc.update_pkg_metadata ]; then
+	/usr/bin/env IGNORE_OSVERSION=yes /etc/rc.update_pkg_metadata now ||
+		echo "warning: unable to start compatible metadata refresh" >&2
+fi
+
 trap - EXIT HUP INT TERM
 exit 0

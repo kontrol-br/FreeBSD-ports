@@ -34,11 +34,15 @@ check_upgrade() {
 }
 
 check_repo_setup() {
+	grep -Fq 'resolve_repo_conf() {' "${repo_script}"
+	grep -Fq 'repo_candidate=${repo_target%%.conf/*}.conf' "${repo_script}"
+	grep -Fq 'recovered legacy repository link:' "${repo_script}"
 	grep -Fq 'target_osversion="${target_major}00000"' "${repo_script}"
 	grep -Fq 'if [ -n "${new_major}" ] || pkg_uses_osversion; then' "${repo_script}"
 	grep -Fq 'OSVERSION=${target_osversion}' "${repo_script}"
 	grep -Fq 'ALTABI=${target_altabi}' "${repo_script}"
 	grep -Fq 'mv -f "${pkg_conf_tmp}" "${pkg_conf}"' "${repo_script}"
+	grep -Fq '/usr/bin/env IGNORE_OSVERSION=yes /etc/rc.update_pkg_metadata now' "${repo_script}"
 }
 
 check_upgrade
