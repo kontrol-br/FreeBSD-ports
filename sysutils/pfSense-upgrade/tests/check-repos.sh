@@ -70,7 +70,7 @@ CONF
 	set +e
 	output=$(ABI=FreeBSD:16:amd64 ALTABI=freebsd:16:x86:64 OSVERSION=1600014 \
 	    SNAP_DIR=${dir}/snap PKG_STATIC=${MOCK} REPO_TEMPLATE_DIR=${dir}/repos \
-	    REAL_PKG_DBDIR=${dir}/realdb TMPDIR=${dir}/tmp "${CHECK}" 2>/dev/null)
+	    REAL_PKG_DBDIR=${dir}/realdb TMPDIR=${dir}/tmp sh "${CHECK}" 2>/dev/null)
 	rc=$?
 	set -e
 	[ "${rc}" -eq "${expected_rc}" ] || { echo "${name}: rc=${rc}" >&2; exit 1; }
