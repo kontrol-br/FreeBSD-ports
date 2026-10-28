@@ -1,0 +1,116 @@
+#!/bin/sh
+
+# Repository switch helper for Kontrol 2.7.2.  The original 2.7.2 package did
+# not install this executable even though pkg_switch_repo() called it.
+
+set -u
+
+usage() {
+	cat >&2 << EOF
+usage: ${0##*/} [-hU]
+  -h  show this help
+  -U  do not refresh repository definitions
+EOF
+}
+
+no_update=""
+while getopts "hU" option; do
+	case "${option}" in
+	h) usage; exit 0 ;;
+	U) no_update=1 ;;
+	*) usage; exit 64 ;;
+	esac
+done
+
+product=${0##*/}
+product=${product%-repo-setup}
+repo_link="/usr/local/etc/pkg/repos/${product}.conf"
+pkg_conf="/usr/local/etc/pkg.conf"
+pkg_conf_tmp="${pkg_conf}.tmp.$$"
+
+cleanup() {
+	rm -f "${pkg_conf_tmp}"
+}
+trap cleanup EXIT HUP INT TERM
+
+_pkg() {
+	/usr/local/sbin/pkg-static "$@" 2>/dev/null
+}
+
+pkg_uses_osversion() {
+	local pkg_version
+	pkg_version=$(_pkg query %v pkg) || return 1
+	[ "$(_pkg version -t "${pkg_version}" 2.0.6)" != "<" ]
+}
+
+if [ -z "${no_update}" ] && [ -x "/usr/local/sbin/${product}-repoc-static" ]; then
+	"/usr/local/sbin/${product}-repoc-static" || {
+		echo "failed to refresh ${product} repository definitions" >&2
+		exit 1
+	}
+fi
+
+[ -L "${repo_link}" -o -f "${repo_link}" ] || {
+	echo "repository configuration not found: ${repo_link}" >&2
+	exit 1
+}
+repo_conf=$(realpath "${repo_link}") || exit 1
+repo_base=${repo_conf%.conf}
+
+arch=$(uname -p)
+current_major=$(uname -r)
+current_major=${current_major%%.*}
+current_abi="FreeBSD:${current_major}:${arch}"
+
+if [ -f "${repo_base}.abi" ]; then
+	target_abi=$(cat "${repo_base}.abi")
+else
+	target_abi=${current_abi}
+fi
+if [ -f "${repo_base}.altabi" ]; then
+	target_altabi=$(cat "${repo_base}.altabi")
+else
+	case "${arch}" in
+	aarch64) altarch="aarch64:64" ;;
+	i386) altarch="x86:32" ;;
+	armv6) altarch="armv6:32:el:eabi:hardfp" ;;
+	armv7) altarch="armv7:32:el:eabi:softfp" ;;
+	*) altarch="x86:64" ;;
+	esac
+	target_altabi="freebsd:${current_major}:${altarch}"
+fi
+
+target_major=$(echo "${target_abi}" | awk -F: 'tolower($1)=="freebsd" { print $2 }')
+if [ -f "${repo_base}.osversion" ]; then
+	target_osversion=$(cat "${repo_base}.osversion")
+elif [ -n "${target_major}" ]; then
+	target_osversion="${target_major}00000"
+else
+	target_osversion=$(sysctl -n kern.osreldate)
+fi
+
+new_major=""
+if [ -n "${target_major}" ] && [ "${current_major}" != "${target_major}" ]; then
+	new_major=1
+	export IGNORE_OSVERSION=yes
+elif [ "${current_abi}" != "${target_abi}" ]; then
+	new_major=1
+	export IGNORE_OSVERSION=yes
+fi
+
+if [ -n "${new_major}" ] || pkg_uses_osversion; then
+	cat > "${pkg_conf_tmp}" << EOF
+ABI=${target_abi}
+OSVERSION=${target_osversion}
+EOF
+else
+	cat > "${pkg_conf_tmp}" << EOF
+ABI=${target_abi}
+ALTABI=${target_altabi}
+EOF
+fi
+
+chmod 0644 "${pkg_conf_tmp}"
+mv -f "${pkg_conf_tmp}" "${pkg_conf}"
+trap - EXIT HUP INT TERM
+exit 0
