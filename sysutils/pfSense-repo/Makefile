@@ -1,19 +1,19 @@
 # $FreeBSD$
 
-PORTNAME=	pfSense-repo
+PORTNAME=	Kontrol-repo
 DISTVERSION=	2.9.0
-PORTREVISION=	5
+PORTREVISION=	6
 CATEGORIES=	sysutils
 MASTER_SITES=	# empty
 DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
 
-MAINTAINER=	coreteam@pfsense.org
-COMMENT=	Setup pfSense pkg(8) repositories
+MAINTAINER=	contato@kontrol.com.br
+COMMENT=	Setup Kontrol pkg(8) repositories
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	${LOCALBASE}/sbin/pfSense-upgrade:sysutils/pfSense-upgrade
+RUN_DEPENDS=	${LOCALBASE}/sbin/${PRODUCT_NAME}-upgrade:sysutils/pfSense-upgrade
 
 NO_MTREE=	yes
 
@@ -22,7 +22,7 @@ SUB_LIST=	PORTNAME=${PORTNAME} \
 		PRODUCT_NAME=${PRODUCT_NAME} \
 		DEFAULT_REPO=${DEFAULT_REPO}
 
-DATADIR=	${PREFIX}/share/pfSense
+DATADIR=	${PREFIX}/share/Kontrol
 
 # Flag used to detect when we want to reinstall all packages during upgrade
 PFSENSE_PKG_SET_VERSION?=	${DISTVERSION}
@@ -74,7 +74,7 @@ DEFAULT_ALTABI=	${OPSYS:tl}:${OSREL:C/\..*//}:${ALTABI_ARCH}
 # target OS versions here as a safe fallback when an overlay omits an
 # .osversion file; using the build jail's OSVERSION would make rollback
 # repositories advertise the current FreeBSD major.
-Kontrol-repo_OSVERSION=		1600000
+Kontrol-repo_OSVERSION=		1600014
 Kontrol-repo-previous_OSVERSION=	1500000
 Kontrol-repo-backport_OSVERSION=	1400000
 

@@ -109,6 +109,8 @@ abi_setup() {
 	local _arch="$(uname -p)"
 	local _freebsd_version="$(uname -r)"
 	local _repo_conf_file="$(readlink ${PFSENSE_REPO_CONF})"
+	local _cur_osmajor="${_freebsd_version%%.*}"
+	local _pkg_conf_tmp="${PKG_CONF}.tmp.$$"
 
 	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${_arch}"
 	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
@@ -147,22 +149,33 @@ abi_setup() {
 		OSVERSION=$(sysctl -n kern.osreldate)
 	fi
 
-	# Make sure pkg.conf matches the pkg binary used during the upgrade.  This
-	# permits an old FreeBSD 14/15 installation to consume FreeBSD 16 metadata
-	# before pkg itself has been upgraded.
-	if pkg_uses_osversion; then
-		cat << EOF > "${PKG_CONF}"
+	if [ -n "${_target_osmajor}" ] && \
+	    [ "${_cur_osmajor}" != "${_target_osmajor}" ]; then
+		NEW_MAJOR=1
+		export IGNORE_OSVERSION=yes
+	elif [ "${CUR_ABI}" != "${ABI}" ]; then
+		NEW_MAJOR=1
+		export IGNORE_OSVERSION=yes
+	else
+		NEW_MAJOR=""
+	fi
+
+	# Never expose a cross-major repository through ALTABI.  A target
+	# pkg-static (2.0.6 or newer) refuses that setting even if the source
+	# installation still has pkg 1.x registered in its local database.
+	if [ -n "${NEW_MAJOR}" ] || pkg_uses_osversion; then
+		cat << EOF > "${_pkg_conf_tmp}"
 ABI=${ABI}
 OSVERSION=${OSVERSION}
 EOF
 	else
-		cat << EOF > "${PKG_CONF}"
+		cat << EOF > "${_pkg_conf_tmp}"
 ABI=${ABI}
 ALTABI=${ALTABI}
 EOF
 	fi
 	if [ -n "${dbdir}" ] && [ -n "${reposdir}" ]; then
-			cat << EOF >> ${PKG_CONF}""
+		cat << EOF >> "${_pkg_conf_tmp}"
 PKG_DBDIR=${dbdir}
 REPOS_DIR=[${reposdir}]
 EOF
@@ -179,7 +192,7 @@ EOF
 		ln -s "${PLUS_REPO_CONF}" "${PFSENSE_REPO_CONF}"
 	fi
 	if [ -f "${AUTH_CA}" -a -f "${PLUS_CERT}" -a -f "${PLUS_KEY}" ]; then
-		cat << EOF >> "${PKG_CONF}"
+		cat << EOF >> "${_pkg_conf_tmp}"
 PKG_ENV {
 	SSL_CA_CERT_FILE=${AUTH_CA}
 	SSL_CLIENT_CERT_FILE=${PLUS_CERT}
@@ -187,6 +200,9 @@ PKG_ENV {
 }
 EOF
 	fi
+
+	chmod 0644 "${_pkg_conf_tmp}"
+	mv -f "${_pkg_conf_tmp}" "${PKG_CONF}"
 
 	err=0
 

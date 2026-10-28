@@ -385,6 +385,8 @@ abi_setup() {
 	local _freebsd_version=$(uname -r)
 	local _pkg_repo_conf="/usr/local/etc/pkg/repos/${product}.conf"
 	local _cur_osmajor="${_freebsd_version%%.*}"
+	local _pkg_conf="/usr/local/etc/pkg.conf"
+	local _pkg_conf_tmp="${_pkg_conf}.tmp.$$"
 
 	CUR_ABI="FreeBSD:${_freebsd_version%%.*}:${arch}"
 	CUR_ALTABI="freebsd:${_freebsd_version%%.*}"
@@ -431,15 +433,32 @@ abi_setup() {
 		OSVERSION=$(sysctl -n kern.osreldate)
 	fi
 
-	# Keep the configuration compatible with the pkg binary that is actually
-	# running.  Selecting by FreeBSD major breaks upgrades when an older pkg
-	# binary is used to move from FreeBSD 14/15 to FreeBSD 16.
-	if pkg_uses_osversion; then
-		echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-		echo "OSVERSION=${OSVERSION}" >> /usr/local/etc/pkg.conf
+	if [ -n "${_target_osmajor}" ] && \
+	    [ "${_cur_osmajor}" != "${_target_osmajor}" ]; then
+		NEW_MAJOR=1
+		export IGNORE_OSVERSION=yes
+	elif [ "${CUR_ABI}" != "${ABI}" ]; then
+		NEW_MAJOR=1
+		export IGNORE_OSVERSION=yes
 	else
-		echo "ABI=${ABI}" > /usr/local/etc/pkg.conf
-		echo "ALTABI=${ALTABI}" >> /usr/local/etc/pkg.conf
+		NEW_MAJOR=""
+	fi
+
+	# A cross-major repository must always use the pkg 2.x ABI/OSVERSION
+	# format.  The pkg-static bundled by the target repository rejects ALTABI,
+	# even when the installed pkg database still reports a pkg 1.x version.
+	# Same-major upgrades retain the legacy format only while pkg 1.x is the
+	# binary actually in use.
+	if [ -n "${NEW_MAJOR}" ] || pkg_uses_osversion; then
+		cat << EOF > "${_pkg_conf_tmp}"
+ABI=${ABI}
+OSVERSION=${OSVERSION}
+EOF
+	else
+		cat << EOF > "${_pkg_conf_tmp}"
+ABI=${ABI}
+ALTABI=${ALTABI}
+EOF
 	fi
 
 	AUTH_CA="/etc/ssl/netgate-ca.pem"
@@ -447,7 +466,7 @@ abi_setup() {
 	AUTH_KEY="/etc/ssl/pfSense-repo-custom.key"
 	if repo_is_plus_upgrade -a -f "${AUTH_CA}" -a -f "${AUTH_CERT}" -a \
 	     -f "${AUTH_KEY}" ; then
-		cat << EOF >> /usr/local/etc/pkg.conf
+		cat << EOF >> "${_pkg_conf_tmp}"
 PKG_ENV {
 	SSL_CA_CERT_FILE=${AUTH_CA}
 	SSL_CLIENT_CERT_FILE=${AUTH_CERT}
@@ -458,7 +477,7 @@ EOF
 
 	# XXX Replace it by a function that detect thoth hardware
 	if [ "${arch}" = "aarch64" ]; then
-		cat << EOF >> /usr/local/etc/pkg.conf
+		cat << EOF >> "${_pkg_conf_tmp}"
 PKG_ENV {
 	OPENSSL_CONF=/etc/thoth/openssl.cnf
 	SSL_CA_CERT_FILE=/etc/thoth/ca.pem
@@ -468,19 +487,15 @@ PKG_ENV {
 EOF
 	fi
 
+	chmod 0644 "${_pkg_conf_tmp}"
+	mv -f "${_pkg_conf_tmp}" "${_pkg_conf}"
+
 	local _pkg_abi=$(_pkg query %q pkg)
 	if [ "${CUR_ABI}" != "${_pkg_abi}" -a "${_pkg_abi}" != "${ABI}" ]; then
 		reinstall_pkg=1
 	fi
 
-	if [ "${CUR_ABI}" = "${ABI}" ]; then
-		NEW_MAJOR=""
-	else
-		NEW_MAJOR=1
-		export IGNORE_OSVERSION=yes
-	fi
-
-	if pkg_uses_osversion; then
+	if [ -n "${NEW_MAJOR}" ] || pkg_uses_osversion; then
 		unset CUR_ALTABI ALTABI
 		export CUR_ABI ABI OSVERSION NEW_MAJOR
 	else
