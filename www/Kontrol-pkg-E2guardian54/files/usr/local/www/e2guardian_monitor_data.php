@@ -58,7 +58,7 @@ if ($_POST) {
 			$logarr = fetch_log($log);
 			switch($e2glog['logfileformat']) {
 				case 1:
-					show_tds(array("","Date", "IP", "Url", "Response", "User", "Group", "Reason"));
+					show_tds(array("","Date", "IP", "Url", "Response", "User", "Group", "Blacklist", "Reason"));
 					foreach ($logarr as $logent) {
 						//split log
 						if (preg_match("/(\S+\s+\S+) (\S+) (\S+) (\S+) (.*) (GET|OPTIONS|POST|CONNECT|-) \d+ \d+ (.*) \d (\d+) \S+ \S+ (\S+)/", $logent, $logline)) {
@@ -87,11 +87,9 @@ if ($_POST) {
                                                 	echo "<td $listr>" . e2gm($logline[8]) . "</td>\n";
                                                 	echo "<td $listr>" . e2gm($logline[2]) . "</td>\n";
                                                 	echo "<td $listr>" . e2gm($logline[9]) . "</td>\n";
-							if ($_REQUEST['error'] == 'reason') {
-                                                		echo "<td $listr>" . e2gm($logline[7]) . "</td>\n";
-							} else {
-								echo "<td $listr>" . e2gm($logline[5]) . "</td>\n";
-							}
+							$cat_val = ($logline[7] !== '' && $logline[7] !== '-') ? '<b>' . e2gm($logline[7]) . '</b>' : '-';
+							echo "<td $listr>" . $cat_val . "</td>\n";
+							echo "<td $listr>" . e2gm($logline[5]) . "</td>\n";
                                                 	echo "</tr>\n";
 						}
 					}
