@@ -181,11 +181,11 @@ dstatinterval = {$dstatinterval}
 
 #port for transparent https
 #if defined enables tranparent https
-transparenthttpsport = {$ssl_proxy_port}
+{$transparenthttpsport}
 
 #port for ICAP
 #if defined enables icap mode
-#icapport = 1344  # TODO: Add to gui
+{$icapport}
 
 # the ip of upstream proxy - optional - if blank e2g will go direct to sites.
 # default is "" i.e. no proxy

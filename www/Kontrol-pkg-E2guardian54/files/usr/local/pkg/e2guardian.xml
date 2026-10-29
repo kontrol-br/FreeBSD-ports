@@ -147,6 +147,14 @@
 			<description><![CDATA[Default: <strong>8080</strong><br>The port(s) that E2Guardian listens to.]]></description>
 		</field>
 		<field>
+			<fielddescr>ICAP Listen Port</fielddescr>
+			<fieldname>icapport</fieldname>
+			<type>input</type>
+			<size>10</size>
+			<description><![CDATA[Optional ICAP server port. Kontrol-ID managed mode automatically uses <strong>1344</strong> on loopback so Squid can submit decrypted requests and responses for filtering.]]></description>
+			<advancedfield/>
+		</field>
+		<field>
 			<fielddescr>Allow Users on Interface</fielddescr>
 			<fieldname>allow_interface</fieldname>
 			<description>If checked, the users connected to the interface(s) selected in the 'Proxy interface(s)' field will be allowed to use the proxy.</description>

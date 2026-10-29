@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-E2guardian54
 PORTVERSION=	6.6.26
-PORTREVISION=	13
+PORTREVISION=	16
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -18,7 +18,7 @@ RUN_DEPENDS=	e2guardian>=5.4.23:www/e2guardian54 \
 		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss
 
 
-CONFLICTS_INSTALL=	www/Kontrol-pkg-E2guardian5
+CONFLICTS_INSTALL=	Kontrol-pkg-E2guardian5
 
 NO_BUILD=	yes
 NO_MTREE=	yes

@@ -1051,7 +1051,23 @@ function e2g_generate_rules($type) {
 	// Define proxy ports
 	$port = ($e2g_conf['filterports'] ? $e2g_conf['filterports'] : 8080);
 	$ssl_port = ($e2g_conf['ssl_proxy_port'] ? $e2g_conf['ssl_proxy_port'] : 8081);
-	$pf_rule_ports = "{{$port},{$ssl_port}}";
+	$pf_rule_ports_list = array_values(array_filter(
+		preg_split('/[:,\s]+/', (string)$port),
+		function($value) { return ctype_digit((string)$value); }
+	));
+	if ($ssl_intercept_enabled) {
+		$pf_rule_ports_list[] = (string)$ssl_port;
+	}
+	$icap_port = trim((string)($e2g_conf['icapport'] ?? ''));
+	if (ctype_digit($icap_port) && (int)$icap_port > 0 && (int)$icap_port <= 65535) {
+		$pf_rule_ports_list[] = $icap_port;
+	}
+	$pf_rule_ports_list = array_values(array_unique($pf_rule_ports_list));
+	if (empty($pf_rule_ports_list)) {
+		$pf_rule_ports_list[] = '8080';
+	}
+	$pf_rule_ports = count($pf_rule_ports_list) > 1 ?
+		'{' . implode(',', $pf_rule_ports_list) . '}' : $pf_rule_ports_list[0];
 
         // Define NAT ports - 80 and 443 if SSL filtering is enabled
         $pf_nat_ports = ($ssl_intercept_enabled ? "{80,443}" : "80");
@@ -1181,6 +1197,29 @@ function e2g_generate_rules($type) {
 	return $rules;
 }
 
+function e2guardian_enforce_kontrol_id_managed_config() {
+	$kontrol_id = config_get_path('installedpackages/kontrolid/config/0', array());
+	if (!is_array($kontrol_id) || ($kontrol_id['enable'] ?? '') !== 'on' ||
+		($kontrol_id['e2guardian_integration'] ?? '') !== 'on' ||
+		!file_exists('/usr/local/pkg/kontrol_id.inc')) {
+		return false;
+	}
+
+	$before_general = config_get_path('installedpackages/e2guardian/config/0', array());
+	$before_options = config_get_path('installedpackages/e2guardianconfig/config/0', array());
+	require_once('/usr/local/pkg/kontrol_id.inc');
+	if (!function_exists('kontrol_id_apply_e2guardian_integration')) {
+		return false;
+	}
+	kontrol_id_apply_e2guardian_integration(true);
+	$changed = ($before_general !== config_get_path('installedpackages/e2guardian/config/0', array()) ||
+		$before_options !== config_get_path('installedpackages/e2guardianconfig/config/0', array()));
+	if ($changed) {
+		write_config('Kontrol-ID reapplied managed E2Guardian ICAP settings.');
+	}
+	return $changed;
+}
+
 function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	global $config, $g, $savemsg, $e2g_sched_in_use;
 
@@ -1200,6 +1239,10 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	} else {
 		e2g_log_info("[E2guardian] - Save settings package call pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
 	}
+
+	/* When Kontrol-ID owns the traffic chain, saving the E2Guardian page must
+	 * not silently re-enable transparent redirects or a second TLS MITM. */
+	e2guardian_enforce_kontrol_id_managed_config();
 
 	// assign xml arrays
 	if (!is_array($config['installedpackages']['e2guardian'])) {
@@ -2646,6 +2689,13 @@ EOF;
 	$filterip = ($filterip == "" ? "filterip = " : $filterip);
 	$checkip = "checkip = " . implode(":", $checkip_list);
 	$ssl_proxy_port = $e2guardian['ssl_proxy_port'] ? $e2guardian['ssl_proxy_port'] : "8081";
+	$transparenthttpsport = ($enablessl === "on") ?
+		"transparenthttpsport = {$ssl_proxy_port}" :
+		"# transparenthttpsport disabled (TLS is handled by the upstream Squid chain)";
+	$icap_port_value = trim((string)($e2guardian['icapport'] ?? ''));
+	$icapport = (ctype_digit($icap_port_value) && (int)$icap_port_value > 0 && (int)$icap_port_value <= 65535) ?
+		"icapport = {$icap_port_value}" :
+		"# icapport disabled";
 	include(E2GUARDIAN_PKGDIR . "/e2guardian.conf.template");
 
 
@@ -3235,6 +3285,10 @@ function e2guardian_validate_input($post, &$input_errors) {
         );
         $_POST['defined_ip_proxy_off'] = $post['defined_ip_proxy_off'];
         $_POST['defined_ip_proxy_off_dest'] = $post['defined_ip_proxy_off_dest'];
+	if (!empty($post['icapport']) &&
+		(!ctype_digit((string)$post['icapport']) || (int)$post['icapport'] < 1 || (int)$post['icapport'] > 65535)) {
+		$input_errors[] = 'E2Guardian ICAP port must be between 1 and 65535.';
+	}
 
 
         if ( is_array($post['scan_options']) && bp_in_array('logclienthostnames', $post['scan_options']) &&
