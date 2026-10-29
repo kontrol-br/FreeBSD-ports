@@ -1767,17 +1767,22 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         foreach ($standard_auth_plugins as $pname => $pdefault) {
                 $sample_path = $e2guardian_dir . '/authplugins/' . $pname . '.conf.sample';
                 $target_path = $e2guardian_dir . '/authplugins/' . $pname . '.conf';
-                if (!file_exists($target_path)) {
-                        if (file_exists($sample_path)) {
-                                e2g_copy_sample_if_needed(
-                                        $sample_path,
-                                        $target_path,
-                                        array(
-                                                'require_strings' => array('story_function'),
-                                                'log_prefix' => '[E2guardian auth plugin]'
-                                        )
-                                );
-                        } else {
+                $req = ($pname === 'dnsauth') ? array('plugname') : array('story_function');
+                if (file_exists($sample_path)) {
+                        e2g_copy_sample_if_needed(
+                                $sample_path,
+                                $target_path,
+                                array(
+                                        'require_strings' => $req,
+                                        'log_prefix' => '[E2guardian auth plugin]'
+                                )
+                        );
+                } elseif (!file_exists($target_path)) {
+                        @file_put_contents($target_path, $pdefault, LOCK_EX);
+                } elseif ($pname !== 'dnsauth') {
+                        $target_contents = @file_get_contents($target_path);
+                        if ($target_contents !== false && strpos($target_contents, 'story_function') === false) {
+                                @copy($target_path, $target_path . '.pre54');
                                 @file_put_contents($target_path, $pdefault, LOCK_EX);
                         }
                 }
