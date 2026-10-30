@@ -191,8 +191,8 @@ $report = preg_replace_callback(
 
 $head_assets = '<meta http-equiv="Cache-Control" content="no-cache">' .
 	'<meta name="viewport" content="width=device-width, initial-scale=1">' .
-	'<link rel="stylesheet" href="/sarg_report.css?v=084">' .
-	'<script defer src="/sarg_charts.js?v=084"></script>';
+	'<link rel="stylesheet" href="/sarg_report.css?v=085">' .
+	'<script defer src="/sarg_charts.js?v=085"></script>';
 if (stripos($report, '</head>') !== false) {
 	$report = preg_replace('/<\/head>/i', $head_assets . '</head>', $report, 1);
 } else {

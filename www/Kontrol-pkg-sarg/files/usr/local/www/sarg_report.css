@@ -32,13 +32,27 @@ a { color: var(--sarg-accent-dark); text-decoration: none; }
 a:hover, a:focus { color: var(--sarg-accent); text-decoration: underline; }
 
 img { max-width: 100%; height: auto; }
-img[src*="graph"], img[title*="Graphic"] {
+img[src*="graph"]:not([src$="graph.png"]),
+img[title*="Graphic"]:not([src$="graph.png"]) {
 	display: block;
 	width: 100%;
 	margin: 0 auto;
 	border: 1px solid var(--sarg-line);
 	border-radius: 8px;
 	background: #fff;
+}
+
+img[src$="graph.png"][title*="Graphic"] {
+	display: inline-block;
+	width: 40px;
+	height: 40px;
+	margin: 4px auto 0;
+	padding: 4px;
+	object-fit: contain;
+	border: 1px solid #bfd4e5;
+	border-radius: 8px;
+	background: #fff;
+	vertical-align: middle;
 }
 
 .sarg-report-icon {
