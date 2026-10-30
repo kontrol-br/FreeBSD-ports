@@ -69,10 +69,17 @@ $frame_src = '/sarg_frame.php?' . http_build_query($frame_query);
 .sarg-summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 18px; border-left: 4px solid #1769aa; background: #f7f9fb; }
 .sarg-summary__title { margin: 0 0 3px; color: #1d2a36; font-size: 16px; font-weight: 600; }
 .sarg-summary__meta { color: #667685; font-size: 12px; }
+.sarg-summary__aside { display: flex; align-items: center; gap: 18px; }
 .sarg-summary__status { text-align: right; }
 .sarg-summary__status strong { display: block; color: #1769aa; font-size: 13px; }
-.sarg-frame { display: block; width: 100%; min-height: 420px; border: 0; background: #f4f7f9; }
-@media (max-width: 700px) { .sarg-summary { align-items: flex-start; flex-direction: column; } .sarg-summary__status { text-align: left; } }
+.sarg-summary__actions { display: flex; align-items: center; gap: 8px; }
+.sarg-action { display: inline-flex; align-items: center; min-height: 34px; padding: 7px 12px; border: 1px solid #b8c7d3; border-radius: 4px; background: #fff; color: #24445e; font-size: 12px; font-weight: 600; text-decoration: none; }
+.sarg-action:hover, .sarg-action:focus { border-color: #1769aa; color: #0f4f82; text-decoration: none; }
+.sarg-action--primary { border-color: #1769aa; background: #1769aa; color: #fff; }
+.sarg-action--primary:hover, .sarg-action--primary:focus { background: #0f4f82; color: #fff; }
+.sarg-frame { display: block; width: 100%; height: calc(100vh - 270px); min-height: 520px; max-height: 920px; border: 0; border-top: 1px solid #d8e1e8; background: #f4f7f9; }
+@media (max-width: 900px) { .sarg-summary { align-items: flex-start; flex-direction: column; } .sarg-summary__aside { width: 100%; justify-content: space-between; } .sarg-summary__status { text-align: left; } }
+@media (max-width: 560px) { .sarg-summary__aside { align-items: flex-start; flex-direction: column; } .sarg-summary__actions { flex-wrap: wrap; } .sarg-frame { height: calc(100vh - 330px); min-height: 440px; } }
 </style>
 <div id="mainlevel">
 	<?php
@@ -107,28 +114,18 @@ $frame_src = '/sarg_frame.php?' . http_build_query($frame_query);
 				<h2 class="sarg-summary__title"><?=gettext('Internet access analytics')?></h2>
 				<div class="sarg-summary__meta"><?=htmlspecialchars($source_label, ENT_QUOTES, 'UTF-8')?> · <?=gettext('Local processing, without external services')?></div>
 			</div>
-			<div class="sarg-summary__status">
-				<strong><?=gettext('Latest report')?></strong>
-				<span class="sarg-summary__meta"><?=htmlspecialchars($latest_label, ENT_QUOTES, 'UTF-8')?></span>
+			<div class="sarg-summary__aside">
+				<div class="sarg-summary__status">
+					<strong><?=gettext('Latest report')?></strong>
+					<span class="sarg-summary__meta"><?=htmlspecialchars($latest_label, ENT_QUOTES, 'UTF-8')?></span>
+				</div>
+				<div class="sarg-summary__actions">
+					<a class="sarg-action" href="/pkg_edit.php?xml=sarg.xml&amp;id=0"><?=gettext('Settings')?></a>
+					<a class="sarg-action sarg-action--primary" href="<?=htmlspecialchars($frame_src, ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener"><?=gettext('Open report in new tab')?></a>
+				</div>
 			</div>
 		</div>
-		<iframe id="sarg-report" class="sarg-frame" title="Sarg reports" src="<?=htmlspecialchars($frame_src, ENT_QUOTES, 'UTF-8')?>"></iframe>
+		<iframe id="sarg-report" class="sarg-frame" title="Sarg reports" loading="eager" src="<?=htmlspecialchars($frame_src, ENT_QUOTES, 'UTF-8')?>"></iframe>
 	</div>
 </div>
-<script>
-(function () {
-	var frame = document.getElementById('sarg-report');
-	function resizeReport() {
-		try {
-			var documentHeight = frame.contentWindow.document.documentElement.scrollHeight;
-			frame.style.height = Math.max(420, Math.min(8000, documentHeight + 32)) + 'px';
-		} catch (ignore) {}
-	}
-	frame.addEventListener('load', function () {
-		resizeReport();
-		window.setTimeout(resizeReport, 350);
-	});
-}());
-</script>
-</body>
-</html>
+<?php include("foot.inc"); ?>

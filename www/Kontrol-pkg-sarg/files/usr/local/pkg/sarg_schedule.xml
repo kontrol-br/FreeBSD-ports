@@ -44,6 +44,8 @@
 	<name>sargschedule</name>
 	<version>0.6.6</version>
 	<title>Status: Sarg Schedules</title>
+	<addedit_string>Sarg report schedule updated.</addedit_string>
+	<delete_string>Sarg report schedule deleted.</delete_string>
 	<include_file>/usr/local/pkg/sarg.inc</include_file>
 	<tabs>
 		<tab>

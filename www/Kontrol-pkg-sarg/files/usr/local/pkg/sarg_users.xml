@@ -44,6 +44,8 @@
 	<name>sarguser</name>
 	<version>0.6.5</version>
 	<title>Status: Sarg User Settings</title>
+	<addedit_string>Sarg user report settings updated.</addedit_string>
+	<delete_string>Sarg user report settings deleted.</delete_string>
 	<include_file>/usr/local/pkg/sarg.inc</include_file>
 	<tabs>
 		<tab>

@@ -44,6 +44,8 @@
 	<name>sarg</name>
 	<version>%%PKGVERSION%%</version>
 	<title>Status: Sarg Settings</title>
+	<addedit_string>Sarg report settings updated.</addedit_string>
+	<delete_string>Sarg report settings deleted.</delete_string>
 	<include_file>/usr/local/pkg/sarg.inc</include_file>
 	<menu>
 		<name>Sarg Reports</name>

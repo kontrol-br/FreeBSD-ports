@@ -149,7 +149,7 @@ function sarg_configure_cron() {
 		// update cron
 		if ($cron_found > 0) {
 			$config['cron'] = $new_cron;
-			write_config("Saving...");
+			write_config(gettext("Sarg report schedules updated."));
 			configure_cron();
 		}
 	}
@@ -408,7 +408,7 @@ function sync_package_sarg() {
 
 	// write config if any file from filesystem was loaded
 	if ($update_conf > 0) {
-		write_config("Saving...");
+		write_config(gettext("Sarg package defaults initialized."));
 	}
 
 	sarg_sync_on_changes();

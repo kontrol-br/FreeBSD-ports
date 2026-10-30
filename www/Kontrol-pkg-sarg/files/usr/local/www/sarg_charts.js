@@ -1,7 +1,7 @@
 (function () {
 	"use strict";
 
-	var palette = ["#1769aa", "#3784bd", "#67a1cc", "#91bbd8", "#b8d3e5", "#657786"];
+	var palette = ["#2563eb", "#0d9488", "#f59e0b", "#f97316", "#8b5cf6", "#e11d48", "#0891b2"];
 
 	function text(node) {
 		return (node && node.textContent ? node.textContent : "").replace(/\s+/g, " ").trim();
@@ -77,13 +77,15 @@
 		var chart = element("section", "sarg-chart");
 		chart.appendChild(element("h3", "", "Acessos por origem"));
 		var max = Math.max.apply(null, data.map(function (item) { return item.accesses || item.bytes; }));
-		data.forEach(function (item) {
+		data.forEach(function (item, index) {
 			var value = item.accesses || item.bytes;
 			var row = element("div", "sarg-bar-row");
+			row.title = item.label + ": " + compact(value);
 			row.appendChild(element("span", "sarg-bar-label", item.label));
 			var track = element("span", "sarg-bar-track");
 			var fill = element("span", "sarg-bar-fill");
 			fill.style.width = Math.max(3, value / max * 100) + "%";
+			fill.style.backgroundColor = palette[index % palette.length];
 			track.appendChild(fill);
 			row.appendChild(track);
 			row.appendChild(element("span", "sarg-bar-value", compact(value)));
@@ -147,12 +149,14 @@
 		chart.appendChild(element("h3", "", "Volume comparado"));
 		var area = element("div", "sarg-columns");
 		var max = Math.max.apply(null, data.map(function (item) { return item.bytes || item.accesses; }));
-		data.forEach(function (item) {
+		data.forEach(function (item, index) {
 			var value = item.bytes || item.accesses;
 			var column = element("div", "sarg-column-item");
+			column.title = item.label + ": " + compact(value);
 			column.appendChild(element("span", "sarg-column-value", compact(value)));
 			var bar = element("span", "sarg-column-bar");
 			bar.style.height = Math.max(3, value / max * 112) + "px";
+			bar.style.backgroundColor = palette[index % palette.length];
 			column.appendChild(bar);
 			column.appendChild(element("span", "sarg-column-label", item.label));
 			area.appendChild(column);

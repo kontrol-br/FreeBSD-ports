@@ -138,6 +138,29 @@ $prefix = dirname($requested);
 $prefix = ($prefix === '.') ? '' : $prefix;
 $base_query = array('dir' => $dir_suffix);
 
+function sarg_frame_url($dir_suffix, $file) {
+	$query = array('dir' => $dir_suffix);
+	if ($file !== 'index.html') {
+		$query['file'] = $file;
+	}
+	return '/sarg_frame.php?' . http_build_query($query);
+}
+
+$current_dir = dirname($requested);
+$current_dir = ($current_dir === '.') ? '' : $current_dir;
+$parent_file = 'index.html';
+$has_parent = ($requested !== 'index.html');
+if ($has_parent && basename($requested) === 'index.html') {
+	$parent_dir = dirname($current_dir);
+	$parent_file = ($parent_dir === '.' ? '' : $parent_dir . '/') . 'index.html';
+} elseif ($has_parent && $current_dir !== '') {
+	$parent_file = $current_dir . '/index.html';
+}
+$home_url = sarg_frame_url($dir_suffix, 'index.html');
+$parent_url = sarg_frame_url($dir_suffix, $parent_file);
+$viewer_query = $dir_suffix === '' ? '' : '?dir=' . rawurlencode($dir_suffix);
+$viewer_url = '/sarg_reports.php' . $viewer_query;
+
 $report = preg_replace_callback(
 	'/href=(["\'])(?![a-z][a-z0-9+.-]*:|\/|#)([^"\']+\.html)(?:[?#][^"\']*)?\1/i',
 	function ($match) use ($prefix, $base_query) {
@@ -168,8 +191,8 @@ $report = preg_replace_callback(
 
 $head_assets = '<meta http-equiv="Cache-Control" content="no-cache">' .
 	'<meta name="viewport" content="width=device-width, initial-scale=1">' .
-	'<link rel="stylesheet" href="/sarg_report.css">' .
-	'<script defer src="/sarg_charts.js"></script>';
+	'<link rel="stylesheet" href="/sarg_report.css?v=081">' .
+	'<script defer src="/sarg_charts.js?v=081"></script>';
 if (stripos($report, '</head>') !== false) {
 	$report = preg_replace('/<\/head>/i', $head_assets . '</head>', $report, 1);
 } else {
@@ -177,7 +200,25 @@ if (stripos($report, '</head>') !== false) {
 }
 
 $_SESSION['pdf'] = $report;
-$toolbar = '<div class="sarg-report-toolbar"><button type="button" onclick="window.open(\'sarg_report_pdf.php\',\'_blank\')">Abrir versão para impressão</button></div>';
+$back_action = 'if (history.length > 1) { history.back(); } else { location.href=' .
+	json_encode($parent_url, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) . '; }';
+$toolbar = '<nav class="sarg-report-toolbar" aria-label="Navegação do relatório">' .
+	'<div class="sarg-report-toolbar__path"><span>Relatório Sarg</span><strong>' .
+	htmlspecialchars($requested, ENT_QUOTES, 'UTF-8') . '</strong></div>' .
+	'<div class="sarg-report-toolbar__actions">' .
+	'<button type="button" class="sarg-report-action" onclick="' . htmlspecialchars($back_action, ENT_QUOTES, 'UTF-8') . '">&#8592; Página anterior</button>' .
+	($has_parent ? '<a class="sarg-report-action" href="' . htmlspecialchars($parent_url, ENT_QUOTES, 'UTF-8') . '">&#8593; Um nível acima</a>' : '') .
+	'<a class="sarg-report-action" href="' . htmlspecialchars($home_url, ENT_QUOTES, 'UTF-8') . '">Início do relatório</a>' .
+	'<button type="button" class="sarg-report-action" onclick="window.open(\'/sarg_report_pdf.php\',\'_blank\',\'noopener\')">Versão para impressão</button>' .
+	'<a class="sarg-report-action sarg-report-action--primary" href="' . htmlspecialchars($viewer_url, ENT_QUOTES, 'UTF-8') . '" target="_top">Voltar ao Kontrol</a>' .
+	'</div></nav>';
+if (preg_match('/<body\b[^>]*>/i', $report)) {
+	$report = preg_replace_callback('/<body\b[^>]*>/i', function ($match) use ($toolbar) {
+		return $match[0] . $toolbar;
+	}, $report, 1);
+} else {
+	$report = $toolbar . $report;
+}
 if (stripos($report, '</body>') !== false) {
 	$report = preg_replace('/<\/body>/i', $toolbar . '</body>', $report, 1);
 } else {
