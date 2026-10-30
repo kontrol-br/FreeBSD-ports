@@ -51,6 +51,16 @@ function sarg_valid_report_name($name) {
 	return (bool)preg_match('/^[0-9]{4}[A-Za-z]{3}[0-9]{2}-[0-9]{4}[A-Za-z]{3}[0-9]{2}(?:-[0-9]+)?$/D', $name);
 }
 
+function sarg_report_display_name($name) {
+	$matches = array();
+	if (!preg_match('/^([0-9]{4})([A-Za-z]{3})([0-9]{2})-([0-9]{4})([A-Za-z]{3})([0-9]{2})(?:-[0-9]+)?$/D', $name, $matches)) {
+		return $name;
+	}
+	$start = $matches[1] . '-' . ucfirst(strtolower($matches[2])) . '-' . $matches[3];
+	$end = $matches[4] . '-' . ucfirst(strtolower($matches[5])) . '-' . $matches[6];
+	return ($start === $end) ? $start : $start . ' — ' . $end;
+}
+
 function sarg_report_root_real($report_root) {
 	$base = '/usr/local/sarg-reports';
 	$base_real = realpath($base);
@@ -89,6 +99,7 @@ function sarg_report_entries($report_root, $reserved_names) {
 
 		$entries[] = array(
 			'name' => $name,
+			'label' => sarg_report_display_name($name),
 			'path' => $candidate_real,
 			'mtime' => (int)filemtime($index_file),
 		);
@@ -292,7 +303,7 @@ $source_label = strtoupper($proxy) . ($format !== '' ? ' · formato ' . $format_
 			?>
 			<li class="sarg-cleanup__item">
 				<div class="sarg-cleanup__name">
-					<strong><?=htmlspecialchars($report['name'], ENT_QUOTES, 'UTF-8')?></strong>
+					<strong title="<?=htmlspecialchars($report['name'], ENT_QUOTES, 'UTF-8')?>"><?=htmlspecialchars($report['label'], ENT_QUOTES, 'UTF-8')?></strong>
 					<span><?=sprintf(gettext('Generated on %s'), date('d/m/Y H:i', $report['mtime']))?></span>
 				</div>
 				<a class="sarg-cleanup__open" href="<?=htmlspecialchars($report_url, ENT_QUOTES, 'UTF-8')?>" target="sarg-report"><?=gettext('View report')?></a>

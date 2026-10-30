@@ -41,6 +41,35 @@ img[src*="graph"], img[title*="Graphic"] {
 	background: #fff;
 }
 
+.sarg-report-icon {
+	display: inline-flex;
+	width: 40px;
+	height: 40px;
+	align-items: center;
+	justify-content: center;
+	margin: 4px auto 0;
+	border: 1px solid #bfd4e5;
+	border-radius: 8px;
+	background: var(--sarg-accent-soft);
+	color: var(--sarg-accent-dark);
+	vertical-align: middle;
+}
+
+.sarg-report-icon svg {
+	width: 25px;
+	height: 25px;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.8;
+}
+
+.sarg-report-icon .sarg-report-icon__days {
+	fill: currentColor;
+	stroke: none;
+}
+
 .logo, .title, .title_c, .header_c:first-child {
 	color: var(--sarg-ink);
 	font-weight: 650;

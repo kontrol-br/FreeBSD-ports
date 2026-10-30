@@ -99,6 +99,16 @@
 		});
 	}
 
+	function modernizeCalendarIcons() {
+		Array.prototype.forEach.call(document.querySelectorAll('img[src$="datetime.png"], img[title*="date/time report"]'), function (image) {
+			var icon = document.createElement("span");
+			icon.className = "sarg-report-icon sarg-report-icon--calendar";
+			icon.setAttribute("aria-hidden", "true");
+			icon.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M7 2v3M17 2v3M4 8h16M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M8 12h2v2H8zM14 12h2v2h-2zM8 16h2v2H8zM14 16h2v2h-2z" class="sarg-report-icon__days"/></svg>';
+			image.parentNode.replaceChild(icon, image);
+		});
+	}
+
 	function columnIndex(headers, expression) {
 		for (var i = 0; i < headers.length; i++) {
 			if (expression.test(headers[i])) return i;
@@ -237,6 +247,7 @@
 	}
 
 	function render() {
+		modernizeCalendarIcons();
 		if (document.querySelector(".sarg-analytics")) return;
 		var tables = document.querySelectorAll("table.sortable");
 		var data = [];
