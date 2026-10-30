@@ -498,11 +498,13 @@ privacy {$privacy}
 #      Which fields must be in Topuser report.
 #
 #topuser_fields NUM DATE_TIME USERID CONNECT BYTES %BYTES IN-CACHE-OUT USED_TIME MILISEC %TIME TOTAL AVERAGE
+topuser_fields {$topuser_fields}
 
 # TAG: user_report_fields
 #      Which fields must be in User report.
 #
 #user_report_fields CONNECT BYTES %BYTES IN-CACHE-OUT USED_TIME MILISEC %TIME TOTAL AVERAGE
+user_report_fields {$user_report_fields}
 
 # TAG: bytes_in_sites_users_report yes|no
 #      Bytes field must be in Site & Users Report ?

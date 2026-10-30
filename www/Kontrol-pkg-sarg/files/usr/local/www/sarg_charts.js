@@ -9,8 +9,8 @@
 
 	function number(value) {
 		var clean = String(value || "").trim().toUpperCase();
-		var multiplier = /T(?:B)?$/.test(clean) ? 1e12 : /G(?:B)?$/.test(clean) ? 1e9 :
-			/M(?:B)?$/.test(clean) ? 1e6 : /K(?:B)?$/.test(clean) ? 1e3 : 1;
+		var multiplier = /T(?:B)?$/.test(clean) ? Math.pow(1024, 4) : /G(?:B)?$/.test(clean) ? Math.pow(1024, 3) :
+			/M(?:B)?$/.test(clean) ? Math.pow(1024, 2) : /K(?:B)?$/.test(clean) ? 1024 : 1;
 		clean = clean.replace(/[^0-9,.-]/g, "");
 		if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(clean)) {
 			clean = clean.replace(/\./g, "").replace(",", ".");
@@ -22,11 +22,81 @@
 		return (parseFloat(clean) || 0) * multiplier;
 	}
 
-	function compact(value) {
+	function compactCount(value) {
 		if (value >= 1e9) return (value / 1e9).toFixed(1) + "G";
 		if (value >= 1e6) return (value / 1e6).toFixed(1) + "M";
 		if (value >= 1e3) return (value / 1e3).toFixed(1) + "K";
 		return Math.round(value).toLocaleString("pt-BR");
+	}
+
+	function formatBytes(value) {
+		var units = ["B", "KB", "MB", "GB", "TB"];
+		var unit = 0;
+		value = Math.max(0, Number(value) || 0);
+		while (value >= 1024 && unit < units.length - 1) {
+			value /= 1024;
+			unit++;
+		}
+		var decimals = unit === 0 || value >= 100 ? 0 : value >= 10 ? 1 : 2;
+		return value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: decimals }) + " " + units[unit];
+	}
+
+	function formatByteColumns(table) {
+		var headers = table.querySelectorAll("thead th");
+		if (!headers.length) return;
+		var byteColumns = [];
+		Array.prototype.forEach.call(headers, function (header, index) {
+			var label = text(header);
+			if (!/%/.test(label) && /BYTES?|TR.FEGO|VOLUME|DADOS/i.test(label)) byteColumns.push(index);
+		});
+		if (!byteColumns.length) return;
+
+		Array.prototype.forEach.call(table.querySelectorAll("tbody tr, tfoot tr"), function (row) {
+			var cells = row.querySelectorAll("td, th");
+			byteColumns.forEach(function (index) {
+				if (!cells[index] || cells[index].dataset.sargBytesFormatted === "1") return;
+				var original = text(cells[index]);
+				if (original === "" || /%/.test(original)) return;
+				var bytes = number(original);
+				cells[index].dataset.sargBytesFormatted = "1";
+				cells[index].title = "Valor original: " + original;
+				cells[index].textContent = formatBytes(bytes);
+			});
+		});
+	}
+
+	function isZeroTimeValue(value) {
+		value = String(value || "").replace(/\s+/g, "").replace(/%$/, "");
+		return value === "" || /^0+(?:[.:]0+)*$/.test(value);
+	}
+
+	function hideUnavailableE2guardianTimeColumns(table) {
+		if (!/E2guardian/i.test(document.title + " " + text(document.body))) return;
+		var headers = table.querySelectorAll("thead th");
+		if (!headers.length) return;
+		var bodyRows = table.querySelectorAll("tbody tr");
+		Array.prototype.forEach.call(headers, function (header, index) {
+			var label = text(header).toUpperCase();
+			if (!/^(?:ELAPSED TIME|USED TIME|MILLISEC|%TIME)$/.test(label)) return;
+			var hasValue = false;
+			var allZero = true;
+			Array.prototype.forEach.call(bodyRows, function (row) {
+				var cells = row.querySelectorAll("td, th");
+				if (!cells[index]) return;
+				hasValue = true;
+				if (!isZeroTimeValue(text(cells[index]))) allZero = false;
+			});
+			if (!hasValue || !allZero) return;
+			header.style.display = "none";
+			header.setAttribute("aria-hidden", "true");
+			Array.prototype.forEach.call(table.querySelectorAll("tbody tr, tfoot tr"), function (row) {
+				var cells = row.querySelectorAll("td, th");
+				if (cells[index]) {
+					cells[index].style.display = "none";
+					cells[index].setAttribute("aria-hidden", "true");
+				}
+			});
+		});
 	}
 
 	function columnIndex(headers, expression) {
@@ -80,7 +150,7 @@
 		data.forEach(function (item, index) {
 			var value = item.accesses || item.bytes;
 			var row = element("div", "sarg-bar-row");
-			row.title = item.label + ": " + compact(value);
+			row.title = item.label + ": " + compactCount(value);
 			row.appendChild(element("span", "sarg-bar-label", item.label));
 			var track = element("span", "sarg-bar-track");
 			var fill = element("span", "sarg-bar-fill");
@@ -88,7 +158,7 @@
 			fill.style.backgroundColor = palette[index % palette.length];
 			track.appendChild(fill);
 			row.appendChild(track);
-			row.appendChild(element("span", "sarg-bar-value", compact(value)));
+			row.appendChild(element("span", "sarg-bar-value", compactCount(value)));
 			chart.appendChild(row);
 		});
 		return chart;
@@ -131,6 +201,7 @@
 			}
 			angle = next;
 			var key = element("div", "sarg-pie-key");
+			key.title = item.label + ": " + formatBytes(value);
 			var swatch = element("span", "sarg-pie-swatch");
 			swatch.style.background = palette[index];
 			key.appendChild(swatch);
@@ -152,8 +223,8 @@
 		data.forEach(function (item, index) {
 			var value = item.bytes || item.accesses;
 			var column = element("div", "sarg-column-item");
-			column.title = item.label + ": " + compact(value);
-			column.appendChild(element("span", "sarg-column-value", compact(value)));
+			column.title = item.label + ": " + formatBytes(value);
+			column.appendChild(element("span", "sarg-column-value", formatBytes(value)));
 			var bar = element("span", "sarg-column-bar");
 			bar.style.height = Math.max(3, value / max * 112) + "px";
 			bar.style.backgroundColor = palette[index % palette.length];
@@ -174,6 +245,10 @@
 			data = extract(tables[i]);
 			table = tables[i];
 		}
+		Array.prototype.forEach.call(document.querySelectorAll("table"), function (reportTable) {
+			hideUnavailableE2guardianTimeColumns(reportTable);
+			formatByteColumns(reportTable);
+		});
 		if (!table || data.length < 2 || !data.some(function (item) { return item.accesses > 0 || item.bytes > 0; })) return;
 
 		var analytics = element("section", "sarg-analytics");

@@ -347,6 +347,13 @@ function sync_package_sarg() {
 	$date_format = (preg_match("/\w/", $sarg['report_date_format']) ? $sarg['report_date_format'] : "u");
 	$report_type = preg_replace('/,/', ' ', $sarg['report_type']);
 	$report_charset = $sarg['report_charset'] ?: "UTF-8";
+	$topuser_fields = "NUM DATE_TIME USERID CONNECT BYTES %BYTES IN-CACHE-OUT USED_TIME MILISEC %TIME TOTAL AVERAGE";
+	$user_report_fields = "CONNECT BYTES %BYTES IN-CACHE-OUT USED_TIME MILISEC %TIME TOTAL AVERAGE";
+	if ($sarg['proxy_server'] === 'e2guardian') {
+		// Native E2Guardian logs do not provide request elapsed time.
+		$topuser_fields = "NUM DATE_TIME USERID CONNECT BYTES %BYTES IN-CACHE-OUT TOTAL AVERAGE";
+		$user_report_fields = "CONNECT BYTES %BYTES IN-CACHE-OUT TOTAL AVERAGE";
+	}
 
 	$exclude_string = 'exclude_string "e2gerror.php:[inet';
 	if ($sarg['exclude_string'] != "") {
