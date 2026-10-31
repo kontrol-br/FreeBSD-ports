@@ -85,8 +85,8 @@
 			<fieldname>access_mode</fieldname>
 			<description><![CDATA[
 				Transparent mode identifies the workstation by source IP and does not challenge the browser. Explicit mode requires
-				clients to use the proxy address or PAC/WPAD. This initial standalone release enables native Kerberos/SPNEGO;
-				additional authentication plugins will be activated only after their engine-side validation is complete.
+				clients to use the proxy address or PAC/WPAD. The standalone engine supports native Kerberos/SPNEGO and
+				NTLMv2 backed by the package-owned Samba/Winbind machine trust.
 			]]></description>
 			<type>select</type>
 			<default_value>transparent</default_value>
@@ -99,12 +99,14 @@
 			<fielddescr>Explicit Authentication</fielddescr>
 			<fieldname>explicit_auth</fieldname>
 			<description><![CDATA[
-				Kerberos/SPNEGO is handled natively by the Kontrol-ID engine and validates browser tickets against the package-owned keytab.
+				Kerberos/SPNEGO is recommended and validates browser tickets against the package-owned keytab. NTLMv2 is available
+				for legacy domain clients and validates every challenge through Winbind; NTLMv1 and LM are not accepted.
 			]]></description>
 			<type>select</type>
 			<default_value>kerberos</default_value>
 			<options>
 				<option><name>Kerberos / SPNEGO (recommended)</name><value>kerberos</value></option>
+				<option><name>NTLMv2 / Winbind (legacy clients)</name><value>ntlm</value></option>
 			</options>
 		</field>
 		<field>

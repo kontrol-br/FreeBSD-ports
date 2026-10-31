@@ -21,8 +21,10 @@ define('KONTROL_ID_SMB_CONF', KONTROL_ID_ETC_DIR . '/smb4.conf');
 define('KONTROL_ID_DOMAIN_DIR', '/var/db/kontrol-id-domain');
 define('KONTROL_ID_KEYTAB', KONTROL_ID_DOMAIN_DIR . '/krb5.keytab');
 define('KONTROL_ID_ENGINE_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-negotiate.conf');
+define('KONTROL_ID_ENGINE_NTLM_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-ntlm.conf');
 define('KONTROL_ID_ENGINE_PID', '/var/run/kontrol-id.pid');
 define('KONTROL_ID_WINBIND_MARKER', KONTROL_ID_DOMAIN_DIR . '/winbind.enabled');
+define('KONTROL_ID_WINBIND_PID', '/var/run/kontrol-id-samba/winbindd.pid');
 define('KONTROL_ID_SAMBA_DIR', KONTROL_ID_DOMAIN_DIR . '/samba');
 define('KONTROL_ID_SAMBA_PRIVATE', KONTROL_ID_SAMBA_DIR . '/private');
 define('KONTROL_ID_SAMBA_STATE', KONTROL_ID_SAMBA_DIR . '/state');
@@ -1458,7 +1460,7 @@ function kontrol_id_domain_status() {
 				(trim($join['stderr'] ?: $join['stdout']) ?: 'Not joined or the trust cannot be verified.'));
 	}
 	if (kontrol_id_ntlm_required($settings) && is_executable('/usr/local/bin/wbinfo')) {
-		$trust = kontrol_id_run_command(array('/usr/local/bin/wbinfo', '--configfile=' . KONTROL_ID_SMB_CONF, '-t'),
+		$trust = kontrol_id_run_command(array('/usr/local/bin/wbinfo', '-t'),
 			'', kontrol_id_domain_environment(), 20);
 		$checks[] = array('name' => 'Winbind secure channel', 'ok' => $trust['code'] === 0,
 			'detail' => $trust['code'] === 0 ? 'The NTLM domain trust secret is valid.' :
@@ -2000,7 +2002,9 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	} else {
 		$engine['transparent_proxy'] = '';
 		$engine['transparent_active_interface'] = '';
-		$plugins['auth_plugin'] = $enabled ? 'kontrol-negotiate.conf' : '';
+		$plugins['auth_plugin'] = $enabled ?
+			((($settings['explicit_auth'] ?? 'kerberos') === 'ntlm') ?
+			'kontrol-ntlm.conf' : 'kontrol-negotiate.conf') : '';
 	}
 
 	$domain = kontrol_id_domain_values($settings);
@@ -2011,6 +2015,15 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		"service_principal = '" . ($domain['spn'] ?? '') . "'\n" .
 		"defaultfiltergroup = 1\n";
 	kontrol_id_atomic_write(KONTROL_ID_ENGINE_AUTH_CONF, $auth_config, 0640, 'wheel');
+	$ntlm_config = "# Managed by Kontrol-ID.\n" .
+		"plugname = 'kontrol-ntlm'\n" .
+		"story_function = 'auth_pf_basic'\n" .
+		"helper_program = '/usr/local/bin/ntlm_auth'\n" .
+		"samba_config = '" . KONTROL_ID_SMB_CONF . "'\n" .
+		"helper_children = 32\n" .
+		"helper_timeout_ms = 10000\n" .
+		"defaultfiltergroup = 1\n";
+	kontrol_id_atomic_write(KONTROL_ID_ENGINE_NTLM_AUTH_CONF, $ntlm_config, 0640, 'wheel');
 
 	config_set_path('installedpackages/e2guardian/config/0', $engine);
 	config_set_path('installedpackages/e2guardianconfig/config/0', $plugins);
@@ -2019,9 +2032,20 @@ function kontrol_id_apply_standalone_engine($enabled) {
 function kontrol_id_chain_status() {
 	$settings = kontrol_id_get_settings();
 	$engine = config_get_path('installedpackages/e2guardian/config/0', array());
+	$plugins = config_get_path('installedpackages/e2guardianconfig/config/0', array());
+	if (!is_array($plugins)) {
+		$plugins = array();
+	}
 	$interfaces = kontrol_id_normalize_interfaces($settings['intercept_interfaces']);
 	$explicit = ($settings['access_mode'] ?? 'transparent') === 'explicit';
-	$auth_config = (string)@file_get_contents(KONTROL_ID_ENGINE_AUTH_CONF);
+	$auth_method = $settings['explicit_auth'] ?? 'kerberos';
+	$expected_plugin = $auth_method === 'ntlm' ? 'kontrol-ntlm.conf' : 'kontrol-negotiate.conf';
+	$auth_config_path = $auth_method === 'ntlm' ?
+		KONTROL_ID_ENGINE_NTLM_AUTH_CONF : KONTROL_ID_ENGINE_AUTH_CONF;
+	$auth_config = (string)@file_get_contents($auth_config_path);
+	$credential_ready = $auth_method === 'ntlm' ?
+		(is_file(KONTROL_ID_WINBIND_MARKER) && is_file(KONTROL_ID_WINBIND_PID)) :
+		is_file(KONTROL_ID_KEYTAB);
 	return array(
 		array(
 			'name' => 'Kontrol-ID engine',
@@ -2029,12 +2053,18 @@ function kontrol_id_chain_status() {
 			'detail' => 'Standalone multithread gateway service'
 		),
 		array(
-			'name' => $explicit ? 'Kerberos / SPNEGO' : 'Transparent proxy',
+			'name' => $explicit ?
+				($auth_method === 'ntlm' ? 'NTLMv2 / Winbind' : 'Kerberos / SPNEGO') :
+				'Transparent proxy',
 			'ok' => ($engine['enable'] ?? '') === 'on' &&
 				kontrol_id_normalize_interfaces($engine['interface'] ?? '') === $interfaces &&
-				(!$explicit || (is_file(KONTROL_ID_KEYTAB) &&
-				strpos($auth_config, "plugname = 'kontrol-negotiate'") !== false)),
-			'detail' => ($explicit ? 'Native Negotiate authentication' : 'Native source-IP interception') .
+				(!$explicit || ($credential_ready &&
+				(($plugins['auth_plugin'] ?? '') === $expected_plugin) &&
+				strpos($auth_config, "plugname = 'kontrol-" .
+					($auth_method === 'ntlm' ? 'ntlm' : 'negotiate') . "'") !== false)),
+			'detail' => ($explicit ?
+				($auth_method === 'ntlm' ? 'Native NTLMv2 authentication' : 'Native Negotiate authentication') :
+				'Native source-IP interception') .
 				' on ' . ($interfaces ?: 'no interface')
 		),
 		array(
@@ -2069,7 +2099,7 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	if (!in_array($post['access_mode'] ?? '', array('transparent', 'explicit'), true)) {
 		$input_errors[] = 'Select a valid client access mode.';
 	}
-	if (($post['explicit_auth'] ?? '') !== 'kerberos') {
+	if (!in_array($post['explicit_auth'] ?? '', array('kerberos', 'ntlm'), true)) {
 		$input_errors[] = 'Select a valid explicit authentication method.';
 	}
 	if (!in_array($post['traffic_mode'] ?? '', array('http_only', 'http_https'), true)) {
@@ -2107,6 +2137,12 @@ function kontrol_id_validate(&$post, &$input_errors) {
 			(!is_file(KONTROL_ID_KEYTAB) || filesize(KONTROL_ID_KEYTAB) < 1)) {
 			$activation_prerequisites[] = 'Import or generate the Kerberos keytab on Domain and Keytab.';
 		}
+		if ($explicit_domain_auth && ($post['explicit_auth'] ?? '') === 'ntlm' &&
+			(!is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb') ||
+			!is_executable('/usr/local/bin/ntlm_auth') ||
+			!is_executable('/usr/local/sbin/winbindd'))) {
+			$activation_prerequisites[] = 'Join Active Directory on Domain and Keytab before enabling NTLM.';
+		}
 		if (!empty($activation_prerequisites)) {
 			/* Initial domain settings must be saved before the Domain and Keytab
 			 * page can generate its package-owned Kerberos/Samba configuration.
@@ -2123,14 +2159,25 @@ function kontrol_id_validate(&$post, &$input_errors) {
 function kontrol_id_manage_winbind($enabled) {
 	$script = '/usr/local/etc/rc.d/kontrol_id_winbind';
 	if (!is_executable($script)) {
-		return;
+		return !$enabled;
 	}
 	if ($enabled && is_file(KONTROL_ID_WINBIND_MARKER) &&
 		is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb')) {
 		mwexec($script . ' forcestop');
-		mwexec($script . ' start');
+		if (mwexec($script . ' start') !== 0) {
+			return false;
+		}
+		for ($attempt = 0; $attempt < 20; $attempt++) {
+			$pid = (int)trim((string)@file_get_contents(KONTROL_ID_WINBIND_PID));
+			if ($pid > 1 && function_exists('posix_kill') && @posix_kill($pid, 0)) {
+				return true;
+			}
+			usleep(100000);
+		}
+		return false;
 	} else {
 		mwexec($script . ' forcestop');
+		return true;
 	}
 }
 
@@ -2153,6 +2200,10 @@ function kontrol_id_resync($sync = true) {
 		log_error('[Kontrol-ID] Managed proxy was not activated: the local Kerberos keytab is missing.');
 	}
 	$stack_enabled = $enabled && $runtime_ready;
+	if (!kontrol_id_manage_winbind($stack_enabled && kontrol_id_ntlm_required($settings))) {
+		$stack_enabled = false;
+		log_error('[Kontrol-ID] Managed proxy was not activated: Winbind failed to start.');
+	}
 	kontrol_id_apply_standalone_engine($stack_enabled);
 	write_config('Kontrol-ID configuration updated.');
 	/* Package generators still read the legacy global configuration array.

@@ -3,10 +3,11 @@ E2Guardian 5.4 engine.  It combines explicit and transparent proxying, TLS
 inspection and exceptions, policy groups, URL/category filtering, block pages,
 logging and reporting in one managed product.
 
-This independent port is the development boundary for native Kerberos/SPNEGO,
-NTLM and Basic authentication.  It intentionally conflicts with the standard
-E2Guardian engine because the initial version preserves the established binary
-and configuration layout for safe migration of existing policies.
+This independent port implements native Kerberos/SPNEGO and NTLMv2
+authentication and is the development boundary for the remaining standalone
+authentication modes.  It intentionally conflicts with the standard E2Guardian
+engine because it preserves the established policy and configuration layout for
+safe migration of existing installations.
 
 Kontrol-ID is distributed under GPLv2 and retains the E2Guardian and
 DansGuardian copyright and attribution requirements.

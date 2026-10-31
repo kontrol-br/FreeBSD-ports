@@ -1,6 +1,6 @@
 PORTNAME=	kontrol-id
 PORTVERSION=	5.4.23
-PORTREVISION=	3
+PORTREVISION=	5
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=	kontrol-br
@@ -92,10 +92,14 @@ SUB_FILES=	pkg-message
 post-patch:
 	@${CP} ${FILESDIR}/kontrol_negotiate.cpp \
 		${WRKSRC}/src/authplugins/kontrol_negotiate.cpp
+	@${CP} ${FILESDIR}/kontrol_ntlm.cpp \
+		${WRKSRC}/src/authplugins/kontrol_ntlm.cpp
 
 post-install:
 	@${INSTALL_DATA} ${FILESDIR}/kontrol-negotiate.conf \
 		${STAGEDIR}${ETCDIR}/authplugins/kontrol-negotiate.conf.sample
+	@${INSTALL_DATA} ${FILESDIR}/kontrol-ntlm.conf \
+		${STAGEDIR}${ETCDIR}/authplugins/kontrol-ntlm.conf.sample
 	@${FIND} ${STAGEDIR}${ETCDIR} -type f \
 		\( -name '*.conf' -or -name '*list' -or -name '*.story' \) \
 		-exec ${MV} {} {}.sample \;
