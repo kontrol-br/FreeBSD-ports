@@ -2162,7 +2162,9 @@ EOD;
 function squid_resync_users() {
 	global $config;
 
-	$users = $config['installedpackages']['squidusers']['config'];
+	/* A fresh package installation can represent an empty squidusers section
+	 * as an empty string. Treat every non-array value as an empty user list. */
+	$users = config_get_path('installedpackages/squidusers/config', array());
 	$contents = '';
 	if (is_array($users)) {
 		foreach ($users as $user) {

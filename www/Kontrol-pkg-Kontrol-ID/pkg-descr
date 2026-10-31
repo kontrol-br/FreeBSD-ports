@@ -1,7 +1,9 @@
-Kontrol-ID identifies the interactive Windows user behind a transparent proxy.
-It provides a compiled Squid external ACL helper, a secure enrollment API, a
-Windows provisioning application, a fallback login portal, E2Guardian
-proxy-basic integration, and XMLRPC configuration synchronization.
+Kontrol-ID provides a managed Squid and E2Guardian traffic chain for transparent
+Windows user identification or explicit Kerberos/SPNEGO, legacy NTLM and Basic
+proxy authentication. It includes a compiled external ACL helper, secure
+endpoint enrollment, an assisted AD/keytab workflow, a fallback login portal,
+ICAP identity forwarding, and XMLRPC configuration synchronization.
 
 The helper communicates directly with enrolled Windows hosts over WinRM HTTPS.
-No persistent Kontrol service is installed on Windows endpoints.
+No persistent Kontrol service is installed on Windows endpoints. Kerberos is
+the recommended explicit authentication method; NTLM is opt-in compatibility.

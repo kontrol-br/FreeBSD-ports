@@ -15,6 +15,18 @@ define('KONTROL_ID_PKI_DIR', '/var/etc/kontrol-id');
 define('KONTROL_ID_CA_FILE', KONTROL_ID_PKI_DIR . '/ca.pem');
 define('KONTROL_ID_CLIENT_CERT', KONTROL_ID_PKI_DIR . '/client.crt');
 define('KONTROL_ID_CLIENT_KEY', KONTROL_ID_PKI_DIR . '/client.key');
+define('KONTROL_ID_ETC_DIR', '/usr/local/etc/kontrol-id');
+define('KONTROL_ID_KRB5_CONF', KONTROL_ID_ETC_DIR . '/krb5.conf');
+define('KONTROL_ID_SMB_CONF', KONTROL_ID_ETC_DIR . '/smb4.conf');
+define('KONTROL_ID_DOMAIN_DIR', '/var/db/kontrol-id-domain');
+define('KONTROL_ID_KEYTAB', KONTROL_ID_DOMAIN_DIR . '/krb5.keytab');
+define('KONTROL_ID_WINBIND_MARKER', KONTROL_ID_DOMAIN_DIR . '/winbind.enabled');
+define('KONTROL_ID_SAMBA_DIR', KONTROL_ID_DOMAIN_DIR . '/samba');
+define('KONTROL_ID_SAMBA_PRIVATE', KONTROL_ID_SAMBA_DIR . '/private');
+define('KONTROL_ID_SAMBA_STATE', KONTROL_ID_SAMBA_DIR . '/state');
+define('KONTROL_ID_SAMBA_CACHE', KONTROL_ID_SAMBA_DIR . '/cache');
+define('KONTROL_ID_SAMBA_LOCK', KONTROL_ID_SAMBA_DIR . '/lock');
+define('KONTROL_ID_SAMBA_RUN', '/var/run/kontrol-id-samba');
 define('KONTROL_ID_GROUP', 'kontrol-internet-users');
 define('KONTROL_ID_BEGIN', '# BEGIN KONTROL-ID');
 define('KONTROL_ID_END', '# END KONTROL-ID');
@@ -24,6 +36,13 @@ define('KONTROL_ID_E2G_END', '# END KONTROL-ID ICAP SSL BUMP');
 function kontrol_id_defaults() {
 	return array(
 		'enable' => '',
+		'access_mode' => 'transparent',
+		'explicit_auth' => 'kerberos',
+		'proxy_fqdn' => '',
+		'ad_domain' => '',
+		'ad_dc' => '',
+		'ad_workgroup' => '',
+		'auth_processes' => '25',
 		'squid_integration' => 'on',
 		'e2guardian_integration' => 'on',
 		'traffic_mode' => 'http_only',
@@ -53,6 +72,7 @@ function kontrol_id_defaults() {
 		'pki_owned' => '',
 		'e2g_proxy_basic_added' => '',
 		'previous_squid_auth_method' => '',
+		'previous_squid_auth_config' => '',
 		'previous_squid_config' => '',
 		'previous_e2guardian_config' => '',
 		'previous_e2guardian_auth_plugin' => '',
@@ -73,6 +93,39 @@ function kontrol_id_authserver_options() {
 		);
 	}
 	return $options;
+}
+
+function kontrol_id_authenticate_basic($username, $password) {
+	if (!is_string($username) || !is_string($password) || $username === '' ||
+		strlen($username) > 255 || strlen($password) > 4096 ||
+		!preg_match('/^[A-Za-z0-9_.@\\-\\\\]+$/D', $username)) {
+		return false;
+	}
+
+	$settings = kontrol_id_get_settings();
+	$authcfg = auth_get_authserver($settings['auth_server']);
+	if (!is_array($authcfg)) {
+		return false;
+	}
+	$attributes = array('nas_identifier' => 'kontrol-id-' . gethostname());
+	if (!authenticate_user($username, $password, $authcfg, $attributes)) {
+		return false;
+	}
+
+	if (($authcfg['type'] ?? '') === 'ldap') {
+		$groups = @ldap_get_groups($username, $authcfg);
+		$groups = array_map('strtolower', is_array($groups) ? $groups : array());
+		foreach (array_filter(array_map('trim', explode(',', $settings['ad_groups']))) as $group) {
+			if (in_array(strtolower($group), $groups, true)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	$user = kontrol_id_extract_item(getUserEntry($username));
+	$groups = is_array($user) ? local_user_get_groups($user, true) : array();
+	return in_array($settings['local_group'], is_array($groups) ? $groups : array(), true);
 }
 
 function kontrol_id_get_settings() {
@@ -109,10 +162,6 @@ function kontrol_id_ensure_defaults() {
 
 function kontrol_id_prepare_dependency_defaults() {
 	$settings = kontrol_id_get_settings();
-	if (($settings['dependency_defaults_initialized'] ?? '') === 'on') {
-		return false;
-	}
-
 	$changed = false;
 	$squid = config_get_path('installedpackages/squid/config/0', array());
 	if (!is_array($squid)) {
@@ -348,12 +397,42 @@ function kontrol_id_ensure_pki() {
 function kontrol_id_ensure_storage() {
 	safe_mkdir(KONTROL_ID_DB_DIR, 0770);
 	safe_mkdir(KONTROL_ID_PKI_DIR, 0750);
+	safe_mkdir(KONTROL_ID_ETC_DIR, 0750);
+	safe_mkdir(KONTROL_ID_DOMAIN_DIR, 0750);
+	@chown(KONTROL_ID_DOMAIN_DIR, 'root');
+	@chgrp(KONTROL_ID_DOMAIN_DIR, 'proxy');
+	@chmod(KONTROL_ID_DOMAIN_DIR, 0750);
+	foreach (array(KONTROL_ID_SAMBA_DIR, KONTROL_ID_SAMBA_PRIVATE) as $directory) {
+		safe_mkdir($directory, 0750);
+		@chown($directory, 'root');
+		@chgrp($directory, 'proxy');
+		@chmod($directory, 0750);
+	}
+	/* Samba requires these directories to be searchable by its own helper
+	 * processes. Their parent remains root:proxy 0750, so this does not expose
+	 * the domain state outside the package-owned tree. */
+	foreach (array(KONTROL_ID_SAMBA_STATE, KONTROL_ID_SAMBA_CACHE,
+		KONTROL_ID_SAMBA_LOCK) as $directory) {
+		safe_mkdir($directory, 0755);
+		@chown($directory, 'root');
+		@chgrp($directory, 'proxy');
+		@chmod($directory, 0755);
+	}
+	foreach (array(KONTROL_ID_SAMBA_RUN, KONTROL_ID_SAMBA_RUN . '/winbindd') as $directory) {
+		safe_mkdir($directory, 0750);
+		@chown($directory, 'root');
+		@chgrp($directory, 'proxy');
+		@chmod($directory, 0750);
+	}
 	@chown(KONTROL_ID_DB_DIR, 'squid');
 	@chgrp(KONTROL_ID_DB_DIR, 'proxy');
 	@chmod(KONTROL_ID_DB_DIR, 0770);
 	@chown(KONTROL_ID_PKI_DIR, 'root');
 	@chgrp(KONTROL_ID_PKI_DIR, 'proxy');
 	@chmod(KONTROL_ID_PKI_DIR, 0750);
+	@chown(KONTROL_ID_ETC_DIR, 'root');
+	@chgrp(KONTROL_ID_ETC_DIR, 'proxy');
+	@chmod(KONTROL_ID_ETC_DIR, 0750);
 
 	if (!class_exists('SQLite3')) {
 		throw new Exception('The PHP SQLite3 extension is required by Kontrol-ID.');
@@ -378,6 +457,550 @@ function kontrol_id_ensure_storage() {
 	@chown(KONTROL_ID_DB, 'squid');
 	@chgrp(KONTROL_ID_DB, 'proxy');
 	@chmod(KONTROL_ID_DB, 0660);
+}
+
+function kontrol_id_atomic_write($path, $contents, $mode = 0640, $group = 'proxy') {
+	$directory = dirname($path);
+	if (!is_dir($directory)) {
+		safe_mkdir($directory, 0750);
+	}
+	$tmp = tempnam($directory, '.kontrol-id-');
+	if ($tmp === false || file_put_contents($tmp, $contents, LOCK_EX) === false) {
+		if (is_string($tmp) && file_exists($tmp)) {
+			@unlink($tmp);
+		}
+		throw new Exception('Unable to write managed configuration ' . basename($path) . '.');
+	}
+	@chown($tmp, 'root');
+	@chgrp($tmp, $group);
+	@chmod($tmp, $mode);
+	if (!@rename($tmp, $path)) {
+		@unlink($tmp);
+		throw new Exception('Unable to install managed configuration ' . basename($path) . '.');
+	}
+}
+
+function kontrol_id_valid_dns_name($value) {
+	return is_string($value) && strlen($value) <= 253 &&
+		preg_match('/^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/D', $value);
+}
+
+function kontrol_id_domain_values($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
+	$domain = strtolower(trim($settings['ad_domain'] ?? ''));
+	$realm = strtoupper($domain);
+	$dc = strtolower(trim($settings['ad_dc'] ?? ''));
+	$fqdn = strtolower(trim($settings['proxy_fqdn'] ?? ''));
+	$workgroup = strtoupper(trim($settings['ad_workgroup'] ?? ''));
+	$netbios = strtoupper(strtok($fqdn, '.') ?: config_get_path('system/hostname', 'KONTROL'));
+	$netbios = preg_replace('/[^A-Z0-9-]/', '', $netbios);
+	$netbios = substr($netbios, 0, 15);
+	return array(
+		'domain' => $domain,
+		'realm' => $realm,
+		'dc' => $dc,
+		'fqdn' => $fqdn,
+		'workgroup' => $workgroup,
+		'netbios' => $netbios,
+		'spn' => (!empty($fqdn) && !empty($realm)) ? 'HTTP/' . $fqdn . '@' . $realm : ''
+	);
+}
+
+function kontrol_id_kerberos_required($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
+	return ($settings['access_mode'] ?? '') === 'explicit' &&
+		in_array($settings['explicit_auth'] ?? '', array('kerberos', 'kerberos_ntlm'), true);
+}
+
+function kontrol_id_ntlm_required($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
+	return ($settings['access_mode'] ?? '') === 'explicit' &&
+		in_array($settings['explicit_auth'] ?? '', array('ntlm', 'kerberos_ntlm'), true);
+}
+
+function kontrol_id_write_domain_config($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
+	$domain = kontrol_id_domain_values($settings);
+	if (!kontrol_id_valid_dns_name($domain['domain']) ||
+		!kontrol_id_valid_dns_name($domain['dc']) ||
+		!kontrol_id_valid_dns_name($domain['fqdn']) ||
+		!preg_match('/^[A-Z0-9][A-Z0-9-]{0,14}$/D', $domain['workgroup']) ||
+		empty($domain['netbios'])) {
+		@unlink(KONTROL_ID_KRB5_CONF);
+		@unlink(KONTROL_ID_SMB_CONF);
+		@unlink(KONTROL_ID_WINBIND_MARKER);
+		return;
+	}
+
+	$krb5 = "# Automatically generated by Kontrol-ID. Do not edit.\n" .
+		"[libdefaults]\n" .
+		" default_realm = {$domain['realm']}\n" .
+		" dns_lookup_realm = false\n" .
+		" dns_lookup_kdc = true\n" .
+		" rdns = false\n" .
+		" forwardable = true\n" .
+		" default_keytab_name = FILE:" . KONTROL_ID_KEYTAB . "\n" .
+		" default_tkt_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n" .
+		" default_tgs_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n" .
+		" permitted_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n\n" .
+		"[realms]\n" .
+		" {$domain['realm']} = {\n" .
+		(!empty($domain['dc']) ? "  kdc = {$domain['dc']}\n  admin_server = {$domain['dc']}\n" : '') .
+		" }\n\n" .
+		"[domain_realm]\n" .
+		" .{$domain['domain']} = {$domain['realm']}\n" .
+		" {$domain['domain']} = {$domain['realm']}\n";
+
+	$smb = "# Automatically generated by Kontrol-ID. Do not edit.\n" .
+		"[global]\n" .
+		" workgroup = {$domain['workgroup']}\n" .
+		" realm = {$domain['realm']}\n" .
+		" netbios name = {$domain['netbios']}\n" .
+		" security = ADS\n" .
+		" kerberos encryption types = strong\n" .
+		" kerberos method = dedicated keytab\n" .
+		" dedicated keytab file = " . KONTROL_ID_KEYTAB . "\n" .
+		" private dir = " . KONTROL_ID_SAMBA_PRIVATE . "\n" .
+		" state directory = " . KONTROL_ID_SAMBA_STATE . "\n" .
+		" cache directory = " . KONTROL_ID_SAMBA_CACHE . "\n" .
+		" lock directory = " . KONTROL_ID_SAMBA_LOCK . "\n" .
+		" pid directory = " . KONTROL_ID_SAMBA_RUN . "\n" .
+		" winbindd socket directory = " . KONTROL_ID_SAMBA_RUN . "/winbindd\n" .
+		" winbind use default domain = yes\n" .
+		" winbind enum users = no\n" .
+		" winbind enum groups = no\n" .
+		" winbind refresh tickets = yes\n" .
+		" winbind offline logon = no\n" .
+		" idmap config * : backend = tdb\n" .
+		" idmap config * : range = 100000-199999\n" .
+		" idmap config {$domain['workgroup']} : backend = rid\n" .
+		" idmap config {$domain['workgroup']} : range = 200000-999999\n" .
+		" client min protocol = SMB2_02\n" .
+		" ntlm auth = ntlmv2-only\n" .
+		" map to guest = never\n" .
+		" load printers = no\n" .
+		" disable spoolss = yes\n" .
+		" log file = /var/log/kontrol-id-winbind.%m\n" .
+		" max log size = 1024\n";
+
+	kontrol_id_atomic_write(KONTROL_ID_KRB5_CONF, $krb5);
+	kontrol_id_atomic_write(KONTROL_ID_SMB_CONF, $smb);
+	if (kontrol_id_ntlm_required($settings) && ($settings['enable'] ?? '') === 'on') {
+		kontrol_id_atomic_write(KONTROL_ID_WINBIND_MARKER, "managed by Kontrol-ID\n", 0640);
+	} else {
+		@unlink(KONTROL_ID_WINBIND_MARKER);
+	}
+}
+
+function kontrol_id_run_command(array $command, $stdin = '', array $environment = array(), $timeout = 30) {
+	$descriptors = array(
+		0 => array('pipe', 'r'),
+		1 => array('pipe', 'w'),
+		2 => array('pipe', 'w')
+	);
+	$base_environment = array(
+		'PATH' => '/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin',
+		'LANG' => 'C',
+		'LC_ALL' => 'C'
+	);
+	$process = @proc_open($command, $descriptors, $pipes, null,
+		array_merge($base_environment, $environment), array('bypass_shell' => true));
+	if (!is_resource($process)) {
+		return array('code' => 127, 'stdout' => '', 'stderr' => 'Unable to start command.');
+	}
+	if ($stdin !== '') {
+		fwrite($pipes[0], $stdin);
+	}
+	fclose($pipes[0]);
+	stream_set_blocking($pipes[1], false);
+	stream_set_blocking($pipes[2], false);
+	$stdout = '';
+	$stderr = '';
+	$started = microtime(true);
+	$exit_code = -1;
+	do {
+		$stdout .= stream_get_contents($pipes[1]);
+		$stderr .= stream_get_contents($pipes[2]);
+		$status = proc_get_status($process);
+		if (!$status['running']) {
+			$exit_code = $status['exitcode'];
+			break;
+		}
+		if ((microtime(true) - $started) >= $timeout) {
+			proc_terminate($process, 15);
+			usleep(200000);
+			$status = proc_get_status($process);
+			if ($status['running']) {
+				proc_terminate($process, 9);
+			}
+			$exit_code = 124;
+			$stderr .= "\nCommand timed out.";
+			break;
+		}
+		usleep(20000);
+	} while (true);
+	$stdout .= stream_get_contents($pipes[1]);
+	$stderr .= stream_get_contents($pipes[2]);
+	fclose($pipes[1]);
+	fclose($pipes[2]);
+	$closed_code = proc_close($process);
+	if ($exit_code < 0 && $closed_code >= 0) {
+		$exit_code = $closed_code;
+	}
+	return array(
+		'code' => $exit_code,
+		'stdout' => substr(trim($stdout), 0, 32768),
+		'stderr' => substr(trim($stderr), 0, 32768)
+	);
+}
+
+function kontrol_id_domain_environment($ccache = '') {
+	$environment = array(
+		'KRB5_CONFIG' => KONTROL_ID_KRB5_CONF,
+		'KRB5_KTNAME' => 'FILE:' . KONTROL_ID_KEYTAB
+	);
+	if ($ccache !== '') {
+		$environment['KRB5CCNAME'] = 'FILE:' . $ccache;
+	}
+	return $environment;
+}
+
+function kontrol_id_keytab_check($path = KONTROL_ID_KEYTAB, $require_http_spn = true) {
+	if (!is_file($path) || filesize($path) < 1) {
+		return array('ok' => false, 'detail' => 'Keytab file is not installed.', 'output' => '');
+	}
+	$result = kontrol_id_run_command(array('/usr/local/bin/klist', '-k', '-e', $path));
+	$output = trim($result['stdout'] . "\n" . $result['stderr']);
+	if ($result['code'] !== 0) {
+		return array('ok' => false, 'detail' => 'The keytab could not be read by MIT Kerberos.', 'output' => $output);
+	}
+	$domain = kontrol_id_domain_values();
+	$expected = $domain['spn'];
+	if ($require_http_spn && ($expected === '' || stripos($output, $expected) === false)) {
+		return array('ok' => false, 'detail' => 'The keytab does not contain ' . $expected . '.', 'output' => $output);
+	}
+	if (preg_match('/\b(?:arcfour|rc4|des(?:3)?)[^\s)]*/i', $output)) {
+		return array('ok' => false, 'detail' => 'The keytab contains a legacy Kerberos encryption type. Regenerate it with AES only.', 'output' => $output);
+	}
+	if ($require_http_spn && stripos($output, 'aes256-') === false && stripos($output, 'aes128-') === false) {
+		return array('ok' => false, 'detail' => 'The HTTP service keytab does not contain an AES key.', 'output' => $output);
+	}
+	return array('ok' => true, 'detail' => 'Kerberos keytab contains the expected HTTP service principal with AES encryption.', 'output' => $output);
+}
+
+function kontrol_id_filter_keytab_aes($path) {
+	if (!is_file($path) || filesize($path) < 1) {
+		throw new Exception('The generated Kerberos keytab is empty.');
+	}
+	$list = kontrol_id_run_command(array('/usr/local/bin/ktutil'),
+		'rkt ' . $path . "\nlist -e\nquit\n", array(), 15);
+	$output = trim($list['stdout'] . "\n" . $list['stderr']);
+	if ($list['code'] !== 0) {
+		throw new Exception('Unable to inspect the generated Kerberos keytab.');
+	}
+	$weak_slots = array();
+	$aes_slots = 0;
+	foreach (preg_split('/\R/', $output) as $line) {
+		if (!preg_match('/^\s*(\d+)\s+\d+\s+.*\(([^)]+)\)\s*$/', $line, $matches)) {
+			continue;
+		}
+		if (preg_match('/^aes(?:128|256)-/i', $matches[2])) {
+			$aes_slots++;
+		} else {
+			$weak_slots[] = (int)$matches[1];
+		}
+	}
+	if ($aes_slots < 1) {
+		throw new Exception('The generated HTTP service keytab does not contain an AES key.');
+	}
+	if (empty($weak_slots)) {
+		return;
+	}
+	rsort($weak_slots, SORT_NUMERIC);
+	$staged = tempnam(KONTROL_ID_DOMAIN_DIR, '.aes-keytab-');
+	if ($staged === false) {
+		throw new Exception('Unable to stage the AES-only Kerberos keytab.');
+	}
+	/* MIT ktutil expects a missing destination. tempnam reserves a private,
+	 * unpredictable path inside the root-only domain directory first; remove
+	 * the zero-byte placeholder immediately before ktutil creates the keytab. */
+	@unlink($staged);
+	$commands = 'rkt ' . $path . "\n";
+	foreach ($weak_slots as $slot) {
+		$commands .= 'delent ' . $slot . "\n";
+	}
+	$commands .= 'wkt ' . $staged . "\nquit\n";
+	$filter = kontrol_id_run_command(array('/usr/local/bin/ktutil'), $commands, array(), 15);
+	@chown($staged, 'root');
+	@chgrp($staged, 'proxy');
+	@chmod($staged, 0640);
+	$check = kontrol_id_keytab_check($staged, true);
+	if ($filter['code'] !== 0 || !$check['ok']) {
+		@unlink($staged);
+		throw new Exception('Unable to produce a validated AES-only Kerberos keytab.');
+	}
+	if (!@rename($staged, $path)) {
+		@unlink($staged);
+		throw new Exception('Unable to install the AES-only Kerberos keytab.');
+	}
+}
+
+function kontrol_id_import_keytab($uploaded_path) {
+	if (!is_uploaded_file($uploaded_path) || !is_file($uploaded_path)) {
+		throw new Exception('Select a valid keytab file to upload.');
+	}
+	$size = filesize($uploaded_path);
+	if ($size < 1 || $size > 1048576) {
+		throw new Exception('The keytab must be between 1 byte and 1 MiB.');
+	}
+	$staged = tempnam(KONTROL_ID_DOMAIN_DIR, '.imported-keytab-');
+	if ($staged === false || !@copy($uploaded_path, $staged)) {
+		if (is_string($staged)) {
+			@unlink($staged);
+		}
+		throw new Exception('Unable to stage the uploaded keytab.');
+	}
+	@chown($staged, 'root');
+	@chgrp($staged, 'proxy');
+	@chmod($staged, 0640);
+	$check = kontrol_id_keytab_check($staged, true);
+	if (!$check['ok']) {
+		@unlink($staged);
+		throw new Exception($check['detail']);
+	}
+	if (!@rename($staged, KONTROL_ID_KEYTAB)) {
+		@unlink($staged);
+		throw new Exception('Unable to install the validated keytab.');
+	}
+	return $check;
+}
+
+function kontrol_id_join_domain($username, $password) {
+	$normalized_username = is_string($username) ? str_replace('\\', '', $username) : '';
+	if (!is_string($username) || !preg_match('/^[A-Za-z0-9_.@-]{1,255}$/D', $normalized_username) ||
+		!is_string($password) || $password === '' || strlen($password) > 4096) {
+		throw new Exception('Enter a valid delegated join account and password.');
+	}
+	$domain = kontrol_id_domain_values();
+	if (!kontrol_id_valid_dns_name($domain['domain']) || !kontrol_id_valid_dns_name($domain['fqdn']) ||
+		!kontrol_id_valid_dns_name($domain['dc']) || empty($domain['workgroup'])) {
+		throw new Exception('Complete and save the domain settings on the General tab first.');
+	}
+	kontrol_id_ensure_storage();
+	kontrol_id_write_domain_config();
+	$principal = $username;
+	if (strpos($principal, '\\') !== false) {
+		$principal = substr($principal, strrpos($principal, '\\') + 1);
+	}
+	if (strpos($principal, '@') === false) {
+		$principal .= '@' . $domain['realm'];
+	}
+	$ccache = KONTROL_ID_DOMAIN_DIR . '/.join-ccache-' . getmypid();
+	$environment = kontrol_id_domain_environment($ccache);
+	$keytab_backup = '';
+	$keytab_replacement_started = false;
+	try {
+		$kinit = kontrol_id_run_command(array('/usr/local/bin/kinit', $principal), $password . "\n", $environment, 30);
+		$password = str_repeat("\0", strlen($password));
+		if ($kinit['code'] !== 0) {
+			throw new Exception('Kerberos authentication failed. Verify the join account, DNS and clock synchronization.');
+		}
+		$join = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+			'--use-krb5-ccache=FILE:' . $ccache, 'ads', 'join'), '', $environment, 60);
+		if ($join['code'] !== 0) {
+			throw new Exception('Active Directory join failed: ' . ($join['stderr'] ?: $join['stdout']));
+		}
+		$http_spn = 'HTTP/' . $domain['fqdn'];
+		$spn_pattern = '/(?:^|\R)\s*' . preg_quote($http_spn, '/') . '\s*(?:\R|$)/i';
+		$spn_list = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+			'--machine-pass', 'ads', 'setspn', 'list', $domain['netbios']), '', $environment, 30);
+		$spn_output = trim($spn_list['stdout'] . "\n" . $spn_list['stderr']);
+		if ($spn_list['code'] !== 0 || !preg_match($spn_pattern, $spn_output)) {
+			$spn = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+				'--use-krb5-ccache=FILE:' . $ccache, 'ads', 'setspn', 'add', $http_spn),
+				'', $environment, 30);
+			if ($spn['code'] !== 0) {
+				/* A repeated join can race with or rediscover an SPN created by the
+				 * same computer. Accept it only after listing this computer account
+				 * and proving that the exact expected SPN belongs to it. */
+				$spn_list = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+					'--machine-pass', 'ads', 'setspn', 'list', $domain['netbios']), '', $environment, 30);
+				$spn_output = trim($spn_list['stdout'] . "\n" . $spn_list['stderr']);
+				if ($spn_list['code'] !== 0 || !preg_match($spn_pattern, $spn_output)) {
+					throw new Exception('The computer joined, but the HTTP service principal could not be registered: ' .
+						($spn['stderr'] ?: $spn['stdout']));
+				}
+			}
+		}
+		$enctypes = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+			'--machine-pass', 'ads', 'enctypes', 'set', $domain['netbios'] . '$', '24'), '', $environment, 30);
+		if ($enctypes['code'] !== 0) {
+			throw new Exception('The computer joined, but its AD encryption policy could not be restricted to AES: ' .
+				($enctypes['stderr'] ?: $enctypes['stdout']));
+		}
+		if (is_file(KONTROL_ID_KEYTAB)) {
+			$keytab_backup = KONTROL_ID_KEYTAB . '.prejoin-' . getmypid();
+			if (!@rename(KONTROL_ID_KEYTAB, $keytab_backup)) {
+				throw new Exception('Unable to stage the previous Kerberos keytab for safe replacement.');
+			}
+		}
+		$keytab_replacement_started = true;
+		$keytab = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+			'--machine-pass', 'ads', 'keytab', 'add', 'HTTP/' . $domain['fqdn']), '', $environment, 30);
+		if ($keytab['code'] !== 0) {
+			throw new Exception('The computer joined, but the HTTP keytab could not be generated: ' .
+				($keytab['stderr'] ?: $keytab['stdout']));
+		}
+		kontrol_id_filter_keytab_aes(KONTROL_ID_KEYTAB);
+		@chown(KONTROL_ID_KEYTAB, 'root');
+		@chgrp(KONTROL_ID_KEYTAB, 'proxy');
+		@chmod(KONTROL_ID_KEYTAB, 0640);
+		$check = kontrol_id_keytab_check(KONTROL_ID_KEYTAB, true);
+		if (!$check['ok']) {
+			throw new Exception($check['detail']);
+		}
+		if ($keytab_backup !== '') {
+			@unlink($keytab_backup);
+			$keytab_backup = '';
+		}
+		return $check;
+	} catch (Throwable $exception) {
+		if ($keytab_replacement_started) {
+			@unlink(KONTROL_ID_KEYTAB);
+			if ($keytab_backup !== '' && is_file($keytab_backup)) {
+				@rename($keytab_backup, KONTROL_ID_KEYTAB);
+			}
+		}
+		throw $exception;
+	} finally {
+		kontrol_id_run_command(array('/usr/local/bin/kdestroy', '-c', $ccache), '', $environment, 10);
+		@unlink($ccache);
+	}
+}
+
+function kontrol_id_remove_domain_tree($path) {
+	$root = realpath(KONTROL_ID_DOMAIN_DIR);
+	$resolved = realpath($path);
+	if ($root === false || $resolved === false || $resolved === $root ||
+		strpos($resolved, $root . DIRECTORY_SEPARATOR) !== 0) {
+		throw new Exception('Refusing to remove domain state outside the Kontrol-ID private directory.');
+	}
+	$iterator = new RecursiveIteratorIterator(
+		new RecursiveDirectoryIterator($resolved, FilesystemIterator::SKIP_DOTS),
+		RecursiveIteratorIterator::CHILD_FIRST
+	);
+	foreach ($iterator as $entry) {
+		if ($entry->isLink() || $entry->isFile()) {
+			@unlink($entry->getPathname());
+		} else {
+			@rmdir($entry->getPathname());
+		}
+	}
+	if (!@rmdir($resolved) && is_dir($resolved)) {
+		throw new Exception('Unable to remove the local Samba machine state.');
+	}
+}
+
+function kontrol_id_disable_before_unjoin() {
+	$settings = kontrol_id_get_settings();
+	if (($settings['enable'] ?? '') === 'on') {
+		$settings['enable'] = '';
+		kontrol_id_set_settings($settings);
+	}
+	/* Restore the previously managed Squid/E2Guardian configuration and stop
+	 * Winbind before removing credentials needed by explicit authentication. */
+	kontrol_id_resync(false);
+}
+
+function kontrol_id_clear_local_domain_state() {
+	kontrol_id_manage_winbind(false);
+	@unlink(KONTROL_ID_WINBIND_MARKER);
+	@unlink(KONTROL_ID_KEYTAB);
+	foreach ((array)glob(KONTROL_ID_DOMAIN_DIR . '/.*-ccache-*') as $cache) {
+		if (is_file($cache)) {
+			@unlink($cache);
+		}
+	}
+	if (is_dir(KONTROL_ID_SAMBA_DIR)) {
+		kontrol_id_remove_domain_tree(KONTROL_ID_SAMBA_DIR);
+	}
+	kontrol_id_ensure_storage();
+	kontrol_id_write_domain_config();
+}
+
+function kontrol_id_unjoin_domain($username, $password) {
+	$normalized_username = is_string($username) ? str_replace('\\', '', $username) : '';
+	if (!is_string($username) || !preg_match('/^[A-Za-z0-9_.@-]{1,255}$/D', $normalized_username) ||
+		!is_string($password) || $password === '' || strlen($password) > 4096) {
+		throw new Exception('Enter a valid delegated domain account and password.');
+	}
+	$domain = kontrol_id_domain_values();
+	if (!kontrol_id_valid_dns_name($domain['domain']) || !kontrol_id_valid_dns_name($domain['dc']) ||
+		empty($domain['realm'])) {
+		throw new Exception('Complete and save the domain settings before removing membership.');
+	}
+	$principal = $username;
+	if (strpos($principal, '\\') !== false) {
+		$principal = substr($principal, strrpos($principal, '\\') + 1);
+	}
+	if (strpos($principal, '@') === false) {
+		$principal .= '@' . $domain['realm'];
+	}
+	$ccache = KONTROL_ID_DOMAIN_DIR . '/.unjoin-ccache-' . getmypid();
+	$environment = kontrol_id_domain_environment($ccache);
+	try {
+		$kinit = kontrol_id_run_command(array('/usr/local/bin/kinit', $principal), $password . "\n", $environment, 30);
+		$password = str_repeat("\0", strlen($password));
+		if ($kinit['code'] !== 0) {
+			throw new Exception('Kerberos authentication failed. The domain membership was not removed.');
+		}
+		kontrol_id_disable_before_unjoin();
+		$leave = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+			'--use-krb5-ccache=FILE:' . $ccache, 'ads', 'leave'), '', $environment, 60);
+		if ($leave['code'] !== 0) {
+			throw new Exception('Active Directory unjoin failed; local trust data was preserved: ' .
+				($leave['stderr'] ?: $leave['stdout']));
+		}
+		kontrol_id_clear_local_domain_state();
+		return trim($leave['stdout'] . "\n" . $leave['stderr']);
+	} finally {
+		kontrol_id_run_command(array('/usr/local/bin/kdestroy', '-c', $ccache), '', $environment, 10);
+		@unlink($ccache);
+	}
+}
+
+function kontrol_id_domain_status() {
+	$checks = array();
+	$settings = kontrol_id_get_settings();
+	$domain = kontrol_id_domain_values($settings);
+	$checks[] = array('name' => 'Managed configuration',
+		'ok' => is_file(KONTROL_ID_KRB5_CONF) && is_file(KONTROL_ID_SMB_CONF),
+		'detail' => 'Package-owned krb5.conf and smb4.conf');
+	$keytab = kontrol_id_keytab_check(KONTROL_ID_KEYTAB, kontrol_id_kerberos_required($settings));
+	$checks[] = array('name' => 'Kerberos keytab', 'ok' => $keytab['ok'], 'detail' => $keytab['detail']);
+	if (is_file(KONTROL_ID_SMB_CONF) && is_executable('/usr/local/bin/net')) {
+		$join = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
+			'ads', 'testjoin'), '', kontrol_id_domain_environment(), 20);
+		$checks[] = array('name' => 'Active Directory machine trust', 'ok' => $join['code'] === 0,
+			'detail' => $join['code'] === 0 ? 'Machine trust is valid for ' . $domain['realm'] :
+				(trim($join['stderr'] ?: $join['stdout']) ?: 'Not joined or the trust cannot be verified.'));
+	}
+	if (kontrol_id_ntlm_required($settings) && is_executable('/usr/local/bin/wbinfo')) {
+		$trust = kontrol_id_run_command(array('/usr/local/bin/wbinfo', '--configfile=' . KONTROL_ID_SMB_CONF, '-t'),
+			'', kontrol_id_domain_environment(), 20);
+		$checks[] = array('name' => 'Winbind secure channel', 'ok' => $trust['code'] === 0,
+			'detail' => $trust['code'] === 0 ? 'The NTLM domain trust secret is valid.' :
+				(trim($trust['stderr'] ?: $trust['stdout']) ?: 'Winbind trust test failed.'));
+	}
+	return array('checks' => $checks, 'keytab' => $keytab, 'domain' => $domain);
 }
 
 function kontrol_id_write_pki() {
@@ -515,24 +1138,57 @@ function kontrol_id_e2guardian_managed_fields() {
 	);
 }
 
-function kontrol_id_squid_block() {
-	$settings = kontrol_id_get_settings();
+function kontrol_id_squid_block($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
 	$portal = preg_replace('/[\s;]/', '', kontrol_id_portal_url());
 	$unknown = preg_replace('/[^A-Za-z0-9_.@-]/', '', $settings['unknown_user']);
-	$lines = array(
-		KONTROL_ID_BEGIN,
-		'external_acl_type kontrol_identity children-startup=5 children-max=25 children-idle=5 ttl=5 negative_ttl=5 cache=65536 %SRC /usr/local/libexec/kontrol-identity-helper -c ' . KONTROL_ID_CONF,
-		'acl kontrol_identity external kontrol_identity',
-		'acl kontrol_identity_unknown ext_user -i ' . $unknown,
+	$processes = max(5, min(200, (int)$settings['auth_processes']));
+	$lines = array(KONTROL_ID_BEGIN);
+
+	if (($settings['access_mode'] ?? 'transparent') === 'explicit') {
+		$domain = kontrol_id_domain_values($settings);
+		$method = $settings['explicit_auth'] ?? 'kerberos';
+		if (in_array($method, array('kerberos', 'kerberos_ntlm'), true)) {
+			$lines[] = 'auth_param negotiate program /usr/bin/env KRB5_CONFIG=' . KONTROL_ID_KRB5_CONF .
+				' KRB5_KTNAME=FILE:' . KONTROL_ID_KEYTAB .
+				' /usr/local/libexec/squid/negotiate_kerberos_auth -r -s HTTP/' . $domain['fqdn'];
+			$lines[] = 'auth_param negotiate children ' . $processes . ' startup=5 idle=1';
+			$lines[] = 'auth_param negotiate keep_alive on';
+		}
+		if (in_array($method, array('ntlm', 'kerberos_ntlm'), true)) {
+			$lines[] = 'auth_param ntlm program /usr/bin/env WINBINDD_SOCKET_DIR=' .
+				KONTROL_ID_SAMBA_RUN . '/winbindd /usr/local/bin/ntlm_auth --configfile=' .
+				KONTROL_ID_SMB_CONF . ' --helper-protocol=squid-2.5-ntlmssp';
+			$lines[] = 'auth_param ntlm children ' . $processes . ' startup=5 idle=1';
+			$lines[] = 'auth_param ntlm keep_alive on';
+		}
+		if ($method === 'basic') {
+			$lines[] = 'auth_param basic program /usr/local/libexec/kontrol-basic-auth';
+			$lines[] = 'auth_param basic children ' . $processes . ' startup=5 idle=1';
+			$lines[] = 'auth_param basic realm Kontrol Internet Access';
+			$lines[] = 'auth_param basic credentialsttl 2 hours';
+			$lines[] = 'auth_param basic casesensitive off';
+		}
+		$lines[] = 'acl kontrol_authenticated proxy_auth REQUIRED';
+		/* This denial triggers the appropriate proxy authentication challenge.
+		 * Authenticated requests continue into the normal Squid network policy. */
+		$lines[] = 'http_access deny !kontrol_authenticated';
+	} else {
+		$lines[] = 'external_acl_type kontrol_identity children-startup=5 children-max=' . $processes .
+			' children-idle=5 ttl=5 negative_ttl=5 cache=65536 %SRC /usr/local/libexec/kontrol-identity-helper -c ' . KONTROL_ID_CONF;
+		$lines[] = 'acl kontrol_identity external kontrol_identity';
+		$lines[] = 'acl kontrol_identity_unknown ext_user -i ' . $unknown;
 		/* Evaluate the helper and fail closed if it is unavailable. A successful
 		 * lookup deliberately falls through to the existing Squid ACL policy. */
-		'http_access deny !kontrol_identity'
-	);
-	if ($settings['unknown_action'] === 'portal') {
-		$lines[] = 'deny_info 302:' . $portal . ' kontrol_identity_unknown';
-		$lines[] = 'http_access deny kontrol_identity kontrol_identity_unknown';
-	} elseif ($settings['unknown_action'] === 'deny') {
-		$lines[] = 'http_access deny kontrol_identity kontrol_identity_unknown';
+		$lines[] = 'http_access deny !kontrol_identity';
+		if ($settings['unknown_action'] === 'portal') {
+			$lines[] = 'deny_info 302:' . $portal . ' kontrol_identity_unknown';
+			$lines[] = 'http_access deny kontrol_identity kontrol_identity_unknown';
+		} elseif ($settings['unknown_action'] === 'deny') {
+			$lines[] = 'http_access deny kontrol_identity kontrol_identity_unknown';
+		}
 	}
 	if ($settings['e2guardian_integration'] === 'on') {
 		/* Squid performs the TLS bump. E2Guardian receives the resulting HTTP
@@ -542,6 +1198,8 @@ function kontrol_id_squid_block() {
 		$lines[] = 'adaptation_send_client_ip on';
 		$lines[] = 'adaptation_send_username on';
 		$lines[] = 'icap_client_username_encode off';
+		/* E2Guardian 5.4 consumes Squid's ICAP identity from this header. The
+		 * Kerberos helper uses -r above so its value matches filtergroupslist. */
 		$lines[] = 'icap_client_username_header X-Client-Username';
 		$lines[] = 'icap_preview_enable on';
 		$lines[] = 'icap_preview_size 1024';
@@ -598,10 +1256,12 @@ function kontrol_id_apply_squid_integration($enabled) {
 				kontrol_id_squid_managed_fields()
 			);
 		}
-		$method = $auth['auth_method'] ?? 'none';
-		if ($method !== 'none') {
-			throw new Exception("Squid authentication method '{$method}' is incompatible with Kontrol-ID.");
+		if (empty($settings['previous_squid_auth_config'])) {
+			$settings['previous_squid_auth_config'] = base64_encode(json_encode($auth));
 		}
+		/* Kontrol-ID supplies the auth_param directives in its reversible custom
+		 * block. Keep the Squid package generator from creating a second stack. */
+		$auth['auth_method'] = 'none';
 		$conflicts = kontrol_id_squid_conflicts(
 			$squid['custom_options'],
 			$settings['e2guardian_integration'] === 'on'
@@ -616,15 +1276,17 @@ function kontrol_id_apply_squid_integration($enabled) {
 		if (empty($interfaces)) {
 			$interfaces = 'lan';
 		}
-		$active_interfaces = kontrol_id_normalize_interfaces(
-			trim(($squid['active_interface'] ?? '') . ',' . $interfaces, ',')
-		);
 		$squid['enable_squid'] = 'on';
-		$squid['active_interface'] = $active_interfaces;
+		$squid['active_interface'] = $interfaces;
 		$squid['proxy_port'] = !empty($squid['proxy_port']) ? $squid['proxy_port'] : '3128';
 		$squid['allow_interface'] = 'on';
-		$squid['transparent_proxy'] = 'on';
-		$squid['transparent_active_interface'] = $interfaces;
+		if (($settings['access_mode'] ?? 'transparent') === 'transparent') {
+			$squid['transparent_proxy'] = 'on';
+			$squid['transparent_active_interface'] = $interfaces;
+		} else {
+			$squid['transparent_proxy'] = '';
+			$squid['transparent_active_interface'] = '';
+		}
 		if ($settings['traffic_mode'] === 'http_https') {
 			$squid['ssl_proxy'] = 'on';
 			$squid['ssl_active_interface'] = $interfaces;
@@ -638,13 +1300,19 @@ function kontrol_id_apply_squid_integration($enabled) {
 			$squid['ssl_proxy'] = '';
 			$squid['ssl_active_interface'] = '';
 		}
-	} elseif (!empty($settings['previous_squid_auth_method'])) {
-		$settings['previous_squid_auth_method'] = '';
 	}
 	if (!$enabled && !empty($settings['previous_squid_config'])) {
 		$squid = kontrol_id_restore_config($squid, $settings['previous_squid_config']);
 		$settings['previous_squid_config'] = '';
 	}
+	if (!$enabled && !empty($settings['previous_squid_auth_config'])) {
+		$decoded_auth = json_decode(base64_decode($settings['previous_squid_auth_config'], true), true);
+		if (is_array($decoded_auth)) {
+			$auth = $decoded_auth;
+		}
+		$settings['previous_squid_auth_config'] = '';
+	}
+	$settings['previous_squid_auth_method'] = '';
 
 	config_set_path('installedpackages/squid/config/0', $squid);
 	config_set_path('installedpackages/squidauth/config/0', $auth);
@@ -744,35 +1412,59 @@ function kontrol_id_chain_status() {
 	$settings = kontrol_id_get_settings();
 	$squid = config_get_path('installedpackages/squid/config/0', array());
 	$e2g = config_get_path('installedpackages/e2guardian/config/0', array());
-	$e2g_config = config_get_path('installedpackages/e2guardianconfig/config/0', array());
 	$ca = !empty($settings['ca_ref']) ? kontrol_id_extract_item(lookup_ca($settings['ca_ref'])) : array();
 	$expected_interfaces = kontrol_id_normalize_interfaces($settings['intercept_interfaces']);
+	$custom = $squid['custom_options'] ?? '';
 	$checks = array(
-		array('name' => 'Kontrol-ID', 'ok' => $settings['enable'] === 'on', 'detail' => 'Identity enforcement enabled'),
-		array('name' => 'Squid helper', 'ok' =>
-			($squid['enable_squid'] ?? '') === 'on' &&
-			strpos($squid['custom_options'] ?? '', KONTROL_ID_BEGIN) !== false,
-			'detail' => 'External identity ACL installed'),
-		array('name' => 'Transparent HTTP', 'ok' =>
-			($squid['transparent_proxy'] ?? '') === 'on' &&
-			kontrol_id_normalize_interfaces($squid['transparent_active_interface'] ?? '') === $expected_interfaces,
-			'detail' => 'Squid intercepts ' . ($expected_interfaces ?: 'no interface')),
-		array('name' => 'E2Guardian chain', 'ok' =>
+		array('name' => 'Kontrol-ID', 'ok' => $settings['enable'] === 'on', 'detail' => 'Identity enforcement enabled')
+	);
+	if (($settings['squid_integration'] ?? '') === 'on') {
+		$checks[] = array('name' => 'Managed Squid', 'ok' =>
+			($squid['enable_squid'] ?? '') === 'on' && strpos($custom, KONTROL_ID_BEGIN) !== false,
+			'detail' => 'Reversible Kontrol-ID policy block installed');
+		if (($settings['access_mode'] ?? 'transparent') === 'transparent') {
+			$checks[] = array('name' => 'Transparent identification', 'ok' =>
+				($squid['transparent_proxy'] ?? '') === 'on' &&
+				kontrol_id_normalize_interfaces($squid['transparent_active_interface'] ?? '') === $expected_interfaces &&
+				strpos($custom, 'external_acl_type kontrol_identity') !== false,
+				'detail' => 'Squid intercepts HTTP and resolves the source IP on ' . ($expected_interfaces ?: 'no interface'));
+		} else {
+			$method = $settings['explicit_auth'] ?? 'kerberos';
+			$method_ok = strpos($custom, 'acl kontrol_authenticated proxy_auth REQUIRED') !== false;
+			if (in_array($method, array('kerberos', 'kerberos_ntlm'), true)) {
+				$method_ok = $method_ok && strpos($custom, 'auth_param negotiate program') !== false &&
+					is_file(KONTROL_ID_KEYTAB);
+			}
+			if (in_array($method, array('ntlm', 'kerberos_ntlm'), true)) {
+				$method_ok = $method_ok && strpos($custom, 'auth_param ntlm program /usr/local/bin/ntlm_auth') !== false &&
+					is_file(KONTROL_ID_WINBIND_MARKER) && is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb');
+			}
+			if ($method === 'basic') {
+				$method_ok = $method_ok && strpos($custom, 'auth_param basic program /usr/local/libexec/kontrol-basic-auth') !== false;
+			}
+			$checks[] = array('name' => 'Explicit authentication', 'ok' =>
+				empty($squid['transparent_proxy']) &&
+				kontrol_id_normalize_interfaces($squid['active_interface'] ?? '') === $expected_interfaces && $method_ok,
+				'detail' => 'Squid port 3128 uses ' . $method . ' authentication on ' . ($expected_interfaces ?: 'no interface'));
+		}
+	}
+	if (($settings['e2guardian_integration'] ?? '') === 'on') {
+		$checks[] = array('name' => 'E2Guardian chain', 'ok' =>
 			($e2g['enable'] ?? '') === 'on' &&
 			($e2g['interface'] ?? '') === 'lo0' &&
 			($e2g['filterports'] ?? '') === '8080' &&
 			($e2g['icapport'] ?? '') === '1344' &&
-			strpos($squid['custom_options'] ?? '', 'icap://127.0.0.1:1344/request') !== false &&
-			strpos($squid['custom_options'] ?? '', 'adaptation_send_client_ip on') !== false &&
-			strpos($squid['custom_options'] ?? '', 'adaptation_send_username on') !== false &&
-			strpos($squid['custom_options'] ?? '', 'adaptation_masterx_shared_names X-ICAP-E2G') !== false &&
-			strpos($squid['custom_options'] ?? '', 'adaptation_access kontrol_e2g_req deny kontrol_e2g_connect') !== false &&
+			strpos($custom, 'icap://127.0.0.1:1344/request') !== false &&
+			strpos($custom, 'adaptation_send_client_ip on') !== false &&
+			strpos($custom, 'adaptation_send_username on') !== false &&
+			strpos($custom, 'adaptation_masterx_shared_names X-ICAP-E2G') !== false &&
+			strpos($custom, 'adaptation_access kontrol_e2g_req deny kontrol_e2g_connect') !== false &&
 			strpos((string)@file_get_contents('/usr/local/etc/e2guardian/site.story'), KONTROL_ID_E2G_BEGIN) !== false,
-			'detail' => 'Squid sends URL, client IP and identity to E2Guardian ICAP on 127.0.0.1:1344')
-	);
+			'detail' => 'Squid sends URL, client IP and identity to E2Guardian ICAP on 127.0.0.1:1344');
+	}
 	if ($settings['traffic_mode'] === 'http_https') {
 		$checks[] = array(
-			'name' => 'Transparent HTTPS',
+			'name' => 'HTTPS inspection',
 			'ok' => ($squid['ssl_proxy'] ?? '') === 'on' &&
 				($squid['dca'] ?? '') === ($settings['ca_ref'] ?? '') &&
 				!empty($ca['crt']) && !empty($ca['prv']) &&
@@ -796,7 +1488,8 @@ function kontrol_id_validate($post, &$input_errors) {
 		'positive_ttl' => array(5, 86400),
 		'negative_ttl' => array(1, 3600),
 		'stale_ttl' => array(0, 86400),
-		'portal_ttl' => array(60, 604800)
+		'portal_ttl' => array(60, 604800),
+		'auth_processes' => array(5, 200)
 	);
 	foreach ($numeric as $field => $range) {
 		if (!isset($post[$field]) || !is_numeric($post[$field]) ||
@@ -807,19 +1500,53 @@ function kontrol_id_validate($post, &$input_errors) {
 	if (!preg_match('/^[A-Za-z0-9_.@-]+$/', $post['unknown_user'] ?? '')) {
 		$input_errors[] = 'Unknown user contains invalid characters.';
 	}
+	if (!in_array($post['access_mode'] ?? '', array('transparent', 'explicit'), true)) {
+		$input_errors[] = 'Select a valid client access mode.';
+	}
+	if (!in_array($post['explicit_auth'] ?? '', array('kerberos', 'kerberos_ntlm', 'ntlm', 'basic'), true)) {
+		$input_errors[] = 'Select a valid explicit authentication method.';
+	}
+	if (!in_array($post['traffic_mode'] ?? '', array('http_only', 'http_https'), true)) {
+		$input_errors[] = 'Select a valid TLS inspection mode.';
+	}
+	if (!in_array($post['unknown_action'] ?? '', array('portal', 'deny', 'allow'), true)) {
+		$input_errors[] = 'Select a valid unknown-user action.';
+	}
 	if (!empty($post['portal_url']) && filter_var($post['portal_url'], FILTER_VALIDATE_URL) === false) {
 		$input_errors[] = 'Portal URL is invalid.';
 	}
+	$explicit_domain_auth = ($post['access_mode'] ?? '') === 'explicit' &&
+		in_array($post['explicit_auth'] ?? '', array('kerberos', 'kerberos_ntlm', 'ntlm'), true);
+	if ($explicit_domain_auth) {
+		foreach (array(
+			'proxy_fqdn' => 'Proxy FQDN',
+			'ad_domain' => 'Active Directory domain',
+			'ad_dc' => 'Preferred domain controller'
+		) as $field => $label) {
+			if (!kontrol_id_valid_dns_name(trim($post[$field] ?? ''))) {
+				$input_errors[] = $label . ' must be a fully qualified DNS name.';
+			}
+		}
+		if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9-]{0,14}$/D', trim($post['ad_workgroup'] ?? ''))) {
+			$input_errors[] = 'The Active Directory NetBIOS name must contain 1 to 15 letters, digits or hyphens.';
+		}
+	}
 	if (($post['enable'] ?? '') === 'on') {
 		if (empty(kontrol_id_normalize_interfaces($post['intercept_interfaces'] ?? ''))) {
-			$input_errors[] = 'Select at least one interface for transparent interception.';
+			$input_errors[] = 'Select at least one client interface.';
 		}
 		if (($post['e2guardian_integration'] ?? '') === 'on' && ($post['squid_integration'] ?? '') !== 'on') {
 			$input_errors[] = 'E2Guardian forwarding requires managed Squid integration.';
 		}
-		$method = config_get_path('installedpackages/squidauth/config/0/auth_method', 'none');
-		if ($method !== 'none') {
-			$input_errors[] = "Squid authentication method '{$method}' must be disabled before enabling Kontrol-ID.";
+		if ($explicit_domain_auth &&
+			in_array($post['explicit_auth'], array('kerberos', 'kerberos_ntlm'), true) &&
+			(!is_file(KONTROL_ID_KEYTAB) || filesize(KONTROL_ID_KEYTAB) < 1)) {
+			$input_errors[] = 'Import or generate the Kerberos keytab on Domain and Keytab before enabling this authentication mode.';
+		}
+		if ($explicit_domain_auth &&
+			in_array($post['explicit_auth'], array('ntlm', 'kerberos_ntlm'), true) &&
+			!is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb')) {
+			$input_errors[] = 'Join this appliance to Active Directory on Domain and Keytab before enabling NTLM compatibility.';
 		}
 		if (($post['squid_integration'] ?? '') === 'on') {
 			$squid = config_get_path('installedpackages/squid/config/0', array());
@@ -837,17 +1564,45 @@ function kontrol_id_validate($post, &$input_errors) {
 	}
 }
 
+function kontrol_id_manage_winbind($enabled) {
+	$script = '/usr/local/etc/rc.d/kontrol_id_winbind';
+	if (!is_executable($script)) {
+		return;
+	}
+	if ($enabled && is_file(KONTROL_ID_WINBIND_MARKER) &&
+		is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb')) {
+		mwexec($script . ' forcestop');
+		mwexec($script . ' start');
+	} else {
+		mwexec($script . ' forcestop');
+	}
+}
+
 function kontrol_id_resync($sync = true) {
 	$changed = kontrol_id_ensure_defaults();
+	$changed = kontrol_id_prepare_dependency_defaults() || $changed;
 	$changed = kontrol_id_ensure_group() || $changed;
 	$changed = kontrol_id_ensure_pki() || $changed;
 	kontrol_id_ensure_storage();
 	kontrol_id_write_pki();
 	kontrol_id_write_helper_config();
+	kontrol_id_write_domain_config();
 	$settings = kontrol_id_get_settings();
 	$enabled = ($settings['enable'] === 'on');
-	kontrol_id_apply_squid_integration($enabled && $settings['squid_integration'] === 'on');
-	kontrol_id_apply_e2guardian_integration($enabled && $settings['e2guardian_integration'] === 'on');
+	$runtime_ready = true;
+	if ($enabled && kontrol_id_kerberos_required($settings) &&
+		(!is_file(KONTROL_ID_KEYTAB) || filesize(KONTROL_ID_KEYTAB) < 1)) {
+		$runtime_ready = false;
+		log_error('[Kontrol-ID] Managed proxy was not activated: the local Kerberos keytab is missing.');
+	}
+	if ($enabled && kontrol_id_ntlm_required($settings) &&
+		!is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb')) {
+		$runtime_ready = false;
+		log_error('[Kontrol-ID] Managed proxy was not activated: this HA member has no local AD machine trust.');
+	}
+	$stack_enabled = $enabled && $runtime_ready;
+	kontrol_id_apply_squid_integration($stack_enabled && $settings['squid_integration'] === 'on');
+	kontrol_id_apply_e2guardian_integration($stack_enabled && $settings['e2guardian_integration'] === 'on');
 	write_config('Kontrol-ID configuration updated.');
 	/* Package generators still read the legacy global configuration array.
 	 * Reload it so their runtime files and firewall rules see the values just
@@ -872,7 +1627,7 @@ function kontrol_id_resync($sync = true) {
 			}
 		}
 		kontrol_id_apply_e2guardian_storybook(
-			$enabled && $settings['e2guardian_integration'] === 'on'
+			$stack_enabled && $settings['e2guardian_integration'] === 'on'
 		);
 		if (function_exists('e2guardian_start')) {
 			e2guardian_start('no', false, true);
@@ -882,6 +1637,7 @@ function kontrol_id_resync($sync = true) {
 		}
 	}
 	if (file_exists('/usr/local/pkg/squid.inc')) {
+		kontrol_id_manage_winbind($stack_enabled && kontrol_id_ntlm_required($settings));
 		require_once('/usr/local/pkg/squid.inc');
 		if (function_exists('squid_resync')) {
 			squid_resync('yes');
@@ -913,11 +1669,15 @@ function kontrol_id_deinstall() {
 		kontrol_id_apply_squid_integration(false);
 		kontrol_id_apply_e2guardian_integration(false);
 		kontrol_id_apply_e2guardian_storybook(false);
+		@unlink(KONTROL_ID_WINBIND_MARKER);
+		kontrol_id_manage_winbind(false);
 		write_config('Kontrol-ID integrations removed.');
 		@unlink(KONTROL_ID_CONF);
 		@unlink(KONTROL_ID_CA_FILE);
 		@unlink(KONTROL_ID_CLIENT_CERT);
 		@unlink(KONTROL_ID_CLIENT_KEY);
+		@unlink(KONTROL_ID_KRB5_CONF);
+		@unlink(KONTROL_ID_SMB_CONF);
 	} catch (Exception $e) {
 		log_error('[Kontrol-ID] Deinstallation cleanup failed: ' . $e->getMessage());
 	}
@@ -1000,10 +1760,23 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 		log_error('[Kontrol-ID] XMLRPC synchronization target is invalid.');
 		return;
 	}
-	$xml = array(
-		'kontrolid' => config_get_path('installedpackages/kontrolid', array()),
-		'kontrolidsync' => config_get_path('installedpackages/kontrolidsync', array())
-	);
+	$kontrolid = config_get_path('installedpackages/kontrolid', array());
+	/* Integration snapshots and enrollment tokens are node-local state.  Do
+	 * not overwrite a peer's rollback data or replicate a bearer token. */
+	if (is_array($kontrolid['config'][0] ?? null)) {
+		foreach (array(
+			'previous_squid_auth_method', 'previous_squid_auth_config', 'previous_squid_config',
+			'previous_e2guardian_config', 'previous_e2guardian_auth_plugin',
+			'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added',
+			'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses'
+		) as $local_field) {
+			unset($kontrolid['config'][0][$local_field]);
+		}
+	}
+	$sync_payload = base64_encode(json_encode(array(
+		'settings' => $kontrolid['config'][0] ?? array(),
+		'sync' => config_get_path('installedpackages/kontrolidsync', array())
+	)));
 	$settings = kontrol_id_get_settings();
 	$pki = array(
 		'ca' => kontrol_id_extract_item(lookup_ca($settings['ca_ref'])),
@@ -1016,8 +1789,15 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 	$pki_payload = base64_encode(json_encode($pki));
 	$client = new pfsense_xmlrpc_client();
 	$client->setConnectionData($host, $port, $username, $password, $protocol);
-	$client->xmlrpc_method('merge_installedpackages_section', $xml, $timeout);
 	$command = "require_once('/usr/local/pkg/kontrol_id.inc');\n" .
+		"\$kid_sync = json_decode(base64_decode('{$sync_payload}'), true);\n" .
+		"\$kid_local = kontrol_id_get_settings();\n" .
+		"\$kid_incoming = \$kid_sync['settings'];\n" .
+		"foreach (array('previous_squid_auth_method', 'previous_squid_auth_config', 'previous_squid_config', 'previous_e2guardian_config', 'previous_e2guardian_auth_plugin', 'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added', 'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses') as \$kid_local_field) {\n" .
+		"  if (array_key_exists(\$kid_local_field, \$kid_local)) { \$kid_incoming[\$kid_local_field] = \$kid_local[\$kid_local_field]; }\n" .
+		"}\n" .
+		"config_set_path('installedpackages/kontrolid/config/0', array_merge(kontrol_id_defaults(), \$kid_incoming));\n" .
+		"config_set_path('installedpackages/kontrolidsync', \$kid_sync['sync']);\n" .
 		"\$kid_pki = json_decode(base64_decode('{$pki_payload}'), true);\n" .
 		"foreach (array('ca', 'cert') as \$kid_section) {\n" .
 		"  \$kid_item = \$kid_pki[\$kid_section];\n" .

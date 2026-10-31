@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				if (($authcfg['type'] ?? '') === 'ldap') {
 					$groups = @ldap_get_groups($username, $authcfg);
 				} else {
-					$user = getUserEntry($username);
+					$user = kontrol_id_extract_item(getUserEntry($username));
 					$groups = is_array($user) ? local_user_get_groups($user, true) : array();
 				}
 			}

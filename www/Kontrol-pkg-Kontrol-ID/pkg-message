@@ -12,14 +12,22 @@ files. Remove the conflicting GUI package before installing Kontrol-ID. Do not
 remove a shared squid, e2guardian or library package already required by the
 matching Kontrol package.
 
-The legacy domain-join Kontrol-ID pages are not used. Configure LDAP/Active
-Directory under System > User Manager > Authentication Servers, select that
-server under Services > Kontrol-ID, then generate an enrollment token on the
-Stations tab and provision at least one Windows endpoint before enforcement.
+Transparent mode identifies Windows users by source IP and never challenges an
+intercepted browser. Explicit proxy mode supports Kerberos/SPNEGO, optional
+NTLM compatibility, and Basic authentication through an existing Kontrol
+local or LDAP authentication server. Configure and validate AD membership or
+import an AES keytab under Services > Kontrol-ID > Domain and Keytab before
+enabling Kerberos or NTLM. Kerberos is recommended. If NTLM is enabled, enforce
+NTLMv2 and reject LM/NTLMv1 through Active Directory security policy.
 
-Runtime databases in /var/db/kontrol-identity are intentionally preserved when
-the package is removed. Squid and E2Guardian integration blocks are removed by
-the package deinstall hook.
+For transparent identity, generate an enrollment token under Status and
+Enrollment and provision Windows endpoints before enforcement. Domain join
+passwords are sent only to kinit over a pipe and are never stored in config.xml.
+
+Runtime databases in /var/db/kontrol-identity and protected domain state in
+/var/db/kontrol-id-domain are intentionally preserved when the package is
+removed. Winbind is stopped and Squid/E2Guardian integration blocks are removed
+by the package deinstall hook.
 EOM
 }
 ]

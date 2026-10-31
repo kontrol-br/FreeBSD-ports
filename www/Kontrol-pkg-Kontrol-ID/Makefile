@@ -1,19 +1,20 @@
 # $FreeBSD$
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
-PORTVERSION=	0.4.5
+PORTVERSION=	0.5.0
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
 
 MAINTAINER=	contato@kontrol.com.br
-COMMENT=	Transparent user identity integration for Kontrol, Squid and E2Guardian
+COMMENT=	Managed user identity and proxy authentication for Squid and E2Guardian
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	Kontrol-pkg-KontrolSquid>=0.1.12_20:www/Kontrol-pkg-KontrolSquid \
-		Kontrol-pkg-E2guardian54>=6.6.26_15:www/Kontrol-pkg-E2guardian54
+RUN_DEPENDS=	Kontrol-pkg-KontrolSquid>=0.1.12_21:www/Kontrol-pkg-KontrolSquid \
+		Kontrol-pkg-E2guardian54>=6.6.26_15:www/Kontrol-pkg-E2guardian54 \
+		samba416>=4.16:net/samba416
 LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libsqlite3.so:databases/sqlite3 \
 		libxml2.so:textproc/libxml2
@@ -25,7 +26,7 @@ USE_CXXSTD=	c++17
 NO_WRKSUBDIR=	yes
 NO_MTREE=	yes
 
-SUB_FILES=	pkg-install pkg-deinstall
+SUB_FILES=	pkg-install pkg-deinstall kontrol_id_winbind
 SUB_LIST=	PORTNAME=${PORTNAME}
 
 do-extract:
@@ -41,12 +42,17 @@ do-build:
 
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
+	${MKDIR} ${STAGEDIR}${PREFIX}/etc/rc.d
 	${MKDIR} ${STAGEDIR}${PREFIX}/pkg
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/kontrol-id
 	${MKDIR} ${STAGEDIR}${PREFIX}/share/Kontrol-pkg-Kontrol-ID
 	${MKDIR} ${STAGEDIR}/etc/inc/priv
 	${INSTALL_PROGRAM} ${WRKSRC}/kontrol-identity-helper \
 		${STAGEDIR}${PREFIX}/libexec/kontrol-identity-helper
+	${INSTALL_SCRIPT} ${FILESDIR}${PREFIX}/libexec/kontrol-basic-auth.php \
+		${STAGEDIR}${PREFIX}/libexec/kontrol-basic-auth
+	${INSTALL_SCRIPT} ${WRKDIR}/kontrol_id_winbind \
+		${STAGEDIR}${PREFIX}/etc/rc.d
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol_id.inc \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol_id.xml \
@@ -54,6 +60,8 @@ do-install:
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol_id_sync.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_status.php \
+		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_domain.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_portal.php \
 		${STAGEDIR}${PREFIX}/www

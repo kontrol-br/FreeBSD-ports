@@ -69,6 +69,7 @@ include('head.inc');
 $tab_array = array();
 $tab_array[] = array('General', false, '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0');
 $tab_array[] = array('Status and Enrollment', true, '/kontrol_id_status.php');
+$tab_array[] = array('Domain and Keytab', false, '/kontrol_id_domain.php');
 $tab_array[] = array('XMLRPC Sync', false, '/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0');
 display_top_tabs($tab_array);
 
@@ -86,7 +87,8 @@ if (!empty($token_once)) {
 	<div class="panel-body">
 		<p><strong>Client &rarr; Squid + Kontrol-ID helper &rarr; E2Guardian ICAP &rarr; Internet</strong></p>
 		<p>
-			Mode: <strong><?=($settings['traffic_mode'] === 'http_https') ? 'Transparent HTTP + HTTPS inspection' : 'Transparent HTTP only'?></strong> &nbsp;
+			Access: <strong><?=($settings['access_mode'] === 'explicit') ? 'Explicit proxy / ' . htmlspecialchars($settings['explicit_auth']) : 'Transparent identification'?></strong> &nbsp;
+			Inspection: <strong><?=($settings['traffic_mode'] === 'http_https') ? 'HTTP + HTTPS' : 'HTTP only'?></strong> &nbsp;
 			Interfaces: <strong><?=htmlspecialchars(kontrol_id_normalize_interfaces($settings['intercept_interfaces']) ?: 'not selected')?></strong> &nbsp;
 			CA: <strong><?=htmlspecialchars($identity_ca['descr'] ?? 'unavailable')?></strong>
 		</p>

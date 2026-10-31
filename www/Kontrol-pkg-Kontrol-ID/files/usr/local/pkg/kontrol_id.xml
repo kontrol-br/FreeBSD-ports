@@ -16,7 +16,7 @@
 	<include_file>/usr/local/pkg/kontrol_id.inc</include_file>
 	<menu>
 		<name>Kontrol-ID</name>
-		<tooltiptext>Transparent Windows user identification</tooltiptext>
+		<tooltiptext>Managed Windows identity and proxy authentication</tooltiptext>
 		<section>Services</section>
 		<url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url>
 	</menu>
@@ -29,6 +29,10 @@
 		<tab>
 			<text>Status and Enrollment</text>
 			<url>/kontrol_id_status.php</url>
+		</tab>
+		<tab>
+			<text>Domain and Keytab</text>
+			<url>/kontrol_id_domain.php</url>
 		</tab>
 		<tab>
 			<text>XMLRPC Sync</text>
@@ -53,31 +57,98 @@
 		<field>
 			<fielddescr>Traffic Flow</fielddescr>
 			<description><![CDATA[
-				<strong>Client &rarr; Squid transparent proxy + Kontrol-ID helper &rarr; E2Guardian ICAP &rarr; Internet</strong><br/>
-				Saving this page applies the complete chain. Squid is the only TLS interception point; E2Guardian listens for ICAP only on
-				127.0.0.1:1344 and receives the client IP, username and decrypted HTTP URL. Previous Squid and E2Guardian values are saved and
-				restored when managed integration is disabled.
+				<strong>Client &rarr; Squid + Kontrol-ID identity/authentication &rarr; E2Guardian ICAP &rarr; Internet</strong><br/>
+				Kontrol-ID owns the transport settings while enabled: explicit proxy on 3128 or transparent interception on 3128/3129,
+				and E2Guardian ICAP on 127.0.0.1:1344. Squid is the only TLS interception point and sends the original client IP,
+				resolved username and decrypted URL to E2Guardian. Previous Squid and E2Guardian values are restored when the managed
+				stack is disabled.
 			]]></description>
 			<type>info</type>
 		</field>
 		<field>
-			<fielddescr>Transparent Traffic</fielddescr>
+			<fielddescr>Client Access Mode</fielddescr>
+			<fieldname>access_mode</fieldname>
+			<description><![CDATA[
+				Transparent mode identifies the workstation by source IP and does not challenge the browser. Explicit mode requires
+				clients to use the proxy address or PAC/WPAD and supports Kerberos, NTLM and Basic authentication.
+			]]></description>
+			<type>select</type>
+			<default_value>transparent</default_value>
+			<options>
+				<option><name>Transparent identification (no proxy login)</name><value>transparent</value></option>
+				<option><name>Explicit proxy authentication</name><value>explicit</value></option>
+			</options>
+		</field>
+		<field>
+			<fielddescr>Explicit Authentication</fielddescr>
+			<fieldname>explicit_auth</fieldname>
+			<description><![CDATA[
+				Kerberos is preferred. Kerberos + NTLM offers an explicitly enabled legacy fallback. NTLM-only is intended for
+				appliances that cannot use SPNEGO/Kerberos. Enforce NTLMv2 and reject LM/NTLMv1 in Active Directory policy;
+				a domain member cannot override what the DC accepts for domain accounts. Basic validates against the selected server.
+			]]></description>
+			<type>select</type>
+			<default_value>kerberos</default_value>
+			<options>
+				<option><name>Kerberos / SPNEGO (recommended)</name><value>kerberos</value></option>
+				<option><name>Kerberos with NTLM fallback (legacy)</name><value>kerberos_ntlm</value></option>
+				<option><name>NTLM compatibility only (legacy)</name><value>ntlm</value></option>
+				<option><name>Basic using selected Kontrol authentication server</name><value>basic</value></option>
+			</options>
+		</field>
+		<field>
+			<fielddescr>Proxy FQDN</fielddescr>
+			<fieldname>proxy_fqdn</fieldname>
+			<description><![CDATA[DNS name used by explicit proxy clients and by the Kerberos HTTP service principal, for example proxy.example.corp.]]></description>
+			<type>input</type>
+			<size>60</size>
+		</field>
+		<field>
+			<fielddescr>Active Directory Domain</fielddescr>
+			<fieldname>ad_domain</fieldname>
+			<description><![CDATA[DNS domain used for Kerberos/NTLM, for example example.corp. The Kerberos realm is generated in uppercase.]]></description>
+			<type>input</type>
+			<size>60</size>
+		</field>
+		<field>
+			<fielddescr>Preferred Domain Controller</fielddescr>
+			<fieldname>ad_dc</fieldname>
+			<description><![CDATA[FQDN of the preferred AD controller. DNS and time synchronization must be functional before joining.]]></description>
+			<type>input</type>
+			<size>60</size>
+		</field>
+		<field>
+			<fielddescr>Active Directory NetBIOS Name</fielddescr>
+			<fieldname>ad_workgroup</fieldname>
+			<description><![CDATA[Short NetBIOS domain name used by Samba/Winbind, for example EXAMPLE.]]></description>
+			<type>input</type>
+			<size>20</size>
+		</field>
+		<field>
+			<fielddescr>Authentication Helper Processes</fielddescr>
+			<fieldname>auth_processes</fieldname>
+			<description>Maximum helper processes reserved for explicit proxy authentication.</description>
+			<type>input</type>
+			<default_value>25</default_value>
+		</field>
+		<field>
+			<fielddescr>Web Traffic Inspection</fielddescr>
 			<fieldname>traffic_mode</fieldname>
 			<description><![CDATA[
-				HTTP-only interception is the safe onboarding mode. HTTP + HTTPS enables Squid SSL Bump and automatically selects
+				HTTP-only is the safe onboarding mode. HTTP + HTTPS enables Squid SSL Bump for the selected access mode and automatically selects
 				the internal Kontrol-ID CA. Every inspected client must first be enrolled so the CA is installed in Windows.
 			]]></description>
 			<type>select</type>
 			<default_value>http_only</default_value>
 			<options>
-				<option><name>Transparent HTTP only (onboarding)</name><value>http_only</value></option>
-				<option><name>Transparent HTTP + HTTPS inspection</name><value>http_https</value></option>
+				<option><name>HTTP only (onboarding)</name><value>http_only</value></option>
+				<option><name>HTTP + HTTPS inspection</name><value>http_https</value></option>
 			</options>
 		</field>
 		<field>
-			<fielddescr>Intercept Interface(s)</fielddescr>
+			<fielddescr>Client Interface(s)</fielddescr>
 			<fieldname>intercept_interfaces</fieldname>
-			<description><![CDATA[Interfaces where Kontrol-ID automatically configures the Squid HTTP/HTTPS redirect rules.]]></description>
+			<description><![CDATA[Interfaces where Squid listens for explicit clients or where Kontrol-ID installs transparent HTTP/HTTPS redirects.]]></description>
 			<type>interfaces_selection</type>
 			<default_value>lan</default_value>
 			<hideinterfaceregex>loopback</hideinterfaceregex>
@@ -94,7 +165,7 @@
 		<field>
 			<fielddescr>Manage Squid</fielddescr>
 			<fieldname>squid_integration</fieldname>
-			<description><![CDATA[Enable Squid, apply transparent interception and install the reversible Kontrol-ID external ACL block.]]></description>
+			<description><![CDATA[Enable Squid and install the reversible Kontrol-ID identity/authentication policy for the selected access mode.]]></description>
 			<type>checkbox</type>
 			<default_value>on</default_value>
 		</field>
@@ -221,8 +292,9 @@
 		<field>
 			<fielddescr>Directory Integration</fielddescr>
 			<description><![CDATA[
-				Kontrol-ID does not need to join the firewall to the Windows domain. Configure an LDAP/Active Directory server under
-				<a href="/system_authservers.php">System &gt; User Manager &gt; Authentication Servers</a>, then select it below.
+				Basic authentication and the fallback portal reuse a server from
+				<a href="/system_authservers.php">System &gt; User Manager &gt; Authentication Servers</a> without duplicating its
+				credentials. Kerberos and NTLM domain membership are managed separately under <strong>Domain and Keytab</strong>.
 				The local database remains available for networks without Active Directory.
 			]]></description>
 			<type>info</type>

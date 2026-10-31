@@ -11,6 +11,7 @@
 	<tabs>
 		<tab><text>General</text><url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url></tab>
 		<tab><text>Status and Enrollment</text><url>/kontrol_id_status.php</url></tab>
+		<tab><text>Domain and Keytab</text><url>/kontrol_id_domain.php</url></tab>
 		<tab><text>XMLRPC Sync</text><url>/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0</url><active/></tab>
 	</tabs>
 	<fields>
@@ -18,7 +19,7 @@
 		<field>
 			<fielddescr>Enable Sync</fielddescr>
 			<fieldname>synconchanges</fieldname>
-			<description><![CDATA[Use the system HA peer or explicitly configured replica hosts. Package settings and the package-owned CA/client certificate are synchronized. Runtime identity and portal sessions remain local to each node.]]></description>
+			<description><![CDATA[Use the system HA peer or explicitly configured replica hosts. Package settings and the package-owned CA/client certificate are synchronized. Runtime identity, portal sessions, AD machine secrets and Kerberos keytabs remain local to each node; join or import a keytab separately on every HA member.]]></description>
 			<type>select</type>
 			<default_value>auto</default_value>
 			<options>

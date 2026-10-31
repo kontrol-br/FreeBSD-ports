@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# PROVIDE: kontrol_id_winbind
+# REQUIRE: NETWORKING syslogd
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="kontrol_id_winbind"
+rcvar="kontrol_id_winbind_enable"
+command="%%PREFIX%%/sbin/winbindd"
+procname="%%PREFIX%%/sbin/winbindd"
+required_files="%%PREFIX%%/etc/kontrol-id/smb4.conf /var/db/kontrol-id-domain/winbind.enabled"
+command_args="--daemon --configfile=%%PREFIX%%/etc/kontrol-id/smb4.conf"
+start_precmd="kontrol_id_winbind_precmd"
+
+kontrol_id_winbind_precmd()
+{
+	install -d -o root -g proxy -m 0750 /var/run/kontrol-id-samba
+	install -d -o root -g proxy -m 0750 /var/run/kontrol-id-samba/winbindd
+}
+
+pidfile="/var/run/kontrol-id-samba/winbindd.pid"
+
+load_rc_config "${name}"
+if [ -f /var/db/kontrol-id-domain/winbind.enabled ]; then
+	: ${kontrol_id_winbind_enable:="YES"}
+else
+	: ${kontrol_id_winbind_enable:="NO"}
+fi
+
+run_rc_command "$1"
