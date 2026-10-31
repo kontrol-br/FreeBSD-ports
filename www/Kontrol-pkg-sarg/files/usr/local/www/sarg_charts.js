@@ -143,7 +143,7 @@
 			var bytes = bi >= 0 && cells[bi] ? number(text(cells[bi])) : accesses;
 			if (label && (accesses > 0 || bytes > 0)) result.push({ label: label, accesses: accesses, bytes: bytes });
 		});
-		return result.slice(0, 7);
+		return result;
 	}
 
 	function element(name, className, value) {
@@ -156,9 +156,13 @@
 	function bars(data) {
 		var chart = element("section", "sarg-chart");
 		chart.appendChild(element("h3", "", "Acessos por origem"));
-		var max = Math.max.apply(null, data.map(function (item) { return item.accesses || item.bytes; }));
+		if (!data.length) {
+			chart.appendChild(element("p", "sarg-chart-empty", "Sem acessos registrados"));
+			return chart;
+		}
+		var max = Math.max.apply(null, data.map(function (item) { return item.accesses; }));
 		data.forEach(function (item, index) {
-			var value = item.accesses || item.bytes;
+			var value = item.accesses;
 			var row = element("div", "sarg-bar-row");
 			row.title = item.label + ": " + compactCount(value);
 			row.appendChild(element("span", "sarg-bar-label", item.label));
@@ -184,17 +188,21 @@
 	function pie(data) {
 		var chart = element("section", "sarg-chart");
 		chart.appendChild(element("h3", "", "Participação no tráfego"));
+		var pieData = data.filter(function (item) { return item.bytes > 0; }).slice(0, 5);
+		if (!pieData.length) {
+			chart.appendChild(element("p", "sarg-chart-empty", "Sem volume registrado"));
+			return chart;
+		}
 		var layout = element("div", "sarg-pie-layout");
 		var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 		svg.setAttribute("viewBox", "0 0 120 120");
 		svg.setAttribute("class", "sarg-pie");
 		svg.setAttribute("role", "img");
-		var pieData = data.filter(function (item) { return (item.bytes || item.accesses) > 0; }).slice(0, 5);
-		var total = pieData.reduce(function (sum, item) { return sum + (item.bytes || item.accesses); }, 0);
+		var total = pieData.reduce(function (sum, item) { return sum + item.bytes; }, 0);
 		var angle = -Math.PI / 2;
 		var legend = element("div", "sarg-pie-legend");
 		pieData.forEach(function (item, index) {
-			var value = item.bytes || item.accesses;
+			var value = item.bytes;
 			var next = angle + (value / total) * Math.PI * 2;
 			if (pieData.length === 1) {
 				var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -228,10 +236,14 @@
 	function columns(data) {
 		var chart = element("section", "sarg-chart");
 		chart.appendChild(element("h3", "", "Volume comparado"));
+		if (!data.length) {
+			chart.appendChild(element("p", "sarg-chart-empty", "Sem volume registrado"));
+			return chart;
+		}
 		var area = element("div", "sarg-columns");
-		var max = Math.max.apply(null, data.map(function (item) { return item.bytes || item.accesses; }));
+		var max = Math.max.apply(null, data.map(function (item) { return item.bytes; }));
 		data.forEach(function (item, index) {
-			var value = item.bytes || item.accesses;
+			var value = item.bytes;
 			var column = element("div", "sarg-column-item");
 			column.title = item.label + ": " + formatBytes(value);
 			column.appendChild(element("span", "sarg-column-value", formatBytes(value)));
@@ -261,6 +273,10 @@
 			formatByteColumns(reportTable);
 		});
 		if (!table || data.length < 2 || !data.some(function (item) { return item.accesses > 0 || item.bytes > 0; })) return;
+		var accessData = data.filter(function (item) { return item.accesses > 0; })
+			.sort(function (left, right) { return right.accesses - left.accesses; }).slice(0, 7);
+		var byteData = data.filter(function (item) { return item.bytes > 0; })
+			.sort(function (left, right) { return right.bytes - left.bytes; }).slice(0, 7);
 
 		var analytics = element("section", "sarg-analytics");
 		analytics.setAttribute("aria-label", "Resumo visual do relatório");
@@ -269,9 +285,9 @@
 		heading.appendChild(element("span", "sarg-analytics__meta", "Principais registros deste relatório"));
 		analytics.appendChild(heading);
 		var grid = element("div", "sarg-analytics__grid");
-		grid.appendChild(bars(data));
-		grid.appendChild(pie(data));
-		grid.appendChild(columns(data));
+		grid.appendChild(bars(accessData));
+		grid.appendChild(pie(byteData));
+		grid.appendChild(columns(byteData));
 		analytics.appendChild(grid);
 		var report = table.closest ? table.closest(".report") : null;
 		if (!report || !report.parentNode) return;

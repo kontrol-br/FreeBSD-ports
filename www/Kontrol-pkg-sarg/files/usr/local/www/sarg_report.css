@@ -153,6 +153,7 @@ img[src$="graph.png"][title*="Graphic"] {
 .sarg-chart:first-child { padding-left: 0; border-left: 0; }
 .sarg-chart:last-child { padding-right: 0; }
 .sarg-chart h3 { margin: 0 0 14px; color: #40505f; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.sarg-chart-empty { margin: 24px 0; color: var(--sarg-muted); font-size: 12px; }
 
 .sarg-bar-row { display: grid; grid-template-columns: minmax(74px, 1fr) 2.2fr auto; align-items: center; gap: 9px; margin: 9px 0; }
 .sarg-bar-label { overflow: hidden; color: #425261; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
