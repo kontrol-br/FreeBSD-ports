@@ -31,11 +31,11 @@ stop_postcmd="kontrol_id_stop_postcmd"
 reload_cmd="kontrol_id_reload_cmd"
 extra_commands="reload"
 
-command_args="-p ${pidfile} -f ${kontrol_id_config}"
+command_args="-c ${kontrol_id_config}"
 
 kontrol_id_reload_cmd() {
 	if [ -r "${pidfile}" ]; then
-		${command} -g -p "${pidfile}" -f "${kontrol_id_config}" ${kontrol_id_flags}
+		${command} -g -c "${kontrol_id_config}" ${kontrol_id_flags}
 		echo "Reloading Kontrol-ID."
 	fi
 }

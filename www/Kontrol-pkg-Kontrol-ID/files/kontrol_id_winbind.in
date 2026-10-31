@@ -17,7 +17,9 @@ start_precmd="kontrol_id_winbind_precmd"
 kontrol_id_winbind_precmd()
 {
 	install -d -o root -g proxy -m 0750 /var/run/kontrol-id-samba
-	install -d -o root -g proxy -m 0750 /var/run/kontrol-id-samba/winbindd
+	# wbinfo and ntlm_auth use Samba's compiled socket location.  The state,
+	# cache, lock and PID paths remain isolated under package-owned trees.
+	install -d -o root -g wheel -m 0755 /var/run/samba4
 }
 
 pidfile="/var/run/kontrol-id-samba/winbindd.pid"

@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
-PORTREVISION=	7
+PORTREVISION=	8
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -14,7 +14,8 @@ COMMENT=	Standalone authenticated secure web gateway for Kontrol
 LICENSE=	APACHE20
 
 RUN_DEPENDS=	Kontrol-pkg-Kontrol-ID-Policy>=1.0.0:www/Kontrol-pkg-Kontrol-ID-Policy \
-		kontrol-id>=5.4.23_2:www/kontrol-id
+		kontrol-id>=5.4.23_2:www/kontrol-id \
+		samba416>=4.16:net/samba416
 LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libsqlite3.so:databases/sqlite3 \
 		libxml2.so:textproc/libxml2

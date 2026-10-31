@@ -1009,7 +1009,6 @@ function kontrol_id_write_domain_config($settings = null) {
 		" cache directory = " . KONTROL_ID_SAMBA_CACHE . "\n" .
 		" lock directory = " . KONTROL_ID_SAMBA_LOCK . "\n" .
 		" pid directory = " . KONTROL_ID_SAMBA_RUN . "\n" .
-		" winbindd socket directory = " . KONTROL_ID_SAMBA_RUN . "/winbindd\n" .
 		" winbind use default domain = yes\n" .
 		" winbind enum users = no\n" .
 		" winbind enum groups = no\n" .
@@ -1984,9 +1983,15 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['parentmode'] = 'direct';
 	$engine['proxyip'] = '';
 	$engine['proxyport'] = '';
+	$engine['icapport'] = '';
+	$engine['watchdog'] = '';
+	$engine['allow_interface'] = 'on';
 	$engine['applyaction'] = 'rc.d';
 	$engine['httpworkers'] = (string)max(64, min(20000,
 		(int)($settings['engine_workers'] ?? 256)));
+	$engine['enablessl'] = (($settings['traffic_mode'] ?? 'http_only') === 'http_https') ? 'on' : '';
+	$engine['dca'] = $settings['ca_ref'] ?? '';
+	$engine['ssl_proxy_port'] = '3129';
 
 	if (($settings['access_mode'] ?? 'transparent') === 'transparent') {
 		$engine['transparent_proxy'] = $enabled ? 'on' : '';

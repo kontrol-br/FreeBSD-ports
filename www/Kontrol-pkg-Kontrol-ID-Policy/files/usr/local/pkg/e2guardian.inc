@@ -1209,24 +1209,22 @@ function e2g_generate_rules($type) {
 function e2guardian_enforce_kontrol_id_managed_config() {
     $kontrol_id = config_get_path('installedpackages/kontrolid/config/0', array());
     if (!is_array($kontrol_id) || ($kontrol_id['enable'] ?? '') !== 'on' ||
-        ($kontrol_id['e2guardian_integration'] ?? '') !== 'on' ||
+        ($kontrol_id['engine_integration'] ?? '') !== 'on' ||
         !file_exists('/usr/local/pkg/kontrol_id.inc')) {
         return false;
     }
 
     $before_general = config_get_path('installedpackages/e2guardian/config/0', array());
     $before_options = config_get_path('installedpackages/e2guardianconfig/config/0', array());
-    $before_groups = config_get_path('installedpackages/e2guardiangroups/config', array());
     require_once('/usr/local/pkg/kontrol_id.inc');
-    if (!function_exists('kontrol_id_apply_e2guardian_integration')) {
+    if (!function_exists('kontrol_id_apply_standalone_engine')) {
         return false;
     }
-    kontrol_id_apply_e2guardian_integration(true);
+    kontrol_id_apply_standalone_engine(true);
     $changed = ($before_general !== config_get_path('installedpackages/e2guardian/config/0', array()) ||
-        $before_options !== config_get_path('installedpackages/e2guardianconfig/config/0', array()) ||
-        $before_groups !== config_get_path('installedpackages/e2guardiangroups/config', array()));
+        $before_options !== config_get_path('installedpackages/e2guardianconfig/config/0', array()));
     if ($changed) {
-        write_config('Kontrol-ID reapplied managed E2Guardian ICAP settings.');
+        write_config('Kontrol-ID reapplied standalone gateway settings.');
     }
     return $changed;
 }
@@ -2669,8 +2667,12 @@ EOF;
         require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
         read_lists(false);
     }
-    $daemonuser = 'nobody';
-    $daemongroup = 'nobody';
+    /* The standalone engine must retain read access to the package-owned
+     * keytab and PKI after dropping privileges.  Use the dedicated proxy
+     * account instead of the generic nobody account; the generator below
+     * also assigns its runtime configuration and log trees accordingly. */
+    $daemonuser = 'proxy';
+    $daemongroup = 'proxy';
     $filtergroups = ($count > 1?($count -1):1);
     $filterip = "";
     $checkip_list = array("127.0.0.1");

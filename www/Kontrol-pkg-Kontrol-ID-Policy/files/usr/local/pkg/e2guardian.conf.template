@@ -583,7 +583,7 @@ httpworkers = {$httpworkers}
 # PID filename
 #
 # Defines process id directory and filename.
-#pidfilename = '/var/run/e2guardian.pid'
+pidfilename = '/var/run/kontrol-id.pid'
 
 # Disable daemoning
 # If enabled the process will not fork into the background.
