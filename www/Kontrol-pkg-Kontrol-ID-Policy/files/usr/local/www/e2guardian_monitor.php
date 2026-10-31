@@ -26,8 +26,9 @@ require_once("/etc/inc/functions.inc");
 require_once("/etc/inc/pkg-utils.inc");
 require_once("/etc/inc/globals.inc");
 require_once("guiconfig.inc");
+require_once("/usr/local/pkg/kontrol_id.inc");
 
-$pgtitle = array(gettext("Package"), gettext("E2guardian"), gettext("Monitor"));
+$pgtitle = array(gettext("Services"), gettext("Kontrol-ID"), gettext("Real Time"));
 $shortcut_section = "e2guardian";
 include("head.inc");
 
@@ -35,22 +36,7 @@ if ($savemsg) {
     print_info_box($savemsg);
 }
 
-$tab_array = array();
-    $tab_array[] = array(gettext("Daemon"), false, "/pkg_edit.php?xml=e2guardian.xml");
-    $tab_array[] = array(gettext("General"), false, "/pkg_edit.php?xml=e2guardian_config.xml");
-    $tab_array[] = array(gettext("Limits"), false, "/pkg_edit.php?xml=e2guardian_limits.xml");
-    $tab_array[] = array(gettext("Blacklist"), false, "/pkg_edit.php?xml=e2guardian_blacklist.xml");
-    $tab_array[] = array(gettext("ACLs"), false, "/pkg.php?xml=e2guardian_site_acl.xml");
-    $tab_array[] = array(gettext("LDAP"), false, "/pkg.php?xml=e2guardian_ldap.xml");
-    $tab_array[] = array(gettext("Groups"), false, "/pkg.php?xml=e2guardian_groups.xml");
-    $tab_array[] = array(gettext("Users"), false, "/pkg_edit.php?xml=e2guardian_users.xml");
-    $tab_array[] = array(gettext("IPs"), false, "/pkg_edit.php?xml=e2guardian_ips.xml");
-    $tab_array[] = array(gettext("Gateways"), false, "/pkg.php?xml=e2guardian_gateways.xml");
-    $tab_array[] = array(gettext("Real Time"), true, "/e2guardian_monitor.php");
-    $tab_array[] = array(gettext("Report and log"), false, "/pkg_edit.php?xml=e2guardian_log.xml");
-    $tab_array[] = array(gettext("Sync"), false, "/pkg_edit.php?xml=e2guardian_sync.xml");
-
-display_top_tabs($tab_array);
+display_top_tabs(kontrol_id_tabs('realtime'));
 
 if (is_array($config['installedpackages']['e2guardianlog'])) {
         $e2glog = $config['installedpackages']['e2guardianlog']['config'][0];
@@ -147,7 +133,7 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
     </div>
     </div>
     <div class="panel panel-default" style='margin:0 auto;width:97%'>
-    <div class="panel-heading"><h2 class="panel-title"><?=gettext("E2guardian Access Table"); ?></h2></div>
+    <div class="panel-heading"><h2 class="panel-title"><?=gettext("Kontrol-ID Access Table"); ?></h2></div>
     <div class="panel-body">
         <div class="">
             <table class="table table-responsive table-striped table-hover table-condensed"

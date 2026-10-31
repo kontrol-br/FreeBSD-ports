@@ -33,6 +33,18 @@ $pfs_version = substr(trim(file_get_contents("/etc/version")),0,3);
 
 require_once("xmlrpc_client.inc");
 
+/* Kontrol-ID owns the product navigation and managed authentication UI.  The
+ * policy package keeps its independent implementation, but contributes its
+ * pages to the single Kontrol-ID tab bar when the manager is installed. */
+if (is_file('/usr/local/pkg/kontrol_id.inc') &&
+    !function_exists('kontrol_id_adjust_package_tabs')) {
+    require_once('/usr/local/pkg/kontrol_id.inc');
+}
+if (isset($pkg) && is_array($pkg) &&
+    function_exists('kontrol_id_adjust_package_tabs')) {
+    kontrol_id_adjust_package_tabs($pkg);
+}
+
 /*Chamadas array*/
 
 if (!function_exists('e2g_log_info')) {
@@ -334,7 +346,7 @@ if ($_POST['clear_cert_cache'] == 'clear_cert_cache') {
 }
 
 if ($_POST['e2g_export_settings'] == 'e2g_export_settings') {
-    $export_name = 'e2guardian-config-' . date('Ymd-His') . '.xml';
+    $export_name = 'kontrol-id-config-' . date('Ymd-His') . '.xml';
     $xml_payload = e2guardian_export_settings_xml();
 
     header('Content-Type: application/xml');
@@ -349,16 +361,16 @@ if ($_POST['e2g_import_settings'] == 'e2g_import_settings') {
     $payload = trim((string)($_POST['e2g_import_payload'] ?? ''));
 
     if ($payload === '') {
-        $input_errors[] = gettext('Choose a valid E2guardian XML export file before importing.');
+        $input_errors[] = gettext('Choose a valid Kontrol-ID XML export file before importing.');
     } elseif (e2guardian_import_settings_xml($payload, $input_errors)) {
-        write_config('[E2guardian] Imported package settings');
+        write_config('Kontrol-ID package settings imported.');
         sync_package_e2guardian();
         e2guardian_start('yes');
-        file_notice('E2guardian', gettext('Import completed successfully.'), gettext('E2guardian settings were imported and applied.'), 'success');
+        file_notice('Kontrol-ID', gettext('Import completed successfully.'), gettext('Kontrol-ID settings were imported and applied.'), 'success');
     }
 
     foreach ($input_errors as $error) {
-        file_notice('E2guardian', $error, gettext('Failed to import E2guardian settings.'), 'danger');
+        file_notice('Kontrol-ID', $error, gettext('Failed to import Kontrol-ID settings.'), 'danger');
     }
 }
 
@@ -1150,6 +1162,39 @@ function e2g_generate_rules($type) {
             break;
         case 'filter':
         case 'rule':
+            /* QUIC carries HTTP/3 over UDP and cannot be inspected by the
+             * current TCP/TLS gateway.  Block it only for transparent HTTPS
+             * interception so standards-compliant clients fall back to TCP.
+             * Preserve the same source/destination bypasses as the redirect
+             * rules; never use a quick pass that could override site policy. */
+            if ($e2g_conf['transparent_proxy'] == 'on' && $ssl_intercept_enabled) {
+                $quic_source_bypass = e2g_normalize_bypass_entries(
+                    $e2g_conf['defined_ip_proxy_off'] ?? '',
+                    'transparent QUIC source bypass list'
+                );
+                $quic_destination_bypass = e2g_normalize_bypass_entries(
+                    $e2g_conf['defined_ip_proxy_off_dest'] ?? '',
+                    'transparent QUIC destination bypass list'
+                );
+                if ($e2g_conf['private_subnet_proxy_off'] == 'on') {
+                    $quic_destination_bypass = array_merge($quic_destination_bypass, array(
+                        '192.168.0.0/16', '172.16.0.0/12', '10.0.0.0/8'
+                    ));
+                }
+                $quic_source = empty($quic_source_bypass) ?
+                    'any' : '{ any, ! ' . implode(', ! ', array_unique($quic_source_bypass)) . ' }';
+                $quic_destination = empty($quic_destination_bypass) ?
+                    'any' : '{ any, ! ' . implode(', ! ', array_unique($quic_destination_bypass)) . ' }';
+                $rules .= "\n# Kontrol-ID: force HTTP/3 clients to inspected TCP/TLS\n";
+                foreach ($transparent_ifaces as $iface) {
+                    $rules .= "block drop in quick on {$iface} inet proto udp from {$quic_source} to {$quic_destination} port 443\n";
+                }
+                if (($config['pppoe']['mode'] == 'server' && $config['pppoe']['localip']) ||
+                    (function_exists('is_pppoe_server_enabled') && is_pppoe_server_enabled())) {
+                    $rules .= "block drop in quick on \$pppoe inet proto udp from {$quic_source} to {$quic_destination} port 443\n";
+                }
+                $rules .= "\n";
+            }
             /*
              * Outbound Gateway Policy Routing rules for E2guardian
              * Match packets tagged with each gateway's TOS mark and route-to the corresponding gateway
@@ -3529,8 +3574,18 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
     //check ca certs hashes
     check_ca_hashes();
 
-    //avoid sync during boot process
-    if (!isset($boot_process) || $via_rpc == "yes") {
+    // Kontrol-ID owns a single HA profile for identity and filtering policy.
+    // Do not bounce an XMLRPC-applied change back to the master.
+    if (!isset($boot_process) && $via_rpc !== "yes" &&
+        empty($GLOBALS['kontrol_id_managed_resync']) &&
+        function_exists('kontrol_id_sync_on_changes')) {
+        kontrol_id_sync_on_changes();
+    }
+
+    // Retain the legacy policy-only synchronizer when this package is used
+    // without the Kontrol-ID manager.
+    if (!function_exists('kontrol_id_sync_on_changes') &&
+        (!isset($boot_process) || $via_rpc == "yes")) {
         /* Uses XMLRPC to synchronize the changes to a remote node */
         if (is_array($config['installedpackages']['e2guardiansync']['config'])) {
             $e2_sync = $config['installedpackages']['e2guardiansync']['config'][0];
@@ -3903,13 +3958,18 @@ function e2guardian_package_version() {
     return '0.9.3';
 }
 
-function e2guardian_export_sections() {
-    return array(
+function e2guardian_export_sections($include_identity = true) {
+    $sections = array(
         'e2guardian', 'e2guardianconfig', 'e2guardianblacklist',
         'e2guardianldap', 'e2guardiancontentacl', 'e2guardianfileacl', 'e2guardiangroups', 'e2guardianheaderacl',
         'e2guardianlimits', 'e2guardianlog', 'e2guardiansearchacl',
         'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips', 'e2guardiangateways'
     );
+    if ($include_identity) {
+        $sections[] = 'kontrolid';
+        $sections[] = 'kontrolidsync';
+    }
+    return $sections;
 }
 
 function e2guardian_is_assoc_array(array $array) {
@@ -4001,11 +4061,11 @@ function e2guardian_export_settings_xml() {
     $document = new DOMDocument('1.0', 'UTF-8');
     $document->formatOutput = true;
 
-    $root = $document->createElement('e2guardian_export');
+    $root = $document->createElement('kontrol_id_export');
     $root->setAttribute('schema_version', '1');
     $document->appendChild($root);
 
-    $root->appendChild($document->createElement('package', 'e2guardian'));
+    $root->appendChild($document->createElement('package', 'kontrol-id'));
     $root->appendChild($document->createElement('package_version', e2guardian_package_version()));
     $root->appendChild($document->createElement('created_at', date('c')));
 
@@ -4034,7 +4094,7 @@ function e2guardian_export_settings_xml() {
 
     $signature_payload = json_encode(array(
         'schema_version' => '1',
-        'package' => 'e2guardian',
+        'package' => 'kontrol-id',
         'package_version' => e2guardian_package_version(),
         'sections' => $signature_sections,
         'checksums' => $signature_checksums
@@ -4062,8 +4122,8 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
         return false;
     }
 
-    if ($xml->getName() !== 'e2guardian_export') {
-        $input_errors[] = gettext('Invalid import file: root element is not e2guardian_export.');
+    if (!in_array($xml->getName(), array('kontrol_id_export', 'e2guardian_export'), true)) {
+        $input_errors[] = gettext('Invalid import file: unsupported root element.');
         return false;
     }
 
@@ -4075,8 +4135,8 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
     if ($schema_version !== '1') {
         $input_errors[] = sprintf(gettext('Unsupported schema version: %s.'), $schema_version);
     }
-    if ($package_name !== 'e2guardian') {
-        $input_errors[] = gettext('Invalid import file: package marker is not e2guardian.');
+    if (!in_array($package_name, array('kontrol-id', 'e2guardian'), true)) {
+        $input_errors[] = gettext('Invalid import file: package marker is not Kontrol-ID.');
     }
     if ($package_version !== e2guardian_package_version()) {
         $input_errors[] = sprintf(gettext('Package version mismatch: expected %s, got %s.'), e2guardian_package_version(), $package_version);
@@ -4091,7 +4151,7 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
         return false;
     }
 
-    $expected_sections = e2guardian_export_sections();
+    $expected_sections = e2guardian_export_sections($package_name !== 'e2guardian');
     $pending_sections = array();
     $signature_sections = array();
     $signature_checksums = array();
@@ -4144,7 +4204,7 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
 
     $signature_payload = json_encode(array(
         'schema_version' => '1',
-        'package' => 'e2guardian',
+        'package' => $package_name,
         'package_version' => $package_version,
         'sections' => $signature_sections,
         'checksums' => $signature_checksums

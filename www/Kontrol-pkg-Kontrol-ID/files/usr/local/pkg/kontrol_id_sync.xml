@@ -20,7 +20,7 @@
 		<field>
 			<fielddescr>Enable Sync</fielddescr>
 			<fieldname>synconchanges</fieldname>
-			<description><![CDATA[Use the system HA peer or explicitly configured replica hosts. Package settings and the package-owned CA/client certificate are synchronized. Runtime identity, portal sessions, AD machine secrets and Kerberos keytabs remain local to each node; join or import a keytab separately on every HA member.]]></description>
+			<description><![CDATA[Use the system HA peer or explicitly configured replica hosts. Kontrol-ID identity settings, filtering policies, lists and the package-owned CA/client certificate are synchronized as one product. Runtime identity, portal sessions, AD machine secrets and Kerberos keytabs remain local to each node; join or import a keytab separately on every HA member.]]></description>
 			<type>select</type>
 			<default_value>auto</default_value>
 			<options>

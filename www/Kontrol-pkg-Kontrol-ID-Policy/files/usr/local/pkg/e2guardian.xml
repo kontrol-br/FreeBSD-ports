@@ -35,12 +35,6 @@
     <delete_string>E2guardian: removed a configuration item.</delete_string>
     <addedit_string>E2guardian: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
-    <menu>
-        <name>E2guardian Proxy</name>
-        <tooltiptext>Configure e2guardian</tooltiptext>
-        <section>Services</section>
-        <url>/pkg_edit.php?xml=e2guardian.xml</url>
-    </menu>
     <service>
         <name>e2guardian</name>
         <rcfile>e2guardian.sh</rcfile>

@@ -153,29 +153,157 @@ function kontrol_id_transparent_mode() {
 	return ($settings['access_mode'] ?? 'transparent') === 'transparent';
 }
 
-function kontrol_id_tabs($active) {
+function kontrol_id_tab_definitions() {
 	$tabs = array(
-		array('General', $active === 'general', '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0')
+		array('key' => 'general', 'text' => 'General', 'url' => '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0')
 	);
 	if (kontrol_id_transparent_mode()) {
-		$tabs[] = array('Status and Enrollment', $active === 'status', '/kontrol_id_status.php');
+		$tabs[] = array('key' => 'status', 'text' => 'Status & Enrollment', 'url' => '/kontrol_id_status.php');
 	}
-	$tabs[] = array('Domain and Keytab', $active === 'domain', '/kontrol_id_domain.php');
-	$tabs[] = array('AD Policy Mapping', $active === 'policy', '/kontrol_id_policy.php');
-	$tabs[] = array('XMLRPC Sync', $active === 'sync', '/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0');
+	$tabs = array_merge($tabs, array(
+		array('key' => 'domain', 'text' => 'Domain & Keytab', 'url' => '/kontrol_id_domain.php'),
+		array('key' => 'policy', 'text' => 'AD Policy', 'url' => '/kontrol_id_policy.php'),
+		array('key' => 'engine', 'text' => 'Engine', 'url' => '/pkg_edit.php?xml=e2guardian.xml&amp;id=0'),
+		array('key' => 'limits', 'text' => 'Limits', 'url' => '/pkg_edit.php?xml=e2guardian_limits.xml&amp;id=0'),
+		array('key' => 'blacklist', 'text' => 'Blacklist', 'url' => '/pkg_edit.php?xml=e2guardian_blacklist.xml&amp;id=0'),
+		array('key' => 'acls', 'text' => 'ACLs', 'url' => '/pkg.php?xml=e2guardian_site_acl.xml'),
+		array('key' => 'groups', 'text' => 'Groups', 'url' => '/pkg.php?xml=e2guardian_groups.xml'),
+		array('key' => 'ips', 'text' => 'IPs', 'url' => '/pkg_edit.php?xml=e2guardian_ips.xml'),
+		array('key' => 'gateways', 'text' => 'Gateways', 'url' => '/pkg.php?xml=e2guardian_gateways.xml'),
+		array('key' => 'realtime', 'text' => 'Real Time', 'url' => '/e2guardian_monitor.php'),
+		array('key' => 'reports', 'text' => 'Reports & Logs', 'url' => '/pkg_edit.php?xml=e2guardian_log.xml&amp;id=0'),
+		array('key' => 'sync', 'text' => 'XMLRPC Sync', 'url' => '/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0')
+	));
 	return $tabs;
 }
 
-function kontrol_id_adjust_package_tabs(&$pkg) {
-	if (kontrol_id_transparent_mode() || !is_array($pkg['tabs']['tab'] ?? null)) {
+function kontrol_id_tabs($active) {
+	$tabs = array();
+	foreach (kontrol_id_tab_definitions() as $definition) {
+		$tabs[] = array(
+			$definition['text'],
+			$active === $definition['key'],
+			$definition['url']
+		);
+	}
+	return $tabs;
+}
+
+function kontrol_id_package_active_tab($name) {
+	$map = array(
+		'kontrolid' => 'general',
+		'kontrolidsync' => 'sync',
+		'e2guardian' => 'engine',
+		'e2guardianconfig' => 'engine',
+		'e2guardianlimits' => 'limits',
+		'e2guardianblacklist' => 'blacklist',
+		'e2guardiansiteacl' => 'acls',
+		'e2guardianurlacl' => 'acls',
+		'e2guardianfileacl' => 'acls',
+		'e2guardiancontentacl' => 'acls',
+		'e2guardianheaderacl' => 'acls',
+		'e2guardiansearchacl' => 'acls',
+		'e2guardiangroups' => 'groups',
+		'e2guardianldap' => 'groups',
+		'e2guardianusers' => 'groups',
+		'e2guardianips' => 'ips',
+		'e2guardiangateways' => 'gateways',
+		'e2guardianlog' => 'reports',
+		'e2guardiansync' => 'sync'
+	);
+	return $map[$name] ?? 'general';
+}
+
+function kontrol_id_adjust_policy_fields(&$pkg) {
+	$name = $pkg['name'] ?? '';
+	if (strpos($name, 'e2guardian') !== 0) {
 		return;
 	}
-	$pkg['tabs']['tab'] = array_values(array_filter(
-		$pkg['tabs']['tab'],
-		function ($tab) {
-			return ($tab['text'] ?? '') !== 'Status and Enrollment';
+	foreach (array('title', 'delete_string', 'addedit_string') as $label) {
+		if (isset($pkg[$label]) && is_string($pkg[$label])) {
+			$pkg[$label] = str_ireplace('E2guardian', 'Kontrol-ID', $pkg[$label]);
 		}
-	));
+	}
+	if (!is_array($pkg['fields']['field'] ?? null)) {
+		return;
+	}
+	$hidden = array('auth_plugin');
+	if ($name === 'e2guardian') {
+		$hidden = array_merge($hidden, array(
+			'icapport', 'parentmode', 'proxyip', 'proxyport', 'proxytimeout', 'watchdog'
+		));
+		unset($pkg['advanced_options']);
+	}
+	$fields = array();
+	foreach ($pkg['fields']['field'] as $field) {
+		$fieldname = $field['fieldname'] ?? '';
+		if (in_array($fieldname, $hidden, true)) {
+			continue;
+		}
+		foreach (array('fielddescr', 'name') as $label) {
+			if (isset($field[$label]) && is_string($field[$label])) {
+				$field[$label] = str_ireplace('E2guardian', 'Kontrol-ID', $field[$label]);
+			}
+		}
+		foreach (array('description', 'sethelp') as $label) {
+			if (isset($field[$label]) && is_string($field[$label])) {
+				$field[$label] = str_replace(
+					array('E2guardian', 'E2Guardian'),
+					'Kontrol-ID',
+					$field[$label]
+				);
+			}
+		}
+		if (is_array($field['options']['option'] ?? null)) {
+			foreach ($field['options']['option'] as &$option) {
+				if (isset($option['name']) && is_string($option['name'])) {
+					$option['name'] = str_ireplace('E2guardian', 'Kontrol-ID', $option['name']);
+				}
+			}
+			unset($option);
+		}
+		if ($name === 'e2guardian' && ($field['name'] ?? '') === 'Advanced Features') {
+			$field['name'] = 'Configuration Backup';
+			unset($field['advancedfield']);
+		}
+		if ($name === 'e2guardian' && in_array($fieldname, array(
+			'e2g_export_settings_button', 'e2g_import_controls'
+		), true)) {
+			unset($field['advancedfield']);
+			if (isset($field['fielddescr'])) {
+				$field['fielddescr'] = str_ireplace('E2guardian', 'Kontrol-ID', $field['fielddescr']);
+			}
+			if (isset($field['description'])) {
+				$field['description'] = str_ireplace('E2guardian', 'Kontrol-ID', $field['description']);
+			}
+		}
+		$fields[] = $field;
+	}
+	$pkg['fields']['field'] = $fields;
+}
+
+function kontrol_id_adjust_package_tabs(&$pkg) {
+	$name = $pkg['name'] ?? '';
+	if ($name !== 'kontrolid' && $name !== 'kontrolidsync' &&
+		strpos($name, 'e2guardian') !== 0) {
+		return;
+	}
+	$active = kontrol_id_package_active_tab($name);
+	$tabs = array();
+	foreach (kontrol_id_tab_definitions() as $definition) {
+		$tab = array('text' => $definition['text'], 'url' => $definition['url']);
+		if ($active === $definition['key']) {
+			$tab['active'] = '';
+		}
+		$tabs[] = $tab;
+	}
+	foreach (($pkg['tabs']['tab'] ?? array()) as $tab) {
+		if ((int)($tab['tab_level'] ?? 1) > 1) {
+			$tabs[] = $tab;
+		}
+	}
+	$pkg['tabs']['tab'] = $tabs;
+	kontrol_id_adjust_policy_fields($pkg);
 }
 
 function kontrol_id_print_managed_service_icons() {
@@ -2218,10 +2346,21 @@ function kontrol_id_resync($sync = true) {
 		if (function_exists('sync_package_e2guardian')) {
 			$had_csrf = isset($_POST['__csrf_magic']);
 			$previous_csrf = $_POST['__csrf_magic'] ?? null;
+			$had_managed_resync = isset($GLOBALS['kontrol_id_managed_resync']);
+			$previous_managed_resync = $GLOBALS['kontrol_id_managed_resync'] ?? null;
 			if (!$had_csrf || empty($previous_csrf)) {
 				$_POST['__csrf_magic'] = 'kontrol-id-managed-resync';
 			}
-			sync_package_e2guardian('no', false);
+			$GLOBALS['kontrol_id_managed_resync'] = true;
+			try {
+				sync_package_e2guardian('no', false);
+			} finally {
+				if ($had_managed_resync) {
+					$GLOBALS['kontrol_id_managed_resync'] = $previous_managed_resync;
+				} else {
+					unset($GLOBALS['kontrol_id_managed_resync']);
+				}
+			}
 			if ($had_csrf) {
 				$_POST['__csrf_magic'] = $previous_csrf;
 			} else {
@@ -2366,9 +2505,19 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 			unset($kontrolid['config'][0][$local_field]);
 		}
 	}
+	$policy = array();
+	if (is_file('/usr/local/pkg/e2guardian.inc')) {
+		require_once('/usr/local/pkg/e2guardian.inc');
+		if (function_exists('e2guardian_export_sections')) {
+			foreach (e2guardian_export_sections(false) as $section) {
+				$policy[$section] = config_get_path('installedpackages/' . $section, array());
+			}
+		}
+	}
 	$sync_payload = base64_encode(json_encode(array(
 		'settings' => $kontrolid['config'][0] ?? array(),
-		'sync' => config_get_path('installedpackages/kontrolidsync', array())
+		'sync' => config_get_path('installedpackages/kontrolidsync', array()),
+		'policy' => $policy
 	)));
 	$settings = kontrol_id_get_settings();
 	$pki = array(
@@ -2391,6 +2540,9 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 		"}\n" .
 		"config_set_path('installedpackages/kontrolid/config/0', array_merge(kontrol_id_defaults(), \$kid_incoming));\n" .
 		"config_set_path('installedpackages/kontrolidsync', \$kid_sync['sync']);\n" .
+		"foreach ((\$kid_sync['policy'] ?? array()) as \$kid_section => \$kid_policy) {\n" .
+		"  config_set_path('installedpackages/' . \$kid_section, \$kid_policy);\n" .
+		"}\n" .
 		"\$kid_pki = json_decode(base64_decode('{$pki_payload}'), true);\n" .
 		"foreach (array('ca', 'cert') as \$kid_section) {\n" .
 		"  \$kid_item = \$kid_pki[\$kid_section];\n" .
