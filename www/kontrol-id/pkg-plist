@@ -366,6 +366,7 @@ sbin/e2guardian
 %%DATADIR%%/scripts/systemv-init
 %%DATADIR%%/transparent1x1.gif
 @sample %%ETCDIR%%/authplugins/pf-basic.conf.sample
+@sample %%ETCDIR%%/authplugins/kontrol-negotiate.conf.sample
 @sample %%ETCDIR%%/lists/authplugins/filtergroupslist.sample
 @sample %%ETCDIR%%/lists/bannedtimelist.sample
 @sample %%ETCDIR%%/lists/blankettimelist.sample

@@ -1,5 +1,6 @@
 PORTNAME=	kontrol-id
 PORTVERSION=	5.4.23
+PORTREVISION=	1
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=	kontrol-br
@@ -22,8 +23,8 @@ RUN_DEPENDS+=   openssl111>=1.1.1w_2:security/openssl111
 
 LIB_DEPENDS=	libpcre.so:devel/pcre
 
-USES=		autoreconf compiler:c++11-lang libtool localbase pkgconfig \
-		python
+USES=		autoreconf compiler:c++11-lang gssapi:mit,flags libtool localbase \
+		pkgconfig python
 USE_GITHUB=	yes
 #BINARY_ALIAS=	autom4te2.72=autom4te-2.72
 
@@ -32,6 +33,7 @@ USE_RC_SUBR=	kontrol_id
 GNU_CONFIGURE=	yes
 CONFIGURE_ARGS=	--with-logdir=/var/log \
 		--with-piddir=/var/run
+CONFIGURE_ENV+=	LIBS="${GSSAPILIBS}"
 
 OPTIONS_DEFINE=	NTLM DNS EMAIL DEBUG DOCS SSL_MITM
 OPTIONS_DEFAULT=DNS NTLM SSL_MITM
@@ -87,7 +89,13 @@ PLIST_SUB+=	SCANNERS="@comment " CLAMD="@comment " ICAP="@comment " \
 
 SUB_FILES=	pkg-message
 
+post-patch:
+	@${CP} ${FILESDIR}/kontrol_negotiate.cpp \
+		${WRKSRC}/src/authplugins/kontrol_negotiate.cpp
+
 post-install:
+	@${INSTALL_DATA} ${FILESDIR}/kontrol-negotiate.conf \
+		${STAGEDIR}${ETCDIR}/authplugins/kontrol-negotiate.conf.sample
 	@${FIND} ${STAGEDIR}${ETCDIR} -type f \
 		\( -name '*.conf' -or -name '*list' -or -name '*.story' \) \
 		-exec ${MV} {} {}.sample \;
