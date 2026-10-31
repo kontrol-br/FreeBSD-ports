@@ -2614,7 +2614,10 @@ EOF;
 	//Update blacklist categories on Acls
 	if (!$_POST["force_download"] && $_POST["force_update"]) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
-		extract_black_list();
+		/* Re-apply the categories already installed under lists/blacklists.
+		 * The downloaded archive is only an update source and may no longer
+		 * exist, so this action must not try to extract blacklist.tgz again. */
+		read_lists();
 	} elseif (!$_POST["force_download"] && $_POST["liston"]) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		read_lists(false);
