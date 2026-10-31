@@ -3,7 +3,7 @@
 	<package>
 		<name>Kontrol-ID</name>
 		<internal_name>Kontrol-ID</internal_name>
-		<descr><![CDATA[Managed transparent identity or explicit Kerberos, legacy NTLM compatibility and Basic proxy authentication for Squid and E2Guardian, with secure endpoint enrollment and a fallback login portal.]]></descr>
+		<descr><![CDATA[Standalone secure web gateway with transparent identity or native Kerberos, NTLMv2 and HTTP Basic proxy authentication, secure endpoint enrollment and a fallback login portal.]]></descr>
 		<pkginfolink>https://kontrol.com.br/</pkginfolink>
 		<version>%%PKGVERSION%%</version>
 		<configurationfile>kontrol_id.xml</configurationfile>

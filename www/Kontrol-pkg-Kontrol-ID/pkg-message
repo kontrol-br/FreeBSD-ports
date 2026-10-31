@@ -11,10 +11,11 @@ packages because they own the same listener and policy paths. Remove the
 conflicting products before installing Kontrol-ID.
 
 Transparent mode identifies Windows users by source IP and never challenges an
-intercepted browser. Explicit proxy mode supports native Kerberos/SPNEGO and
-opt-in NTLMv2 compatibility through the managed Winbind service. Configure and
-validate AD membership or import an AES keytab under Services > Kontrol-ID >
-Domain and Keytab before enabling domain authentication.
+intercepted browser. Explicit proxy mode supports Kerberos/SPNEGO, Kerberos
+with NTLMv2 fallback, standalone NTLMv2 and HTTP Basic for trusted networks.
+Domain authentication uses the package-owned keytab and managed Winbind
+service. Configure and validate them under Services > Kontrol-ID > Domain and
+Keytab before enabling the respective method.
 
 For transparent identity, generate an enrollment token under Status and
 Enrollment and provision Windows endpoints before enforcement. Domain join

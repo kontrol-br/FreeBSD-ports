@@ -85,8 +85,8 @@
 			<fieldname>access_mode</fieldname>
 			<description><![CDATA[
 				Transparent mode identifies the workstation by source IP and does not challenge the browser. Explicit mode requires
-				clients to use the proxy address or PAC/WPAD. The standalone engine supports native Kerberos/SPNEGO and
-				NTLMv2 backed by the package-owned Samba/Winbind machine trust.
+				clients to use the proxy address or PAC/WPAD. The standalone engine supports native Kerberos/SPNEGO, NTLMv2,
+				and HTTP Basic backed by the selected Kontrol authentication server.
 			]]></description>
 			<type>select</type>
 			<default_value>transparent</default_value>
@@ -99,14 +99,19 @@
 			<fielddescr>Explicit Authentication</fielddescr>
 			<fieldname>explicit_auth</fieldname>
 			<description><![CDATA[
-				Kerberos/SPNEGO is recommended and validates browser tickets against the package-owned keytab. NTLMv2 is available
-				for legacy domain clients and validates every challenge through Winbind; NTLMv1 and LM are not accepted.
+				Kerberos/SPNEGO is recommended and validates browser tickets against the package-owned keytab. The combined mode
+				tries Kerberos first and only falls back to NTLMv2 for legacy domain clients. NTLM challenges are validated through
+				Winbind; NTLMv1 and LM are not accepted. HTTP Basic
+				uses the selected local or LDAP authentication server and should only be used on a trusted client network because
+				proxy credentials are not independently encrypted on the client-to-proxy connection.
 			]]></description>
 			<type>select</type>
 			<default_value>kerberos</default_value>
 			<options>
 				<option><name>Kerberos / SPNEGO (recommended)</name><value>kerberos</value></option>
+				<option><name>Kerberos / SPNEGO with NTLMv2 fallback</name><value>kerberos_ntlm</value></option>
 				<option><name>NTLMv2 / Winbind (legacy clients)</name><value>ntlm</value></option>
+				<option><name>HTTP Basic (Local or LDAP; trusted LAN only)</name><value>basic</value></option>
 			</options>
 		</field>
 		<field>
@@ -343,6 +348,9 @@
 	<custom_php_after_head_command>
 		kontrol_id_print_managed_service_icons();
 	</custom_php_after_head_command>
+	<custom_php_after_form_command>
+		kontrol_id_print_general_auth_visibility();
+	</custom_php_after_form_command>
 	<custom_php_resync_config_command>
 		kontrol_id_resync();
 		if (!empty($_POST['_kontrol_id_activation_deferred'])) {

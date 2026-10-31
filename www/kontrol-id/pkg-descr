@@ -3,9 +3,8 @@ E2Guardian 5.4 engine.  It combines explicit and transparent proxying, TLS
 inspection and exceptions, policy groups, URL/category filtering, block pages,
 logging and reporting in one managed product.
 
-This independent port implements native Kerberos/SPNEGO and NTLMv2
-authentication and is the development boundary for the remaining standalone
-authentication modes.  It intentionally conflicts with the standard E2Guardian
+This independent port implements native Kerberos/SPNEGO, NTLMv2 and HTTP Basic
+authentication.  It intentionally conflicts with the standard E2Guardian
 engine because it preserves the established policy and configuration layout for
 safe migration of existing installations.
 

@@ -1,9 +1,10 @@
 Kontrol-ID manages Kontrol's standalone multithread secure web gateway for
 transparent Windows user identification or explicit proxy authentication. It
-provides native Kerberos/SPNEGO and opt-in NTLMv2/Winbind authentication,
-assisted AD/keytab enrollment, policy-group mapping, TLS inspection, a fallback
-login portal and XMLRPC configuration synchronization.
+provides native Kerberos/SPNEGO, opt-in NTLMv2/Winbind, and HTTP Basic
+authentication through the Kontrol local or LDAP server, assisted AD/keytab
+enrollment, policy-group mapping, TLS inspection, a fallback login portal and
+XMLRPC configuration synchronization.
 
 No Squid process or persistent Kontrol service on Windows endpoints is required.
 Kerberos is the recommended explicit authentication method; NTLMv2 is retained
-as a compatibility mode for legacy domain clients.
+for legacy domain clients and Basic is limited to trusted client networks.

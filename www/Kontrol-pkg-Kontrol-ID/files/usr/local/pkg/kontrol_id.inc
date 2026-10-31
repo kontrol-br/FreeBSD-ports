@@ -22,6 +22,7 @@ define('KONTROL_ID_DOMAIN_DIR', '/var/db/kontrol-id-domain');
 define('KONTROL_ID_KEYTAB', KONTROL_ID_DOMAIN_DIR . '/krb5.keytab');
 define('KONTROL_ID_ENGINE_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-negotiate.conf');
 define('KONTROL_ID_ENGINE_NTLM_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-ntlm.conf');
+define('KONTROL_ID_ENGINE_BASIC_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-basic.conf');
 define('KONTROL_ID_ENGINE_PID', '/var/run/kontrol-id.pid');
 define('KONTROL_ID_WINBIND_MARKER', KONTROL_ID_DOMAIN_DIR . '/winbind.enabled');
 define('KONTROL_ID_WINBIND_PID', '/var/run/kontrol-id-samba/winbindd.pid');
@@ -175,6 +176,23 @@ function kontrol_id_tab_definitions() {
 		array('key' => 'sync', 'text' => 'XMLRPC Sync', 'url' => '/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0')
 	));
 	return $tabs;
+}
+
+function kontrol_id_print_general_auth_visibility() {
+?>
+<script type="text/javascript">
+//<![CDATA[
+events.push(function() {
+	function kontrolIdUpdateExplicitAuthVisibility() {
+		var explicitMode = ($('#access_mode').val() === 'explicit');
+		$('#explicit_auth').closest('.form-group').toggle(explicitMode);
+	}
+	$('#access_mode').on('change', kontrolIdUpdateExplicitAuthVisibility);
+	kontrolIdUpdateExplicitAuthVisibility();
+});
+//]]>
+</script>
+<?php
 }
 
 function kontrol_id_tabs($active) {
@@ -2157,9 +2175,15 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	} else {
 		$engine['transparent_proxy'] = '';
 		$engine['transparent_active_interface'] = '';
+		$auth_plugins = array(
+			'kerberos' => 'kontrol-negotiate.conf',
+			'kerberos_ntlm' => 'kontrol-negotiate.conf,kontrol-ntlm.conf',
+			'ntlm' => 'kontrol-ntlm.conf',
+			'basic' => 'kontrol-basic.conf'
+		);
+		$auth_method = $settings['explicit_auth'] ?? 'kerberos';
 		$plugins['auth_plugin'] = $enabled ?
-			((($settings['explicit_auth'] ?? 'kerberos') === 'ntlm') ?
-			'kontrol-ntlm.conf' : 'kontrol-negotiate.conf') : '';
+			($auth_plugins[$auth_method] ?? $auth_plugins['kerberos']) : '';
 	}
 
 	$domain = kontrol_id_domain_values($settings);
@@ -2168,6 +2192,8 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		"story_function = 'auth_pf_basic'\n" .
 		"keytab = '" . KONTROL_ID_KEYTAB . "'\n" .
 		"service_principal = '" . ($domain['spn'] ?? '') . "'\n" .
+		"allow_ntlm_fallback = '" .
+			(($settings['explicit_auth'] ?? '') === 'kerberos_ntlm' ? 'on' : 'off') . "'\n" .
 		"defaultfiltergroup = 1\n";
 	kontrol_id_atomic_write(KONTROL_ID_ENGINE_AUTH_CONF, $auth_config, 0640, 'wheel');
 	$ntlm_config = "# Managed by Kontrol-ID.\n" .
@@ -2179,6 +2205,15 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		"helper_timeout_ms = 10000\n" .
 		"defaultfiltergroup = 1\n";
 	kontrol_id_atomic_write(KONTROL_ID_ENGINE_NTLM_AUTH_CONF, $ntlm_config, 0640, 'wheel');
+	$basic_config = "# Managed by Kontrol-ID.\n" .
+		"plugname = 'kontrol-basic'\n" .
+		"story_function = 'auth_pf_basic'\n" .
+		"helper_program = '/usr/local/libexec/kontrol-basic-auth'\n" .
+		"helper_children = 32\n" .
+		"helper_timeout_ms = 10000\n" .
+		"realm = 'Kontrol Internet Access'\n" .
+		"defaultfiltergroup = 1\n";
+	kontrol_id_atomic_write(KONTROL_ID_ENGINE_BASIC_AUTH_CONF, $basic_config, 0640, 'wheel');
 
 	config_set_path('installedpackages/e2guardian/config/0', $engine);
 	config_set_path('installedpackages/e2guardianconfig/config/0', $plugins);
@@ -2194,13 +2229,51 @@ function kontrol_id_chain_status() {
 	$interfaces = kontrol_id_normalize_interfaces($settings['intercept_interfaces']);
 	$explicit = ($settings['access_mode'] ?? 'transparent') === 'explicit';
 	$auth_method = $settings['explicit_auth'] ?? 'kerberos';
-	$expected_plugin = $auth_method === 'ntlm' ? 'kontrol-ntlm.conf' : 'kontrol-negotiate.conf';
-	$auth_config_path = $auth_method === 'ntlm' ?
-		KONTROL_ID_ENGINE_NTLM_AUTH_CONF : KONTROL_ID_ENGINE_AUTH_CONF;
-	$auth_config = (string)@file_get_contents($auth_config_path);
-	$credential_ready = $auth_method === 'ntlm' ?
-		(is_file(KONTROL_ID_WINBIND_MARKER) && is_file(KONTROL_ID_WINBIND_PID)) :
-		is_file(KONTROL_ID_KEYTAB);
+	$auth_profiles = array(
+		'kerberos' => array(
+			'plugin' => 'kontrol-negotiate.conf',
+			'configs' => array(KONTROL_ID_ENGINE_AUTH_CONF => 'kontrol-negotiate'),
+			'label' => 'Kerberos / SPNEGO',
+			'detail' => 'Native Negotiate authentication',
+			'ready' => is_file(KONTROL_ID_KEYTAB)
+		),
+		'kerberos_ntlm' => array(
+			'plugin' => 'kontrol-negotiate.conf,kontrol-ntlm.conf',
+			'configs' => array(
+				KONTROL_ID_ENGINE_AUTH_CONF => 'kontrol-negotiate',
+				KONTROL_ID_ENGINE_NTLM_AUTH_CONF => 'kontrol-ntlm'
+			),
+			'label' => 'Kerberos / SPNEGO with NTLMv2 fallback',
+			'detail' => 'Native Negotiate authentication with NTLMv2 fallback',
+			'ready' => is_file(KONTROL_ID_KEYTAB) &&
+				is_file(KONTROL_ID_WINBIND_MARKER) && is_file(KONTROL_ID_WINBIND_PID)
+		),
+		'ntlm' => array(
+			'plugin' => 'kontrol-ntlm.conf',
+			'configs' => array(KONTROL_ID_ENGINE_NTLM_AUTH_CONF => 'kontrol-ntlm'),
+			'label' => 'NTLMv2 / Winbind',
+			'detail' => 'Native NTLMv2 authentication',
+			'ready' => is_file(KONTROL_ID_WINBIND_MARKER) && is_file(KONTROL_ID_WINBIND_PID)
+		),
+		'basic' => array(
+			'plugin' => 'kontrol-basic.conf',
+			'configs' => array(KONTROL_ID_ENGINE_BASIC_AUTH_CONF => 'kontrol-basic'),
+			'label' => 'HTTP Basic',
+			'detail' => 'Native Basic authentication through the selected Kontrol server',
+			'ready' => is_executable('/usr/local/libexec/kontrol-basic-auth')
+		)
+	);
+	$auth_profile = $auth_profiles[$auth_method] ?? $auth_profiles['kerberos'];
+	$expected_plugin = $auth_profile['plugin'];
+	$auth_config_ok = true;
+	foreach ($auth_profile['configs'] as $auth_config_path => $plugname) {
+		$auth_config = (string)@file_get_contents($auth_config_path);
+		if (strpos($auth_config, "plugname = '" . $plugname . "'") === false) {
+			$auth_config_ok = false;
+			break;
+		}
+	}
+	$credential_ready = $auth_profile['ready'];
 	return array(
 		array(
 			'name' => 'Kontrol-ID engine',
@@ -2208,17 +2281,15 @@ function kontrol_id_chain_status() {
 			'detail' => 'Standalone multithread gateway service'
 		),
 		array(
-			'name' => $explicit ?
-				($auth_method === 'ntlm' ? 'NTLMv2 / Winbind' : 'Kerberos / SPNEGO') :
+			'name' => $explicit ? $auth_profile['label'] :
 				'Transparent proxy',
 			'ok' => ($engine['enable'] ?? '') === 'on' &&
 				kontrol_id_normalize_interfaces($engine['interface'] ?? '') === $interfaces &&
 				(!$explicit || ($credential_ready &&
 				(($plugins['auth_plugin'] ?? '') === $expected_plugin) &&
-				strpos($auth_config, "plugname = 'kontrol-" .
-					($auth_method === 'ntlm' ? 'ntlm' : 'negotiate') . "'") !== false)),
+				$auth_config_ok)),
 			'detail' => ($explicit ?
-				($auth_method === 'ntlm' ? 'Native NTLMv2 authentication' : 'Native Negotiate authentication') :
+				$auth_profile['detail'] :
 				'Native source-IP interception') .
 				' on ' . ($interfaces ?: 'no interface')
 		),
@@ -2254,7 +2325,7 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	if (!in_array($post['access_mode'] ?? '', array('transparent', 'explicit'), true)) {
 		$input_errors[] = 'Select a valid client access mode.';
 	}
-	if (!in_array($post['explicit_auth'] ?? '', array('kerberos', 'ntlm'), true)) {
+	if (!in_array($post['explicit_auth'] ?? '', array('kerberos', 'kerberos_ntlm', 'ntlm', 'basic'), true)) {
 		$input_errors[] = 'Select a valid explicit authentication method.';
 	}
 	if (!in_array($post['traffic_mode'] ?? '', array('http_only', 'http_https'), true)) {
@@ -2268,6 +2339,20 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	}
 	$explicit_domain_auth = ($post['access_mode'] ?? '') === 'explicit' &&
 		in_array($post['explicit_auth'] ?? '', array('kerberos', 'kerberos_ntlm', 'ntlm'), true);
+	$explicit_basic_auth = ($post['access_mode'] ?? '') === 'explicit' &&
+		($post['explicit_auth'] ?? '') === 'basic';
+	if ($explicit_basic_auth) {
+		$authcfg = auth_get_authserver($post['auth_server'] ?? '');
+		if (!is_array($authcfg)) {
+			$input_errors[] = 'Select a valid authentication server for HTTP Basic.';
+		} elseif (($authcfg['type'] ?? '') === 'ldap') {
+			if (empty(array_filter(array_map('trim', explode(',', $post['ad_groups'] ?? ''))))) {
+				$input_errors[] = 'Configure at least one allowed AD/LDAP group for HTTP Basic.';
+			}
+		} elseif (trim($post['local_group'] ?? '') === '') {
+			$input_errors[] = 'Configure the local allowed group for HTTP Basic.';
+		}
+	}
 	if ($explicit_domain_auth) {
 		foreach (array(
 			'proxy_fqdn' => 'Proxy FQDN',
@@ -2292,11 +2377,15 @@ function kontrol_id_validate(&$post, &$input_errors) {
 			(!is_file(KONTROL_ID_KEYTAB) || filesize(KONTROL_ID_KEYTAB) < 1)) {
 			$activation_prerequisites[] = 'Import or generate the Kerberos keytab on Domain and Keytab.';
 		}
-		if ($explicit_domain_auth && ($post['explicit_auth'] ?? '') === 'ntlm' &&
+		if ($explicit_domain_auth &&
+			in_array($post['explicit_auth'] ?? '', array('kerberos_ntlm', 'ntlm'), true) &&
 			(!is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb') ||
 			!is_executable('/usr/local/bin/ntlm_auth') ||
 			!is_executable('/usr/local/sbin/winbindd'))) {
 			$activation_prerequisites[] = 'Join Active Directory on Domain and Keytab before enabling NTLM.';
+		}
+		if ($explicit_basic_auth && !is_executable('/usr/local/libexec/kontrol-basic-auth')) {
+			$activation_prerequisites[] = 'Install the Kontrol-ID Basic authentication helper before enabling HTTP Basic.';
 		}
 		if (!empty($activation_prerequisites)) {
 			/* Initial domain settings must be saved before the Domain and Keytab
@@ -2353,6 +2442,12 @@ function kontrol_id_resync($sync = true) {
 		(!is_file(KONTROL_ID_KEYTAB) || filesize(KONTROL_ID_KEYTAB) < 1)) {
 		$runtime_ready = false;
 		log_error('[Kontrol-ID] Managed proxy was not activated: the local Kerberos keytab is missing.');
+	}
+	if ($enabled && ($settings['access_mode'] ?? '') === 'explicit' &&
+		($settings['explicit_auth'] ?? '') === 'basic' &&
+		!is_executable('/usr/local/libexec/kontrol-basic-auth')) {
+		$runtime_ready = false;
+		log_error('[Kontrol-ID] Managed proxy was not activated: the Basic authentication helper is missing.');
 	}
 	$stack_enabled = $enabled && $runtime_ready;
 	if (!kontrol_id_manage_winbind($stack_enabled && kontrol_id_ntlm_required($settings))) {

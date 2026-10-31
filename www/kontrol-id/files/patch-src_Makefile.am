@@ -1,13 +1,15 @@
 --- src/Makefile.am.orig	2026-10-31 22:00:00 UTC
 +++ src/Makefile.am
-@@ -51,1 +51,3 @@
+@@ -51,1 +51,4 @@
  PFBASICAUTH_SOURCE = authplugins/ProxyFirstBasic.cpp
++KONTROLBASIC_SOURCE = authplugins/kontrol_basic.cpp
 +KONTROLNEGOTIATE_SOURCE = authplugins/kontrol_negotiate.cpp
 +KONTROLNTLM_SOURCE = authplugins/kontrol_ntlm.cpp
-@@ -122,4 +124,5 @@ e2guardian_SOURCES = String.cpp String.hpp \
+@@ -122,4 +125,6 @@ e2guardian_SOURCES = String.cpp String.hpp \
                         $(IDENTAUTH_SOURCE) $(IPAUTH_SOURCE) \
                         $(DNSAUTH_SOURCE) $(PORTAUTH_SOURCE) \
                         $(NTLMAUTH_SOURCE) $(DIGESTAUTH_SOURCE) \
 -		       $(HEADERAUTH_SOURCE) $(PFBASICAUTH_SOURCE)
 +		       $(HEADERAUTH_SOURCE) $(PFBASICAUTH_SOURCE) \
-+		       $(KONTROLNEGOTIATE_SOURCE) $(KONTROLNTLM_SOURCE)
++		       $(KONTROLBASIC_SOURCE) $(KONTROLNEGOTIATE_SOURCE) \
++		       $(KONTROLNTLM_SOURCE)

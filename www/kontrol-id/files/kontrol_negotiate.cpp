@@ -16,6 +16,7 @@
 #include <gssapi/gssapi.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -66,7 +67,8 @@ void log_gss_status(const char *operation, OM_uint32 major, OM_uint32 minor)
     } while (context != 0);
 }
 
-bool send_challenge(Socket &peercon, const gss_buffer_desc *token)
+bool send_challenge(Socket &peercon, const gss_buffer_desc *token,
+    bool offer_ntlm_fallback)
 {
     std::string response =
         "HTTP/1.1 407 Proxy Authentication Required\r\n"
@@ -75,6 +77,8 @@ bool send_challenge(Socket &peercon, const gss_buffer_desc *token)
         response += " ";
         response += base64_encode(token->value, token->length);
     }
+    if (offer_ntlm_fallback)
+        response += "\r\nProxy-Authenticate: NTLM";
     response +=
         "\r\nProxy-Connection: keep-alive"
         "\r\nConnection: keep-alive"
@@ -91,13 +95,21 @@ bool is_negotiate(HTTPHeader &header)
     return type == "negotiate";
 }
 
+bool is_ntlm(HTTPHeader &header)
+{
+    String type(header.getAuthType());
+    type.toLower();
+    return type == "ntlm";
+}
+
 } // namespace
 
 class kontrol_negotiate_instance : public AuthPlugin
 {
 public:
     explicit kontrol_negotiate_instance(ConfigVar &definition)
-        : AuthPlugin(definition), acceptor_cred(GSS_C_NO_CREDENTIAL)
+        : AuthPlugin(definition), acceptor_cred(GSS_C_NO_CREDENTIAL),
+          allow_ntlm_fallback(false)
     {
         is_connection_based = true;
         needs_proxy_query = false;
@@ -117,6 +129,7 @@ public:
 
 private:
     gss_cred_id_t acceptor_cred;
+    bool allow_ntlm_fallback;
 };
 
 AuthPlugin *kontrol_negotiate_create(ConfigVar &definition)
@@ -126,6 +139,12 @@ AuthPlugin *kontrol_negotiate_create(ConfigVar &definition)
 
 int kontrol_negotiate_instance::init(void *args)
 {
+    std::string fallback = cv["allow_ntlm_fallback"].toCharArray();
+    std::transform(fallback.begin(), fallback.end(), fallback.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    allow_ntlm_fallback = (fallback == "on" || fallback == "yes" ||
+        fallback == "true" || fallback == "1");
+
     const std::string keytab = cv["keytab"].toCharArray();
     if (keytab.empty()) {
         syslog(LOG_ERR, "Kontrol-ID Negotiate: keytab is not configured");
@@ -202,17 +221,27 @@ int kontrol_negotiate_instance::identify(Socket &peercon, Socket &proxycon,
 
     while (major == GSS_S_CONTINUE_NEEDED && rounds++ < 5) {
         if (!is_negotiate(header)) {
+            if (allow_ntlm_fallback && is_ntlm(header)) {
+                if (context != GSS_C_NO_CONTEXT)
+                    gss_delete_sec_context(&minor, &context, GSS_C_NO_BUFFER);
+                if (client_name != GSS_C_NO_NAME)
+                    gss_release_name(&minor, &client_name);
+                return E2AUTH_NOMATCH;
+            }
             // Do not fall through to E2Guardian's unauthenticated default for
-            // an unsupported proxy scheme.  This plugin is authoritative for
-            // its listener and must keep challenging until Negotiate is used.
-            if (!send_challenge(peercon, NULL) || !header.in(&peercon, true))
+            // an unsupported proxy scheme.  In combined mode the response
+            // advertises Kerberos first and NTLM second; an NTLM response is
+            // passed to the following Kontrol NTLMv2 plugin.
+            if (!send_challenge(peercon, NULL, allow_ntlm_fallback) ||
+                !header.in(&peercon, true))
                 return -1;
             continue;
         }
 
         const std::string token = header.getAuthData();
         if (token.empty()) {
-            if (!send_challenge(peercon, NULL) || !header.in(&peercon, true))
+            if (!send_challenge(peercon, NULL, allow_ntlm_fallback) ||
+                !header.in(&peercon, true))
                 return -1;
             continue;
         }
@@ -226,7 +255,8 @@ int kontrol_negotiate_instance::identify(Socket &peercon, Socket &proxycon,
             NULL, NULL, NULL);
 
         if (major == GSS_S_CONTINUE_NEEDED) {
-            const bool sent = send_challenge(peercon, &output);
+            const bool sent = send_challenge(peercon, &output,
+                allow_ntlm_fallback);
             gss_release_buffer(&minor, &output);
             if (!sent || !header.in(&peercon, true)) {
                 gss_delete_sec_context(&minor, &context, GSS_C_NO_BUFFER);
@@ -239,7 +269,7 @@ int kontrol_negotiate_instance::identify(Socket &peercon, Socket &proxycon,
             gss_release_buffer(&minor, &output);
         if (major != GSS_S_COMPLETE) {
             log_gss_status("gss_accept_sec_context", major, minor);
-            send_challenge(peercon, NULL);
+            send_challenge(peercon, NULL, allow_ntlm_fallback);
             if (context != GSS_C_NO_CONTEXT)
                 gss_delete_sec_context(&minor, &context, GSS_C_NO_BUFFER);
             if (client_name != GSS_C_NO_NAME)
