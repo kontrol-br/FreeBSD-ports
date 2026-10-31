@@ -156,8 +156,8 @@ if ($has_parent && basename($requested) === 'index.html') {
 } elseif ($has_parent && $current_dir !== '') {
 	$parent_file = $current_dir . '/index.html';
 }
-$home_url = sarg_frame_url($dir_suffix, 'index.html');
 $parent_url = sarg_frame_url($dir_suffix, $parent_file);
+$show_parent_action = ($has_parent && $parent_file !== 'index.html');
 $viewer_query = $dir_suffix === '' ? '' : '?dir=' . rawurlencode($dir_suffix);
 $viewer_url = '/sarg_reports.php' . $viewer_query;
 
@@ -200,15 +200,15 @@ if (stripos($report, '</head>') !== false) {
 }
 
 $_SESSION['pdf'] = $report;
+$back_fallback_url = $show_parent_action ? $parent_url : $viewer_url;
 $back_action = 'if (history.length > 1) { history.back(); } else { location.href=' .
-	json_encode($parent_url, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) . '; }';
+	json_encode($back_fallback_url, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) . '; }';
 $toolbar = '<nav class="sarg-report-toolbar" aria-label="Navegação do relatório">' .
 	'<div class="sarg-report-toolbar__path"><span>Relatório Sarg</span><strong>' .
 	htmlspecialchars($requested, ENT_QUOTES, 'UTF-8') . '</strong></div>' .
 	'<div class="sarg-report-toolbar__actions">' .
 	'<button type="button" class="sarg-report-action" onclick="' . htmlspecialchars($back_action, ENT_QUOTES, 'UTF-8') . '">&#8592; Página anterior</button>' .
-	($has_parent ? '<a class="sarg-report-action" href="' . htmlspecialchars($parent_url, ENT_QUOTES, 'UTF-8') . '">&#8593; Um nível acima</a>' : '') .
-	'<a class="sarg-report-action" href="' . htmlspecialchars($home_url, ENT_QUOTES, 'UTF-8') . '">Início do relatório</a>' .
+	($show_parent_action ? '<a class="sarg-report-action" href="' . htmlspecialchars($parent_url, ENT_QUOTES, 'UTF-8') . '">&#8593; Um nível acima</a>' : '') .
 	'<button type="button" class="sarg-report-action" onclick="window.open(\'/sarg_report_pdf.php\',\'_blank\',\'noopener\')">Versão para impressão</button>' .
 	'<a class="sarg-report-action sarg-report-action--primary" href="' . htmlspecialchars($viewer_url, ENT_QUOTES, 'UTF-8') . '" target="_top">Voltar ao Kontrol</a>' .
 	'</div></nav>';
