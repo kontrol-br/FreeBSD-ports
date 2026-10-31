@@ -438,9 +438,9 @@ function read_lists($log_notice=true, $uw="") {
         }
 
         write_config("Saving...");
-        if ($log_notice == true && $uw == "") {
+		if ($log_notice == true && $uw == "") {
                 file_notice("E2guardian", "E2Guardian Blacklist applied, check site and URL access lists for categories", "E2guardian BlackList Updated.");
-        } else {
+		} elseif ($uw != "") {
                 $uw .= "done\n";
                 update_output_window($uw);
         }
