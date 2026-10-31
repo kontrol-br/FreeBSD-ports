@@ -1509,7 +1509,8 @@ function kontrol_id_chain_status() {
 	return $checks;
 }
 
-function kontrol_id_validate($post, &$input_errors) {
+function kontrol_id_validate(&$post, &$input_errors) {
+	unset($post['_kontrol_id_activation_deferred']);
 	$numeric = array(
 		'winrm_port' => array(1, 65535),
 		'connect_timeout_ms' => array(200, 30000),
@@ -1561,6 +1562,7 @@ function kontrol_id_validate($post, &$input_errors) {
 		}
 	}
 	if (($post['enable'] ?? '') === 'on') {
+		$activation_prerequisites = array();
 		if (empty(kontrol_id_normalize_interfaces($post['intercept_interfaces'] ?? ''))) {
 			$input_errors[] = 'Select at least one client interface.';
 		}
@@ -1570,12 +1572,19 @@ function kontrol_id_validate($post, &$input_errors) {
 		if ($explicit_domain_auth &&
 			in_array($post['explicit_auth'], array('kerberos', 'kerberos_ntlm'), true) &&
 			(!is_file(KONTROL_ID_KEYTAB) || filesize(KONTROL_ID_KEYTAB) < 1)) {
-			$input_errors[] = 'Import or generate the Kerberos keytab on Domain and Keytab before enabling this authentication mode.';
+			$activation_prerequisites[] = 'Import or generate the Kerberos keytab on Domain and Keytab.';
 		}
 		if ($explicit_domain_auth &&
 			in_array($post['explicit_auth'], array('ntlm', 'kerberos_ntlm'), true) &&
 			!is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb')) {
-			$input_errors[] = 'Join this appliance to Active Directory on Domain and Keytab before enabling NTLM compatibility.';
+			$activation_prerequisites[] = 'Join this appliance to Active Directory on Domain and Keytab before enabling NTLM compatibility.';
+		}
+		if (!empty($activation_prerequisites)) {
+			/* Initial domain settings must be saved before the Domain and Keytab
+			 * page can generate its package-owned Kerberos/Samba configuration.
+			 * Persist the valid settings, but never activate an incomplete stack. */
+			$post['enable'] = '';
+			$post['_kontrol_id_activation_deferred'] = implode(' ', $activation_prerequisites);
 		}
 		if (($post['squid_integration'] ?? '') === 'on') {
 			$squid = config_get_path('installedpackages/squid/config/0', array());

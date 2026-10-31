@@ -47,8 +47,21 @@
 		<field>
 			<fielddescr>Enable Kontrol-ID</fielddescr>
 			<fieldname>enable</fieldname>
-			<description><![CDATA[Enable identity enforcement after the PKI is created and Windows stations have been enrolled. Installation defaults to disabled to avoid interrupting Internet access.]]></description>
+			<description><![CDATA[
+				Enable identity enforcement only after the initial workflow is complete. If Kerberos or NTLM prerequisites are still missing,
+				General settings are saved but Kontrol-ID remains disabled; complete Domain and Keytab, then return here to activate it.
+			]]></description>
 			<type>checkbox</type>
+		</field>
+		<field>
+			<fielddescr>Initial Setup Workflow</fielddescr>
+			<description><![CDATA[
+				<strong>1.</strong> Complete this page and save the General settings.<br/>
+				<strong>2.</strong> Open <em>Domain and Keytab</em> to join Active Directory or import the keytab.<br/>
+				<strong>3.</strong> Return to General, select <em>Enable Kontrol-ID</em> and save again.<br/>
+				The managed Squid/E2Guardian chain is not activated until the final step succeeds.
+			]]></description>
+			<type>info</type>
 		</field>
 		<field>
 			<name>Managed Traffic Chain</name>
@@ -340,6 +353,12 @@
 	</custom_php_validation_command>
 	<custom_php_resync_config_command>
 		kontrol_id_resync();
+		if (!empty($_POST['_kontrol_id_activation_deferred'])) {
+			$savemsg = 'General settings were saved. Kontrol-ID remains disabled: ' .
+				$_POST['_kontrol_id_activation_deferred'] .
+				' Complete Domain and Keytab, then return to General to enable the service.';
+		}
+		unset($_POST['_kontrol_id_activation_deferred']);
 	</custom_php_resync_config_command>
 	<custom_php_install_command>
 		kontrol_id_install();
