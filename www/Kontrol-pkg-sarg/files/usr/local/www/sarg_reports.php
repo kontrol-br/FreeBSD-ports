@@ -47,17 +47,23 @@ function sarg_report_index_file($directory) {
 }
 
 function sarg_valid_report_name($name) {
-	// Sarg generates period folders such as 2026Oct01-2026Oct31.
-	return (bool)preg_match('/^[0-9]{4}[A-Za-z]{3}[0-9]{2}-[0-9]{4}[A-Za-z]{3}[0-9]{2}(?:-[0-9]+)?$/D', $name);
+	return (bool)preg_match(
+		'/^(?:[0-9]{4}[A-Za-z]{3}[0-9]{2}-[0-9]{4}[A-Za-z]{3}[0-9]{2}|[0-9]{2}[A-Za-z]{3}[0-9]{4}-[0-9]{2}[A-Za-z]{3}[0-9]{4})(?:-[0-9]+)?$/D',
+		$name
+	);
 }
 
 function sarg_report_display_name($name) {
 	$matches = array();
-	if (!preg_match('/^([0-9]{4})([A-Za-z]{3})([0-9]{2})-([0-9]{4})([A-Za-z]{3})([0-9]{2})(?:-[0-9]+)?$/D', $name, $matches)) {
+	if (preg_match('/^([0-9]{4})([A-Za-z]{3})([0-9]{2})-([0-9]{4})([A-Za-z]{3})([0-9]{2})(?:-[0-9]+)?$/D', $name, $matches)) {
+		$start = $matches[1] . '-' . ucfirst(strtolower($matches[2])) . '-' . $matches[3];
+		$end = $matches[4] . '-' . ucfirst(strtolower($matches[5])) . '-' . $matches[6];
+	} elseif (preg_match('/^([0-9]{2})([A-Za-z]{3})([0-9]{4})-([0-9]{2})([A-Za-z]{3})([0-9]{4})(?:-[0-9]+)?$/D', $name, $matches)) {
+		$start = $matches[3] . '-' . ucfirst(strtolower($matches[2])) . '-' . $matches[1];
+		$end = $matches[6] . '-' . ucfirst(strtolower($matches[5])) . '-' . $matches[4];
+	} else {
 		return $name;
 	}
-	$start = $matches[1] . '-' . ucfirst(strtolower($matches[2])) . '-' . $matches[3];
-	$end = $matches[4] . '-' . ucfirst(strtolower($matches[5])) . '-' . $matches[6];
 	return ($start === $end) ? $start : $start . ' — ' . $end;
 }
 
