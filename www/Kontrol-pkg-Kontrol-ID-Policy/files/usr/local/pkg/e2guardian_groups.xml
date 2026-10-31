@@ -158,7 +158,6 @@
             <description><![CDATA[Select options to apply on this group. Default values are in ( )]]></description>
             <type>select</type>
             <options>
-                <option><name>Scan clean cache (on)</name><value>scancleancache</value></option>
                 <option><name>Hex decode content (off)</name><value>hexdecodecontent</value></option>
                 <option><name>Block Download not in Exception Lists (off)</name><value>blockdownloads</value></option>
                 <option><name>Enable Deep URL Analysis (off)</name><value>deepurlanalysis</value></option>
@@ -170,7 +169,7 @@
                 <option><name>Auto switch to MITM to deliver block page (on)</name><value>automitm</value></option>
             </options>
             <multiple/>
-            <size>13</size>
+            <size>12</size>
         </field>
         <field>
             <fielddescr>Site</fielddescr>
@@ -253,7 +252,7 @@
                 <option><name>Use Global log option selected on Report and log - recommended</name><value>global</value></option>
                 <option><name>Use HTML template file (accessdeniedaddress ignored)</name><value>3</value></option>
                 <option><name>Report fully</name><value>2</value></option>
-                <option><name>Report why but not what denied phrase</name><value>1</value></option>
+                <option><name>Report the denial reason without matched rule details</name><value>1</value></option>
                 <option><name>Just say 'Access Denied'</name><value>0</value></option>
                 <option><name>Log but do not block - Stealth mode</name><value>-1</value></option>
             </options>
@@ -261,7 +260,7 @@
         <field>
             <fielddescr>Access Denied dymanic/cgi page</fielddescr>
             <fieldname>reportingcgi</fieldname>
-            <description><![CDATA[While using Report Level (report fully) or (Report why but not what denied phrase)<br>
+            <description><![CDATA[Used with the detailed denial reporting levels.<br>
                 Leave blank to use URL assigned on default report options<br>
                 <b>ex:</b> http://YOUR.KONTROL.IP/e2gerror.php (using wpad package)<br>
                 http://YOURSERVER.YOUR.DOMAIN/cgi-bin/e2guardian.pl<br><br>

@@ -227,7 +227,25 @@ function kontrol_id_adjust_policy_fields(&$pkg) {
 	if (!is_array($pkg['fields']['field'] ?? null)) {
 		return;
 	}
-	$hidden = array('auth_plugin');
+	/* These controls belong to E2Guardian features retired by the Kontrol-ID
+	 * profile. Keep this defensive filter here as well as in the policy XMLs
+	 * so an older policy package cannot expose stale controls after an upgrade. */
+	$hidden = array(
+		'auth_plugin', 'picsacl', 'phraseacl', 'antivirusacl',
+		'weightedphrasemode', 'phrasefiltermode', 'content_scanners',
+		'contentscannericapurl', 'contentscannertimeout',
+		'contentscanexceptions', 'maxcontentramcachescansize',
+		'maxcontentfilecachescansize', 'initialtrickledelay',
+		'trickledelay'
+	);
+	$retired_options = array(
+		'scancleancache', 'forcequicksearch', 'deletedownloadedtempfiles',
+		'recheckreplacedurls', 'disablecontentscan', 'enablepics',
+		'icapscan', 'clamdscan'
+	);
+	$retired_topics = array(
+		'antivirus', 'content scanners', 'phrase lists', 'phrases', 'pics'
+	);
 	if ($name === 'e2guardian') {
 		$hidden = array_merge($hidden, array(
 			'icapport', 'parentmode', 'proxyip', 'proxyport', 'proxytimeout', 'watchdog'
@@ -238,6 +256,10 @@ function kontrol_id_adjust_policy_fields(&$pkg) {
 	foreach ($pkg['fields']['field'] as $field) {
 		$fieldname = $field['fieldname'] ?? '';
 		if (in_array($fieldname, $hidden, true)) {
+			continue;
+		}
+		if (($field['type'] ?? '') === 'listtopic' &&
+			in_array(strtolower(trim((string)($field['name'] ?? ''))), $retired_topics, true)) {
 			continue;
 		}
 		foreach (array('fielddescr', 'name') as $label) {
@@ -255,12 +277,17 @@ function kontrol_id_adjust_policy_fields(&$pkg) {
 			}
 		}
 		if (is_array($field['options']['option'] ?? null)) {
-			foreach ($field['options']['option'] as &$option) {
+			$options = array();
+			foreach ($field['options']['option'] as $option) {
+				if (in_array((string)($option['value'] ?? ''), $retired_options, true)) {
+					continue;
+				}
 				if (isset($option['name']) && is_string($option['name'])) {
 					$option['name'] = str_ireplace('E2guardian', 'Kontrol-ID', $option['name']);
 				}
+				$options[] = $option;
 			}
-			unset($option);
+			$field['options']['option'] = $options;
 		}
 		if ($name === 'e2guardian' && ($field['name'] ?? '') === 'Advanced Features') {
 			$field['name'] = 'Configuration Backup';

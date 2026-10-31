@@ -103,7 +103,7 @@
             <options>
                 <option><name>Use HTML template file (accessdeniedaddress ignored) - recommended</name><value>3</value></option>
                 <option><name>Report fully</name><value>2</value></option>
-                <option><name>Report why but not what denied phrase</name><value>1</value></option>
+                <option><name>Report the denial reason without matched rule details</name><value>1</value></option>
                 <option><name>Just say 'Access Denied'</name><value>0</value></option>
                 <option><name>Log but do not block - Stealth mode</name><value>-1</value></option>
             </options>
@@ -112,7 +112,7 @@
             <fielddescr>Access Denied dynamic page/cgi</fielddescr>
             <fieldname>reportingcgi</fieldname>
             <description><![CDATA[Default Access denied cgi/page for groups access. <br>
-                While using Report Level (report fully) or (Report why but not what denied phrase)<br>
+                Used with the detailed denial reporting levels.<br>
                 <b>ex:</b> http://YOUR.KONTROL.IP/e2gerror.php (using wpad package)<br>
                    http://YOURSERVER.YOUR.DOMAIN/cgi-bin/e2guardian.pl<br><br>
                 <b>Do not forget to add YOURSERVER.YOUR.DOMAIN or YOUR.KONTROL.IP on site exception list to avoid redirect loop.</b>]]>
@@ -221,7 +221,7 @@
         <field>
             <fielddescr>Log Exception Hints</fielddescr>
             <fieldname>logexceptionhits</fieldname>
-            <description><![CDATA[ Log if an exception (user, ip, URL, phrase) is matched and so the page gets let through.<br>
+            <description><![CDATA[ Log if an exception (user, IP, URL, site, or rule) is matched and the request is allowed.<br>
                 Can be useful for diagnosing why a site gets through the filter.]]></description>
             <type>select</type>
             <options>

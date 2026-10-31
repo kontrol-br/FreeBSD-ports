@@ -1,6 +1,5 @@
-E2guardian 5.4 is an Open Source web content filter. It filters the actual
-content of pages based on many methods including phrase matching, request
-header and URL filtering, etc. It does not purely filter based on a banned list
-of sites
+Policy, TLS inspection, reporting, blacklist, and access-control GUI for the
+standalone Kontrol-ID secure web gateway. The Kontrol-ID profile deliberately
+excludes the retired antivirus, phrase-list, and PICS integrations.
 
-WWW: http://e2guardian.org
+WWW: https://kontrol.com.br/

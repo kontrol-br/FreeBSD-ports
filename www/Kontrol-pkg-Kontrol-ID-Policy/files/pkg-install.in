@@ -9,6 +9,7 @@ fi
 # package and remain reachable by a direct URL.
 rm -f /usr/local/pkg/e2guardian_antivirus_acl.xml \
 	/usr/local/pkg/e2guardian_phrase_acl.xml \
+	/usr/local/pkg/e2guardian_pics_acl.xml \
 	/usr/local/www/e2guardian_about.php
 
 if [ -f /etc/rc.packages ]; then

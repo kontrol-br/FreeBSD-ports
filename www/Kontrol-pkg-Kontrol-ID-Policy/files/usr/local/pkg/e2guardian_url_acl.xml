@@ -176,7 +176,7 @@
         <field>
             <fielddescr>Include</fielddescr>
             <fieldname>banned_includes</fieldname>
-            <description><![CDATA[Select Include files to URL phrase filter.]]></description>
+            <description><![CDATA[Select blacklist category files to include in the banned URL filter.]]></description>
             <type>select_source</type>
             <source><![CDATA[$config['installedpackages']['e2guardianblacklistsurls']['config']]]></source>
             <source_name>descr</source_name>
