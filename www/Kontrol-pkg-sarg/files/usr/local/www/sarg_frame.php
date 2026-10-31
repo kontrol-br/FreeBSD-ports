@@ -74,6 +74,66 @@ function sarg_path_in_roots($path, $roots) {
 	return false;
 }
 
+function sarg_activity_slug($identity) {
+	return preg_replace('/[^A-Za-z0-9-]/', '_', (string)$identity);
+}
+
+function sarg_activity_payload($report_root, $requested, $report) {
+	$parts = explode('/', $requested);
+	$period_pattern = '/^(?:\d{4}[A-Za-z]{3}\d{2}-\d{4}[A-Za-z]{3}\d{2}|\d{2}[A-Za-z]{3}\d{4}-\d{2}[A-Za-z]{3}\d{4})$/D';
+	if (count($parts) < 2 || !preg_match($period_pattern, $parts[0])) {
+		return false;
+	}
+	$activity_file = sarg_path_in_roots($report_root . '/' . $parts[0] . '/.sarg-activity.json', array($report_root));
+	if ($activity_file === false || !is_file($activity_file) || filesize($activity_file) > 50 * 1024 * 1024) {
+		return false;
+	}
+	$document = json_decode(file_get_contents($activity_file), true);
+	if (!is_array($document) || !isset($document['users'], $document['summary'])) {
+		return false;
+	}
+	if ((int)($document['summary']['identities'] ?? 0) < 1) {
+		return false;
+	}
+
+	if (count($parts) === 2 && strtolower($parts[1]) === 'index.html') {
+		return array(
+			'mode' => 'summary',
+			'timeout_minutes' => (int)$document['timeout_minutes'],
+			'period' => $document['period'],
+			'summary' => $document['summary'],
+			'top' => isset($document['top']) ? $document['top'] : array()
+		);
+	}
+
+	$identity = '';
+	$plain = preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($report), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+	if (preg_match('/\bUSER:\s*(.*?)\s+SORT:/i', $plain, $match)) {
+		$identity = trim($match[1]);
+	}
+	if ($identity !== '' && isset($document['users'][$identity])) {
+		$user = $document['users'][$identity];
+	} else {
+		$user = false;
+		$folder = basename(dirname($requested));
+		foreach ($document['users'] as $candidate) {
+			if (sarg_activity_slug($candidate['identity']) === $folder) {
+				$user = $candidate;
+				break;
+			}
+		}
+	}
+	if ($user === false) {
+		return false;
+	}
+	return array(
+		'mode' => 'user',
+		'timeout_minutes' => (int)$document['timeout_minutes'],
+		'period' => $document['period'],
+		'user' => $user
+	);
+}
+
 $dir_suffix = isset($_GET['dir']) ? (string)$_GET['dir'] : '';
 if ($dir_suffix !== '' && !preg_match('/^[A-Za-z0-9_-]+$/D', $dir_suffix)) {
 	http_response_code(400);
@@ -134,6 +194,8 @@ if ($report === false || $report === '') {
 	exit('The report could not be read.');
 }
 
+$activity_payload = sarg_activity_payload($report_root, $requested, $report);
+
 $prefix = dirname($requested);
 $prefix = ($prefix === '.') ? '' : $prefix;
 $base_query = array('dir' => $dir_suffix);
@@ -189,10 +251,13 @@ $report = preg_replace_callback(
 	$report
 );
 
+$activity_script = ($activity_payload === false) ? '' : '<script>window.SARG_ACTIVITY=' .
+	json_encode($activity_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
 $head_assets = '<meta http-equiv="Cache-Control" content="no-cache">' .
 	'<meta name="viewport" content="width=device-width, initial-scale=1">' .
-	'<link rel="stylesheet" href="/sarg_report.css?v=087">' .
-	'<script defer src="/sarg_charts.js?v=087"></script>';
+	'<link rel="stylesheet" href="/sarg_report.css?v=088">' .
+	$activity_script .
+	'<script defer src="/sarg_charts.js?v=088"></script>';
 if (stripos($report, '</head>') !== false) {
 	$report = preg_replace('/<\/head>/i', $head_assets . '</head>', $report, 1);
 } else {

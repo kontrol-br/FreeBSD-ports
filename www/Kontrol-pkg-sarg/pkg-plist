@@ -1,5 +1,6 @@
 pkg/sarg.xml
 pkg/sarg.inc
+pkg/sarg_activity.inc
 pkg/sarg_sync.xml
 pkg/sarg.template
 pkg/sarg_users.xml

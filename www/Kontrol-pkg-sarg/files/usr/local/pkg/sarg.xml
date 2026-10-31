@@ -225,6 +225,19 @@
 			<default_value>0</default_value>
 		</field>
 		<field>
+			<fielddescr>Estimated Activity Timeout</fielddescr>
+			<fieldname>activity_timeout</fieldname>
+			<description>
+				<![CDATA[
+				Close an estimated user/IP session after this many minutes without a new request.<br />
+				Used by the activity duration indicators and hourly chart. Default: 15 minutes.
+				]]>
+			</description>
+			<type>input</type>
+			<size>5</size>
+			<default_value>15</default_value>
+		</field>
+		<field>
 			<fielddescr>Files Limits</fielddescr>
 			<fieldname>lastlog</fieldname>
 			<description>

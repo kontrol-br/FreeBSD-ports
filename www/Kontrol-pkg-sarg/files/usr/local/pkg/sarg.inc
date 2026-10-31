@@ -33,6 +33,7 @@ require_once("globals.inc");
 require_once("notices.inc");
 require_once("services.inc");
 require_once("util.inc");
+require_once("/usr/local/pkg/sarg_activity.inc");
 if ($pfs_version == "2.3" ) {
     require_once("xmlrpc.inc");
 }
@@ -211,11 +212,13 @@ function run_sarg($id = -1) {
 	}
 
 	$args .= " -l $rs_file ";
-	$args .= " -o /usr/local/sarg-reports";
+	$output_dir = "/usr/local/sarg-reports";
+	$args .= " -o " . $output_dir;
 	if ($fsuffix != "") {
-	    safe_mkdir("/usr/local/sarg-reports/" . $fsuffix, 0755, true);
+	    safe_mkdir($output_dir . "/" . $fsuffix, 0755, true);
 	    $args .= "/$fsuffix";
 	    symlink ( "/usr/local/sarg-reports//images" , "/usr/local/sarg-reports/$fsuffix/images" );
+	    $output_dir .= "/" . $fsuffix;
 	}
 	print "$cmd -f /usr/local/etc/sarg/sarg.conf $args\n";
 	$find = (preg_match("/(\d+)/", $find, $find_matches) ? $find_matches[1] : "60");
@@ -246,7 +249,18 @@ EOF;
 	}
 	// create a new file to speedup find search
 	file_put_contents("/root/sarg_run_{$id}.sh", $gzip_script, LOCK_EX);
+	$run_started = time() - 2;
 	mwexec("export LC_ALL=C && " . $cmd . " " . $args);
+	$activity_timeout = (int)$config['installedpackages']['sarg']['config'][0]['activity_timeout'];
+	if ($activity_timeout < 1 || $activity_timeout > 120) {
+		$activity_timeout = 15;
+	}
+	try {
+		$activity_reports = sarg_generate_activity_reports($rs_file, $output_dir, $proxy_server_log, $activity_timeout, $run_started);
+		log_error("[sarg] Generated {$activity_reports} estimated activity dataset(s).");
+	} catch (Throwable $error) {
+		log_error("[sarg] Unable to generate estimated activity data: " . $error->getMessage());
+	}
 
 	// check compress option
 	if ($gzip == "on") {
@@ -275,7 +289,8 @@ function sync_package_sarg() {
 		                                                          'user_report_limit' => '0',
 		                                                          'lastlog' => '0',
 		                                                          'proxy_server' => 'e2guardian',
-		                                                          'max_elapsed' => '0');
+		                                                          'max_elapsed' => '0',
+		                                                          'activity_timeout' => '15');
 	}
 	$sarg = $config['installedpackages']['sarg']['config'][0];
 	if (! is_array($config['installedpackages']['sarguser']['config'])) {
@@ -464,6 +479,9 @@ function sarg_validate_input($post, &$input_errors) {
 	}
 	if ($_POST["fullfile"] != "" && !preg_match("@^[a-zA-Z0-9_/.-]+$@", $_POST["fullfile"])) {
 		$input_errors[] = "Do not use special characters in filename";
+	}
+	if (isset($_POST['activity_timeout']) && (!ctype_digit((string)$_POST['activity_timeout']) || (int)$_POST['activity_timeout'] < 1 || (int)$_POST['activity_timeout'] > 120)) {
+		$input_errors[] = "Estimated activity timeout must be between 1 and 120 minutes";
 	}
 	// check cron option
 	if ($_POST["frequency"] != "" && !preg_match("/^\d+(h|m|d)$/", $_POST["frequency"])) {

@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Sarg
 PORTVERSION=	0.8.0
-PORTREVISION=	2
+PORTREVISION=	3
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -40,6 +40,8 @@ do-install:
 	${INSTALL_DATA} ${FILESDIR}/etc/inc/priv/sarg.priv.inc \
 		${STAGEDIR}/etc/inc/priv
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/sarg.inc \
+		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/sarg_activity.inc \
 		${STAGEDIR}${PREFIX}/pkg
 	 ${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/sarg_schedule.xml \
 		${STAGEDIR}${PREFIX}/pkg

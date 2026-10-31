@@ -153,6 +153,113 @@
 		return node;
 	}
 
+	function formatDuration(seconds) {
+		seconds = Math.max(0, Math.round(Number(seconds) || 0));
+		var days = Math.floor(seconds / 86400);
+		var hours = Math.floor(seconds % 86400 / 3600);
+		var minutes = Math.max(seconds > 0 ? 1 : 0, Math.floor(seconds % 3600 / 60));
+		if (days) return days + " d " + hours + " h";
+		if (hours) return hours + " h " + minutes + " min";
+		return minutes + " min";
+	}
+
+	function formatActivityTime(timestamp, showDate) {
+		var date = new Date((Number(timestamp) || 0) * 1000);
+		if (!date.getTime()) return "—";
+		return date.toLocaleString("pt-BR", showDate ?
+			{ day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" } :
+			{ hour: "2-digit", minute: "2-digit" });
+	}
+
+	function activityMetric(label, value, detail) {
+		var metric = element("div", "sarg-activity__metric");
+		metric.appendChild(element("span", "sarg-activity__metric-label", label));
+		metric.appendChild(element("strong", "sarg-activity__metric-value", value));
+		if (detail) metric.appendChild(element("small", "sarg-activity__metric-detail", detail));
+		return metric;
+	}
+
+	function activityHours(user) {
+		var hours = Array.isArray(user.hours) ? user.hours : [];
+		var maximum = Math.max.apply(null, hours.concat([1]));
+		var chart = element("div", "sarg-activity__hour-chart");
+		chart.setAttribute("role", "img");
+		chart.setAttribute("aria-label", "Atividade estimada por hora");
+		for (var hour = 0; hour < 24; hour++) {
+			var seconds = Number(hours[hour]) || 0;
+			var item = element("div", "sarg-activity__hour");
+			item.title = String(hour).padStart(2, "0") + "h: " + formatDuration(seconds);
+			var bar = element("span", "sarg-activity__hour-bar");
+			bar.style.height = (seconds ? Math.max(5, seconds / maximum * 72) : 2) + "px";
+			bar.style.backgroundColor = seconds ? palette[hour % palette.length] : "#dfe7ed";
+			item.appendChild(bar);
+			item.appendChild(element("span", "sarg-activity__hour-label", hour % 3 === 0 ? String(hour).padStart(2, "0") + "h" : ""));
+			chart.appendChild(item);
+		}
+		return chart;
+	}
+
+	function activityRanking(users) {
+		var ranking = element("div", "sarg-activity__ranking");
+		var maximum = Math.max.apply(null, users.map(function (user) { return Number(user.active_seconds) || 0; }).concat([1]));
+		users.slice(0, 7).forEach(function (user, index) {
+			var value = Number(user.active_seconds) || 0;
+			var row = element("div", "sarg-activity__rank-row");
+			row.title = user.identity + ": " + formatDuration(value);
+			row.appendChild(element("span", "sarg-activity__rank-label", user.identity));
+			var track = element("span", "sarg-activity__rank-track");
+			var fill = element("span", "sarg-activity__rank-fill");
+			fill.style.width = Math.max(3, value / maximum * 100) + "%";
+			fill.style.backgroundColor = palette[index % palette.length];
+			track.appendChild(fill);
+			row.appendChild(track);
+			row.appendChild(element("span", "sarg-activity__rank-value", formatDuration(value)));
+			ranking.appendChild(row);
+		});
+		return ranking;
+	}
+
+	function renderActivity() {
+		var activity = window.SARG_ACTIVITY;
+		if (!activity || document.querySelector(".sarg-activity")) return;
+		var report = document.querySelector(".report");
+		if (!report || !report.parentNode) return;
+		var section = element("section", "sarg-activity");
+		section.setAttribute("aria-label", "Atividade estimada");
+		var heading = element("div", "sarg-activity__heading");
+		heading.appendChild(element("h2", "sarg-activity__title", "Atividade estimada"));
+		heading.appendChild(element("span", "sarg-activity__meta", "Sessão encerrada após " + activity.timeout_minutes + " min sem novas requisições"));
+		section.appendChild(heading);
+		var metrics = element("div", "sarg-activity__metrics");
+		if (activity.mode === "user" && activity.user) {
+			var user = activity.user;
+			var multiDay = activity.period && activity.period.end - activity.period.start > 86400;
+			metrics.appendChild(activityMetric("Tempo ativo", formatDuration(user.active_seconds), "estimativa"));
+			metrics.appendChild(activityMetric("Sessões", compactCount(user.sessions), "no período"));
+			metrics.appendChild(activityMetric("Primeira atividade", formatActivityTime(user.first, multiDay), "registro inicial"));
+			metrics.appendChild(activityMetric("Última atividade", formatActivityTime(user.last, multiDay), "registro final"));
+			section.appendChild(metrics);
+			var detail = element("div", "sarg-activity__detail");
+			detail.appendChild(element("h3", "", "Distribuição por hora"));
+			detail.appendChild(activityHours(user));
+			section.appendChild(detail);
+		} else if (activity.mode === "summary" && activity.summary) {
+			metrics.appendChild(activityMetric("Usuários / IPs", compactCount(activity.summary.identities), "com atividade"));
+			metrics.appendChild(activityMetric("Tempo ativo acumulado", formatDuration(activity.summary.active_seconds), "soma por identidade"));
+			metrics.appendChild(activityMetric("Sessões", compactCount(activity.summary.sessions), "no período"));
+			metrics.appendChild(activityMetric("Inatividade", activity.timeout_minutes + " min", "encerra a sessão"));
+			section.appendChild(metrics);
+			if (activity.top && activity.top.length) {
+				var ranking = element("div", "sarg-activity__detail");
+				ranking.appendChild(element("h3", "", "Maior tempo ativo por usuário / IP"));
+				ranking.appendChild(activityRanking(activity.top));
+				section.appendChild(ranking);
+			}
+		}
+		section.appendChild(element("p", "sarg-activity__note", "Estimativa baseada nos horários das requisições; não representa tempo exato de tela ou conexão."));
+		report.parentNode.insertBefore(section, report);
+	}
+
 	function bars(data) {
 		var chart = element("section", "sarg-chart");
 		chart.appendChild(element("h3", "", "Acessos por origem"));
@@ -260,6 +367,7 @@
 
 	function render() {
 		modernizeCalendarIcons();
+		renderActivity();
 		if (document.querySelector(".sarg-analytics")) return;
 		var tables = document.querySelectorAll("table.sortable");
 		var data = [];
