@@ -453,8 +453,8 @@
 		e2guardian_check_config();
 	</custom_php_command_before_form>
 	<custom_php_install_command>
-		update_status("Checking E2guardian Blacklists... One moment please...");
-		update_output_window("This operation may take quite some time, please be patient.  Do not press stop or attempt to navigate away from this page during this process.");
+		update_status("Initializing E2guardian access lists...");
+		update_output_window("Reading installed blacklist categories and default access lists.");
 		e2guardian_php_install_command(false,true);
 	</custom_php_install_command>
 	<custom_php_deinstall_command>

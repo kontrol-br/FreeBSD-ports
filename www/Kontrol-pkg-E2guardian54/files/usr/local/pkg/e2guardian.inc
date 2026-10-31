@@ -2600,7 +2600,7 @@ EOF;
 	}
 	//check blacklist download files
 	file_put_contents("/root/e2guardian_custom.script", base64_decode($e2guardian_blacklist['custom_script']), LOCK_EX);
-	if ($_POST["force_download"]) {
+	if (!$install_process && $_POST["force_download"]) {
 		log_error("Blacklist update process started");
 		file_notice("E2guardian", $error, "E2guardian - " . gettext("Blacklist update process started"), "");
 		if ($e2guardian_blacklist['enable_custom_script']) {
@@ -2612,13 +2612,13 @@ EOF;
 	}
 
 	//Update blacklist categories on Acls
-	if (!$_POST["force_download"] && $_POST["force_update"]) {
+	if (!$install_process && !$_POST["force_download"] && $_POST["force_update"]) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		/* Re-apply the categories already installed under lists/blacklists.
 		 * The downloaded archive is only an update source and may no longer
 		 * exist, so this action must not try to extract blacklist.tgz again. */
 		read_lists();
-	} elseif (!$_POST["force_download"] && $_POST["liston"]) {
+	} elseif (!$install_process && !$_POST["force_download"] && $_POST["liston"]) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		read_lists(false);
 	}
@@ -2831,7 +2831,7 @@ EOF;
 		}
 	}
 	//mark config changes
-	if (!$_POST["force_update"] && !$_POST["force_download"] && !$_POST["liston"]) {
+	if (!$install_process && !$_POST["force_update"] && !$_POST["force_download"] && !$_POST["liston"]) {
 		mark_subsystem_dirty('e2guardian');
 	}
 	if ($install_process == true) {
@@ -3436,11 +3436,10 @@ function e2guardian_php_install_command() {
 		@copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $rc_script);
 		@chmod($rc_script, 0755);
 	}
-	echo "Checking Blacklist...\n";
+	echo "Reading installed Blacklist categories...\n";
 	require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
-
-	fetch_blacklist(false, true);
-	echo "Blacklist check done, continuing package config sync.\n";
+	read_lists(false, "Reading installed Blacklist categories...");
+	echo "Blacklist categories loaded, continuing package config sync.\n";
 	sync_package_e2guardian("no", true);
 	e2guardian_start("no", false, true);
 	clear_subsystem_dirty('e2guardian');
