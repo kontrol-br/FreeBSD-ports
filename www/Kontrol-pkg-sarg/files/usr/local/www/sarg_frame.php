@@ -219,11 +219,6 @@ if (preg_match('/<body\b[^>]*>/i', $report)) {
 } else {
 	$report = $toolbar . $report;
 }
-if (stripos($report, '</body>') !== false) {
-	$report = preg_replace('/<\/body>/i', $toolbar . '</body>', $report, 1);
-} else {
-	$report .= $toolbar;
-}
 
 header('Content-Type: text/html; charset=UTF-8');
 echo $report;
