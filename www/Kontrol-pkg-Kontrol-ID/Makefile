@@ -2,25 +2,25 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
-PORTREVISION=	2
+PORTREVISION=	7
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
 
 MAINTAINER=	contato@kontrol.com.br
-COMMENT=	Managed user identity and proxy authentication for Squid and E2Guardian
+COMMENT=	Standalone authenticated secure web gateway for Kontrol
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	Kontrol-pkg-KontrolSquid>=0.1.12_21:www/Kontrol-pkg-KontrolSquid \
-		Kontrol-pkg-E2guardian54>=6.6.26_15:www/Kontrol-pkg-E2guardian54 \
-		samba416>=4.16:net/samba416
+RUN_DEPENDS=	Kontrol-pkg-Kontrol-ID-Policy>=1.0.0:www/Kontrol-pkg-Kontrol-ID-Policy \
+		kontrol-id>=5.4.23_2:www/kontrol-id
 LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libsqlite3.so:databases/sqlite3 \
 		libxml2.so:textproc/libxml2
 
-CONFLICTS_INSTALL=	pfSense-pkg-squid Kontrol-pkg-E2guardian5
+CONFLICTS_INSTALL=	pfSense-pkg-squid Kontrol-pkg-KontrolSquid \
+		Kontrol-pkg-E2guardian5 Kontrol-pkg-E2guardian54
 
 USES=		compiler:c++17-lang localbase pkgconfig
 USE_CXXSTD=	c++17
@@ -52,6 +52,8 @@ do-install:
 		${STAGEDIR}${PREFIX}/libexec/kontrol-identity-helper
 	${INSTALL_SCRIPT} ${FILESDIR}${PREFIX}/libexec/kontrol-basic-auth.php \
 		${STAGEDIR}${PREFIX}/libexec/kontrol-basic-auth
+	${INSTALL_SCRIPT} ${FILESDIR}${PREFIX}/libexec/kontrol-id-policy-sync.php \
+		${STAGEDIR}${PREFIX}/libexec/kontrol-id-policy-sync.php
 	${INSTALL_SCRIPT} ${WRKDIR}/kontrol_id_winbind \
 		${STAGEDIR}${PREFIX}/etc/rc.d
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol_id.inc \
@@ -63,6 +65,8 @@ do-install:
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_status.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_domain.php \
+		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_policy.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_portal.php \
 		${STAGEDIR}${PREFIX}/www

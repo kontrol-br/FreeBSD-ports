@@ -10,5 +10,6 @@ $priv_list['page-services-kontrol-id']['match'][] = 'pkg_edit.php?xml=kontrol_id
 $priv_list['page-services-kontrol-id']['match'][] = 'pkg_edit.php?xml=kontrol_id_sync.xml*';
 $priv_list['page-services-kontrol-id']['match'][] = 'kontrol_id_status.php*';
 $priv_list['page-services-kontrol-id']['match'][] = 'kontrol_id_domain.php*';
+$priv_list['page-services-kontrol-id']['match'][] = 'kontrol_id_policy.php*';
 
 ?>

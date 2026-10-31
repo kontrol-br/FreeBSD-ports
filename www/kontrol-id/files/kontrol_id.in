@@ -21,8 +21,11 @@ load_rc_config $name
 
 : ${kontrol_id_enable:=NO}
 : ${kontrol_id_config="%%PREFIX%%/etc/e2guardian/e2guardian.conf"}
+: ${kontrol_id_krb5_config="%%PREFIX%%/etc/kontrol-id/krb5.conf"}
+: ${kontrol_id_keytab="/var/db/kontrol-id-domain/krb5.keytab"}
 
 command=%%PREFIX%%/sbin/e2guardian
+command_env="KRB5_CONFIG=${kontrol_id_krb5_config} KRB5_KTNAME=${kontrol_id_keytab}"
 pidfile=/var/run/kontrol-id.pid
 stop_postcmd="kontrol_id_stop_postcmd"
 reload_cmd="kontrol_id_reload_cmd"

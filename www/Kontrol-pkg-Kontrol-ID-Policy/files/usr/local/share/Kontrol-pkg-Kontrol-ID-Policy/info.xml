@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<pfsensepkgs>
+        <package>
+        <name>Kontrol-ID-Policy</name>
+        <descr><![CDATA[Policy, TLS inspection, reporting and access-control GUI for the standalone Kontrol-ID gateway.]]></descr>
+                <pkginfolink/>
+                <version>%%PKGVERSION%%</version>
+                <configurationfile>e2guardian.xml</configurationfile>
+                <filter_rule_function>e2g_generate_rules</filter_rule_function>
+        </package>
+</pfsensepkgs>

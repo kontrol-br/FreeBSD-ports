@@ -3,22 +3,17 @@
   message: <<EOM
 A fresh Kontrol-ID installation uses safe defaults and remains disabled until
 it is enabled at Services > Kontrol-ID. Existing settings are preserved during
-upgrades. The package manager installs the matching Kontrol Squid and
-E2Guardian packages, including their transitive dependencies.
+upgrades. The package manager installs the standalone multithread Kontrol-ID
+engine and its exclusive policy GUI, including their dependencies.
 
-Kontrol-ID cannot coexist with pfSense-pkg-squid or the legacy
-Kontrol-pkg-E2guardian5 GUI package because they own the same configuration
-files. Remove the conflicting GUI package before installing Kontrol-ID. Do not
-remove a shared squid, e2guardian or library package already required by the
-matching Kontrol package.
+Kontrol-ID cannot coexist with the conventional Squid or E2Guardian GUI/engine
+packages because they own the same listener and policy paths. Remove the
+conflicting products before installing Kontrol-ID.
 
 Transparent mode identifies Windows users by source IP and never challenges an
-intercepted browser. Explicit proxy mode supports Kerberos/SPNEGO, optional
-NTLM compatibility, and Basic authentication through an existing Kontrol
-local or LDAP authentication server. Configure and validate AD membership or
-import an AES keytab under Services > Kontrol-ID > Domain and Keytab before
-enabling Kerberos or NTLM. Kerberos is recommended. If NTLM is enabled, enforce
-NTLMv2 and reject LM/NTLMv1 through Active Directory security policy.
+intercepted browser. Explicit proxy mode initially supports native
+Kerberos/SPNEGO. Configure and validate AD membership or import an AES keytab
+under Services > Kontrol-ID > Domain and Keytab before enabling it.
 
 For transparent identity, generate an enrollment token under Status and
 Enrollment and provision Windows endpoints before enforcement. Domain join
@@ -26,8 +21,7 @@ passwords are sent only to kinit over a pipe and are never stored in config.xml.
 
 Runtime databases in /var/db/kontrol-identity and protected domain state in
 /var/db/kontrol-id-domain are intentionally preserved when the package is
-removed. Winbind is stopped and Squid/E2Guardian integration blocks are removed
-by the package deinstall hook.
+removed. The standalone service is disabled by the package deinstall hook.
 EOM
 }
 ]

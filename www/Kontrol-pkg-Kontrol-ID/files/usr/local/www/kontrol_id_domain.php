@@ -7,6 +7,11 @@ $pgtitle = array('Services', 'Kontrol-ID', 'Domain and Keytab');
 $savemsg = '';
 $input_errors = array();
 
+function kontrol_id_local_domain_membership_present() {
+	return is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb') &&
+		filesize(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb') > 0;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	try {
 		if (isset($_POST['regenerate_config'])) {
@@ -21,6 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			write_config('Kontrol-ID Kerberos keytab imported.');
 			$savemsg = 'The keytab was validated and installed with restricted permissions.';
 		} elseif (isset($_POST['join_domain'])) {
+			if (kontrol_id_local_domain_membership_present()) {
+				throw new Exception('This appliance already has a local Active Directory machine trust. Remove the current membership before joining again.');
+			}
 			kontrol_id_join_domain($_POST['join_username'] ?? '', $_POST['join_password'] ?? '');
 			unset($_POST['join_password']);
 			write_config('Kontrol-ID joined the configured Active Directory domain.');
@@ -29,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			kontrol_id_manage_winbind(($settings['enable'] ?? '') === 'on' && kontrol_id_ntlm_required($settings));
 			$savemsg = 'The machine trust, HTTP service principal and Kerberos keytab were created.';
 		} elseif (isset($_POST['unjoin_domain'])) {
+			if (!kontrol_id_local_domain_membership_present()) {
+				throw new Exception('This appliance has no local Active Directory machine trust to remove.');
+			}
 			if (($_POST['confirm_unjoin'] ?? '') !== 'yes') {
 				throw new Exception('Confirm that Kontrol-ID will be disabled and its local domain trust will be deleted.');
 			}
@@ -37,6 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			write_config('Kontrol-ID left Active Directory and removed its local machine trust and keytab.');
 			$savemsg = 'The appliance left Active Directory. Kontrol-ID was disabled and the local keytab and machine trust were removed.';
 		} elseif (isset($_POST['clear_local_trust'])) {
+			if (!kontrol_id_local_domain_membership_present()) {
+				throw new Exception('This appliance has no local Active Directory machine trust to remove.');
+			}
 			if (trim($_POST['local_cleanup_confirmation'] ?? '') !== 'REMOVE LOCAL TRUST') {
 				throw new Exception('Type REMOVE LOCAL TRUST exactly to confirm local-only cleanup.');
 			}
@@ -55,15 +69,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $settings = kontrol_id_get_settings();
 $domain_status = kontrol_id_domain_status();
 $domain = $domain_status['domain'];
+$domain_membership_present = kontrol_id_local_domain_membership_present();
+$join_disabled = $domain_membership_present ? ' disabled="disabled"' : '';
+$remove_disabled = $domain_membership_present ? '' : ' disabled="disabled"';
 
 include('head.inc');
 
-$tab_array = array();
-$tab_array[] = array('General', false, '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0');
-$tab_array[] = array('Status and Enrollment', false, '/kontrol_id_status.php');
-$tab_array[] = array('Domain and Keytab', true, '/kontrol_id_domain.php');
-$tab_array[] = array('XMLRPC Sync', false, '/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0');
-display_top_tabs($tab_array);
+display_top_tabs(kontrol_id_tabs('domain'));
+
+?>
+<style>
+.kontrol-id-card-disabled {
+	opacity: 0.62;
+	background-color: #f5f5f5;
+}
+</style>
+<?php
 
 if (!empty($input_errors)) {
 	print_input_errors($input_errors);
@@ -98,19 +119,26 @@ if (!empty($savemsg)) {
 		</div>
 		<form method="post">
 			<button class="btn btn-default" type="submit" name="regenerate_config" value="1"><i class="fa fa-refresh"></i> Regenerate managed configuration</button>
+			<p class="help-block">
+				Recreates the Kontrol-ID managed Kerberos and Samba configuration files from the saved General settings.
+				It does not join or rejoin the domain and does not replace the installed keytab.
+			</p>
 		</form>
 	</div>
 </div>
 
-<div class="panel panel-default">
+<div class="panel panel-default<?=$domain_membership_present ? ' kontrol-id-card-disabled' : ''?>">
 	<div class="panel-heading"><h2 class="panel-title">Assisted Domain Join</h2></div>
 	<div class="panel-body">
+		<?php if ($domain_membership_present): ?>
+		<div class="alert alert-success">This appliance already has a local Active Directory machine trust. Remove the existing membership before joining another domain.</div>
+		<?php endif; ?>
 		<p>Use a delegated account allowed to create or update this computer account and register the
 			<code>HTTP/<?=htmlspecialchars($domain['fqdn'] ?: 'proxy.example.corp')?></code> service principal.
 			The password is sent only to <code>kinit</code> over a private pipe, is never placed on a command line,
 			and is not stored in the Kontrol configuration.</p>
 		<div class="alert alert-info">Configure DNS and NTP first. Save the Proxy FQDN, domain, controller and NetBIOS name on the General tab before joining.</div>
-		<form method="post" class="form-horizontal" autocomplete="off">
+		<form method="post" class="form-horizontal" autocomplete="off"><fieldset<?=$join_disabled?>>
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="join_username">Delegated account</label>
 				<div class="col-sm-6">
@@ -125,7 +153,7 @@ if (!empty($savemsg)) {
 			<div class="form-group"><div class="col-sm-offset-3 col-sm-6">
 				<button class="btn btn-primary" type="submit" name="join_domain" value="1"><i class="fa fa-link"></i> Join domain and create HTTP keytab</button>
 			</div></div>
-		</form>
+		</fieldset></form>
 	</div>
 </div>
 
@@ -143,12 +171,15 @@ if (!empty($savemsg)) {
 	</div>
 </div>
 
-<div class="panel panel-danger">
+<div class="panel <?=$domain_membership_present ? 'panel-danger' : 'panel-default kontrol-id-card-disabled'?>">
 	<div class="panel-heading"><h2 class="panel-title">Remove Domain Membership</h2></div>
 	<div class="panel-body">
+		<?php if (!$domain_membership_present): ?>
+		<div class="alert alert-info">This appliance has not joined Active Directory yet. Domain removal becomes available after a machine trust is created.</div>
+		<?php endif; ?>
 		<p>Use a delegated domain account to remove this appliance cleanly from Active Directory. Kontrol-ID is disabled first,
 			its reversible Squid/E2Guardian configuration is restored, and only then are the package-owned keytab and Samba machine secrets deleted.</p>
-		<form method="post" class="form-horizontal" autocomplete="off">
+		<form method="post" class="form-horizontal" autocomplete="off"><fieldset<?=$remove_disabled?>>
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="unjoin_username">Delegated account</label>
 				<div class="col-sm-6">
@@ -166,13 +197,13 @@ if (!empty($savemsg)) {
 			<div class="form-group"><div class="col-sm-offset-3 col-sm-6">
 				<button class="btn btn-danger" type="submit" name="unjoin_domain" value="1" onclick="return confirm('Leave Active Directory and delete the local keytab and machine trust?');"><i class="fa fa-unlink"></i> Unjoin domain and delete local trust</button>
 			</div></div>
-		</form>
+		</fieldset></form>
 		<hr>
 		<p><strong>Controller unavailable?</strong> Local-only cleanup does not delete the computer account in Active Directory.</p>
-		<form method="post" class="form-inline" autocomplete="off">
+		<form method="post" class="form-inline" autocomplete="off"><fieldset<?=$remove_disabled?>>
 			<div class="form-group"><input class="form-control" name="local_cleanup_confirmation" type="text" placeholder="REMOVE LOCAL TRUST"></div>
 			<button class="btn btn-danger" type="submit" name="clear_local_trust" value="1" onclick="return confirm('Delete only the local keytab and machine trust?');"><i class="fa fa-trash"></i> Remove local trust only</button>
-		</form>
+		</fieldset></form>
 	</div>
 </div>
 

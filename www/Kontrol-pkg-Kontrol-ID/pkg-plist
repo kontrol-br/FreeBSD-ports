@@ -1,11 +1,13 @@
 libexec/kontrol-identity-helper
 libexec/kontrol-basic-auth
+libexec/kontrol-id-policy-sync.php
 etc/rc.d/kontrol_id_winbind
 pkg/kontrol_id.inc
 pkg/kontrol_id.xml
 pkg/kontrol_id_sync.xml
 www/kontrol_id_status.php
 www/kontrol_id_domain.php
+www/kontrol_id_policy.php
 www/kontrol_id_portal.php
 www/kontrol_id_enrollment.php
 www/kontrol-id/index.html

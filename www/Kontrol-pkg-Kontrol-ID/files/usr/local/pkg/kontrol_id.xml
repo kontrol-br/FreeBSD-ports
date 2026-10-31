@@ -35,6 +35,10 @@
 			<url>/kontrol_id_domain.php</url>
 		</tab>
 		<tab>
+			<text>AD Policy Mapping</text>
+			<url>/kontrol_id_policy.php</url>
+		</tab>
+		<tab>
 			<text>XMLRPC Sync</text>
 			<url>/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0</url>
 		</tab>
@@ -59,7 +63,7 @@
 				<strong>1.</strong> Complete this page and save the General settings.<br/>
 				<strong>2.</strong> Open <em>Domain and Keytab</em> to join Active Directory or import the keytab.<br/>
 				<strong>3.</strong> Return to General, select <em>Enable Kontrol-ID</em> and save again.<br/>
-				The managed Squid/E2Guardian chain is not activated until the final step succeeds.
+				The standalone Kontrol-ID engine is not activated until the final step succeeds.
 			]]></description>
 			<type>info</type>
 		</field>
@@ -70,11 +74,9 @@
 		<field>
 			<fielddescr>Traffic Flow</fielddescr>
 			<description><![CDATA[
-				<strong>Client &rarr; Squid + Kontrol-ID identity/authentication &rarr; E2Guardian ICAP &rarr; Internet</strong><br/>
-				Kontrol-ID owns the transport settings while enabled: explicit proxy on 3128 or transparent interception on 3128/3129,
-				and E2Guardian ICAP on 127.0.0.1:1344. Squid is the only TLS interception point and sends the original client IP,
-				resolved username and decrypted URL to E2Guardian. Previous Squid and E2Guardian values are restored when the managed
-				stack is disabled.
+				<strong>Client &rarr; Kontrol-ID secure web gateway &rarr; Internet</strong><br/>
+				Kontrol-ID is the multithread proxy, authentication endpoint, TLS inspection point and policy engine. No Squid or ICAP
+				chain is used. Explicit clients connect to port 3128; transparent interception is managed directly by the engine.
 			]]></description>
 			<type>info</type>
 		</field>
@@ -83,7 +85,8 @@
 			<fieldname>access_mode</fieldname>
 			<description><![CDATA[
 				Transparent mode identifies the workstation by source IP and does not challenge the browser. Explicit mode requires
-				clients to use the proxy address or PAC/WPAD and supports Kerberos, NTLM and Basic authentication.
+				clients to use the proxy address or PAC/WPAD. This initial standalone release enables native Kerberos/SPNEGO;
+				additional authentication plugins will be activated only after their engine-side validation is complete.
 			]]></description>
 			<type>select</type>
 			<default_value>transparent</default_value>
@@ -96,17 +99,12 @@
 			<fielddescr>Explicit Authentication</fielddescr>
 			<fieldname>explicit_auth</fieldname>
 			<description><![CDATA[
-				Kerberos is preferred. Kerberos + NTLM offers an explicitly enabled legacy fallback. NTLM-only is intended for
-				appliances that cannot use SPNEGO/Kerberos. Enforce NTLMv2 and reject LM/NTLMv1 in Active Directory policy;
-				a domain member cannot override what the DC accepts for domain accounts. Basic validates against the selected server.
+				Kerberos/SPNEGO is handled natively by the Kontrol-ID engine and validates browser tickets against the package-owned keytab.
 			]]></description>
 			<type>select</type>
 			<default_value>kerberos</default_value>
 			<options>
 				<option><name>Kerberos / SPNEGO (recommended)</name><value>kerberos</value></option>
-				<option><name>Kerberos with NTLM fallback (legacy)</name><value>kerberos_ntlm</value></option>
-				<option><name>NTLM compatibility only (legacy)</name><value>ntlm</value></option>
-				<option><name>Basic using selected Kontrol authentication server</name><value>basic</value></option>
 			</options>
 		</field>
 		<field>
@@ -138,17 +136,17 @@
 			<size>20</size>
 		</field>
 		<field>
-			<fielddescr>Authentication Helper Processes</fielddescr>
-			<fieldname>auth_processes</fieldname>
-			<description>Maximum helper processes reserved for explicit proxy authentication.</description>
+			<fielddescr>Concurrent Worker Threads</fielddescr>
+			<fieldname>engine_workers</fieldname>
+			<description><![CDATA[Maximum simultaneous gateway workers. Each request is handled independently by the native multithread engine. Start with 256 and size this value from measured concurrency, CPU and memory; supported range is 64 to 20000.]]></description>
 			<type>input</type>
-			<default_value>25</default_value>
+			<default_value>256</default_value>
 		</field>
 		<field>
 			<fielddescr>Web Traffic Inspection</fielddescr>
 			<fieldname>traffic_mode</fieldname>
 			<description><![CDATA[
-				HTTP-only is the safe onboarding mode. HTTP + HTTPS enables Squid SSL Bump for the selected access mode and automatically selects
+				HTTP-only is the safe onboarding mode. HTTP + HTTPS enables native Kontrol-ID TLS inspection and automatically selects
 				the internal Kontrol-ID CA. Every inspected client must first be enrolled so the CA is installed in Windows.
 			]]></description>
 			<type>select</type>
@@ -161,7 +159,7 @@
 		<field>
 			<fielddescr>Client Interface(s)</fielddescr>
 			<fieldname>intercept_interfaces</fieldname>
-			<description><![CDATA[Interfaces where Squid listens for explicit clients or where Kontrol-ID installs transparent HTTP/HTTPS redirects.]]></description>
+			<description><![CDATA[Interfaces where Kontrol-ID listens for explicit clients or installs transparent HTTP/HTTPS redirects.]]></description>
 			<type>interfaces_selection</type>
 			<default_value>lan</default_value>
 			<hideinterfaceregex>loopback</hideinterfaceregex>
@@ -170,24 +168,10 @@
 		<field>
 			<fielddescr>Inspection CA</fielddescr>
 			<description><![CDATA[
-				The package-owned <strong>Kontrol-ID Internal CA</strong> is selected in Squid automatically and its private key remains
+				The package-owned <strong>Kontrol-ID Internal CA</strong> is selected by the gateway automatically and its private key remains
 				on the appliance. The Windows provisioner installs only the public CA certificate in the Trusted Root store.
 			]]></description>
 			<type>info</type>
-		</field>
-		<field>
-			<fielddescr>Manage Squid</fielddescr>
-			<fieldname>squid_integration</fieldname>
-			<description><![CDATA[Enable Squid and install the reversible Kontrol-ID identity/authentication policy for the selected access mode.]]></description>
-			<type>checkbox</type>
-			<default_value>on</default_value>
-		</field>
-		<field>
-			<fielddescr>Manage E2Guardian Chain</fielddescr>
-			<fieldname>e2guardian_integration</fieldname>
-			<description><![CDATA[Enable E2Guardian ICAP on loopback, disable its independent transparent/MITM rules and send the identified, decrypted Squid requests with their original client IP and username.]]></description>
-			<type>checkbox</type>
-			<default_value>on</default_value>
 		</field>
 		<field>
 			<name>WinRM HTTPS</name>
@@ -349,8 +333,14 @@
 		</field>
 	</fields>
 	<custom_php_validation_command>
+		/* Keep the generic package editor's write_config() audit entry explicit
+		 * even on platform versions that lose this parsed XML value during POST. */
+		$pkg['addedit_string'] = 'Kontrol-ID: changed settings.';
 		kontrol_id_validate($_POST, $input_errors);
 	</custom_php_validation_command>
+	<custom_php_after_head_command>
+		kontrol_id_print_managed_service_icons();
+	</custom_php_after_head_command>
 	<custom_php_resync_config_command>
 		kontrol_id_resync();
 		if (!empty($_POST['_kontrol_id_activation_deferred'])) {

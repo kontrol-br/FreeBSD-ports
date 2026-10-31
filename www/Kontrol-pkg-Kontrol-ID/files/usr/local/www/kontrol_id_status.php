@@ -7,6 +7,13 @@ $pgtitle = array('Services', 'Kontrol-ID', 'Status and Enrollment');
 $token_once = '';
 $savemsg = '';
 
+if (!kontrol_id_transparent_mode()) {
+	header('Location: /pkg_edit.php?xml=kontrol_id.xml&id=0&savemsg=' . rawurlencode(
+		'Status and Enrollment is available only in Transparent identification mode.'
+	));
+	exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	if (isset($_POST['generate_token'])) {
 		$token_once = kontrol_id_generate_token((int)($_POST['token_uses'] ?? 1), 900);
@@ -66,12 +73,7 @@ $identity_ca = kontrol_id_extract_item(lookup_ca($settings['ca_ref']));
 
 include('head.inc');
 
-$tab_array = array();
-$tab_array[] = array('General', false, '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0');
-$tab_array[] = array('Status and Enrollment', true, '/kontrol_id_status.php');
-$tab_array[] = array('Domain and Keytab', false, '/kontrol_id_domain.php');
-$tab_array[] = array('XMLRPC Sync', false, '/pkg_edit.php?xml=kontrol_id_sync.xml&amp;id=0');
-display_top_tabs($tab_array);
+display_top_tabs(kontrol_id_tabs('status'));
 
 if (!empty($savemsg)) {
 	print_info_box($savemsg, 'success');
@@ -85,7 +87,7 @@ if (!empty($token_once)) {
 <div class="panel panel-default">
 	<div class="panel-heading"><h2 class="panel-title">Managed Traffic Chain</h2></div>
 	<div class="panel-body">
-		<p><strong>Client &rarr; Squid + Kontrol-ID helper &rarr; E2Guardian ICAP &rarr; Internet</strong></p>
+		<p><strong>Client &rarr; Kontrol-ID secure web gateway &rarr; Internet</strong></p>
 		<p>
 			Access: <strong><?=($settings['access_mode'] === 'explicit') ? 'Explicit proxy / ' . htmlspecialchars($settings['explicit_auth']) : 'Transparent identification'?></strong> &nbsp;
 			Inspection: <strong><?=($settings['traffic_mode'] === 'http_https') ? 'HTTP + HTTPS' : 'HTTP only'?></strong> &nbsp;
@@ -109,7 +111,7 @@ if (!empty($token_once)) {
 			</tbody>
 		</table>
 		</div>
-		<p class="help-block">Kontrol-ID owns these integration values while enabled. Use <a href="/pkg_edit.php?xml=kontrol_id.xml&amp;id=0">General Settings</a> to change the traffic mode or interfaces.</p>
+		<p class="help-block">Kontrol-ID owns the proxy, authentication, inspection and policy runtime while enabled. Use <a href="/pkg_edit.php?xml=kontrol_id.xml&amp;id=0">General Settings</a> to change the traffic mode or interfaces.</p>
 	</div>
 </div>
 
