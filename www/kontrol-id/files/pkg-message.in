@@ -1,0 +1,20 @@
+[
+{ type: install
+  message: <<EOM
+Kontrol-ID is installed as a standalone secure web gateway derived from the
+E2Guardian engine.
+
+Configuration: %%PREFIX%%/etc/e2guardian
+Service:       service kontrol_id start
+RC setting:    kontrol_id_enable="YES"
+
+The initial port preserves the proven E2Guardian configuration layout to allow
+controlled migration of existing policy groups and lists.  Kontrol-ID conflicts
+with the conventional E2Guardian engine and GUI packages; do not force both
+engines to coexist.
+
+The service remains disabled after installation until its managed configuration
+has been generated and validated by the Kontrol-ID package.
+EOM
+}
+]
