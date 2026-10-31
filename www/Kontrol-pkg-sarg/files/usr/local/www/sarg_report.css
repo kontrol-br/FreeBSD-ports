@@ -157,8 +157,8 @@ img[src$="graph.png"][title*="Graphic"] {
 
 .sarg-bar-row { display: grid; grid-template-columns: minmax(74px, 1fr) 2.2fr auto; align-items: center; gap: 9px; margin: 9px 0; }
 .sarg-bar-label { overflow: hidden; color: #425261; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.sarg-bar-track { height: 7px; overflow: hidden; background: #e7edf2; border-radius: 2px; }
-.sarg-bar-fill { height: 100%; background: var(--sarg-accent); transform-origin: left; transition: filter .16s ease, transform .16s ease; animation: sarg-grow-x .55s ease-out both; }
+.sarg-bar-track { display: block; height: 7px; overflow: hidden; background: #e7edf2; border-radius: 2px; }
+.sarg-bar-fill { display: block; height: 100%; background: var(--sarg-accent); border-radius: inherit; transform-origin: left; transition: filter .16s ease, transform .16s ease; animation: sarg-grow-x .55s ease-out both; }
 .sarg-bar-row:hover .sarg-bar-fill { filter: saturate(1.15) brightness(.93); transform: scaleY(1.35); }
 .sarg-bar-value, .sarg-column-value { color: var(--sarg-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 
