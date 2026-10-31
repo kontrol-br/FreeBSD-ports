@@ -2,6 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
+PORTREVISION=	1
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty

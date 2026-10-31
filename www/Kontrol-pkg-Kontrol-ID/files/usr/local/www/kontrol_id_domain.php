@@ -113,7 +113,10 @@ if (!empty($savemsg)) {
 		<form method="post" class="form-horizontal" autocomplete="off">
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="join_username">Delegated account</label>
-				<div class="col-sm-6"><input class="form-control" id="join_username" name="join_username" type="text" autocomplete="username" placeholder="join-account@<?=htmlspecialchars(strtolower($domain['realm'] ?: 'example.corp'))?>"></div>
+				<div class="col-sm-6">
+					<input class="form-control" id="join_username" name="join_username" type="text" autocomplete="username" placeholder="join-account@<?=htmlspecialchars(strtoupper($domain['realm'] ?: 'EXAMPLE.CORP'))?>">
+					<span class="help-block">Accepted formats: <code>join-account@<?=htmlspecialchars(strtoupper($domain['realm'] ?: 'EXAMPLE.CORP'))?></code>, <code><?=htmlspecialchars(strtoupper($domain['workgroup'] ?: 'EXAMPLE'))?>\join-account</code>, or <code>join-account</code>.</span>
+				</div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="join_password">Password</label>
@@ -148,7 +151,10 @@ if (!empty($savemsg)) {
 		<form method="post" class="form-horizontal" autocomplete="off">
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="unjoin_username">Delegated account</label>
-				<div class="col-sm-6"><input class="form-control" id="unjoin_username" name="unjoin_username" type="text" autocomplete="username"></div>
+				<div class="col-sm-6">
+					<input class="form-control" id="unjoin_username" name="unjoin_username" type="text" autocomplete="username" placeholder="administrator@<?=htmlspecialchars(strtoupper($domain['realm'] ?: 'EXAMPLE.CORP'))?>">
+					<span class="help-block">Examples: <code>administrator@<?=htmlspecialchars(strtoupper($domain['realm'] ?: 'EXAMPLE.CORP'))?></code>, <code><?=htmlspecialchars(strtoupper($domain['workgroup'] ?: 'EXAMPLE'))?>\administrator</code>, or <code>administrator</code>. The account must be allowed to delete this computer object from Active Directory.</span>
+				</div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="unjoin_password">Password</label>

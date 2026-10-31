@@ -783,26 +783,59 @@ function kontrol_id_import_keytab($uploaded_path) {
 	return $check;
 }
 
+function kontrol_id_domain_principal($username, $realm) {
+	if (!is_string($username) || !is_string($realm)) {
+		return '';
+	}
+	$username = trim($username);
+	$realm = strtoupper(trim($realm));
+	if ($username === '' || strlen($username) > 255 ||
+		!preg_match('/^[A-Z0-9][A-Z0-9.-]{0,254}$/iD', $realm)) {
+		return '';
+	}
+	/* Accept the formats administrators normally copy from AD tools. A
+	 * DOMAIN\\user value is converted to the configured Kerberos realm. */
+	if (strpos($username, '\\') !== false) {
+		if (substr_count($username, '\\') !== 1) {
+			return '';
+		}
+		list($domain_prefix, $username) = explode('\\', $username, 2);
+		if (!preg_match('/^[A-Za-z0-9_.-]{1,63}$/D', $domain_prefix)) {
+			return '';
+		}
+	}
+	if (substr_count($username, '@') > 1) {
+		return '';
+	}
+	$account = $username;
+	$principal_realm = $realm;
+	if (strpos($username, '@') !== false) {
+		list($account, $principal_realm) = explode('@', $username, 2);
+		/* Kerberos realm names are case-sensitive. Canonicalize the configured
+		 * realm so user@example.corp works like user@EXAMPLE.CORP. */
+		if (strcasecmp($principal_realm, $realm) === 0) {
+			$principal_realm = $realm;
+		}
+	}
+	if (!preg_match('/^[A-Za-z0-9_.-]{1,128}$/D', $account) ||
+		!preg_match('/^[A-Z0-9][A-Z0-9.-]{0,254}$/iD', $principal_realm)) {
+		return '';
+	}
+	return $account . '@' . $principal_realm;
+}
+
 function kontrol_id_join_domain($username, $password) {
-	$normalized_username = is_string($username) ? str_replace('\\', '', $username) : '';
-	if (!is_string($username) || !preg_match('/^[A-Za-z0-9_.@-]{1,255}$/D', $normalized_username) ||
-		!is_string($password) || $password === '' || strlen($password) > 4096) {
+	$domain = kontrol_id_domain_values();
+	$principal = kontrol_id_domain_principal($username, $domain['realm'] ?? '');
+	if ($principal === '' || !is_string($password) || $password === '' || strlen($password) > 4096) {
 		throw new Exception('Enter a valid delegated join account and password.');
 	}
-	$domain = kontrol_id_domain_values();
 	if (!kontrol_id_valid_dns_name($domain['domain']) || !kontrol_id_valid_dns_name($domain['fqdn']) ||
 		!kontrol_id_valid_dns_name($domain['dc']) || empty($domain['workgroup'])) {
 		throw new Exception('Complete and save the domain settings on the General tab first.');
 	}
 	kontrol_id_ensure_storage();
 	kontrol_id_write_domain_config();
-	$principal = $username;
-	if (strpos($principal, '\\') !== false) {
-		$principal = substr($principal, strrpos($principal, '\\') + 1);
-	}
-	if (strpos($principal, '@') === false) {
-		$principal .= '@' . $domain['realm'];
-	}
 	$ccache = KONTROL_ID_DOMAIN_DIR . '/.join-ccache-' . getmypid();
 	$environment = kontrol_id_domain_environment($ccache);
 	$keytab_backup = '';
@@ -811,7 +844,9 @@ function kontrol_id_join_domain($username, $password) {
 		$kinit = kontrol_id_run_command(array('/usr/local/bin/kinit', $principal), $password . "\n", $environment, 30);
 		$password = str_repeat("\0", strlen($password));
 		if ($kinit['code'] !== 0) {
-			throw new Exception('Kerberos authentication failed. Verify the join account, DNS and clock synchronization.');
+			$detail = trim($kinit['stderr'] ?: $kinit['stdout']);
+			throw new Exception('Kerberos authentication failed. Verify the account, password, DNS and clock synchronization.' .
+				($detail !== '' ? ' Kerberos reported: ' . $detail : ''));
 		}
 		$join = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
 			'--use-krb5-ccache=FILE:' . $ccache, 'ads', 'join'), '', $environment, 60);
@@ -937,22 +972,14 @@ function kontrol_id_clear_local_domain_state() {
 }
 
 function kontrol_id_unjoin_domain($username, $password) {
-	$normalized_username = is_string($username) ? str_replace('\\', '', $username) : '';
-	if (!is_string($username) || !preg_match('/^[A-Za-z0-9_.@-]{1,255}$/D', $normalized_username) ||
-		!is_string($password) || $password === '' || strlen($password) > 4096) {
+	$domain = kontrol_id_domain_values();
+	$principal = kontrol_id_domain_principal($username, $domain['realm'] ?? '');
+	if ($principal === '' || !is_string($password) || $password === '' || strlen($password) > 4096) {
 		throw new Exception('Enter a valid delegated domain account and password.');
 	}
-	$domain = kontrol_id_domain_values();
 	if (!kontrol_id_valid_dns_name($domain['domain']) || !kontrol_id_valid_dns_name($domain['dc']) ||
 		empty($domain['realm'])) {
 		throw new Exception('Complete and save the domain settings before removing membership.');
-	}
-	$principal = $username;
-	if (strpos($principal, '\\') !== false) {
-		$principal = substr($principal, strrpos($principal, '\\') + 1);
-	}
-	if (strpos($principal, '@') === false) {
-		$principal .= '@' . $domain['realm'];
 	}
 	$ccache = KONTROL_ID_DOMAIN_DIR . '/.unjoin-ccache-' . getmypid();
 	$environment = kontrol_id_domain_environment($ccache);
@@ -960,7 +987,9 @@ function kontrol_id_unjoin_domain($username, $password) {
 		$kinit = kontrol_id_run_command(array('/usr/local/bin/kinit', $principal), $password . "\n", $environment, 30);
 		$password = str_repeat("\0", strlen($password));
 		if ($kinit['code'] !== 0) {
-			throw new Exception('Kerberos authentication failed. The domain membership was not removed.');
+			$detail = trim($kinit['stderr'] ?: $kinit['stdout']);
+			throw new Exception('Kerberos authentication failed. The domain membership was not removed.' .
+				($detail !== '' ? ' Kerberos reported: ' . $detail : ''));
 		}
 		kontrol_id_disable_before_unjoin();
 		$leave = kontrol_id_run_command(array('/usr/local/bin/net', '--configfile=' . KONTROL_ID_SMB_CONF,
