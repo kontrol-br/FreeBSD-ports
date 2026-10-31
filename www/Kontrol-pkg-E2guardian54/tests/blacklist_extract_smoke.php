@@ -64,6 +64,36 @@ function create_archive($base, $name, $entries) {
         assert_true($return === 0, "could not create {$name} archive");
         return $archive;
 }
+function create_archive_with_entry($archive, $entry, $contents = "fixture\n") {
+        assert_true(strlen($entry) <= 100, 'test archive entry is too long');
+        $header = str_repeat("\0", 512);
+        $put = function ($offset, $length, $value) use (&$header) {
+                $field = str_pad(substr($value, 0, $length), $length, "\0");
+                $header = substr_replace($header, $field, $offset, $length);
+        };
+        $put(0, 100, $entry);
+        $put(100, 8, "0000644\0");
+        $put(108, 8, "0000000\0");
+        $put(116, 8, "0000000\0");
+        $put(124, 12, sprintf("%011o", strlen($contents)) . "\0");
+        $put(136, 12, sprintf("%011o", time()) . "\0");
+        $put(148, 8, "        ");
+        $put(156, 1, "0");
+        $put(257, 6, "ustar\0");
+        $put(263, 2, "00");
+        $put(265, 32, "root");
+        $put(297, 32, "wheel");
+        $checksum = array_sum(unpack('C*', $header));
+        $put(148, 8, sprintf("%06o", $checksum) . "\0 ");
+        $padding = (512 - (strlen($contents) % 512)) % 512;
+        $tar = $header . $contents . str_repeat("\0", $padding) . str_repeat("\0", 1024);
+        $raw_archive = $archive . '.tar';
+        assert_true(file_put_contents($raw_archive, $tar, LOCK_EX) !== false, 'could not write test tar archive');
+        exec('/usr/bin/gzip -c ' . escapeshellarg($raw_archive) . ' > ' . escapeshellarg($archive), $output, $return);
+        unlink($raw_archive);
+        assert_true($return === 0 && is_file($archive), 'could not compress test archive');
+        return $archive;
+}
 function assert_preserved($lists) {
         foreach (array(
                 'authplugins/ipgroups',
@@ -120,22 +150,16 @@ try {
 
         $base = $root . '/traversal';
         make_tree($base);
-        mkdir($base . '/payload', 0777, true);
-        file_put_contents($base . '/payload/file', "fixture\n");
         $archive = $base . '/traversal.tgz';
-        exec('/usr/bin/tar -czf ' . escapeshellarg($archive) . ' -C ' . escapeshellarg($base . '/payload') . ' --transform=' . escapeshellarg('s|file|../outside|') . ' file', $output, $return);
-        assert_true($return === 0, 'could not create traversal archive');
+        create_archive_with_entry($archive, '../outside');
         assert_true(!update_with($base, $archive), 'traversal archive unexpectedly accepted');
         assert_true(!file_exists($base . '/outside'), 'traversal wrote outside extraction directory');
         assert_preserved($base . '/lists');
 
         $base = $root . '/absolute';
         make_tree($base);
-        mkdir($base . '/payload', 0777, true);
-        file_put_contents($base . '/payload/file', "fixture\n");
         $archive = $base . '/absolute.tgz';
-        exec('/usr/bin/tar -czPf ' . escapeshellarg($archive) . ' -C ' . escapeshellarg($base . '/payload') . ' --transform=' . escapeshellarg('s|file|/tmp/e2guardian-absolute-smoke|') . ' file', $output, $return);
-        assert_true($return === 0, 'could not create absolute-path archive');
+        create_archive_with_entry($archive, '/tmp/e2guardian-absolute-smoke');
         assert_true(!update_with($base, $archive), 'absolute-path archive unexpectedly accepted');
         assert_true(!file_exists('/tmp/e2guardian-absolute-smoke'), 'absolute path wrote outside extraction directory');
         assert_preserved($base . '/lists');
@@ -168,18 +192,22 @@ try {
         assert_true(!is_dir($base . '/lists/blacklists.old'), 'rollback left blacklists.old behind');
         assert_preserved($base . '/lists');
 
-        $base = $root . '/concurrency';
-        make_tree($base);
-        $archive = create_archive($base, 'concurrency', array('BL/new-category/domains'));
-        $pid = pcntl_fork();
-        assert_true($pid !== -1, 'could not fork concurrency worker');
-        if ($pid === 0) {
-                exit(update_with($base, $archive, array('hold_lock_seconds' => 2)) ? 0 : 1);
+        if (function_exists('pcntl_fork') && function_exists('pcntl_waitpid')) {
+                $base = $root . '/concurrency';
+                make_tree($base);
+                $archive = create_archive($base, 'concurrency', array('BL/new-category/domains'));
+                $pid = pcntl_fork();
+                assert_true($pid !== -1, 'could not fork concurrency worker');
+                if ($pid === 0) {
+                        exit(update_with($base, $archive, array('hold_lock_seconds' => 2)) ? 0 : 1);
+                }
+                usleep(300000);
+                assert_true(!update_with($base, $archive), 'concurrent update unexpectedly acquired the lock');
+                pcntl_waitpid($pid, $status);
+                assert_true(pcntl_wexitstatus($status) === 0, 'lock-holding update failed');
+        } else {
+                echo "SKIP: concurrency test requires pcntl\n";
         }
-        usleep(300000);
-        assert_true(!update_with($base, $archive), 'concurrent update unexpectedly acquired the lock');
-        pcntl_waitpid($pid, $status);
-        assert_true(pcntl_wexitstatus($status) === 0, 'lock-holding update failed');
 
         echo "PASS: blacklist extraction smoke tests\n";
 } finally {
