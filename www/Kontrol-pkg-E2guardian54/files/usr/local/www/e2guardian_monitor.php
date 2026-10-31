@@ -49,7 +49,6 @@ $tab_array = array();
 	$tab_array[] = array(gettext("Real Time"), true, "/e2guardian_monitor.php");
 	$tab_array[] = array(gettext("Report and log"), false, "/pkg_edit.php?xml=e2guardian_log.xml");
 	$tab_array[] = array(gettext("Sync"), false, "/pkg_edit.php?xml=e2guardian_sync.xml");
-	$tab_array[] = array(gettext("Help"), false, "/e2guardian_about.php");
 
 display_top_tabs($tab_array);
 

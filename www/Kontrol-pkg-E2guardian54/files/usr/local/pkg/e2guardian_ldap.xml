@@ -88,10 +88,6 @@
 			<text>Sync</text>
 			<url>/pkg_edit.php?xml=e2guardian_sync.xml&amp;id=0</url>
 		</tab>
-		<tab>
-			<text>Help</text>
-			<url>/e2guardian_about.php</url>
-		</tab>
 	</tabs>
 	<adddeleteeditpagefields>
 		<columnitem>

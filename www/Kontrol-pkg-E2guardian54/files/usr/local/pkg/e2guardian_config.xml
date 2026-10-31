@@ -89,10 +89,6 @@
 			<text>Sync</text>
 			<url>/pkg_edit.php?xml=e2guardian_sync.xml&amp;id=0</url>
 		</tab>
-		<tab>
-			<text>Help</text>
-			<url>/e2guardian_about.php</url>
-		</tab>
 	</tabs>
 	<fields>
 		<field>
@@ -153,47 +149,6 @@
                                 <option><name>banned</name><value>0</value></option>
                         </options>
                 </field>
-		<field>
-			<fielddescr>Weighted phrase mode</fielddescr>
-			<fieldname>weightedphrasemode</fieldname>
-			<description><![CDATA[Default option for Weighted phrase mode on group configuration.<br>
-				IMPORTANT: Note that setting this to "0" turns off all features which extract phrases from page content,
-				including banned & exception phrases (not just weighted), search term filtering, and scanning for links to banned URLs.]]></description>
-			<type>select</type>
-			<options>
-				<option><name>Singular = each weighted phrase found only counts once on a page. (default)</name><value>2</value></option>
-				<option><name>Normal = normal weighted phrase operation.</name><value>1</value></option>
-				<option><name>Off = do not use the weighted phrase feature.</name><value>0</value></option>
-			</options>
-		</field>
-		<field>
-			<fielddescr>Lower casing options</fielddescr>
-			<fieldname>preservecase</fieldname>
-			<description><![CDATA[When a document is scanned the uppercase letters are converted to lower case in order to compare them with the phrases.<br>
-				However this can break Big5 and other 16-bit texts.  If needed preserve the case.]]></description>
-			<type>select</type>
-			<options>
-				<option><name>Force lower case (default)</name><value>0</value></option>
-				<option><name>Do not change case</name><value>1</value></option>
-				<option><name>Scan first in lower case, then in original case</name><value>2</value></option>
-			</options>
-		</field>
-		<field>
-			<fielddescr>Phrase filter mode</fielddescr>
-			<fieldname>phrasefiltermode</fieldname>
-			<description><![CDATA[Smart, Raw and Meta/Title phrase content filtering options<br>
-				Smart is where the multiple spaces and HTML are removed before phrase filtering<br>
-				Raw is where the raw HTML including meta tags are phrase filtered<br>
-				Meta/Title is where only meta and title tags are phrase filtered (v. quick)<br>
-				CPU usage can be effectively halved by using setting 0 or 1 compared to 2]]></description>
-			<type>select</type>
-			<options>
-				<option><name>use both (default)</name><value>2</value></option>
-				<option><name>meta/title</name><value>3</value></option>
-				<option><name>smart only</name><value>1</value></option>
-				<option><name>raw only</name><value>0</value></option>
-			</options>
-		</field>
 			<field>
 			<fielddescr>Url cache number</fielddescr>
 			<fieldname>urlcachenumber</fieldname>
@@ -213,61 +168,6 @@
 			<description><![CDATA[Age before cache are stale and should be ignored in seconds<br>
 				<strong>900 = 15 mins(recommended)</strong><br>
 				0 = never]]></description>
-		</field>
-		<field>
-			<name>Content Scanner</name>
-			<type>listtopic</type>
-		</field>
-		<field>
-			<fielddescr>Content Scanners (antivirus)</fielddescr>
-			<fieldname>content_scanners</fieldname>
-			<description><![CDATA[Content Scanners options. Default values are in ( )]]></description>
-			<type>select</type>
-			<options>
-				<option><name>clamdscan (off)</name><value>/usr/local/etc/e2guardian/contentscanners/clamdscan.conf</value></option>
-				<option><name>icapscan (off)</name><value>/usr/local/etc/e2guardian/contentscanners/icapscan.conf</value></option>
-			</options>
-			<multiple/>
-			<size>3</size>
-		</field>
-		<field>
-			<fielddescr>freshclam frequency</fielddescr>
-			<fieldname>cron</fieldname>
-			<description><![CDATA[Default:<strong>Every day</strong><br>
-				Select how often Kontrol will update clamd virus database]]></description>
-			<type>select</type>
-			<options>
-				<option><name>Every day</name><value>day</value></option>
-				<option><name>Every 2 days</name><value>02days</value></option>
-				<option><name>Once a week</name><value>week</value></option>
-				<option><name>Never</name><value>never</value></option>
-			</options>
-		</field>
-		<field>
-			<fielddescr>Content scanner timeout</fielddescr>
-			<fieldname>contentscannertimeout</fieldname>
-			<type>input</type>
-			<size>10</size>
-			<description><![CDATA[<strong>Default is 60</strong><br>
-				Some of the content scanners support using a timeout value to stop processing (eg AV scanning) the file if it takes too long.<br>
-				If supported this will be used.<br>
-				The default of 60 seconds is probably reasonable.]]></description>
-		</field>
-		<field>
-			<fielddescr>Content scan exceptions</fielddescr>
-			<fieldname>contentscanexceptions</fieldname>
-			<type>checkbox</type>
-			<description><![CDATA[If 'on' exception sites, urls, users etc will be scanned.<br>
-				This is probably not desirable behavour as exceptions are supposed to be trusted and will increase load.<br>
-				Correct use of grey lists are a better idea.]]></description>
-		</field>
-		<field>
-			<fielddescr>ICAP URL</fielddescr>
-			<fieldname>contentscannericapurl</fieldname>
-			<type>input</type>
-			<size>40</size>
-			<description><![CDATA[Enter ICAP URL in <strong>icap://127.0.0.1:1344/squid_clamav</strong> format<br>
-				Use hostname rather than IP address and Always specify the port]]></description>
 		</field>
 		<field>
 			<name>Misc settings</name>

@@ -1,6 +1,6 @@
 PORTNAME=	e2guardian
 PORTVERSION=	5.4.23
-PORTREVISION=	0
+PORTREVISION=	1
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=    kontrol-br
@@ -29,17 +29,10 @@ GNU_CONFIGURE=	yes
 CONFIGURE_ARGS=	--with-logdir=/var/log \
 		--with-piddir=/var/run
 
-OPTIONS_RADIO=	AV
-OPTIONS_RADIO_AV=AVAST CLAMD KAV
-OPTIONS_DEFINE=	CLISCAN ICAP NTLM DNS EMAIL DEBUG DOCS SSL_MITM
-OPTIONS_DEFAULT=CLAMD DNS ICAP NTLM SSL_MITM
+OPTIONS_DEFINE=	NTLM DNS EMAIL DEBUG DOCS SSL_MITM
+OPTIONS_DEFAULT=DNS NTLM SSL_MITM
 OPTIONS_SUB=	yes
 
-CLISCAN_DESC=	Enable support for CLI content scanners
-CLAMD_DESC=	Enable ClamD AV content scanner
-ICAP_DESC=	Enable ICAP AV content scanner support
-KAV_DESC=	Enable Kaspersky AV support
-AVAST_DESC=	Enable AvastD content scanner
 NTLM_DESC=	Include NTLM authentication plugin
 DNS_DESC=	Include DNS authetication plugin
 EMAIL_DESC=	Enable e-mail reporting support
@@ -48,12 +41,6 @@ SSL_MITM_DESC=	Enable support for the SSL MITM plugin
 
 CONFDIR=	${PREFIX}/etc/e2guardian
 
-CLISCAN_CONFIGURE_ENABLE=	commandline
-CLAMD_CONFIGURE_ENABLE=		clamd
-CLAMD_RUN_DEPENDS=		clamav>=0:security/clamav
-ICAP_CONFIGURE_ENABLE=		icap
-KAV_CONFIGURE_ENABLE=		kavd
-AVAST_CONFIGURE_ENABLE=		avastd
 NTLM_CONFIGURE_ENABLE=		ntlm
 NTLM_USES=			iconv
 DNS_CONFIGURE_ENABLE=		dnsauth
@@ -85,13 +72,12 @@ LDFLAGS+=       -L${OPENSSLLIB}
 
 .include <bsd.port.options.mk>
 
-.if ${PORT_OPTIONS:MCLAMD} || ${PORT_OPTIONS:MICAP} || \
-    ${PORT_OPTIONS:MKAV} || ${PORT_OPTIONS:MCLISCAN} || \
-    ${PORT_OPTIONS:MAVAST}
-PLIST_SUB+=	SCANNERS=""
-.else
-PLIST_SUB+=	SCANNERS="@comment "
-.endif
+# These switches disable content-scanner plugins. They do not disable the
+# native E2Guardian ICAP service consumed by Squid.
+CONFIGURE_ARGS+=	--disable-commandline --disable-clamd --disable-icap \
+			--disable-kavd --disable-avastd
+PLIST_SUB+=	SCANNERS="@comment " CLAMD="@comment " ICAP="@comment " \
+		CLISCAN="@comment " KAV="@comment " AVAST="@comment "
 
 SUB_FILES=	pkg-message
 
@@ -111,10 +97,7 @@ post-install:
 		${STAGEDIR}${ETCDIR}/lists/ipnobypass.sample
 	@${MV} ${STAGEDIR}${ETCDIR}/lists/urlnobypass \
 		${STAGEDIR}${ETCDIR}/lists/urlnobypass.sample
-	@${MKDIR} ${STAGEDIR}${ETCDIR}/lists/contentscanners
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/exceptionvirusextensionlist.sample \
-		${STAGEDIR}${ETCDIR}/lists/contentscanners/
-	@${MV} ${STAGEDIR}${ETCDIR}/lists/exceptionvirussiteiplist.sample \
-		${STAGEDIR}${ETCDIR}/lists/contentscanners/
+	@${RM} -r ${STAGEDIR}${ETCDIR}/contentscanners
+	@${RM} ${STAGEDIR}${ETCDIR}/lists/exceptionvirus*.sample
 
 .include <bsd.port.mk>

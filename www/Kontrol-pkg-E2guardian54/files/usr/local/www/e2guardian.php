@@ -357,7 +357,7 @@ function read_lists($log_notice=true, $uw="") {
         global $config, $g;
 
         $dir = E2GUARDIAN_ETCDIR . "/lists";
-        $groups = array("phraselists", "blacklists", "whitelists");
+		$groups = array("blacklists", "whitelists");
         $liston = $config['installedpackages']['e2guardianblacklist']['config'][0]['liston'] ?? 'banned';
         $blacklist_root = (is_dir($dir . '/blacklists/BL') ? $dir . '/blacklists/BL' : $dir . '/blacklists');
         $metadata = e2g_parse_blacklist_metadata($blacklist_root);
@@ -369,7 +369,6 @@ function read_lists($log_notice=true, $uw="") {
         }
 
         $collection = array(
-                'phraselists' => array(),
                 'blacklists' => array(),
                 'whitelists' => array()
         );

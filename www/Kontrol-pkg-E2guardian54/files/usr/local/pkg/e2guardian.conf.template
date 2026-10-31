@@ -316,7 +316,7 @@ urllist = 'name=authexception,messageno=603,path=/usr/local/etc/e2guardian/lists
 # If enabled then the phrases found that made up the total which excedes
 # the naughtyness limit will be logged and, if the reporting level is
 # high enough, reported. on | off
-showweightedfound = {$showweightedfound}
+showweightedfound = off
 
 # Weighted phrase mode
 # There are 3 possible modes of operation:
@@ -329,7 +329,7 @@ showweightedfound = {$showweightedfound}
 # phrases (not just weighted), search term filtering, and scanning for
 # links to banned URLs.
 #
-weightedphrasemode = {$weightedphrasemode}
+weightedphrasemode = 0
 
 # Smart, Raw and Meta/Title phrase content filtering options
 # Smart is where the multiple spaces and HTML are removed before phrase filtering
@@ -340,7 +340,7 @@ weightedphrasemode = {$weightedphrasemode}
 # 1 = smart only
 # 2 = both of the above (default)
 # 3 = meta/title
-phrasefiltermode = {$phrasefiltermode}
+phrasefiltermode = 0
 
 # Lower casing options
 # When a document is scanned the uppercase letters are converted to lower case
@@ -501,7 +501,7 @@ downloadmanager = '{$e2guardian_dir}/downloadmanagers/default.conf'
 # Some of the scanner(s) require 3rd party software and libraries eg clamav.
 # See the individual plugin conf file for more options (if any).
 #
-{$contentscanners}
+# Antivirus content scanners are disabled by the Kontrol package.
 # Content scanner timeout
 # Some of the content scanners support using a timeout value to stop
 # processing (eg AV scanning) the file if it takes too long.

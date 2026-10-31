@@ -43,11 +43,6 @@ storyboard = '{$e2_dir}/etc/e2guardian/g_{$e2guardian_groups['name']}.story'
 # The following option is replaced by storyboard logic
 # ssllegacylogic = off
 
-# Content filtering files location
-bannedphraselist = '{$e2_dir}/etc/e2guardian/lists/bannedphraselist.g_{$e2guardian_groups['name']}'
-weightedphraselist = '{$e2_dir}/etc/e2guardian/lists/weightedphraselist.g_{$e2guardian_groups['name']}'
-exceptionphraselist = '{$e2_dir}/etc/e2guardian/lists/exceptionphraselist.g_{$e2guardian_groups['name']}'
-
 ### NOTE - New format for all other list definition in v5.0 
 
 #banned lists
@@ -199,7 +194,7 @@ regexpboollist = 'name=exceptionheader,path={$e2_dir}/etc/e2guardian/lists/excep
 # Optional; overrides the weightedphrasemode option in e2guardian.conf
 # for this particular group.  See documentation for supported values in
 # that file.
-weightedphrasemode = {$e2guardian_groups['weightedphrasemode']}
+weightedphrasemode = 0
 
 # Naughtiness limit
 # This the limit over which the page will be blocked.  Each weighted phrase is given
@@ -252,7 +247,7 @@ searchlist = 'name=override,path={$e2_dir}/etc/e2guardian/lists/searchlistoverid
 # This option must be uncommented if searchregexplist is uncommented.
 # A value of 0 here indicates that search terms should be extracted,
 # but no phrase filtering should be performed on the resulting text.
-searchtermlimit = {$e2guardian_groups['searchtermlimit']}
+searchtermlimit = 0
 #
 # Search term phrase lists (for Option 2) 
 # If the three lines below are uncommented, search term blocking will use
@@ -295,7 +290,7 @@ categorydisplaythreshold = {$e2guardian_groups['categorydisplaythreshold']}
 # Set to 0 to disable.
 # Defaults to 0.
 # WARNING: This option is highly CPU intensive!
-embeddedurlweight = {$e2guardian_groups['embeddedurlweight']}
+embeddedurlweight = 0
 
 # Temporary Denied Page Bypass
 # This provides a link on the denied page to bypass the ban for a few minutes.  To be
@@ -328,25 +323,25 @@ sitelist = 'name=bannedbypass,messageno=500,path={$e2_dir}/etc/e2guardian/lists/
 # 300 = enable for 5 minutes
 # 0 = disable (default)
 # -1 = enable, but require a separate program/CGI to generate a valid link
-infectionbypass = {$e2guardian_groups['infectionbypass']}
+infectionbypass = 0
 
 # Infection/Scan Error Bypass Secret Key
 # Same as the 'bypasskey' option, but used for infection bypass mode.
-infectionbypasskey = '{$e2guardian_groups['infectionbypasskey']}'
+infectionbypasskey = ''
 
 # Infection/Scan Error Bypass on Scan Errors Only
 # Enable this option to allow infectionbypass links only when virus scanning fails,
 # not when a file is found to contain a virus.
 # on = enable (default and highly recommended)
 # off = disable
-infectionbypasserrorsonly = {$e2guardian_groups['infectionbypasserrorsonly']}
+infectionbypasserrorsonly = off
 
 # Disable content scanning
 # If you enable this option you will disable content scanning for this group.
 # Content scanning primarily is AV scanning (if enabled) but could include
 # other types.
 # (on|off) default = off.
-disablecontentscan = {$e2guardian_groups['disablecontentscan']}
+disablecontentscan = off
 
 # Disable content scanning with error (timeout, AV crash, etc)
 # If you enable this option you will allow object with an unexpected result

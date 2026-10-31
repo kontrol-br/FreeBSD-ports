@@ -1,5 +1,4 @@
 pkg/e2guardian.xml
-pkg/e2guardian_antivirus_acl.xml
 pkg/e2guardian_blacklist.xml
 pkg/e2guardian_config.xml
 pkg/e2guardian_content_acl.xml
@@ -10,7 +9,6 @@ pkg/e2guardian_header_acl.xml
 pkg/e2guardian_ldap.xml
 pkg/e2guardian_limits.xml
 pkg/e2guardian_log.xml
-pkg/e2guardian_phrase_acl.xml
 pkg/e2guardian_search_acl.xml
 pkg/e2guardian_sync.xml
 pkg/e2guardian_site_acl.xml
@@ -33,7 +31,6 @@ pkg/e2guardian_users.xml
 www/e2guardian_ldap.php
 www/e2guardian_scheds.php
 www/e2guardian_logrotate.php
-www/e2guardian_about.php
 www/e2guardian_monitor_data.php
 www/e2guardian_monitor.php
 www/e2guardian_log_parser.php

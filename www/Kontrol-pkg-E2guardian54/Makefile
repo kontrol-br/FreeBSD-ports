@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-E2guardian54
 PORTVERSION=	6.6.26
-PORTREVISION=	16
+PORTREVISION=	20
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -14,7 +14,6 @@ COMMENT=	Kontrol E2guardian 5.4 management package
 LICENSE=	APACHE20
 
 RUN_DEPENDS=	e2guardian>=5.4.23:www/e2guardian54 \
-		${LOCALBASE}/sbin/clamd:security/clamav \
 		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss
 
 
@@ -45,8 +44,6 @@ do-install:
 		${STAGEDIR}/etc/inc/priv
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian.xml \
 		${STAGEDIR}${PREFIX}/pkg
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_antivirus_acl.xml \
-		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_blacklist.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_config.xml \
@@ -66,8 +63,6 @@ do-install:
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_limits.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_log.xml \
-		${STAGEDIR}${PREFIX}/pkg
-	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_phrase_acl.xml \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/pkg/e2guardian_search_acl.xml \
 		${STAGEDIR}${PREFIX}/pkg
@@ -120,8 +115,6 @@ do-install:
 	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/e2guardian_scheds.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/e2guardian_logrotate.php \
-		${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/e2guardian_about.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/e2guardian_ldap.php \
 		${STAGEDIR}${PREFIX}/www

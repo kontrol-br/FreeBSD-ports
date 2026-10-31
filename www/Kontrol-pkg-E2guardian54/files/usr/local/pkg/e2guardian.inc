@@ -1244,6 +1244,12 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	 * not silently re-enable transparent redirects or a second TLS MITM. */
 	e2guardian_enforce_kontrol_id_managed_config();
 
+	/* Antivirus and phrase filtering were retired from the Kontrol package.
+	 * Neutralize stale settings as well as new installs so an imported or
+	 * XMLRPC-synchronized configuration cannot silently re-enable them. */
+	unset($config['installedpackages']['e2guardianphraseacl']);
+	unset($config['installedpackages']['e2guardianantivirusacl']);
+
 	// assign xml arrays
 	if (!is_array($config['installedpackages']['e2guardian'])) {
 		$config['installedpackages']['e2guardian']['config'][0] = array(
@@ -1261,17 +1267,17 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			'auth_plugin' => '',
 			'scan_options' => 'scancleancache,createlistcachefiles,deletedownloadedtempfiles',
 			'filtermode' => '1',
-			'weightedphrasemode' => '2',
+			'weightedphrasemode' => '0',
 			'preservecase' => '0',
-			'phrasefiltermode' => '2',
-			'cron' => 'day');
+			'phrasefiltermode' => '0',
+			'cron' => 'never');
 	}
 	$e2guardian_config= $config['installedpackages']['e2guardianconfig']['config'][0];
 	if (!is_array($config['installedpackages']['e2guardianlog'])) {
 		$config['installedpackages']['e2guardianlog']['config'][0] = array(
 			'report_level' => '3',
 			'report_language' => 'ukenglish',
-			'report_options' => 'showweightedfound,usecustombannedimage,nonstandarddelimiter',
+			'report_options' => 'usecustombannedimage,nonstandarddelimiter',
 			'logging_options' => 'logconnectionhandlingerrors',
 			'loglevel' => '3',
 			'logexceptionhits' => '2',
@@ -1282,6 +1288,20 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		);
 	}
 	$e2guardian_log = $config['installedpackages']['e2guardianlog']['config'][0];
+
+	$e2guardian_config['weightedphrasemode'] = '0';
+	$e2guardian_config['phrasefiltermode'] = '0';
+	$e2guardian_config['content_scanners'] = '';
+	$e2guardian_config['cron'] = 'never';
+	$e2guardian_config['contentscannericapurl'] = '';
+	config_set_path('installedpackages/e2guardianconfig/config/0', $e2guardian_config);
+
+	$e2guardian_log['report_options'] = trim(preg_replace(
+		'/(^|,)showweightedfound(?=,|$)/',
+		'',
+		(string)($e2guardian_log['report_options'] ?? '')
+	), ',');
+	config_set_path('installedpackages/e2guardianlog/config/0', $e2guardian_log);
 	if (is_array($config['installedpackages']['e2guardianlimits'])) {
 		$e2guardian_limits = $config['installedpackages']['e2guardianlimits']['config'][0];
 	}
@@ -1327,11 +1347,11 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$createlistcachefiles = (preg_match('/createlistcachefiles/', $e2guardian_config['scan_options']) ? "on" : "off");
 	$prefercachedlists = (preg_match('/prefercachedlists/', $e2guardian_config['scan_options']) ? "on" : "off");
 	$deletedownloadedtempfiles = (preg_match('/deletedownloadedtempfiles/', $e2guardian_config['scan_options']) ? "on" : "off");
-	$weightedphrasemode = ($e2guardian_config['weightedphrasemode'] ? $e2guardian_config['weightedphrasemode'] : "2");
-	$phrasefiltermode = ($e2guardian_config['phrasefiltermode'] ? $e2guardian_config['phrasefiltermode'] : "2");
+	$weightedphrasemode = "0";
+	$phrasefiltermode = "0";
 	$preservecase = ($e2guardian_config['preservecase'] ? $e2guardian_config['preservecase'] : "0");
-	$clamdscan = (preg_match('/clamdscan/', $e2guardian_config['content_scanners']) ? "on" : "off");
-	$icapscan = (preg_match('/icapscan/', $e2guardian_config['content_scanners']) ? "on" : "off");
+	$clamdscan = "off";
+	$icapscan = "off";
 	$contentscannertimeout = ($e2guardian_config['contentscannertimeout'] ? $e2guardian_config['contentscannertimeout'] : "60");
 	$contentscanexceptions = ($e2guardian_config['contentscanexceptions'] ? "on" : "off");
 	$recheckreplacedurls = (preg_match('/recheckreplacedurls/', $e2guardian_config['misc_options']) ? "on" : "off");
@@ -1375,10 +1395,6 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		}
 	}
 
-	if ($e2guardian_config['contentscannericapurl'] != "") {
-		include(E2GUARDIAN_PKGDIR . "/icapscan.conf.template");
-		file_put_contents(E2GUARDIAN_DIR . "/etc/e2guardian/contentscanners/icapscan.conf", $icap_conf_file , LOCK_EX);
-	}
 	// limits
 	// moved to groups
 	//$maxuploadsize = ($e2guardian_limits['maxuploadsize'] ? $e2guardian_limits['maxuploadsize'] : "-1");
@@ -1401,7 +1417,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	}
 	$accessdenied = ($e2guardian_log['reportingcgi'] ? $e2guardian_log['report_level'] : "3");
 	$reportlanguage = ($e2guardian_log['report_language'] ? $e2guardian_log['report_language'] : "ukenglish");
-	$showweightedfound = (preg_match('/showweightedfound/', $e2guardian_log['report_options']) ? "on" : "off");
+	$showweightedfound = "off";
 	$usecustombannedflash = (preg_match('/usecustombannedflash/', $e2guardian_log['report_options']) ? "on" : "off");
 	if (file_exists(E2GUARDIAN_DIR . '/share/e2guardian/blockedflash.swf')) {
 		$custombannedflashfile = "custombannedflashfile = '" . E2GUARDIAN_DIR . "/share/e2guardian/blockedflash.swf'";
@@ -1621,7 +1637,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$replace[1] = "contentscanner = '" . E2GUARDIAN_DIR;
 	$replace[2] = "\n";
 
-	$contentscanners = preg_replace($match, $replace, $e2guardian_config['content_scanners']);
+	$contentscanners = "";
 
 	//includes preg_replace patterns
 	$match[0] = "/(.)$/";
@@ -1631,72 +1647,9 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 	$replace[1] = "\n.Include<" . E2GUARDIAN_DIR;
 	$replace[2] = ">";
 
-	//phrase ACL
-	//create a default setup if not exists
-	if (!is_array($config['installedpackages']['e2guardianphraseacl']['config'])) {
-		$banned_file = file(E2GUARDIAN_DIR . "/etc/e2guardian/lists/bannedphraselist");
-		foreach ($banned_file as $file_line) {
-			if (preg_match ("/^.Include<(\S+)>/", $file_line, $matches)) {
-				$banned_includes .= $matches[1] . ",";
-			}
-		}
-
-		$weighted_file = file(E2GUARDIAN_DIR . "/etc/e2guardian/lists/weightedphraselist");
-		foreach ($weighted_file as $file_line) {
-			if (preg_match ("/^.Include<(\S+)>/", $file_line, $matches)) {
-				$weighted_includes .= $matches[1] . ",";
-			}
-		}
-		$config['installedpackages']['e2guardianphraseacl']['config'][0] = array(
-			'name' => 'Default',
-			'aclschedule' => 'Always active',
-			'description' => 'Default Phrase access list setup',
-			'banned_enabled' => "on",
-			'weighted_enabled' => "on",
-			'exception_enabled' => "on",
-			'banned_includes' => substr($banned_includes, 0, -1),
-			'weighted_includes' => substr($weighted_includes, 0, -1));
-	}
-	//loop on array
 	$acl_schedule = array();
 	$e2g_sched_in_use = array();
 	$count = 0;
-	if (is_array($config['installedpackages']['e2guardianphraseacl']['config'])) {
-		foreach ($config['installedpackages']['e2guardianphraseacl']['config'] as $e2guardian_phrase) {
-			//chech schedule
-			e2g_check_sched($e2guardian_phrase['aclschedule']);
-
-			//bannedphraselist
-			$aclschedule[$e2guardian_phrase['name']]['bannedphrase'] = $e2guardian_phrase['aclschedule'];
-			if ($e2guardian_phrase['banned_phraselist'] == "" && file_exists($e2guardian_dir . '/lists/bannedphraselist.sample')) {
-				//$config['installedpackages']['e2guardianphraseacl']['config'][$count]['banned_phraselist'] = base64_encode(file_get_contents($e2guardian_dir . '/lists/bannedphraselist.sample'));
-				config_set_path("installedpackages/e2guardianphraseacl/config/$count/banned_phraselist",base64_encode(file_get_contents($e2guardian_dir . '/lists/bannedphraselist.sample')));
-				$load_samples++;
-			}
-			$includes = preg_replace($match, $replace, $e2guardian_phrase['banned_includes']);
-			file_put_contents($e2guardian_dir . "/lists/bannedphraselist." . $e2guardian_phrase['name'], ($e2guardian_phrase['banned_enabled'] ? e2_text_area_decode($config['installedpackages']['e2guardianphraseacl']['config'][$count]['banned_phraselist']) . $includes : ""), LOCK_EX);
-
-			//weightedphraselist
-			$aclschedule[$e2guardian_phrase['name']]['weightedphrase'] = $e2guardian_phrase['aclschedule'];
-			if ($e2guardian_phrase['weighted_phraselist'] == "" && file_exists($e2guardian_dir . '/lists/weightedphraselist.sample')) {
-				//$config['installedpackages']['e2guardianphraseacl']['config'][$count]['weighted_phraselist'] = base64_encode(file_get_contents($e2guardian_dir . '/lists/weightedphraselist.sample'));
-				config_set_path("installedpackages/e2guardianphraseacl/config/$count/weighted_phraselist",base64_encode(file_get_contents($e2guardian_dir . '/lists/weightedphraselist.sample')));
-				$load_samples++;
-			}
-			$includes = preg_replace($match, $replace, $e2guardian_phrase['weighted_includes']);
-			file_put_contents($e2guardian_dir . "/lists/weightedphraselist." . $e2guardian_phrase['name'], ($e2guardian_phrase['weighted_enabled'] ? e2_text_area_decode($config['installedpackages']['e2guardianphraseacl']['config'][$count]['weighted_phraselist']) . $includes : ""), LOCK_EX);
-
-			//exceptionphraselist
-			$aclschedule[$e2guardian_phrase['name']]['exceptionphrase'] = $e2guardian_phrase['aclschedule'];
-			if ($e2guardian_phrase['exception_phraselist'] == "" && file_exists($e2guardian_dir . '/lists/exceptionphraselist.sample')) {
-				//$config['installedpackages']['e2guardianphraseacl']['config'][$count]['exception_phraselist'] = base64_encode(file_get_contents($e2guardian_dir . '/lists/exceptionphraselist.sample'));
-				config_set_path("installedpackages/e2guardianphraseacl/config/$count/exception_phraselist",base64_encode(file_get_contents($e2guardian_dir . '/lists/exceptionphraselist.sample')));
-				$load_samples++;
-			}
-			file_put_contents($e2guardian_dir . "/lists/exceptionphraselist." . $e2guardian_phrase['name'], ($e2guardian_phrase['exception_enabled'] ? e2_text_area_decode($config['installedpackages']['e2guardianphraseacl']['config'][$count]['exception_phraselist']) : ""), LOCK_EX);
-			$count++;
-		}
-	}
 
 	//site ACL
 	//create a default setup if not exists
@@ -2252,7 +2205,6 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 			'name' => 'Default',
 			'description' => 'Default e2guardian filtergroup',
 			'picsacl' => "Default",
-			'phraseacl' => "Default",
 			'siteacl' => "Default",
 			'extensionacl' => "Default",
 			'headeracl' => "Default",
@@ -2279,11 +2231,15 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
 		$e2guardian_group_name = strtolower($e2guardian_groups['name']);
 		$dgfg[$count] = $e2guardian_group_name;
 		$e2guardian_groups['blockdownloads'] = ($e2guardian_groups['blockdownloads'] ? $e2guardian_groups['blockdownloads'] : "off");
-		$e2guardian_groups['weightedphrasemode'] = (preg_match("/\d/", $e2guardian_groups['weightedphrasemode']) ? $e2guardian_groups['weightedphrasemode'] : $e2guardian_config['weightedphrasemode']);
-		$e2guardian_groups['naughtynesslimit'] = ($e2guardian_groups['naughtynesslimit'] ? $e2guardian_groups['naughtynesslimit'] : "50");
-		$e2guardian_groups['searchtermlimit'] = ($e2guardian_groups['searchtermlimit'] ? $e2guardian_groups['searchtermlimit'] : "30");
-		$e2guardian_groups['categorydisplaythreshold'] = ($e2guardian_groups['categorydisplaythreshold'] ? $e2guardian_groups['categorydisplaythreshold'] : "0");
-		$e2guardian_groups['embeddedurlweight'] = ($e2guardian_groups['embeddedurlweight'] ? $e2guardian_groups['embeddedurlweight'] : "0");
+		$e2guardian_groups['weightedphrasemode'] = "0";
+		$e2guardian_groups['naughtynesslimit'] = "0";
+		$e2guardian_groups['searchtermlimit'] = "0";
+		$e2guardian_groups['categorydisplaythreshold'] = "0";
+		$e2guardian_groups['embeddedurlweight'] = "0";
+		$e2guardian_groups['infectionbypass'] = "0";
+		$e2guardian_groups['infectionbypasskey'] = "";
+		$e2guardian_groups['infectionbypasserrorsonly'] = "off";
+		$e2guardian_groups['disablecontentscan'] = "off";
 		$e2guardian_groups['bypass'] = ($e2guardian_groups['bypass'] ? $e2guardian_groups['bypass'] : "0");
 		$e2guardian_groups['infectionbypass'] = ($e2guardian_groups['infectionbypass'] ? $e2guardian_groups['infectionbypass'] : "0");
 		$e2guardian_groups['maxuploadsize'] = (is_numeric($e2guardian_groups['maxuploadsize']) ? $e2guardian_groups['maxuploadsize'] : "-1");
@@ -2446,7 +2402,6 @@ break;
 
 		//create group list files
 		$lists = array(
-			"phraseacl" => array("bannedphrase", "weightedphrase", "exceptionphrase"),
 			"siteacl" => array("exceptionsite", "bannedsite", "greysite", "exceptionfilesite", "logsite", "sslsiteregexp","bannedsitewithbypass"),
 			"urlacl" => array("bannedurl", "greyurl", "exceptionurl", "exceptionregexpurl", "bannedregexpurl", "urlregexp", "exceptionfileurl", "logurl", "logregexpurl"),
 			"contentacl" => array("contentregexp"),
@@ -2657,21 +2612,15 @@ EOF;
 	}
 
 	//Update blacklist categories on Acls
-	if (!$_POST["force_download"] && ($_POST["force_update"] || $_POST["liston"])) {
+	if (!$_POST["force_download"] && $_POST["force_update"]) {
 		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
 		extract_black_list();
+	} elseif (!$_POST["force_download"] && $_POST["liston"]) {
+		require_once(E2GUARDIAN_WWWDIR . "/e2guardian.php");
+		read_lists(false);
 	}
-	//get clamav user
-	$cconf = E2GUARDIAN_DIR . "/etc/clamd.conf";
-	$cconf_file = file_get_contents($cconf);
-	if (preg_match("/User (\w+)/", $cconf_file, $matches)) {
-		mwexec("/usr/sbin/pw user show {$matches[1]} || /usr/sbin/pw user add -n {$matches[1]} -s /usr/sbin/nologin");
-		$daemonuser = $matches[1];
-		$daemongroup = 'nobody';
-	} else {
-		$daemonuser = 'nobody';
-		$daemongroup = 'nobody';
-	}
+	$daemonuser = 'nobody';
+	$daemongroup = 'nobody';
 	$filtergroups = ($count > 1?($count -1):1);
 	$filterip = "";
 	$checkip_list = array("127.0.0.1");
@@ -2766,11 +2715,7 @@ EOF;
 
         $cron_cmd = E2GUARDIAN_BINDIR . "/freshclam";
 	$cron_field= array('day' => '*' , '02days' => '*/2', 'week' => '*/7');
-	if ($e2guardian_config['cron'] && preg_match("/clamd/", $e2guardian_config['content_scanners'])) {
-		e2g_check_cron($cron_cmd, "create", "0", "0", $cron_field[$e2guardian_config['cron']]);
-	} else {
-		e2g_check_cron($cron_cmd, "remove");
-	}
+	e2g_check_cron($cron_cmd, "remove");
         $cron_cmd = E2GUARDIAN_BINDIR . "/php " . E2GUARDIAN_WWWDIR . "/e2guardian.php fetch_blacklist";
 	if ($e2guardian_blacklist['cron']) {
 		e2g_check_cron($cron_cmd, "create", "20", "0", $cron_field[$e2guardian_blacklist['cron']]);
@@ -3537,14 +3482,14 @@ function e2guardian_php_deinstall_command() {
 }
 
 function e2guardian_package_version() {
-	return '0.9.2';
+	return '0.9.3';
 }
 
 function e2guardian_export_sections() {
 	return array(
-		'e2guardian', 'e2guardianantivirusacl', 'e2guardianconfig', 'e2guardianblacklist',
+		'e2guardian', 'e2guardianconfig', 'e2guardianblacklist',
 		'e2guardianldap', 'e2guardiancontentacl', 'e2guardianfileacl', 'e2guardiangroups', 'e2guardianheaderacl',
-		'e2guardianlimits', 'e2guardianlog', 'e2guardianphraseacl', 'e2guardianpicsacl', 'e2guardiansearchacl',
+		'e2guardianlimits', 'e2guardianlog', 'e2guardianpicsacl', 'e2guardiansearchacl',
 		'e2guardiansiteacl', 'e2guardianurlacl', 'e2guardianusers', 'e2guardianips', 'e2guardiangateways'
 	);
 }

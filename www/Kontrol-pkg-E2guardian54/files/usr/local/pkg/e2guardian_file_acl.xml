@@ -88,21 +88,7 @@
 			<text>Sync</text>
 			<url>/pkg_edit.php?xml=e2guardian_sync.xml&amp;id=0</url>
 		</tab>
-		<tab>
-			<text>Help</text>
-			<url>/e2guardian_about.php</url>
-		</tab>
 
-		<tab>
-			<text>Antivirus</text>
-			<url>/pkg_edit.php?xml=e2guardian_antivirus_acl.xml&amp;id=0</url>
-			<tab_level>2</tab_level>
-		</tab>
-		<tab>
-			<text>Phrase Lists</text>
-			<url>/pkg.php?xml=e2guardian_phrase_acl.xml</url>
-			<tab_level>2</tab_level>
-		</tab>
 		<tab>
 			<text>Site Lists</text>
 			<url>/pkg.php?xml=e2guardian_site_acl.xml</url>
