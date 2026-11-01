@@ -54,6 +54,11 @@ function kontrol_id_defaults() {
 		'engine_integration' => 'on',
 		'traffic_mode' => 'http_only',
 		'intercept_interfaces' => 'lan',
+		'bypass_private_destinations' => '',
+		'bypass_sources' => '',
+		'bypass_destinations' => '',
+		'download_limiter' => 'none',
+		'upload_limiter' => 'none',
 		'winrm_port' => '5986',
 		'connect_timeout_ms' => '1200',
 		'request_timeout_ms' => '2500',
@@ -242,7 +247,6 @@ function kontrol_id_tab_definitions() {
 	$tabs = array_merge($tabs, array(
 		array('key' => 'domain', 'text' => 'Domain & Keytab', 'url' => '/kontrol_id_domain.php'),
 		array('key' => 'policy', 'text' => 'AD Policy', 'url' => '/kontrol_id_policy.php'),
-		array('key' => 'engine', 'text' => 'Engine', 'url' => '/pkg_edit.php?xml=e2guardian.xml&amp;id=0'),
 		array('key' => 'limits', 'text' => 'Limits', 'url' => '/pkg_edit.php?xml=e2guardian_limits.xml&amp;id=0'),
 		array('key' => 'blacklist', 'text' => 'Blacklist', 'url' => '/pkg_edit.php?xml=e2guardian_blacklist.xml&amp;id=0'),
 		array('key' => 'acls', 'text' => 'ACLs', 'url' => '/pkg.php?xml=e2guardian_site_acl.xml'),
@@ -263,7 +267,11 @@ function kontrol_id_print_general_auth_visibility() {
 events.push(function() {
 	function kontrolIdUpdateExplicitAuthVisibility() {
 		var explicitMode = ($('#access_mode').val() === 'explicit');
+		var transparentMode = !explicitMode;
 		$('#explicit_auth').closest('.form-group').toggle(explicitMode);
+		$('#bypass_private_destinations').closest('.form-group').toggle(transparentMode);
+		$('#bypass_sources').closest('.form-group').toggle(transparentMode);
+		$('#bypass_destinations').closest('.form-group').toggle(transparentMode);
 	}
 	$('#access_mode').on('change', kontrolIdUpdateExplicitAuthVisibility);
 	kontrolIdUpdateExplicitAuthVisibility();
@@ -289,8 +297,8 @@ function kontrol_id_package_active_tab($name) {
 	$map = array(
 		'kontrolid' => 'general',
 		'kontrolidsync' => 'sync',
-		'e2guardian' => 'engine',
-		'e2guardianconfig' => 'engine',
+		'e2guardian' => 'general',
+		'e2guardianconfig' => 'general',
 		'e2guardianlimits' => 'limits',
 		'e2guardianblacklist' => 'blacklist',
 		'e2guardiansiteacl' => 'acls',
@@ -412,7 +420,7 @@ function kontrol_id_adjust_package_tabs(&$pkg) {
 		return;
 	}
 	/* Every unified page shares the policy package shortcut definition. This
-	 * gives General and Engine the same native service controls and status link. */
+	 * gives the consolidated General page native service controls and status. */
 	$pkg['shortcut_section'] = 'e2guardian';
 	$active = kontrol_id_package_active_tab($name);
 	$tabs = array();
@@ -431,6 +439,72 @@ function kontrol_id_adjust_package_tabs(&$pkg) {
 	$pkg['tabs']['tab'] = $tabs;
 	kontrol_id_adjust_policy_fields($pkg);
 }
+
+/* Keep configuration transfer on the consolidated General page. The policy
+ * backend owns the versioned XML format, while Kontrol-ID owns applying the
+ * imported identity and engine settings as one managed transaction. */
+function kontrol_id_handle_settings_transfer_request() {
+	$export = ($_POST['kontrol_id_export_settings'] ?? '') === 'kontrol_id_export_settings';
+	$import = ($_POST['kontrol_id_import_settings'] ?? '') === 'kontrol_id_import_settings';
+	if (!$export && !$import) {
+		return;
+	}
+	if (!is_file('/usr/local/pkg/e2guardian.inc')) {
+		file_notice(
+			'Kontrol-ID',
+			gettext('The Kontrol-ID policy backend is not installed.'),
+			gettext('Configuration transfer is unavailable.'),
+			'danger'
+		);
+		return;
+	}
+	require_once('/usr/local/pkg/e2guardian.inc');
+	if (!function_exists('e2guardian_export_settings_xml') ||
+		!function_exists('e2guardian_import_settings_xml')) {
+		file_notice(
+			'Kontrol-ID',
+			gettext('The installed policy backend does not support configuration transfer.'),
+			gettext('Configuration transfer is unavailable.'),
+			'danger'
+		);
+		return;
+	}
+
+	if ($export) {
+		$payload = e2guardian_export_settings_xml();
+		$filename = 'kontrol-id-config-' . date('Ymd-His') . '.xml';
+		header('Content-Type: application/xml');
+		header('Content-Disposition: attachment; filename="' . $filename . '"');
+		header('Content-Length: ' . strlen($payload));
+		echo $payload;
+		exit;
+	}
+
+	$errors = array();
+	$payload = trim((string)($_POST['kontrol_id_import_payload'] ?? ''));
+	if ($payload === '') {
+		$errors[] = gettext('Choose a valid Kontrol-ID XML export file before importing.');
+	} elseif (e2guardian_import_settings_xml($payload, $errors)) {
+		write_config('Kontrol-ID package settings imported from configuration backup.');
+		kontrol_id_resync(false);
+		file_notice(
+			'Kontrol-ID',
+			gettext('Import completed successfully.'),
+			gettext('Kontrol-ID settings were imported and applied.'),
+			'success'
+		);
+	}
+	foreach ($errors as $error) {
+		file_notice(
+			'Kontrol-ID',
+			$error,
+			gettext('Failed to import Kontrol-ID settings.'),
+			'danger'
+		);
+	}
+}
+
+kontrol_id_handle_settings_transfer_request();
 
 /* pkg.php/pkg_edit.php parse the XML before loading this include file.  This
  * lets the package own a mode-aware tab bar without changing the base GUI. */
@@ -454,7 +528,27 @@ function kontrol_id_ensure_defaults() {
 	if (!is_array($current)) {
 		$current = array();
 	}
-	$merged = array_merge(kontrol_id_defaults(), $current);
+	$defaults = kontrol_id_defaults();
+	$engine = config_get_path('installedpackages/e2guardian/config/0', array());
+	if (!is_array($engine)) {
+		$engine = array();
+	}
+	/* Preserve the few useful non-duplicated Engine values when upgrading to
+	 * the single-page configuration model. General becomes authoritative after
+	 * this migration. */
+	$migration = array(
+		'bypass_private_destinations' => 'private_subnet_proxy_off',
+		'bypass_sources' => 'defined_ip_proxy_off',
+		'bypass_destinations' => 'defined_ip_proxy_off_dest',
+		'download_limiter' => 'inpipe',
+		'upload_limiter' => 'outpipe'
+	);
+	foreach ($migration as $setting => $legacy) {
+		if (!array_key_exists($setting, $current) && array_key_exists($legacy, $engine)) {
+			$defaults[$setting] = $engine[$legacy];
+		}
+	}
+	$merged = array_merge($defaults, $current);
 	if ($merged != $current) {
 		kontrol_id_set_settings($merged);
 		return true;
@@ -2210,6 +2304,9 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['watchdog'] = '';
 	$engine['allow_interface'] = 'on';
 	$engine['applyaction'] = 'rc.d';
+	$engine['daemon_options'] = 'softrestart';
+	$engine['inpipe'] = $settings['download_limiter'] ?? 'none';
+	$engine['outpipe'] = $settings['upload_limiter'] ?? 'none';
 	$engine['httpworkers'] = (string)max(64, min(20000,
 		(int)($settings['engine_workers'] ?? 256)));
 	$engine['enablessl'] = (($settings['traffic_mode'] ?? 'http_only') === 'http_https') ? 'on' : '';
@@ -2220,11 +2317,18 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	if (kontrol_id_transparent_mode($settings)) {
 		$engine['transparent_proxy'] = $enabled ? 'on' : '';
 		$engine['transparent_active_interface'] = $engine['interface'];
+		$engine['private_subnet_proxy_off'] =
+			(($settings['bypass_private_destinations'] ?? '') === 'on') ? 'on' : '';
+		$engine['defined_ip_proxy_off'] = trim((string)($settings['bypass_sources'] ?? ''));
+		$engine['defined_ip_proxy_off_dest'] = trim((string)($settings['bypass_destinations'] ?? ''));
 		$plugins['auth_plugin'] = ($enabled && $access_mode === 'transparent') ?
 			'ip.conf' : '';
 	} else {
 		$engine['transparent_proxy'] = '';
 		$engine['transparent_active_interface'] = '';
+		$engine['private_subnet_proxy_off'] = '';
+		$engine['defined_ip_proxy_off'] = '';
+		$engine['defined_ip_proxy_off_dest'] = '';
 		$auth_plugins = array(
 			'kerberos' => 'kontrol-negotiate.conf',
 			'kerberos_ntlm' => 'kontrol-negotiate.conf,kontrol-ntlm.conf',
@@ -2392,6 +2496,23 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	}
 	if (!in_array($post['unknown_action'] ?? '', array('portal', 'deny', 'allow'), true)) {
 		$input_errors[] = 'Select a valid unknown-user action.';
+	}
+	foreach (array('bypass_sources', 'bypass_destinations') as $field) {
+		$value = (string)($post[$field] ?? '');
+		if (strlen($value) > 4096 || preg_match('/[\r\n]/', $value)) {
+			$input_errors[] = $field . ' must be a single line no longer than 4096 characters.';
+		}
+	}
+	$valid_limiters = array('none', '');
+	foreach (config_get_path('dnshaper/queue', array()) as $limiter) {
+		if (is_array($limiter) && isset($limiter['number'])) {
+			$valid_limiters[] = (string)$limiter['number'];
+		}
+	}
+	foreach (array('download_limiter', 'upload_limiter') as $field) {
+		if (!in_array((string)($post[$field] ?? 'none'), $valid_limiters, true)) {
+			$input_errors[] = 'Select a valid traffic limiter for ' . $field . '.';
+		}
 	}
 	if (!empty($post['portal_url']) && filter_var($post['portal_url'], FILTER_VALIDATE_URL) === false) {
 		$input_errors[] = 'Portal URL is invalid.';

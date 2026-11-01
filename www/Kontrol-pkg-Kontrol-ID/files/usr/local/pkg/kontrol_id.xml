@@ -189,6 +189,58 @@
 			<type>info</type>
 		</field>
 		<field>
+			<name>Traffic Handling</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Managed Listener Ports</fielddescr>
+			<description><![CDATA[
+				Kontrol-ID listens on <strong>3128</strong> for client traffic and uses <strong>3129</strong> for transparent HTTPS inspection.
+				These package-owned ports are fixed to keep firewall rules and the engine configuration synchronized.
+			]]></description>
+			<type>info</type>
+		</field>
+		<field>
+			<fielddescr>Bypass Private Destinations</fielddescr>
+			<fieldname>bypass_private_destinations</fieldname>
+			<description><![CDATA[In transparent modes, pass RFC 1918 destination networks directly instead of sending them through Kontrol-ID.]]></description>
+			<type>checkbox</type>
+		</field>
+		<field>
+			<fielddescr>Bypass Source Addresses</fielddescr>
+			<fieldname>bypass_sources</fieldname>
+			<description><![CDATA[Source IPs, CIDR networks, hostnames or firewall aliases that bypass transparent interception. Separate entries with semicolons.]]></description>
+			<type>input</type>
+			<size>70</size>
+		</field>
+		<field>
+			<fielddescr>Bypass Destination Addresses</fielddescr>
+			<fieldname>bypass_destinations</fieldname>
+			<description><![CDATA[Destination IPs, CIDR networks, hostnames or firewall aliases that bypass transparent interception. Separate entries with semicolons.]]></description>
+			<type>input</type>
+			<size>70</size>
+		</field>
+		<field>
+			<fielddescr>Download Limiter</fielddescr>
+			<fieldname>download_limiter</fieldname>
+			<description><![CDATA[Optional limiter for explicit proxy clients. For transparent clients, apply limiters in the firewall rules on the intercepted interface.]]></description>
+			<type>select_source</type>
+			<source><![CDATA[config_get_path('dnshaper/queue', array())]]></source>
+			<source_name>name</source_name>
+			<source_value>number</source_value>
+			<show_disable_value>none</show_disable_value>
+		</field>
+		<field>
+			<fielddescr>Upload Limiter</fielddescr>
+			<fieldname>upload_limiter</fieldname>
+			<description><![CDATA[Optional upload limiter for explicit proxy clients. Select a download limiter as well when enabling this option.]]></description>
+			<type>select_source</type>
+			<source><![CDATA[config_get_path('dnshaper/queue', array())]]></source>
+			<source_name>name</source_name>
+			<source_value>number</source_value>
+			<show_disable_value>none</show_disable_value>
+		</field>
+		<field>
 			<name>WinRM HTTPS</name>
 			<type>listtopic</type>
 		</field>
@@ -335,6 +387,66 @@
 			<type>input</type>
 			<default_value>Domain Users</default_value>
 			<size>60</size>
+		</field>
+		<field>
+			<name>Configuration Backup</name>
+			<type>listtopic</type>
+		</field>
+		<field>
+			<fielddescr>Export Kontrol-ID Settings</fielddescr>
+			<fieldname>kontrol_id_export_settings_button</fieldname>
+			<description><![CDATA[
+				Download a versioned XML file containing the Kontrol-ID identity, engine and policy configuration.
+				<button class="btn btn-primary btn-sm" name="kontrol_id_export_settings" id="kontrol_id_export_settings" type="submit" value="kontrol_id_export_settings">
+					<i class="fa fa-download icon-embed-btn"></i>Export Kontrol-ID settings
+				</button>
+			]]></description>
+			<type>info</type>
+		</field>
+		<field>
+			<fielddescr>Import Kontrol-ID Settings</fielddescr>
+			<fieldname>kontrol_id_import_controls</fieldname>
+			<description><![CDATA[
+				Choose an XML file exported by Kontrol-ID. A valid import replaces the package sections and immediately applies the managed configuration.<br/>
+				<input class="form-control" type="file" id="kontrol_id_import_file" accept=".xml,text/xml,application/xml" />
+				<div id="kontrol_id_import_file_status" class="text-muted" style="margin-top:6px;">No file selected.</div>
+				<textarea name="kontrol_id_import_payload" id="kontrol_id_import_payload" style="display:none;"></textarea>
+				<button class="btn btn-success btn-sm" name="kontrol_id_import_settings" id="kontrol_id_import_settings" type="submit" value="kontrol_id_import_settings">
+					<i class="fa fa-upload icon-embed-btn"></i>Import Kontrol-ID settings
+				</button>
+				<script type="text/javascript">
+				(function() {
+					var fileInput = document.getElementById('kontrol_id_import_file');
+					var payloadField = document.getElementById('kontrol_id_import_payload');
+					var statusField = document.getElementById('kontrol_id_import_file_status');
+					if (!fileInput || !payloadField || !statusField || typeof FileReader === 'undefined') {
+						return;
+					}
+					fileInput.addEventListener('change', function() {
+						if (!fileInput.files || fileInput.files.length === 0) {
+							payloadField.value = '';
+							statusField.className = 'text-muted';
+							statusField.textContent = 'No file selected.';
+							return;
+						}
+						var selectedFile = fileInput.files[0];
+						var reader = new FileReader();
+						reader.onload = function(event) {
+							payloadField.value = event.target && event.target.result ? event.target.result : '';
+							statusField.className = 'text-success';
+							statusField.textContent = 'Selected file: ' + selectedFile.name;
+						};
+						reader.onerror = function() {
+							payloadField.value = '';
+							statusField.className = 'text-danger';
+							statusField.textContent = 'Could not read the selected file.';
+						};
+						reader.readAsText(selectedFile);
+					});
+				})();
+				</script>
+			]]></description>
+			<type>info</type>
 		</field>
 		<field>
 			<name>Diagnostics</name>
