@@ -10,16 +10,18 @@ Kontrol-ID cannot coexist with the conventional Squid or E2Guardian GUI/engine
 packages because they own the same listener and policy paths. Remove the
 conflicting products before installing Kontrol-ID.
 
-Transparent mode identifies Windows users by source IP and never challenges an
-intercepted browser. Explicit proxy mode supports Kerberos/SPNEGO, Kerberos
-with NTLMv2 fallback, standalone NTLMv2 and HTTP Basic for trusted networks.
+Transparent identification maps source IPs to policies and never challenges an
+intercepted browser. Transparent without identification skips the identity and
+portal workflow and applies the default policy group. Explicit proxy mode
+supports Kerberos/SPNEGO, Kerberos with NTLMv2 fallback, standalone NTLMv2 and
+HTTP Basic for trusted networks.
 Domain authentication uses the package-owned keytab and managed Winbind
 service. Configure and validate them under Services > Kontrol-ID > Domain and
 Keytab before enabling the respective method.
 
-For transparent identity, generate an enrollment token under Status and
-Enrollment and provision Windows endpoints before enforcement. Domain join
-passwords are sent only to kinit over a pipe and are never stored in config.xml.
+Endpoint enrollment is available only with transparent identification. It is
+not required by transparent mode without identification. Domain join passwords
+are sent only to kinit over a pipe and are never stored in config.xml.
 
 Runtime databases in /var/db/kontrol-identity and protected domain state in
 /var/db/kontrol-id-domain are intentionally preserved when the package is

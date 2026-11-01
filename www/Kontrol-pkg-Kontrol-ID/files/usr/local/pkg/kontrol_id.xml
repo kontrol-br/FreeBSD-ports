@@ -52,18 +52,18 @@
 			<fielddescr>Enable Kontrol-ID</fielddescr>
 			<fieldname>enable</fieldname>
 			<description><![CDATA[
-				Enable identity enforcement only after the initial workflow is complete. If Kerberos or NTLM prerequisites are still missing,
-				General settings are saved but Kontrol-ID remains disabled; complete Domain and Keytab, then return here to activate it.
+				Enable the managed gateway after selecting the access mode and client interfaces. Kerberos and NTLM modes remain disabled
+				until their Domain and Keytab prerequisites are complete. Transparent without identification requires no domain membership.
 			]]></description>
 			<type>checkbox</type>
 		</field>
 		<field>
 			<fielddescr>Initial Setup Workflow</fielddescr>
 			<description><![CDATA[
-				<strong>1.</strong> Complete this page and save the General settings.<br/>
-				<strong>2.</strong> Open <em>Domain and Keytab</em> to join Active Directory or import the keytab.<br/>
-				<strong>3.</strong> Return to General, select <em>Enable Kontrol-ID</em> and save again.<br/>
-				The standalone Kontrol-ID engine is not activated until the final step succeeds.
+				<strong>Transparent without identification:</strong> select the mode, interfaces and inspection level, then enable and save.<br/>
+				<strong>Transparent identification:</strong> configure the IP policy mappings and optional station enrollment.<br/>
+				<strong>Kerberos or NTLM:</strong> save the domain values, complete <em>Domain and Keytab</em>, then return here to enable.<br/>
+				The standalone Kontrol-ID engine is activated only when the prerequisites of the selected mode are ready.
 			]]></description>
 			<type>info</type>
 		</field>
@@ -84,14 +84,16 @@
 			<fielddescr>Client Access Mode</fielddescr>
 			<fieldname>access_mode</fieldname>
 			<description><![CDATA[
-				Transparent mode identifies the workstation by source IP and does not challenge the browser. Explicit mode requires
-				clients to use the proxy address or PAC/WPAD. The standalone engine supports native Kerberos/SPNEGO, NTLMv2,
-				and HTTP Basic backed by the selected Kontrol authentication server.
+				Transparent identification associates the source IP with an IP policy and does not challenge the browser. Transparent
+				without identification skips identity processing and applies the default policy group, while preserving optional IP
+				exceptions and overrides. Explicit mode requires clients to use the proxy address or PAC/WPAD. The standalone engine
+				supports native Kerberos/SPNEGO, NTLMv2, and HTTP Basic backed by the selected Kontrol authentication server.
 			]]></description>
 			<type>select</type>
 			<default_value>transparent</default_value>
 			<options>
 				<option><name>Transparent identification (no proxy login)</name><value>transparent</value></option>
+				<option><name>Transparent without identification</name><value>transparent_no_identity</value></option>
 				<option><name>Explicit proxy authentication</name><value>explicit</value></option>
 			</options>
 		</field>

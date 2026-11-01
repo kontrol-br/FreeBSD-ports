@@ -7,7 +7,7 @@ $pgtitle = array('Services', 'Kontrol-ID', 'Status and Enrollment');
 $token_once = '';
 $savemsg = '';
 
-if (!kontrol_id_transparent_mode()) {
+if (!kontrol_id_transparent_identity_mode()) {
 	header('Location: /pkg_edit.php?xml=kontrol_id.xml&id=0&savemsg=' . rawurlencode(
 		'Status and Enrollment is available only in Transparent identification mode.'
 	));

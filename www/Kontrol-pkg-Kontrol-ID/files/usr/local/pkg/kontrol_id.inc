@@ -149,8 +149,21 @@ function kontrol_id_get_settings() {
 	return array_merge(kontrol_id_defaults(), $settings);
 }
 
-function kontrol_id_transparent_mode() {
-	$settings = kontrol_id_get_settings();
+function kontrol_id_transparent_mode($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
+	return in_array(
+		$settings['access_mode'] ?? 'transparent',
+		array('transparent', 'transparent_no_identity'),
+		true
+	);
+}
+
+function kontrol_id_transparent_identity_mode($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
 	return ($settings['access_mode'] ?? 'transparent') === 'transparent';
 }
 
@@ -192,7 +205,7 @@ function kontrol_id_tab_definitions() {
 	$tabs = array(
 		array('key' => 'general', 'text' => 'General', 'url' => '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0')
 	);
-	if (kontrol_id_transparent_mode()) {
+	if (kontrol_id_transparent_identity_mode()) {
 		$tabs[] = array('key' => 'status', 'text' => 'Status & Enrollment', 'url' => '/kontrol_id_status.php');
 	}
 	$tabs = array_merge($tabs, array(
@@ -1820,7 +1833,8 @@ function kontrol_id_squid_block($settings = null) {
 	$processes = max(5, min(200, (int)$settings['auth_processes']));
 	$lines = array(KONTROL_ID_BEGIN);
 
-	if (($settings['access_mode'] ?? 'transparent') === 'explicit') {
+	$access_mode = $settings['access_mode'] ?? 'transparent';
+	if ($access_mode === 'explicit') {
 		$domain = kontrol_id_domain_values($settings);
 		$method = $settings['explicit_auth'] ?? 'kerberos';
 		if (in_array($method, array('kerberos', 'kerberos_ntlm'), true)) {
@@ -1848,7 +1862,7 @@ function kontrol_id_squid_block($settings = null) {
 		/* This denial triggers the appropriate proxy authentication challenge.
 		 * Authenticated requests continue into the normal Squid network policy. */
 		$lines[] = 'http_access deny !kontrol_authenticated';
-	} else {
+	} elseif ($access_mode === 'transparent') {
 		$lines[] = 'external_acl_type kontrol_identity children-startup=5 children-max=' . $processes .
 			' children-idle=5 ttl=5 negative_ttl=5 cache=65536 %SRC /usr/local/libexec/kontrol-identity-helper -c ' . KONTROL_ID_CONF;
 		$lines[] = 'acl kontrol_identity external kontrol_identity';
@@ -1862,6 +1876,8 @@ function kontrol_id_squid_block($settings = null) {
 		} elseif ($settings['unknown_action'] === 'deny') {
 			$lines[] = 'http_access deny kontrol_identity kontrol_identity_unknown';
 		}
+	} else {
+		$lines[] = '# Transparent interception without user identification.';
 	}
 	if ($settings['e2guardian_integration'] === 'on') {
 		/* Squid performs the TLS bump. E2Guardian receives the resulting HTTP
@@ -1979,7 +1995,7 @@ function kontrol_id_apply_squid_integration($enabled) {
 		$squid['proxy_port'] = !empty($squid['proxy_port']) ? $squid['proxy_port'] : '3128';
 		$squid['allow_interface'] = 'on';
 		$squid['log_sqd'] = '';
-		if (($settings['access_mode'] ?? 'transparent') === 'transparent') {
+		if (kontrol_id_transparent_mode($settings)) {
 			$squid['transparent_proxy'] = 'on';
 			$squid['transparent_active_interface'] = $interfaces;
 		} else {
@@ -2202,10 +2218,12 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['dca'] = $settings['ca_ref'] ?? '';
 	$engine['ssl_proxy_port'] = '3129';
 
-	if (($settings['access_mode'] ?? 'transparent') === 'transparent') {
+	$access_mode = $settings['access_mode'] ?? 'transparent';
+	if (kontrol_id_transparent_mode($settings)) {
 		$engine['transparent_proxy'] = $enabled ? 'on' : '';
 		$engine['transparent_active_interface'] = $engine['interface'];
-		$plugins['auth_plugin'] = '';
+		$plugins['auth_plugin'] = ($enabled && $access_mode === 'transparent') ?
+			'ip.conf' : '';
 	} else {
 		$engine['transparent_proxy'] = '';
 		$engine['transparent_active_interface'] = '';
@@ -2261,7 +2279,9 @@ function kontrol_id_chain_status() {
 		$plugins = array();
 	}
 	$interfaces = kontrol_id_normalize_interfaces($settings['intercept_interfaces']);
-	$explicit = ($settings['access_mode'] ?? 'transparent') === 'explicit';
+	$access_mode = $settings['access_mode'] ?? 'transparent';
+	$explicit = $access_mode === 'explicit';
+	$transparent_identity = $access_mode === 'transparent';
 	$auth_method = $settings['explicit_auth'] ?? 'kerberos';
 	$auth_profiles = array(
 		'kerberos' => array(
@@ -2308,6 +2328,9 @@ function kontrol_id_chain_status() {
 		}
 	}
 	$credential_ready = $auth_profile['ready'];
+	$transparent_plugin_ok = $transparent_identity ?
+		(($plugins['auth_plugin'] ?? '') === 'ip.conf') :
+		(($plugins['auth_plugin'] ?? '') === '');
 	return array(
 		array(
 			'name' => 'Kontrol-ID engine',
@@ -2316,15 +2339,17 @@ function kontrol_id_chain_status() {
 		),
 		array(
 			'name' => $explicit ? $auth_profile['label'] :
-				'Transparent proxy',
+				($transparent_identity ? 'Transparent identification' :
+				'Transparent proxy without identification'),
 			'ok' => ($engine['enable'] ?? '') === 'on' &&
 				kontrol_id_normalize_interfaces($engine['interface'] ?? '') === $interfaces &&
-				(!$explicit || ($credential_ready &&
+				($explicit ? ($credential_ready &&
 				(($plugins['auth_plugin'] ?? '') === $expected_plugin) &&
-				$auth_config_ok)),
+				$auth_config_ok) : $transparent_plugin_ok),
 			'detail' => ($explicit ?
 				$auth_profile['detail'] :
-				'Native source-IP interception') .
+				($transparent_identity ? 'Native source-IP policy mapping' :
+				'Native interception using the default policy group')) .
 				' on ' . ($interfaces ?: 'no interface')
 		),
 		array(
@@ -2356,7 +2381,9 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	if (!preg_match('/^[A-Za-z0-9_.@-]+$/', $post['unknown_user'] ?? '')) {
 		$input_errors[] = 'Unknown user contains invalid characters.';
 	}
-	if (!in_array($post['access_mode'] ?? '', array('transparent', 'explicit'), true)) {
+	if (!in_array($post['access_mode'] ?? '', array(
+		'transparent', 'transparent_no_identity', 'explicit'
+	), true)) {
 		$input_errors[] = 'Select a valid client access mode.';
 	}
 	if (!in_array($post['explicit_auth'] ?? '', array('kerberos', 'kerberos_ntlm', 'ntlm', 'basic'), true)) {
@@ -2529,6 +2556,13 @@ function kontrol_id_resync($sync = true) {
 			if (function_exists('e2guardian_wait_for_process_state')) {
 				e2guardian_wait_for_process_state(true, 10);
 			}
+		}
+		/* A mode change alters the transparent rdr rules as well as the engine
+		 * configuration. Some package execution contexts restart the service
+		 * without reloading PF, leaving interception enabled after returning to
+		 * explicit mode. Always converge the live rules after the final config. */
+		if (function_exists('filter_configure')) {
+			filter_configure();
 		}
 	}
 	if ($sync) {

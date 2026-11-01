@@ -101,7 +101,11 @@ if (!empty($savemsg)) {
 			<dt>Realm</dt><dd><?=htmlspecialchars($domain['realm'] ?: 'Not configured')?></dd>
 			<dt>Domain controller</dt><dd><?=htmlspecialchars($domain['dc'] ?: 'Not configured')?></dd>
 			<dt>Proxy service</dt><dd><code><?=htmlspecialchars($domain['spn'] ?: 'Not configured')?></code></dd>
-			<dt>Authentication</dt><dd><?=htmlspecialchars(($settings['access_mode'] ?? '') === 'explicit' ? $settings['explicit_auth'] : 'Transparent identity')?></dd>
+			<dt>Authentication</dt><dd><?=htmlspecialchars(
+				($settings['access_mode'] ?? '') === 'explicit' ? $settings['explicit_auth'] :
+				(($settings['access_mode'] ?? '') === 'transparent_no_identity' ?
+				'Transparent without identification' : 'Transparent identity')
+			)?></dd>
 		</dl>
 		<div class="table-responsive">
 		<table class="table table-striped table-hover">
