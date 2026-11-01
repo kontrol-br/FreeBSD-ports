@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
-PORTREVISION=	32
+PORTREVISION=	34
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -14,7 +14,7 @@ COMMENT=	Standalone authenticated secure web gateway for Kontrol
 LICENSE=	APACHE20
 
 RUN_DEPENDS=	Kontrol-pkg-Kontrol-ID-Policy>=1.0.0_18:www/Kontrol-pkg-Kontrol-ID-Policy \
-		kontrol-id>=5.4.23_10:www/kontrol-id \
+		kontrol-id>=5.4.23_11:www/kontrol-id \
 		samba416>=4.16:net/samba416
 LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libsqlite3.so:databases/sqlite3 \
@@ -71,6 +71,16 @@ do-install:
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_portal.php \
 		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol-id-login-base.css \
+		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol-id-login-kontrol-dark.css \
+		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol-id-login-aurora.css \
+		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol-id-login-corporate.css \
+		${STAGEDIR}${PREFIX}/pkg
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol-id-login-signal.css \
+		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_enrollment.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol-id/index.html \

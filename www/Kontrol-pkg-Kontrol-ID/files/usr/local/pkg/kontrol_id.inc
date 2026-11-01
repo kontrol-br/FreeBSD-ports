@@ -24,6 +24,7 @@ define('KONTROL_ID_ENGINE_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kon
 define('KONTROL_ID_ENGINE_NTLM_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-ntlm.conf');
 define('KONTROL_ID_ENGINE_BASIC_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-basic.conf');
 define('KONTROL_ID_ENGINE_IDENTITY_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-identity.conf');
+define('KONTROL_ID_LOGIN_TEMPLATE_DIR', '/usr/local/pkg');
 define('KONTROL_ID_ENGINE_PID', '/var/run/kontrol-id.pid');
 define('KONTROL_ID_WINBIND_MARKER', KONTROL_ID_DOMAIN_DIR . '/winbind.enabled');
 define('KONTROL_ID_WINBIND_PID', '/var/run/kontrol-id-samba/winbindd.pid');
@@ -74,6 +75,7 @@ function kontrol_id_defaults() {
 		'unknown_user' => 'unknown',
 		'unknown_action' => 'portal',
 		'portal_url' => '',
+		'login_template' => 'kontrol_dark',
 		'admin_contact' => 'Entre em contato com o administrador da rede para solicitar sua credencial.',
 		'auth_server' => 'Local Database',
 		'local_group' => KONTROL_ID_GROUP,
@@ -102,6 +104,23 @@ function kontrol_id_defaults() {
 		'e2guardian_auth_snapshot_taken' => '',
 		'dependency_defaults_initialized' => ''
 	);
+}
+
+function kontrol_id_login_template_catalog() {
+	return array(
+		'kontrol_dark' => 'kontrol-id-login-kontrol-dark.css',
+		'aurora' => 'kontrol-id-login-aurora.css',
+		'corporate' => 'kontrol-id-login-corporate.css',
+		'signal' => 'kontrol-id-login-signal.css'
+	);
+}
+
+function kontrol_id_login_template_path($template_id) {
+	$catalog = kontrol_id_login_template_catalog();
+	if (!isset($catalog[$template_id])) {
+		$template_id = 'kontrol_dark';
+	}
+	return KONTROL_ID_LOGIN_TEMPLATE_DIR . '/' . $catalog[$template_id];
 }
 
 function kontrol_id_authserver_options() {
@@ -2553,6 +2572,10 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$identity_timeout = max(2000, min(60000,
 		(int)($settings['connect_timeout_ms'] ?? 1200) +
 		(int)($settings['request_timeout_ms'] ?? 2500) + 1000));
+	$identity_action = in_array(($settings['unknown_action'] ?? ''),
+		array('portal', 'deny', 'allow'), true) ?
+		$settings['unknown_action'] : 'deny';
+	$identity_portal = preg_replace('/[\r\n\'\\\\]/', '', kontrol_id_portal_url());
 	$identity_config = "# Managed by Kontrol-ID.\n" .
 		"plugname = 'kontrol-identity'\n" .
 		"story_function = 'auth_ip'\n" .
@@ -2563,6 +2586,8 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		"ipgroups = '/usr/local/etc/e2guardian/lists/authplugins/ipgroups'\n" .
 		"usergroups = '/usr/local/etc/e2guardian/lists/authplugins/filtergroupslist'\n" .
 		"unknown_user = '" . ($settings['unknown_user'] ?? 'unknown') . "'\n" .
+		"unknown_action = '" . $identity_action . "'\n" .
+		"portal_url = '" . $identity_portal . "'\n" .
 		"defaulttransparentfiltergroup = 1\n";
 	kontrol_id_atomic_write(KONTROL_ID_ENGINE_IDENTITY_CONF,
 		$identity_config, 0640, 'wheel');
@@ -2768,6 +2793,9 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	if (!in_array($post['unknown_action'] ?? '', array('portal', 'deny', 'allow'), true)) {
 		$input_errors[] = 'Select a valid unknown-user action.';
 	}
+	if (!isset(kontrol_id_login_template_catalog()[$post['login_template'] ?? ''])) {
+		$input_errors[] = 'Select a valid login page template.';
+	}
 	foreach (array('bypass_sources', 'bypass_destinations') as $field) {
 		$value = (string)($post[$field] ?? '');
 		if (strlen($value) > 4096 || preg_match('/[\r\n]/', $value)) {
@@ -2907,6 +2935,12 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 	if (!is_array($previous_engine)) {
 		$previous_engine = array();
 	}
+	$previous_plugins = config_get_path('installedpackages/e2guardianconfig/config/0', array());
+	if (!is_array($previous_plugins)) {
+		$previous_plugins = array();
+	}
+	$previous_identity_config = is_file(KONTROL_ID_ENGINE_IDENTITY_CONF) ?
+		(string)@file_get_contents(KONTROL_ID_ENGINE_IDENTITY_CONF) : '';
 	$enabled = ($settings['enable'] === 'on');
 	$runtime_ready = true;
 	if ($enabled && kontrol_id_kerberos_required($settings) &&
@@ -2926,6 +2960,15 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 		log_error('[Kontrol-ID] Managed proxy was not activated: Winbind failed to start.');
 	}
 	kontrol_id_apply_standalone_engine($stack_enabled);
+	$current_plugins = config_get_path('installedpackages/e2guardianconfig/config/0', array());
+	if (!is_array($current_plugins)) {
+		$current_plugins = array();
+	}
+	$current_identity_config = is_file(KONTROL_ID_ENGINE_IDENTITY_CONF) ?
+		(string)@file_get_contents(KONTROL_ID_ENGINE_IDENTITY_CONF) : '';
+	$structural_restart =
+		(($previous_plugins['auth_plugin'] ?? '') !== ($current_plugins['auth_plugin'] ?? '')) ||
+		($previous_identity_config !== $current_identity_config);
 	write_config('Kontrol-ID configuration updated.');
 	/* Package generators still read the legacy global configuration array.
 	 * Reload it so their runtime files and firewall rules see the values just
@@ -2963,11 +3006,14 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 		$engine_start_ok = true;
 		if (function_exists('e2guardian_start')) {
 			$engine_start_ok = (e2guardian_start('no', false, true) !== false);
-			/* A package install can replace the native binary or auth plugin while
-			 * the configured apply action is USR1. USR1 reloads policy data but
-			 * cannot replace already-instantiated plugin classes or executable
-			 * text, so upgrades require one controlled service restart. */
-			if ($stack_enabled && $force_engine_restart) {
+			/* USR1 reloads policy data but cannot replace an instantiated auth
+			 * plugin, its structural configuration or upgraded executable text.
+			 * Force one controlled restart for package upgrades, access-mode
+			 * changes and identity fallback changes. */
+			$apply_action_restarts = in_array(($settings['applyaction'] ?? '-r'),
+				array('rc.d', '-Q'), true);
+			if ($stack_enabled && ($force_engine_restart || $structural_restart) &&
+				!$apply_action_restarts) {
 				$engine_start_ok =
 					(mwexec('/usr/local/etc/rc.d/kontrol_id restart') === 0);
 			}

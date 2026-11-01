@@ -284,6 +284,8 @@ private:
     std::string ipgroups_path;
     std::string usergroups_path;
     std::string unknown_user;
+    std::string unknown_action;
+    std::string portal_url;
     int timeout_ms;
     std::atomic<long long> last_map_refresh;
     std::mutex map_refresh_lock;
@@ -469,6 +471,15 @@ int kontrol_identity_instance::init(void *args)
     unknown_user = cv["unknown_user"].toCharArray();
     if (unknown_user.empty())
         unknown_user = "unknown";
+    unknown_action = lower_copy(trim_copy(cv["unknown_action"].toCharArray()));
+    if (unknown_action != "portal" && unknown_action != "deny" &&
+        unknown_action != "allow")
+        unknown_action = "allow";
+    portal_url = trim_copy(cv["portal_url"].toCharArray());
+    if (unknown_action == "portal" && portal_url.empty()) {
+        syslog(LOG_ERR, "Kontrol-ID identity: portal action requires portal_url");
+        return -1;
+    }
 
     int helper_count = cv["helper_children"].toInteger();
     if (helper_count < 1)
@@ -558,6 +569,16 @@ int kontrol_identity_instance::identify(Socket &peercon, Socket &proxycon,
     authrec.user_source = source;
     authrec.is_authed = lower_copy(username) != lower_copy(unknown_user);
     is_real_user = true;
+    if (!authrec.is_authed && unknown_action == "portal") {
+        const std::string requested = header.getUrl().toCharArray();
+        if (requested.compare(0, portal_url.size(), portal_url) != 0) {
+            username = portal_url;
+            username += portal_url.find('?') == std::string::npos ? "?url=" : "&url=";
+            username += header.URLEncode().toCharArray();
+            return E2AUTH_REDIRECT;
+        }
+        return E2AUTH_OK_NOPERSIST;
+    }
     return E2AUTH_OK;
 }
 
@@ -639,6 +660,15 @@ int kontrol_identity_instance::determineGroup(std::string &user,
     filter_group = group;
     check.filtergroup = group;
     check.user = user;
+    if (normalized_user == lower_copy(unknown_user) && unknown_action == "deny") {
+        check.isBlocked = true;
+        check.isItNaughty = true;
+        check.blocktype = 0;
+        check.whatIsNaughty = "Access denied because this endpoint could not be identified.";
+        check.whatIsNaughtyLog = "Unidentified endpoint denied by Kontrol-ID policy";
+        check.whatIsNaughtyCategories = "Authentication required";
+        check.whatIsNaughtyDisplayCategories = "Authentication required";
+    }
     if (check.authrec != NULL) {
         check.authrec->filter_group = group;
         check.authrec->group_source = source;

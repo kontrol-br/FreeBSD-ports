@@ -1,0 +1,12 @@
+:root { color-scheme: dark; }
+body {
+    background:
+        radial-gradient(circle at 12% 15%, rgba(226,43,53,.16), transparent 28rem),
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
+        var(--canvas);
+    background-size: auto, 40px 40px, 40px 40px, auto;
+}
+.visual { background: linear-gradient(150deg, rgba(32,34,40,.68), rgba(18,19,23,.92)); }
+.shell::before { content: ""; position: absolute; z-index: 2; inset: 0 auto 0 0; width: 5px; background: linear-gradient(var(--accent), transparent 78%); }
+.form-panel { background: rgba(18,19,23,.34); }

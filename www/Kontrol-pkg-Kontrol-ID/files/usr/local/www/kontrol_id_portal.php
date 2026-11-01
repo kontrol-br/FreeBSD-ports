@@ -99,30 +99,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function kid_h($value) {
 	return htmlspecialchars((string)$value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 }
+
+$theme_id = $settings['login_template'] ?? 'kontrol_dark';
+$theme_catalog = kontrol_id_login_template_catalog();
+if (!isset($theme_catalog[$theme_id])) {
+	$theme_id = 'kontrol_dark';
+}
+$base_css = @file_get_contents(KONTROL_ID_LOGIN_TEMPLATE_DIR . '/kontrol-id-login-base.css');
+$theme_css = @file_get_contents(kontrol_id_login_template_path($theme_id));
 ?>
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-kontrol-id-login="<?=kid_h($theme_id)?>">
 <head>
-	<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<meta name="color-scheme" content="light dark">
 	<title>Kontrol-ID | Identificação necessária</title>
 	<style>
-	:root{color-scheme:light;--navy:#11263d;--blue:#1769aa;--cyan:#1fa3c8;--ink:#1c2733;--muted:#607080;--line:#dfe7ee;--paper:#fff;--bg:#eef3f7;--danger:#a52a2a;--ok:#176a43}*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#e8f0f6 0,#f7fafc 55%,#e6eef4 100%);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh;display:grid;place-items:center;padding:24px}.shell{width:min(920px,100%);background:var(--paper);border:1px solid rgba(17,38,61,.12);border-radius:18px;box-shadow:0 24px 70px rgba(17,38,61,.16);overflow:hidden;display:grid;grid-template-columns:1.05fr .95fr}.intro{padding:52px;background:linear-gradient(155deg,var(--navy),#173c5d 65%,#176985);color:#fff}.mark{letter-spacing:.15em;text-transform:uppercase;font-size:.78rem;font-weight:700;color:#8edcf0}.intro h1{font-size:clamp(2rem,4vw,3.4rem);line-height:1.05;margin:.55em 0 .4em}.intro p{color:#d6e6f1;max-width:34rem}.meta{margin-top:2rem;padding-top:1.4rem;border-top:1px solid rgba(255,255,255,.18);font-size:.9rem;color:#bdd1df}.form{padding:52px}.form h2{margin:0 0 .35rem;font-size:1.5rem}.form>p{color:var(--muted);margin:0 0 1.8rem}label{display:block;font-weight:650;margin:.9rem 0 .35rem}input{width:100%;border:1px solid var(--line);border-radius:9px;padding:12px 13px;font:inherit;outline:0}input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,163,200,.14)}button{width:100%;margin-top:1.3rem;border:0;border-radius:9px;padding:13px;background:var(--blue);color:#fff;font:inherit;font-weight:700;cursor:pointer}button:hover{background:#12588f}.notice{border-radius:9px;padding:11px 13px;margin:0 0 1rem;font-size:.93rem}.error{background:#fff0f0;color:var(--danger);border:1px solid #f2caca}.success{background:#edf9f3;color:var(--ok);border:1px solid #bfe3d0}.help{margin-top:1.8rem;padding-top:1.2rem;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}@media(max-width:760px){.shell{grid-template-columns:1fr}.intro,.form{padding:34px}.intro h1{font-size:2.2rem}}
+<?=$base_css?>
+<?=$theme_css?>
 	</style>
 </head>
 <body>
-<main class="shell">
-	<section class="intro"><div class="mark">Kontrol Identity</div><h1>Identificação necessária</h1><p>Esta estação não pôde ser identificada automaticamente. Use uma credencial autorizada para associar temporariamente seu usuário ao endereço da estação.</p><div class="meta">Endereço detectado: <?=kid_h($client_ip)?><br>A senha é validada diretamente pelo Kontrol ou pelo Active Directory configurado.</div></section>
-	<section class="form"><h2>Acessar a Internet</h2><p>Informe sua credencial corporativa.</p>
-		<?php if ($error): ?><div class="notice error"><?=kid_h($error)?></div><?php endif; ?>
-		<?php if ($success): ?><div class="notice success"><?=kid_h($success)?></div><?php endif; ?>
-		<?php if (!$success): ?><form method="post" autocomplete="on">
-			<input type="hidden" name="csrf" value="<?=kid_h($_SESSION['csrf'])?>"><input type="hidden" name="redirect" value="<?=kid_h($redirect)?>">
-			<label for="username">Usuário</label><input id="username" name="username" required autofocus autocomplete="username">
-			<label for="password">Senha</label><input id="password" name="password" type="password" required autocomplete="current-password">
-			<button type="submit">Entrar</button>
-		</form><?php elseif ($redirect): ?><p><a href="<?=kid_h($redirect)?>">Continuar para o endereço solicitado</a></p><?php endif; ?>
-		<div class="help"><?=nl2br(kid_h($settings['admin_contact']))?></div>
-	</section>
-</main>
+	<div class="ambient" aria-hidden="true"><span></span><span></span></div>
+	<main class="shell" aria-labelledby="login-title">
+		<section class="visual">
+			<div class="brand"><span class="brand-mark" aria-hidden="true"></span>Kontrol-ID <span>Secure Web Gateway</span></div>
+			<div class="identity-icon" aria-hidden="true">
+				<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M48 8 79 20v24c0 21-12 36-31 44C29 80 17 65 17 44V20L48 8Z" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+					<circle cx="48" cy="39" r="10" stroke="currentColor" stroke-width="5"/>
+					<path d="M31 66c3-10 10-15 17-15s14 5 17 15" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+				</svg>
+			</div>
+			<p class="kicker">Identidade de rede</p>
+			<h1 id="login-title">Identificação<br>necessária</h1>
+			<p class="lead">Esta estação ainda não possui uma identidade válida. Autentique-se para liberar temporariamente o acesso à Internet.</p>
+			<div class="station"><span>Estação detectada</span><strong><?=kid_h($client_ip)?></strong></div>
+		</section>
+
+		<section class="form-panel">
+			<header><p class="step">Acesso corporativo</p><h2>Acessar a Internet</h2><p>Use uma credencial autorizada do Kontrol ou do Active Directory.</p></header>
+			<?php if ($error): ?><div class="notice error" role="alert"><?=kid_h($error)?></div><?php endif; ?>
+			<?php if ($success): ?><div class="notice success" role="status"><?=kid_h($success)?></div><?php endif; ?>
+			<?php if (!$success): ?>
+				<form method="post" autocomplete="on">
+					<input type="hidden" name="csrf" value="<?=kid_h($_SESSION['csrf'])?>">
+					<input type="hidden" name="redirect" value="<?=kid_h($redirect)?>">
+					<div class="field"><label for="username">Usuário</label><input id="username" name="username" required autofocus autocomplete="username" placeholder="domínio\\usuário ou usuário"></div>
+					<div class="field"><label for="password">Senha</label><input id="password" name="password" type="password" required autocomplete="current-password" placeholder="Sua senha"></div>
+					<button type="submit"><span>Entrar e liberar acesso</span><span aria-hidden="true">→</span></button>
+				</form>
+			<?php elseif ($redirect): ?>
+				<a class="continue" href="<?=kid_h($redirect)?>">Continuar para o endereço solicitado <span aria-hidden="true">→</span></a>
+			<?php else: ?>
+				<p class="ready">A identidade já foi associada. Feche esta página e tente acessar novamente.</p>
+			<?php endif; ?>
+			<?php if (!empty($settings['admin_contact'])): ?><div class="help"><span aria-hidden="true">i</span><p><?=nl2br(kid_h($settings['admin_contact']))?></p></div><?php endif; ?>
+			<footer>A autenticação é validada diretamente pelo appliance e não é armazenada nesta página.</footer>
+		</section>
+	</main>
 </body>
 </html>

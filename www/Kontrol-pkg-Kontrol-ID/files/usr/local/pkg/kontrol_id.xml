@@ -164,6 +164,8 @@
 				Controls how Kontrol-ID activates generated policy, list and group changes. <strong>Reload with USR1</strong> preserves
 				the running process, worker threads and active connections and is recommended for ordinary policy changes.
 				Choose a restart action after changing worker count, listener ports, authentication, TLS inspection or other engine-wide settings.
+				A change between transparent identification, anonymous transparent mode and explicit proxy authentication always triggers
+				one controlled restart, even when USR1 is selected, because the authentication plugin itself must be replaced.
 			]]></description>
 			<type>select</type>
 			<default_value>-r</default_value>
@@ -365,14 +367,14 @@
 		<field>
 			<fielddescr>Unknown Username</fielddescr>
 			<fieldname>unknown_user</fieldname>
-			<description>Identity returned to Squid when automatic identification is unavailable.</description>
+			<description>Identity recorded by Kontrol-ID when automatic identification is unavailable.</description>
 			<type>input</type>
 			<default_value>unknown</default_value>
 		</field>
 		<field>
 			<fielddescr>Unknown User Action</fielddescr>
 			<fieldname>unknown_action</fieldname>
-			<description>Portal redirects are reliable for HTTP. HTTPS also requires the Kontrol CA/SSL inspection or network captive-portal assistance.</description>
+			<description>Redirect blocks navigation until the user authenticates. HTTPS redirection requires HTTP + HTTPS inspection and a trusted Kontrol-ID CA. Deny access uses the selected standard block page.</description>
 			<type>select</type>
 			<default_value>portal</default_value>
 			<options>
@@ -387,6 +389,19 @@
 			<description>Leave empty to use the Kontrol WebGUI hostname and /kontrol_id_portal.php.</description>
 			<type>input</type>
 			<size>60</size>
+		</field>
+		<field>
+			<fielddescr>Login Page Template</fielddescr>
+			<fieldname>login_template</fieldname>
+			<description>Visual style shown to unidentified users. All templates contain the same authentication fields, validation and administrator message.</description>
+			<type>select</type>
+			<default_value>kontrol_dark</default_value>
+			<options>
+				<option><name>Kontrol Dark</name><value>kontrol_dark</value></option>
+				<option><name>Aurora</name><value>aurora</value></option>
+				<option><name>Corporate</name><value>corporate</value></option>
+				<option><name>Signal</name><value>signal</value></option>
+			</options>
 		</field>
 		<field>
 			<fielddescr>Administrator Message</fielddescr>

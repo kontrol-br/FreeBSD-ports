@@ -1,0 +1,15 @@
+:root {
+    --canvas: #eef4ff; --surface: rgba(255,255,255,.86); --surface-alt: #f5f6ff;
+    --line: rgba(30,45,82,.13); --text: #17243a; --muted: #66758b;
+    --accent: #6d4aff; --accent-strong: #1975e7; --field: rgba(255,255,255,.9);
+    --danger: #b4233b; --danger-bg: #fff0f3; --success: #176a43; --success-bg: #edf9f3;
+    color-scheme: light;
+}
+body { background: radial-gradient(circle at 9% 7%,rgba(244,63,94,.20),transparent 34rem),radial-gradient(circle at 92% 90%,rgba(25,117,231,.25),transparent 38rem),linear-gradient(135deg,#f7f5ff,#eef8ff 48%,#fff7f9); }
+.shell { border-color: rgba(255,255,255,.75); border-radius: 30px; box-shadow: 0 32px 95px rgba(36,52,86,.19); backdrop-filter: blur(22px); }
+.visual { background: linear-gradient(145deg,rgba(248,246,255,.66),rgba(238,247,255,.42)); }
+.brand-mark { width: 25px; height: 8px; border-radius: 99px; background: linear-gradient(90deg,#6d4aff,#f43f5e); box-shadow: none; }
+.identity-icon { border-radius: 36px; background: linear-gradient(145deg,#6d4aff,#1975e7 56%,#f43f5e); transform: rotate(-3deg); }
+.identity-icon svg { transform: rotate(3deg); }
+button, .continue { border: 0; background: linear-gradient(100deg,#6d4aff,#1975e7); }
+button:hover, .continue:hover { background: linear-gradient(100deg,#5c39ee,#1266cf); }

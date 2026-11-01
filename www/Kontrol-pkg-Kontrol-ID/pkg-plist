@@ -5,6 +5,11 @@ etc/rc.d/kontrol_id_winbind
 pkg/kontrol_id.inc
 pkg/kontrol_id.xml
 pkg/kontrol_id_sync.xml
+pkg/kontrol-id-login-base.css
+pkg/kontrol-id-login-kontrol-dark.css
+pkg/kontrol-id-login-aurora.css
+pkg/kontrol-id-login-corporate.css
+pkg/kontrol-id-login-signal.css
 www/kontrol_id_status.php
 www/kontrol_id_domain.php
 www/kontrol_id_policy.php
