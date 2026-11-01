@@ -177,6 +177,20 @@
             <size>5</size>
         </field>
         <field>
+            <fielddescr>Block Page Template</fielddescr>
+            <fieldname>block_template</fieldname>
+            <description><![CDATA[Choose the visual style used for blocked requests. All managed templates show the same policy details and work without external assets.<br>
+                Select <b>Custom HTML</b> before editing the Report file field. A managed template replaces Report file content whenever this page is saved.]]></description>
+            <type>select</type>
+            <options>
+                <option><name>Kontrol Dark — dark and immersive</name><value>kontrol_dark</value></option>
+                <option><name>Aurora — light and colorful</name><value>aurora</value></option>
+                <option><name>Corporate — clean and executive</name><value>corporate</value></option>
+                <option><name>Signal — high contrast</name><value>signal</value></option>
+                <option><name>Custom HTML — preserve manual content</name><value>custom</value></option>
+            </options>
+        </field>
+        <field>
             <fielddescr>Report file</fielddescr>
             <fieldname>report_file</fieldname>
             <description><![CDATA[E2guardian template.html error page whithout head or html tags<br>

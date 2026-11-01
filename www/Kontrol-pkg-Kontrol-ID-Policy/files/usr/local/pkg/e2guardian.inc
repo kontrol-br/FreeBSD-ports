@@ -396,6 +396,47 @@ function e2_text_area_decode($text) {
         return preg_replace('/\r\n/', "\n", base64_decode($text));
 }
 
+function e2g_block_template_catalog() {
+    return array(
+        'kontrol_dark' => 'kontrol-id-block-template.html',
+        'aurora' => 'kontrol-id-block-template-aurora.html',
+        'corporate' => 'kontrol-id-block-template-corporate.html',
+        'signal' => 'kontrol-id-block-template-signal.html'
+    );
+}
+
+function e2g_block_template_path($template_id) {
+    $catalog = e2g_block_template_catalog();
+    if (!isset($catalog[$template_id])) {
+        return false;
+    }
+
+    return E2GUARDIAN_PKGDIR . '/' . $catalog[$template_id];
+}
+
+function e2g_detect_block_template($html) {
+    $markers = array(
+        'kontrol-dark-v1' => 'kontrol_dark',
+        'v2' => 'kontrol_dark',
+        'aurora-v1' => 'aurora',
+        'corporate-v1' => 'corporate',
+        'signal-v1' => 'signal'
+    );
+    foreach ($markers as $marker => $template_id) {
+        if (strpos((string)$html, 'data-kontrol-id-block-page="' . $marker . '"') !== false) {
+            return $template_id;
+        }
+    }
+
+    if (strpos((string)$html, 'function NiftyCheck()') !== false &&
+        (strpos((string)$html, 'KONTROL - Accesso Negado') !== false ||
+         strpos((string)$html, '<Table Border="0"') !== false)) {
+        return 'kontrol_dark';
+    }
+
+    return false;
+}
+
 function e2g_normalize_category_key(array $parts) {
         $normalized = array();
         foreach ($parts as $part) {
@@ -1331,7 +1372,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         }
     }
 
-    if (is_process_running('e2guardian') && isset($boot_process) && $via_rpc == "no") {
+    if (is_process_running('e2guardian') && isset($boot_process) &&
+        $via_rpc == "no" && !$install_process) {
         log_error("[E2guardian] - Detected boot process pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
         log_error("[E2guardian] - Aborting config file generation");
         return;
@@ -1375,6 +1417,7 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         $config['installedpackages']['e2guardianlog']['config'][0] = array(
             'report_level' => '3',
             'report_language' => 'ukenglish',
+            'block_template' => 'kontrol_dark',
             'report_options' => 'usecustombannedimage,nonstandarddelimiter',
             'logging_options' => 'logconnectionhandlingerrors',
             'loglevel' => '3',
@@ -2255,22 +2298,29 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         copy($rf, "$rf.sample");
     }
 
-    /* Existing installations may still carry the original HTML4/table-based
-     * page in config.xml. Upgrade that known legacy default, while preserving
-     * genuinely customized administrator templates. */
-    $managed_report_template = E2GUARDIAN_PKGDIR . '/kontrol-id-block-template.html';
+    /* Managed visual templates are package-owned and can be safely refreshed
+     * on upgrade. Unknown HTML remains custom and is never overwritten. */
     $configured_report_template = e2_text_area_decode($e2guardian_log['report_file'] ?? '');
-    $legacy_report_template = (
-        strpos($configured_report_template, 'function NiftyCheck()') !== false &&
-        (strpos($configured_report_template, 'KONTROL - Accesso Negado') !== false ||
-         strpos($configured_report_template, '<Table Border="0"') !== false)
-    );
-    if (($configured_report_template === '' || $legacy_report_template) && file_exists($managed_report_template)) {
-        $report_file = file_get_contents($managed_report_template);
-        config_set_path("installedpackages/e2guardianlog/config/0/report_file", base64_encode($report_file));
-        $e2guardian_log['report_file'] = base64_encode($report_file);
+    $selected_block_template = (string)($e2guardian_log['block_template'] ?? '');
+    $block_template_catalog = e2g_block_template_catalog();
+    if ($selected_block_template === '' ||
+        ($selected_block_template !== 'custom' && !isset($block_template_catalog[$selected_block_template]))) {
+        $detected_block_template = e2g_detect_block_template($configured_report_template);
+        $selected_block_template = $detected_block_template ?: ($configured_report_template === '' ? 'kontrol_dark' : 'custom');
+        config_set_path('installedpackages/e2guardianlog/config/0/block_template', $selected_block_template);
+        $e2guardian_log['block_template'] = $selected_block_template;
         $load_samples++;
-    } elseif (($e2guardian_log['report_file'] ?? '') == "" && file_exists("$rf.sample")) {
+    }
+
+    $managed_report_template = e2g_block_template_path($selected_block_template);
+    if ($managed_report_template !== false && file_exists($managed_report_template)) {
+        $report_file = file_get_contents($managed_report_template);
+        if ($configured_report_template !== $report_file) {
+            config_set_path("installedpackages/e2guardianlog/config/0/report_file", base64_encode($report_file));
+            $e2guardian_log['report_file'] = base64_encode($report_file);
+            $load_samples++;
+        }
+    } elseif ($configured_report_template === '' && file_exists("$rf.sample")) {
         $report_file = file_get_contents("$rf.sample");
         $report_file = preg_replace('/<.*(html|head)>/', '', $report_file);
         //$config['installedpackages']['e2guardianlog']['config'][0]['report_file'] = base64_encode($report_file);
@@ -3751,6 +3801,21 @@ function e2guardian_validate_input($post, &$input_errors) {
             if( file_exists($rf)) {
                 $report_file = file_get_contents($rf);
                 $_POST['report_file'] = preg_replace('/<.*(html|head)>/', '', $report_file);
+            }
+        }
+    }
+
+    if (array_key_exists('block_template', $post)) {
+        $selected_block_template = (string)$post['block_template'];
+        $block_template_catalog = e2g_block_template_catalog();
+        if ($selected_block_template !== 'custom' && !isset($block_template_catalog[$selected_block_template])) {
+            $input_errors[] = 'The selected block page template is invalid.';
+        } elseif ($selected_block_template !== 'custom') {
+            $managed_report_template = e2g_block_template_path($selected_block_template);
+            if ($managed_report_template === false || !is_readable($managed_report_template)) {
+                $input_errors[] = 'The selected block page template is not available on this system.';
+            } else {
+                $_POST['report_file'] = file_get_contents($managed_report_template);
             }
         }
     }

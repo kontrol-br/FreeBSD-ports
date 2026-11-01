@@ -25,6 +25,9 @@ pkg/preauth.story.default
 pkg/site.story.default
 pkg/default.conf.default
 pkg/kontrol-id-block-template.html
+pkg/kontrol-id-block-template-aurora.html
+pkg/kontrol-id-block-template-corporate.html
+pkg/kontrol-id-block-template-signal.html
 pkg/e2guardianfx.conf.template
 pkg/e2guardian_ips.xml
 pkg/e2guardian_users.xml
