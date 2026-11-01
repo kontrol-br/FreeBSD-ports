@@ -88,6 +88,22 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
                         </span>
                     </td>
                 </tr>
+                <?php if ((int)($e2glog['logfileformat'] ?? 1) === 1) {?>
+                <tr>
+                    <td width="22%" valign="top" class="vncellreq"><?=gettext("Traffic to show:")?></td>
+                    <td width="78%" class="vtable">
+                        <select name="traffic" id="traffic">
+                            <option value="all" selected="selected"><?=gettext("All connections")?></option>
+                            <option value="allowed"><?=gettext("Allowed connections")?></option>
+                            <option value="blocked"><?=gettext("Blocked connections")?></option>
+                        </select>
+                        <br/>
+                        <span class="vexpl">
+                            <?=gettext("Allowed connections are marked in green and blocked connections in red. Filtered views search the configured log scan window.")?>
+                        </span>
+                    </td>
+                </tr>
+                <?php }?>
                 <?php if($e2glog['logfileformat'] == 1 || $e2glog['logfileformat'] == 4 || $e2glog['logdeniedcgi'] == "on") {?>
                 <tr>
                 <td width="22%" valign="top" class="vncellreq">Erro to show:</td>
@@ -188,6 +204,7 @@ function showLog(content, url, program) {
         data: {
             maxlines: $('#maxlines').val(),
             readlines: $('#readlines').val(),
+            traffic: $('#traffic').val() || 'all',
             strfilter: $('#strfilter').val(),
             error: $('#error').val(),
             program: program,

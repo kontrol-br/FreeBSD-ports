@@ -46,9 +46,15 @@ function e2gm($field){
 
 /* Requests */
 if ($_POST) {
-    global $filter, $program, $e2glog;
+    global $filter, $program, $e2glog, $traffic, $display_limit;
     $filter = preg_replace('/(@|!|>|<)/', "", htmlspecialchars($_POST['strfilter']));
     $program = strtolower($_POST['program']);
+    $traffic = strtolower($_POST['traffic'] ?? 'all');
+    if (!in_array($traffic, array('all', 'allowed', 'blocked'), true)) {
+        $traffic = 'all';
+    }
+    $display_limit = is_numeric($_POST['maxlines'] ?? null) ? (int)$_POST['maxlines'] : 50;
+    $display_limit = max(1, min(500, $display_limit));
     $listr = "class='listr' style='font-family: Consolas, Lucida Console, monospace;'";
     switch ($program) {
         case 'access':
@@ -59,9 +65,16 @@ if ($_POST) {
             switch($e2glog['logfileformat']) {
                 case 1:
                     show_tds(array("","Date", "IP", "Url", "Response", "User", "Group", "Blacklist", "Reason"));
+                    $shown = 0;
                     foreach ($logarr as $logent) {
                         //split log
-                        if (preg_match("/^(\S+\s+\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+(GET|OPTIONS|POST|CONNECT|-)\s+\d+\s+\d+\s+(.*?)\s+\d+\s+(\d+)\s+\S+\s+\S+\s+(\S+)/", $logent, $logline)) {
+                        if (preg_match("/^(\S+\s+\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+([A-Z]+|-)\s+\d+\s+\d+\s+(.*?)\s+\d+\s+(\d+)\s+\S+\s+\S+\s+(\S+)/", $logent, $logline)) {
+
+                            $response_code = (int)$logline[8];
+                            $blocked = ($response_code === 403 || strpos($logline[5], '*DENIED*') !== false);
+                            if (($traffic === 'allowed' && $blocked) || ($traffic === 'blocked' && !$blocked)) {
+                                continue;
+                            }
 
                                                     // Word wrap the URL
                                                     $url = htmlentities($logline[4]);
@@ -91,6 +104,10 @@ if ($_POST) {
                             echo "<td $listr>" . $cat_val . "</td>\n";
                             echo "<td $listr>" . e2gm($logline[5]) . "</td>\n";
                                                     echo "</tr>\n";
+                            $shown++;
+                            if ($shown >= $display_limit) {
+                                break;
+                            }
                         }
                     }
 
@@ -226,12 +243,14 @@ function html_autowrap($cont) {
 
 // Show Squid Logs
 function fetch_log($log) {
-    global $filter, $program, $e2glog;
+    global $filter, $program, $e2glog, $traffic;
     $log = escapeshellarg($log);
     // Get data from form post
-    $lines = escapeshellarg(is_numeric($_POST['maxlines']) ? $_POST['maxlines'] : 50);
-    $readlines = escapeshellarg(is_numeric($_POST['readlines']) ? $_POST['readlines'] : 2000);
-    //TODO: Add a safty for when readlines is excessively large
+    $lines = is_numeric($_POST['maxlines'] ?? null) ? (int)$_POST['maxlines'] : 50;
+    $lines = max(1, min(500, $lines));
+    $readlines = is_numeric($_POST['readlines'] ?? null) ? (int)$_POST['readlines'] : 2000;
+    $readlines = max($lines, min(20000, $readlines));
+    $scanlines = ($program === 'access' && ($traffic !== 'all' || $filter !== '')) ? $readlines : $lines;
     if (preg_match("/!/", htmlspecialchars($_POST['strfilter']))) {
         $grep_arg = "-iv";
     } else {
@@ -247,9 +266,9 @@ function fetch_log($log) {
     //arrumar aqui
     // Get logs based in filter expression
     if ($filter != "" && $program == "access") {
-        exec("/usr/bin/tail -n {$readlines} {$log} | /usr/bin/grep {$grep_arg} " . escapeshellarg($filter). " | /usr/bin/tail -r -n {$lines} {$parser} ", ${$logarr.$program});
+        exec("/usr/bin/tail -n {$readlines} {$log} | /usr/bin/grep {$grep_arg} " . escapeshellarg($filter). " | /usr/bin/tail -r -n {$scanlines} {$parser} ", ${$logarr.$program});
     } else {
-        exec("/usr/bin/tail -r -n {$lines} {$log} {$parser}", ${$logarr.$program});
+        exec("/usr/bin/tail -r -n {$scanlines} {$log} {$parser}", ${$logarr.$program});
     }
     // Return logs
     return ${$logarr.$program};
