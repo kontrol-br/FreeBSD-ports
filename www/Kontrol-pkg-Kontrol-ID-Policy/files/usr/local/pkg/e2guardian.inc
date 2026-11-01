@@ -2254,7 +2254,23 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
     if(file_exists($rf) && !file_exists("$rf.sample")) {
         copy($rf, "$rf.sample");
     }
-    if ($e2guardian_log['report_file'] == "" && file_exists("$rf.sample")) {
+
+    /* Existing installations may still carry the original HTML4/table-based
+     * page in config.xml. Upgrade that known legacy default, while preserving
+     * genuinely customized administrator templates. */
+    $managed_report_template = E2GUARDIAN_PKGDIR . '/kontrol-id-block-template.html';
+    $configured_report_template = e2_text_area_decode($e2guardian_log['report_file'] ?? '');
+    $legacy_report_template = (
+        strpos($configured_report_template, 'function NiftyCheck()') !== false &&
+        (strpos($configured_report_template, 'KONTROL - Accesso Negado') !== false ||
+         strpos($configured_report_template, '<Table Border="0"') !== false)
+    );
+    if (($configured_report_template === '' || $legacy_report_template) && file_exists($managed_report_template)) {
+        $report_file = file_get_contents($managed_report_template);
+        config_set_path("installedpackages/e2guardianlog/config/0/report_file", base64_encode($report_file));
+        $e2guardian_log['report_file'] = base64_encode($report_file);
+        $load_samples++;
+    } elseif (($e2guardian_log['report_file'] ?? '') == "" && file_exists("$rf.sample")) {
         $report_file = file_get_contents("$rf.sample");
         $report_file = preg_replace('/<.*(html|head)>/', '', $report_file);
         //$config['installedpackages']['e2guardianlog']['config'][0]['report_file'] = base64_encode($report_file);

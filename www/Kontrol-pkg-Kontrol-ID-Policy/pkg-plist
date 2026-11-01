@@ -24,6 +24,7 @@ pkg/common.story.default
 pkg/preauth.story.default
 pkg/site.story.default
 pkg/default.conf.default
+pkg/kontrol-id-block-template.html
 pkg/e2guardianfx.conf.template
 pkg/e2guardian_ips.xml
 pkg/e2guardian_users.xml
