@@ -46,7 +46,150 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
 
 ?>
 
-<div class="panel panel-default">
+<style type="text/css">
+.kid-filter-panel,
+.kid-log-panel {
+    border: 1px solid rgba(39, 59, 74, .16);
+    border-radius: 4px;
+    box-shadow: 0 3px 12px rgba(25, 43, 56, .06);
+    overflow: hidden;
+}
+
+.kid-filter-panel > .panel-heading,
+.kid-log-panel > .panel-heading {
+    background: #2d3e4b;
+    border: 0;
+    border-bottom: 3px solid #2787bd;
+    color: #fff;
+    min-height: 42px;
+    padding: 10px 14px;
+}
+
+.kid-filter-panel > .panel-heading .panel-title,
+.kid-log-panel > .panel-heading .panel-title {
+    color: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .035em;
+    line-height: 19px;
+}
+
+.kid-live-state {
+    align-items: center;
+    background: rgba(255, 255, 255, .1);
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 12px;
+    display: inline-flex;
+    float: right;
+    font-size: 10px;
+    font-weight: 600;
+    gap: 6px;
+    letter-spacing: .08em;
+    line-height: 18px;
+    padding: 0 9px;
+    text-transform: uppercase;
+}
+
+.kid-live-state .fa-circle {
+    color: #63d89a;
+    font-size: 7px;
+}
+
+.kid-log-panel.kid-is-loading .kid-live-state .fa-circle {
+    color: #71c9f3;
+}
+
+.kid-log-panel.kid-has-error .kid-live-state .fa-circle {
+    color: #ff847c;
+}
+
+.kid-log-panel > .panel-body {
+    padding: 0;
+}
+
+.kid-log-scroll {
+    max-height: calc(100vh - 260px);
+    min-height: 260px;
+    overflow: auto;
+    position: relative;
+}
+
+.kid-log-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+    width: 100%;
+}
+
+.kid-log-table > tbody > tr:first-child > th {
+    background: #f2f6f8;
+    border-bottom: 1px solid rgba(34, 62, 81, .24);
+    box-shadow: inset 0 2px 0 rgba(39, 135, 189, .8);
+    color: #304552;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    padding: 11px 10px 9px;
+    position: sticky;
+    text-transform: uppercase;
+    top: 0;
+    white-space: nowrap;
+    z-index: 2;
+}
+
+.kid-log-table > tbody > tr > td {
+    background: rgba(255, 255, 255, .94);
+    border-bottom: 1px solid rgba(43, 66, 82, .11);
+    color: #314653;
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 8px 10px;
+    vertical-align: top;
+}
+
+.kid-log-table > tbody > tr:nth-child(odd):not(:first-child) > td {
+    background: rgba(232, 241, 246, .3);
+}
+
+.kid-log-table > tbody > tr:not(:first-child):hover > td {
+    background: rgba(52, 146, 198, .09);
+}
+
+.kid-log-table > tbody > tr > th + th,
+.kid-log-table > tbody > tr > td + td {
+    border-left: 1px solid rgba(43, 66, 82, .13);
+}
+
+.kid-log-table > tbody > tr > td:first-child {
+    padding-left: 14px;
+    text-align: center;
+    width: 38px;
+}
+
+.kid-log-table .fa {
+    font-size: 13px;
+}
+
+.kid-log-table .listr,
+.kid-log-table .listlr {
+    font-family: Consolas, "Liberation Mono", monospace !important;
+}
+
+@media (max-width: 767px) {
+    .kid-log-scroll {
+        max-height: 62vh;
+    }
+
+    .kid-log-table > tbody > tr > td,
+    .kid-log-table > tbody > tr:first-child > th {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+}
+</style>
+
+<div class="panel panel-default kid-filter-panel">
     <div class="panel-heading"><h2 class="panel-title"><?=gettext("Filtering"); ?></h2></div>
     <div class="panel-body">
         <div class="table">
@@ -146,61 +289,62 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
             </form>
         </div>
     </div>
+</div>
+
+<div class="panel panel-default kid-log-panel" id="kid-access-panel">
+    <div class="panel-heading">
+        <span class="kid-live-state"><i class="fa fa-circle"></i><span class="kid-live-label"><?=gettext("Live")?></span></span>
+        <h2 class="panel-title"><?=gettext("Kontrol-ID Access Table"); ?></h2>
     </div>
-    </div>
-    <div class="panel panel-default" style='margin:0 auto;width:97%'>
-    <div class="panel-heading"><h2 class="panel-title"><?=gettext("Kontrol-ID Access Table"); ?></h2></div>
     <div class="panel-body">
-        <div class="">
-            <table class="table table-responsive table-striped table-hover table-condensed"
-                <tbody>
-                <tr><td>
-                    <table class="table" xclaxss="tabcont" width="100%" border="0" cellspacing="2" cellpadding="0">
-                        <thead id="e2gViewhead"><tr>
-                        </tr></thead>
-                        <tbody id="e2gView">
-                        <tr><td></td></tr>
-                        </tbody>
-                    </table>
-                </td></tr>
-                </tbody>
+        <div class="kid-log-scroll">
+            <table class="table kid-log-table" aria-label="<?=gettext("Kontrol-ID Access Table")?>">
+                <tbody id="e2gView"><tr><td></td></tr></tbody>
             </table>
         </div>
     </div>
-    </div>
-    <BR>
+</div>
+
     <?php if($e2glog['logfileformat'] == 3 && $e2glog['logdeniedcgi'] == "on") {?>
-        <div class="panel panel-default" style='margin:0 auto;width:97%'>
-        <div class="panel-heading"><h2 class="panel-title"><?=gettext("Detailed denied log"); ?></h2></div>
-        <div class="panel-body">
-                <div class="">
-                        <table class="table table-responsive table-striped table-hover table-condensed"
-                                <tbody>
-                                <tr><td>
-                                        <table class="table" xclaxss="tabcont" width="100%" border="0" cellspacing="2" cellpadding="0">
-                                                <thead id="e2gerrorhead"><tr>
-                                                </tr></thead>
-                                                <tbody id="e2gerror">
-                                                <tr><td></td></tr>
-                                                </tbody>
-                                        </table>
-                                </td></tr>
-                                </tbody>
-                        </table>
+        <div class="panel panel-default kid-log-panel" id="kid-error-panel">
+            <div class="panel-heading">
+                <span class="kid-live-state"><i class="fa fa-circle"></i><span class="kid-live-label"><?=gettext("Live")?></span></span>
+                <h2 class="panel-title"><?=gettext("Detailed denied log"); ?></h2>
+            </div>
+            <div class="panel-body">
+                <div class="kid-log-scroll">
+                    <table class="table kid-log-table" aria-label="<?=gettext("Detailed denied log")?>">
+                        <tbody id="e2gerror"><tr><td></td></tr></tbody>
+                    </table>
                 </div>
+            </div>
         </div>
-        </div>
-        <BR>
     <?php } ?>
 
 <!-- Function to call programs logs -->
 <script type="text/javascript">
 //<![CDATA[
-document.timeoutVal = 5000
+document.timeoutVal = 5000;
+var kontrolIdLogTimer = null;
+var kontrolIdFilterTimer = null;
+var kontrolIdLogRequests = [];
+
+function setLogState(panel, state, label) {
+    var $panel = $(panel);
+    $panel.removeClass('kid-is-loading kid-has-error');
+    if (state) {
+        $panel.addClass(state);
+    }
+    $panel.find('.kid-live-label').text(label);
+}
+
 function showLog(content, url, program) {
-    jQuery.ajax(url,
-        {
+    var panel = (content === 'e2gerror') ? '#kid-error-panel' : '#kid-access-panel';
+    setLogState(panel, 'kid-is-loading', '<?=gettext("Updating")?>');
+
+    return jQuery.ajax(url, {
         type: 'post',
+        cache: false,
         data: {
             maxlines: $('#maxlines').val(),
             readlines: $('#readlines').val(),
@@ -209,23 +353,64 @@ function showLog(content, url, program) {
             error: $('#error').val(),
             program: program,
             content: content
-            },
-        success: function(ret){
+        },
+        success: function(ret) {
             $('#' + content).html(ret);
+            setLogState(panel, '', '<?=gettext("Live")?>');
+        },
+        error: function(request, status) {
+            if (status !== 'abort') {
+                setLogState(panel, 'kid-has-error', '<?=gettext("Unavailable")?>');
             }
         }
-        );
+    });
+}
+
+function scheduleLogUpdate() {
+    window.clearTimeout(kontrolIdLogTimer);
+    document.timeoutVal = parseInt($('#interval').val(), 10) || 5000;
+    kontrolIdLogTimer = window.setTimeout(updateAllLogs, document.timeoutVal);
 }
 
 function updateAllLogs() {
-    showLog('e2gView', 'e2guardian_monitor_data.php', 'access');
-    showLog('e2gerror', 'e2guardian_monitor_data.php', 'e2gerror');
-    document.timeoutVal = $('#interval').val();
-    setTimeout(updateAllLogs, document.timeoutVal);
+    window.clearTimeout(kontrolIdLogTimer);
+
+    if (document.hidden) {
+        scheduleLogUpdate();
+        return;
+    }
+
+    kontrolIdLogRequests = [showLog('e2gView', 'e2guardian_monitor_data.php', 'access')];
+    if ($('#e2gerror').length) {
+        kontrolIdLogRequests.push(showLog('e2gerror', 'e2guardian_monitor_data.php', 'e2gerror'));
+    }
+
+    jQuery.when.apply(jQuery, kontrolIdLogRequests).always(scheduleLogUpdate);
 }
 
 events.push(function() {
-//alert(document.timeoutVal);
+    function refreshLogView() {
+        window.clearTimeout(kontrolIdLogTimer);
+        jQuery.each(kontrolIdLogRequests, function(index, request) {
+            if (request && request.readyState !== 4) {
+                request.abort();
+            }
+        });
+        updateAllLogs();
+    }
+
+    $('#paramsForm').on('change', 'select', refreshLogView);
+    $('#paramsForm').on('input', 'input', function() {
+        window.clearTimeout(kontrolIdFilterTimer);
+        kontrolIdFilterTimer = window.setTimeout(refreshLogView, 300);
+    });
+
+    $(document).on('visibilitychange', function() {
+        if (!document.hidden) {
+            updateAllLogs();
+        }
+    });
+
     updateAllLogs();
 });
 //]]>
