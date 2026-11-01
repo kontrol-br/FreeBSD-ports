@@ -51,6 +51,8 @@ function kontrol_id_defaults() {
 		'ad_dc' => '',
 		'ad_workgroup' => '',
 		'engine_workers' => '256',
+		'http_proxy_port' => '3128',
+		'https_intercept_port' => '3129',
 		'engine_integration' => 'on',
 		'traffic_mode' => 'http_only',
 		'intercept_interfaces' => 'lan',
@@ -205,6 +207,55 @@ function kontrol_id_get_settings() {
 	return array_merge(kontrol_id_defaults(), $settings);
 }
 
+function kontrol_id_listener_owners($port) {
+	$port = (int)$port;
+	if ($port < 1 || $port > 65535) {
+		return array();
+	}
+
+	$lines = array();
+	$status = 0;
+	exec('/usr/bin/sockstat -46l 2>/dev/null', $lines, $status);
+	if ($status !== 0) {
+		return array();
+	}
+
+	$owners = array();
+	foreach ($lines as $line) {
+		$columns = preg_split('/\s+/', trim((string)$line));
+		if (count($columns) < 6 || !preg_match('/:(\d+)$/', $columns[5], $match) ||
+			(int)$match[1] !== $port) {
+			continue;
+		}
+		$owners[] = (string)$columns[1];
+	}
+	return array_values(array_unique($owners));
+}
+
+function kontrol_id_listener_owned_by_engine($port) {
+	$owners = kontrol_id_listener_owners($port);
+	if (empty($owners)) {
+		return false;
+	}
+	foreach ($owners as $owner) {
+		if (!in_array($owner, array('kontrol-id', 'e2guardian'), true)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function kontrol_id_wait_for_listener($port, $timeout = 20) {
+	$deadline = microtime(true) + max(1, (int)$timeout);
+	do {
+		if (kontrol_id_listener_owned_by_engine($port)) {
+			return true;
+		}
+		usleep(100000);
+	} while (microtime(true) < $deadline);
+	return kontrol_id_listener_owned_by_engine($port);
+}
+
 function kontrol_id_transparent_mode($settings = null) {
 	if (!is_array($settings)) {
 		$settings = kontrol_id_get_settings();
@@ -259,19 +310,32 @@ function kontrol_id_remove_legacy_e2guardian_menu() {
 
 /* Package upgrades preserve previous <service> registrations. Kontrol-ID now
  * owns the native service entry, so remove only the obsolete E2Guardian
- * signature that points to the retired e2guardian.sh rc script. */
+ * signature that points to the retired e2guardian.sh rc script and migrate
+ * the existing Kontrol-ID entry to the renamed native executable. */
 function kontrol_id_remove_legacy_e2guardian_service() {
 	$services = config_get_path('installedpackages/service', array());
+	$legacy_script = '/usr/local/etc/rc.d/e2guardian.sh';
+	$changed = false;
+	if (is_file($legacy_script) || is_link($legacy_script)) {
+		@unlink($legacy_script);
+		$changed = true;
+	}
 	if (!is_array($services) || empty($services)) {
-		return false;
+		return $changed;
 	}
 	if (isset($services['name'])) {
 		$services = array($services);
 	}
 
-	$changed = false;
 	$filtered = array();
 	foreach ($services as $service) {
+		if (is_array($service) &&
+			($service['name'] ?? '') === 'kontrol_id' &&
+			($service['rcfile'] ?? '') === 'kontrol_id' &&
+			($service['executable'] ?? '') !== 'kontrol-id') {
+			$service['executable'] = 'kontrol-id';
+			$changed = true;
+		}
 		$is_legacy = is_array($service) &&
 			($service['name'] ?? '') === 'e2guardian' &&
 			($service['rcfile'] ?? '') === 'e2guardian.sh' &&
@@ -2347,7 +2411,7 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['enable'] = $enabled ? 'on' : '';
 	$engine['enable_dg'] = $enabled ? 'on' : '';
 	$engine['interface'] = kontrol_id_normalize_interfaces($settings['intercept_interfaces']);
-	$engine['filterports'] = '3128';
+	$engine['filterports'] = (string)($settings['http_proxy_port'] ?? '3128');
 	$engine['parentmode'] = 'direct';
 	$engine['proxyip'] = '';
 	$engine['proxyport'] = '';
@@ -2363,7 +2427,7 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['enablessl'] = (($settings['traffic_mode'] ?? 'http_only') === 'http_https') ? 'on' : '';
 	$previous_ca_ref = $engine['dca'] ?? '';
 	$engine['dca'] = $settings['ca_ref'] ?? '';
-	$engine['ssl_proxy_port'] = '3129';
+	$engine['ssl_proxy_port'] = (string)($settings['https_intercept_port'] ?? '3129');
 	if ($previous_ca_ref !== '' && $engine['dca'] !== '' &&
 		$previous_ca_ref !== $engine['dca']) {
 		kontrol_id_clear_mitm_certificate_cache();
@@ -2464,6 +2528,10 @@ function kontrol_id_chain_status() {
 	$explicit = $access_mode === 'explicit';
 	$transparent_identity = $access_mode === 'transparent';
 	$auth_method = $settings['explicit_auth'] ?? 'kerberos';
+	$http_port = (int)($settings['http_proxy_port'] ?? 3128);
+	$https_port = (int)($settings['https_intercept_port'] ?? 3129);
+	$https_listener_required =
+		($settings['traffic_mode'] ?? 'http_only') === 'http_https';
 	$auth_profiles = array(
 		'kerberos' => array(
 			'plugin' => 'kontrol-negotiate.conf',
@@ -2537,6 +2605,13 @@ function kontrol_id_chain_status() {
 			'name' => 'Worker pool',
 			'ok' => (int)($engine['httpworkers'] ?? 0) >= 64,
 			'detail' => (int)($engine['httpworkers'] ?? 0) . ' concurrent worker threads configured'
+		),
+		array(
+			'name' => 'Listener ports',
+			'ok' => kontrol_id_listener_owned_by_engine($http_port) &&
+				(!$https_listener_required || kontrol_id_listener_owned_by_engine($https_port)),
+			'detail' => 'HTTP ' . $http_port . ($https_listener_required ?
+				'; transparent HTTPS ' . $https_port : '; transparent HTTPS listener not required')
 		)
 	);
 }
@@ -2544,6 +2619,8 @@ function kontrol_id_chain_status() {
 function kontrol_id_validate(&$post, &$input_errors) {
 	unset($post['_kontrol_id_activation_deferred']);
 	$numeric = array(
+		'http_proxy_port' => array(1, 65535),
+		'https_intercept_port' => array(1, 65535),
 		'winrm_port' => array(1, 65535),
 		'connect_timeout_ms' => array(200, 30000),
 		'request_timeout_ms' => array(500, 60000),
@@ -2557,6 +2634,34 @@ function kontrol_id_validate(&$post, &$input_errors) {
 		if (!isset($post[$field]) || !is_numeric($post[$field]) ||
 			(int)$post[$field] < $range[0] || (int)$post[$field] > $range[1]) {
 			$input_errors[] = sprintf('%s must be between %d and %d.', $field, $range[0], $range[1]);
+		}
+	}
+	$http_port = (int)($post['http_proxy_port'] ?? 0);
+	$https_port = (int)($post['https_intercept_port'] ?? 0);
+	if ($http_port > 0 && $http_port === $https_port) {
+		$input_errors[] = 'The HTTP proxy and transparent HTTPS listeners must use different ports.';
+	}
+
+	$webgui_protocol = config_get_path('system/webgui/protocol', 'https');
+	$webgui_port = (int)config_get_path('system/webgui/port',
+		$webgui_protocol === 'http' ? 80 : 443);
+	foreach (array(
+		'HTTP proxy listener' => $http_port,
+		'HTTPS inspection listener' => $https_port
+	) as $label => $port) {
+		if ($port < 1 || $port > 65535) {
+			continue;
+		}
+		if ($port === $webgui_port) {
+			$input_errors[] = $label . ' conflicts with the Kontrol WebGUI port ' . $webgui_port . '.';
+		}
+		$conflicting_owners = array_diff(
+			kontrol_id_listener_owners($port),
+			array('kontrol-id', 'e2guardian')
+		);
+		if (!empty($conflicting_owners)) {
+			$input_errors[] = $label . ' port ' . $port . ' is already in use by ' .
+				implode(', ', $conflicting_owners) . '.';
 		}
 	}
 	if (!preg_match('/^[A-Za-z0-9_.@-]+$/', $post['unknown_user'] ?? '')) {
@@ -2689,6 +2794,8 @@ function kontrol_id_manage_winbind($enabled) {
 }
 
 function kontrol_id_resync($sync = true) {
+	global $savemsg;
+
 	$changed = kontrol_id_ensure_defaults();
 	$changed = kontrol_id_prepare_dependency_defaults() || $changed;
 	$changed = kontrol_id_ensure_group() || $changed;
@@ -2701,6 +2808,10 @@ function kontrol_id_resync($sync = true) {
 	kontrol_id_write_domain_config();
 	kontrol_id_policy_schedule();
 	$settings = kontrol_id_get_settings();
+	$previous_engine = config_get_path('installedpackages/e2guardian/config/0', array());
+	if (!is_array($previous_engine)) {
+		$previous_engine = array();
+	}
 	$enabled = ($settings['enable'] === 'on');
 	$runtime_ready = true;
 	if ($enabled && kontrol_id_kerberos_required($settings) &&
@@ -2754,11 +2865,50 @@ function kontrol_id_resync($sync = true) {
 				unset($_POST['__csrf_magic']);
 			}
 		}
+		$engine_start_ok = true;
 		if (function_exists('e2guardian_start')) {
-			e2guardian_start('no', false, true);
+			$engine_start_ok = (e2guardian_start('no', false, true) !== false);
 			if (function_exists('e2guardian_wait_for_process_state')) {
-				e2guardian_wait_for_process_state(true, 10);
+				$engine_start_ok = e2guardian_wait_for_process_state($stack_enabled, 10) &&
+					$engine_start_ok;
 			}
+		}
+		$listener_ok = true;
+		if ($stack_enabled) {
+			$listener_ok = kontrol_id_wait_for_listener(
+				(int)($settings['http_proxy_port'] ?? 3128), 20);
+			if ($listener_ok &&
+				($settings['traffic_mode'] ?? 'http_only') === 'http_https') {
+				$listener_ok = kontrol_id_wait_for_listener(
+					(int)($settings['https_intercept_port'] ?? 3129), 20);
+			}
+		}
+
+		if ($stack_enabled && (!$engine_start_ok || !$listener_ok)) {
+			$failed_http = (int)($settings['http_proxy_port'] ?? 3128);
+			$failed_https = (int)($settings['https_intercept_port'] ?? 3129);
+			$settings['http_proxy_port'] = (string)($previous_engine['filterports'] ?? '3128');
+			$settings['https_intercept_port'] = (string)($previous_engine['ssl_proxy_port'] ?? '3129');
+			kontrol_id_set_settings($settings);
+			config_set_path('installedpackages/e2guardian/config/0', $previous_engine);
+			write_config('Kontrol-ID listener change rolled back after the engine failed to bind.');
+			if (function_exists('config_read_file')) {
+				config_read_file(true, false);
+			}
+			$GLOBALS['kontrol_id_managed_resync'] = true;
+			try {
+				sync_package_e2guardian('no', false);
+			} finally {
+				unset($GLOBALS['kontrol_id_managed_resync']);
+			}
+			e2guardian_start('no', false, true);
+			if (function_exists('filter_configure')) {
+				filter_configure();
+			}
+			log_error('[Kontrol-ID] Listener update to HTTP ' . $failed_http .
+				' / HTTPS ' . $failed_https . ' failed and was rolled back.');
+			$savemsg = 'Kontrol-ID could not bind the requested listener ports. The previous ports were restored.';
+			return false;
 		}
 		/* A mode change alters the transparent rdr rules as well as the engine
 		 * configuration. Some package execution contexts restart the service

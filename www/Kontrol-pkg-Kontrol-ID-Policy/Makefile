@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID-Policy
 PORTVERSION=	1.0.0
-PORTREVISION=	14
+PORTREVISION=	17
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -13,7 +13,7 @@ COMMENT=	Policy management GUI for the standalone Kontrol-ID gateway
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	kontrol-id>=5.4.23_2:www/kontrol-id \
+RUN_DEPENDS=	kontrol-id>=5.4.23_9:www/kontrol-id \
 		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss
 
 

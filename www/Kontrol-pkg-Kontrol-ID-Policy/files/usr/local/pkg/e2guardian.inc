@@ -333,13 +333,18 @@ if (!defined('KONTROL_ID_SERVICE_SCRIPT')) {
 if (!defined('KONTROL_ID_PIDFILE')) {
     define('KONTROL_ID_PIDFILE', '/var/run/kontrol-id.pid');
 }
+if (!defined('KONTROL_ID_ENGINE_BINARY')) {
+    define('KONTROL_ID_ENGINE_BINARY',
+        is_executable(E2GUARDIAN_SBINDIR . '/kontrol-id') ?
+        E2GUARDIAN_SBINDIR . '/kontrol-id' : E2GUARDIAN_SBINDIR . '/e2guardian');
+}
 
 if ($_POST['clear_cert_cache'] == 'clear_cert_cache') {
     //clear MITM cert cache data
     $tc_dir = E2GUARDIAN_ETCDIR . "/ssl/generatedcerts";
     if (e2g_delTree($tc_dir)) {
         mkdir ($tc_dir, "0755", true);
-        mwexec_bg(E2GUARDIAN_SBINDIR . "/e2guardian -Q");
+        mwexec_bg(KONTROL_ID_ENGINE_BINARY . " -Q");
         clear_subsystem_dirty('e2guardian');
     }
 }
@@ -698,7 +703,7 @@ function e2g_check_logdeniedcgi($logdeniedcgi) {
 
 function e2g_watchdog_script($wpid, $wcmd, $winfo){
     $wlog = "/var/log/e2guardian/start.log";
-    $wprocess = ($winfo == "e2guardian" ? "^/usr/local/sbin/e2guardian([[:space:]]|$)" : "");
+    $wprocess = ($winfo == "e2guardian" ? "^/usr/local/sbin/(kontrol-id|e2guardian)([[:space:]]|$)" : "");
     $wscript = <<<EOF
 # watchdog script for {$winfo}
     if [ -f {$wpid} ]; then
@@ -1059,7 +1064,7 @@ function e2guardian_plugin_gateway($pluginparams) {
     }
     e2guardian_write_gateway_rules_file();
     if (e2guardian_processes_running()) {
-        mwexec_bg(E2GUARDIAN_SBINDIR . "/e2guardian -g");
+        mwexec_bg(KONTROL_ID_ENGINE_BINARY . " -g");
     }
 }
 
@@ -1371,13 +1376,13 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         }
     }
 
-    if (is_process_running('e2guardian') && isset($boot_process) &&
+    if (e2guardian_processes_running() && isset($boot_process) &&
         $via_rpc == "no" && !$install_process) {
-        log_error("[E2guardian] - Detected boot process pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
+        log_error("[E2guardian] - Detected boot process pr:1 bp:" . isset($boot_process) . " rpc:" . $via_rpc);
         log_error("[E2guardian] - Aborting config file generation");
         return;
     } else {
-        e2g_log_info("[E2guardian] - Save settings package call pr:" . is_process_running('e2guardian') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
+        e2g_log_info("[E2guardian] - Save settings package call pr:" . (e2guardian_processes_running() ? '1' : '0') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
     }
 
     /* When Kontrol-ID owns the traffic chain, saving the E2Guardian page must
@@ -1653,12 +1658,12 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
                 }
         }
 
-        if (file_exists(E2GUARDIAN_SBINDIR . "/e2guardian")) {
-                @chmod(E2GUARDIAN_SBINDIR . "/e2guardian", 0755);
+        if (file_exists(KONTROL_ID_ENGINE_BINARY)) {
+                @chmod(KONTROL_ID_ENGINE_BINARY, 0755);
         }
 
         $rc_script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
-        if (file_exists(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template')) {
+        if (!KONTROL_ID_POLICY_MODE && file_exists(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template')) {
                 @copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $rc_script);
                 @chmod($rc_script, 0755);
         }
@@ -3026,7 +3031,9 @@ function e2guardian_pid_is_e2guardian($pid) {
     }
 
     $command = trim(implode(' ', $command));
-    return (strpos($command, E2GUARDIAN_SBINDIR . '/e2guardian') === 0 || preg_match('/(^|[[:space:]])e2guardian([[:space:]]|$)/', $command));
+    return (strpos($command, E2GUARDIAN_SBINDIR . '/kontrol-id') === 0 ||
+        strpos($command, E2GUARDIAN_SBINDIR . '/e2guardian') === 0 ||
+        preg_match('/(^|[[:space:]])(kontrol-id|e2guardian)([[:space:]]|$)/', $command));
 }
 
 function e2guardian_running_pids() {
@@ -3040,11 +3047,12 @@ function e2guardian_running_pids() {
         }
     }
 
-    $process_pattern = '^' . E2GUARDIAN_SBINDIR . '/e2guardian([[:space:]]|$)';
+    $process_pattern = '^' . E2GUARDIAN_SBINDIR . '/(kontrol-id|e2guardian)([[:space:]]|$)';
     exec('/usr/bin/pgrep -f ' . escapeshellarg($process_pattern) . ' 2>/dev/null', $pgrep_pids);
     exec('/usr/bin/pgrep -x e2guardian 2>/dev/null', $name_pids);
+    exec('/usr/bin/pgrep -x kontrol-id 2>/dev/null', $kontrol_name_pids);
 
-    foreach (array_merge($pgrep_pids, $name_pids) as $pid) {
+    foreach (array_merge($pgrep_pids, $name_pids, $kontrol_name_pids) as $pid) {
         $pid = trim($pid);
         if (is_numeric($pid)) {
             $pids[] = (int)$pid;
@@ -3060,6 +3068,38 @@ function e2guardian_running_pids() {
 
 function e2guardian_processes_running() {
     return (count(e2guardian_running_pids()) > 0);
+}
+
+function e2guardian_legacy_processes_running() {
+    $legacy = array();
+    foreach (e2guardian_running_pids() as $pid) {
+        $command = array();
+        $retval = 0;
+        exec('/bin/ps -p ' . (int)$pid . ' -o args= 2>/dev/null', $command, $retval);
+        if ($retval === 0 && !empty($command) &&
+            strpos(trim(implode(' ', $command)), E2GUARDIAN_SBINDIR . '/e2guardian') === 0) {
+            $legacy[] = (int)$pid;
+        }
+    }
+    return $legacy;
+}
+
+function e2guardian_stop_legacy_processes() {
+    $legacy = e2guardian_legacy_processes_running();
+    if (empty($legacy)) {
+        return true;
+    }
+
+    e2g_log_info('[Kontrol-ID] Stopping the legacy e2guardian process before switching executable names.');
+    foreach ($legacy as $pid) {
+        mwexec('/bin/kill -TERM ' . (int)$pid);
+    }
+    if (!e2guardian_wait_for_process_state(false, 15)) {
+        e2g_log_warning('[Kontrol-ID] Legacy engine did not stop after SIGTERM; refusing to start a competing listener.');
+        return false;
+    }
+    @unlink(KONTROL_ID_PIDFILE);
+    return true;
 }
 
 function e2guardian_wait_for_process_state($running, $timeout) {
@@ -3546,6 +3586,11 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
             ($e2g_cfg['enable_dg'] ?? '') === 'on');
         if ($enabled) {
             mwexec('/usr/sbin/sysrc kontrol_id_enable=YES');
+            if (!e2guardian_stop_legacy_processes()) {
+                mark_subsystem_dirty('e2guardian');
+                $savemsg = gettext('Kontrol-ID could not stop the legacy engine process. The new listener was not started.');
+                return false;
+            }
             $action = e2guardian_processes_running() ? 'restart' : 'start';
             $status = mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' ' . $action);
             if ($status !== 0) {
@@ -3590,11 +3635,11 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
     $squid_parent_pid = "/var/run/squid/e2gsquid.pid";
 
     if ($e2g_cfg['enable'] == "on" || $e2g_cfg['enable_dg'] == "on") {
-                chmod(E2GUARDIAN_SBINDIR . "/e2guardian",0755);
+                chmod(KONTROL_ID_ENGINE_BINARY,0755);
                 copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $script);
         chmod ($script, 0755);
         $max_threads = "sysctl kern.threads.max_threads_per_proc=20480";
-        if (is_process_running('e2guardian')) {
+        if (e2guardian_processes_running()) {
             switch ($e2g_cfg['applyaction']){
                 case "rc.d":
                     e2g_log_info("Restarting e2g with rc.d script");
@@ -3604,11 +3649,11 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
                     break;
                 case "-r":
                     e2g_log_info("Sending USR1 to e2g processes");
-                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -g");
+                                        mwexec_bg("$max_threads;" . KONTROL_ID_ENGINE_BINARY . " -g");
                     break;
                 default:
                     e2g_log_info("Restarting e2g by sending -Q action to e2g binaries");
-                                        mwexec_bg("$max_threads;" . E2GUARDIAN_SBINDIR . "/e2guardian -Q");
+                                        mwexec_bg("$max_threads;" . KONTROL_ID_ENGINE_BINARY . " -Q");
                     break;
             }
         } else {
@@ -3623,7 +3668,7 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
         }
         e2guardian_refresh_managed_squid_icap($savemsg);
     } else {
-        if (is_process_running('e2guardian')) {
+        if (e2guardian_processes_running()) {
             log_error('E2guardian is disabled, stopping process...');
             mwexec_bg("$script stop");
         }
@@ -3979,11 +4024,11 @@ function isValidXmlElementName($elementName)
 }
 
 function e2guardian_php_install_command() {
-    if (file_exists(E2GUARDIAN_SBINDIR . "/e2guardian")) {
-        @chmod(E2GUARDIAN_SBINDIR . "/e2guardian", 0755);
+    if (file_exists(KONTROL_ID_ENGINE_BINARY)) {
+        @chmod(KONTROL_ID_ENGINE_BINARY, 0755);
     }
     $rc_script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
-    if (file_exists(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template')) {
+    if (!KONTROL_ID_POLICY_MODE && file_exists(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template')) {
         @copy(E2GUARDIAN_PKGDIR . '/e2guardian_rc.template', $rc_script);
         @chmod($rc_script, 0755);
     }

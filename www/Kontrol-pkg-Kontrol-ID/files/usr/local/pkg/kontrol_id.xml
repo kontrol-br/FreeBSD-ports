@@ -17,7 +17,7 @@
 	<service>
 		<name>kontrol_id</name>
 		<rcfile>kontrol_id</rcfile>
-		<executable>e2guardian</executable>
+		<executable>kontrol-id</executable>
 		<description><![CDATA[Kontrol-ID standalone secure web gateway]]></description>
 	</service>
 	<menu>
@@ -82,7 +82,7 @@
 			<description><![CDATA[
 				<strong>Client &rarr; Kontrol-ID secure web gateway &rarr; Internet</strong><br/>
 				Kontrol-ID is the multithread proxy, authentication endpoint, TLS inspection point and policy engine. No Squid or ICAP
-				chain is used. Explicit clients connect to port 3128; transparent interception is managed directly by the engine.
+				chain is used. Explicit clients connect to the HTTP listener configured below; transparent interception is managed directly by the engine.
 			]]></description>
 			<type>info</type>
 		</field>
@@ -199,12 +199,20 @@
 			<type>listtopic</type>
 		</field>
 		<field>
-			<fielddescr>Managed Listener Ports</fielddescr>
-			<description><![CDATA[
-				Kontrol-ID listens on <strong>3128</strong> for client traffic and uses <strong>3129</strong> for transparent HTTPS inspection.
-				These package-owned ports are fixed to keep firewall rules and the engine configuration synchronized.
-			]]></description>
-			<type>info</type>
+			<fielddescr>HTTP Proxy Listener</fielddescr>
+			<fieldname>http_proxy_port</fieldname>
+			<description><![CDATA[Client-facing HTTP listener used by explicit proxy clients and transparent HTTP redirection. Changing it automatically updates the managed firewall rules; explicit clients, PAC and GPO settings must be updated separately.]]></description>
+			<type>input</type>
+			<default_value>3128</default_value>
+			<required/>
+		</field>
+		<field>
+			<fielddescr>HTTPS Inspection Listener</fielddescr>
+			<fieldname>https_intercept_port</fieldname>
+			<description><![CDATA[Internal TLS inspection listener. It must differ from the HTTP listener. In transparent mode, Kontrol-ID also updates the corresponding PF redirection automatically.]]></description>
+			<type>input</type>
+			<default_value>3129</default_value>
+			<required/>
 		</field>
 		<field>
 			<fielddescr>Bypass Private Destinations</fielddescr>

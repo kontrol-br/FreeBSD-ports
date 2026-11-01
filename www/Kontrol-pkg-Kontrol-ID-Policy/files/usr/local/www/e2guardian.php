@@ -66,7 +66,7 @@ function e2g_blacklist_unlock($lock_handle) {
 }
 
 function e2g_blacklist_reload_service() {
-        if (!function_exists('is_process_running') || !is_process_running('e2guardian')) {
+        if (!function_exists('e2guardian_processes_running') || !e2guardian_processes_running()) {
                 return;
         }
 
@@ -75,7 +75,7 @@ function e2g_blacklist_reload_service() {
                 e2g_stop_watchdog_processes();
         }
 
-        $script = E2GUARDIAN_RCDIR . '/e2guardian.sh';
+        $script = KONTROL_ID_SERVICE_SCRIPT;
         if (file_exists($script)) {
                 mwexec($script . ' stop');
                 sleep(2);

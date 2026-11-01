@@ -43,7 +43,7 @@ e2g_log_info("e2guardian - stopping watchdog processes before rotation.");
 mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
 
 //TODO: Make all of this less hardcoded and hacky
-service_control_stop("e2guardian", array());
+mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' stop');
 
 e2g_log_info("e2guardian - stopping");
 $e2guardian_log = $config['installedpackages']['e2guardianlog']['config'][0];
@@ -73,9 +73,9 @@ if (file_exists($log)){
 //log_error("e2guardian - Rotate command result: " . $result);
 
 e2g_log_info("e2guardian - starting");
-service_control_start("e2guardian", array());
+mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' start');
 
-$e2guardian_pid_file = "/var/run/e2guardian.pid";
+$e2guardian_pid_file = KONTROL_ID_PIDFILE;
 $e2guardian_ready = false;
 for ($i = 0; $i < 30; $i++) {
     clearstatcache();

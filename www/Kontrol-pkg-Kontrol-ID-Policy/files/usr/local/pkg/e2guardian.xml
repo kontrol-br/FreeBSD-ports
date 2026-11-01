@@ -38,7 +38,7 @@
     <service>
         <name>kontrol_id</name>
         <rcfile>kontrol_id</rcfile>
-        <executable>e2guardian</executable>
+        <executable>kontrol-id</executable>
         <description><![CDATA[Kontrol-ID standalone secure web gateway]]></description>
     </service>
     <tabs>
