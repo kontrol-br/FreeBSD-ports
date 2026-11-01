@@ -201,6 +201,37 @@ function kontrol_id_remove_legacy_e2guardian_menu() {
 	return $changed;
 }
 
+/* Package upgrades preserve previous <service> registrations. Kontrol-ID now
+ * owns the native service entry, so remove only the obsolete E2Guardian
+ * signature that points to the retired e2guardian.sh rc script. */
+function kontrol_id_remove_legacy_e2guardian_service() {
+	$services = config_get_path('installedpackages/service', array());
+	if (!is_array($services) || empty($services)) {
+		return false;
+	}
+	if (isset($services['name'])) {
+		$services = array($services);
+	}
+
+	$changed = false;
+	$filtered = array();
+	foreach ($services as $service) {
+		$is_legacy = is_array($service) &&
+			($service['name'] ?? '') === 'e2guardian' &&
+			($service['rcfile'] ?? '') === 'e2guardian.sh' &&
+			($service['executable'] ?? '') === 'e2guardian';
+		if ($is_legacy) {
+			$changed = true;
+			continue;
+		}
+		$filtered[] = $service;
+	}
+	if ($changed) {
+		config_set_path('installedpackages/service', array_values($filtered));
+	}
+	return $changed;
+}
+
 function kontrol_id_tab_definitions() {
 	$tabs = array(
 		array('key' => 'general', 'text' => 'General', 'url' => '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0')
@@ -380,6 +411,9 @@ function kontrol_id_adjust_package_tabs(&$pkg) {
 		strpos($name, 'e2guardian') !== 0) {
 		return;
 	}
+	/* Every unified page shares the policy package shortcut definition. This
+	 * gives General and Engine the same native service controls and status link. */
+	$pkg['shortcut_section'] = 'e2guardian';
 	$active = kontrol_id_package_active_tab($name);
 	$tabs = array();
 	foreach (kontrol_id_tab_definitions() as $definition) {
@@ -396,42 +430,6 @@ function kontrol_id_adjust_package_tabs(&$pkg) {
 	}
 	$pkg['tabs']['tab'] = $tabs;
 	kontrol_id_adjust_policy_fields($pkg);
-}
-
-function kontrol_id_print_managed_service_icons() {
-	require_once('service-utils.inc');
-	$definitions = array(
-		array('name' => 'kontrol_id', 'label' => 'Kontrol-ID', 'icon' => 'fa-shield-halved')
-	);
-	$html = '';
-	foreach ($definitions as $definition) {
-		$service = find_service_by_name($definition['name']);
-		if (!is_array($service) || empty($service)) {
-			$service = array('name' => $definition['name']);
-		}
-		if (get_service_status($service)) {
-			$state = 'Running';
-			$state_class = 'text-success';
-		} elseif (is_service_enabled($definition['name'])) {
-			$state = 'Stopped';
-			$state_class = 'text-danger';
-		} else {
-			$state = 'Disabled';
-			$state_class = 'text-warning';
-		}
-		$title = htmlspecialchars($definition['label'] . ': ' . $state, ENT_QUOTES);
-		$label = htmlspecialchars($definition['label'] . ' ' . $state, ENT_QUOTES);
-		$html .= '<li class="kontrol-id-managed-service">' .
-			'<a href="/status_services.php" title="' . $title . '">' .
-			'<i class="fa-solid ' . $definition['icon'] . ' ' . $state_class . '" aria-hidden="true"></i>' .
-			'<span class="sr-only">' . $label . '</span></a></li>';
-	}
-	printf(
-		'<script>events.push(function(){var context=document.querySelector(".context-links");' .
-		'if(context && !context.querySelector(".kontrol-id-managed-service")){' .
-		'context.insertAdjacentHTML("afterbegin",%s);}});</script>',
-		json_encode($html)
-	);
 }
 
 /* pkg.php/pkg_edit.php parse the XML before loading this include file.  This
@@ -2492,6 +2490,7 @@ function kontrol_id_resync($sync = true) {
 	$changed = kontrol_id_ensure_group() || $changed;
 	$changed = kontrol_id_ensure_pki() || $changed;
 	$changed = kontrol_id_remove_legacy_e2guardian_menu() || $changed;
+	$changed = kontrol_id_remove_legacy_e2guardian_service() || $changed;
 	kontrol_id_ensure_storage();
 	kontrol_id_write_pki();
 	kontrol_id_write_helper_config();

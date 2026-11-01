@@ -14,6 +14,12 @@
 	<delete_string>Kontrol-ID: removed a configuration item.</delete_string>
 	<addedit_string>Kontrol-ID: changed settings.</addedit_string>
 	<include_file>/usr/local/pkg/kontrol_id.inc</include_file>
+	<service>
+		<name>kontrol_id</name>
+		<rcfile>kontrol_id</rcfile>
+		<executable>e2guardian</executable>
+		<description><![CDATA[Kontrol-ID standalone secure web gateway]]></description>
+	</service>
 	<menu>
 		<name>Kontrol-ID</name>
 		<tooltiptext>Managed Windows identity and proxy authentication</tooltiptext>
@@ -347,9 +353,6 @@
 		$pkg['addedit_string'] = 'Kontrol-ID: changed settings.';
 		kontrol_id_validate($_POST, $input_errors);
 	</custom_php_validation_command>
-	<custom_php_after_head_command>
-		kontrol_id_print_managed_service_icons();
-	</custom_php_after_head_command>
 	<custom_php_after_form_command>
 		kontrol_id_print_general_auth_visibility();
 	</custom_php_after_form_command>

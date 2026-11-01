@@ -36,10 +36,10 @@
     <addedit_string>E2guardian: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <service>
-        <name>e2guardian</name>
-        <rcfile>e2guardian.sh</rcfile>
+        <name>kontrol_id</name>
+        <rcfile>kontrol_id</rcfile>
         <executable>e2guardian</executable>
-        <description><![CDATA[Full content Open Source web content filter]]></description>
+        <description><![CDATA[Kontrol-ID standalone secure web gateway]]></description>
     </service>
     <tabs>
         <tab>
