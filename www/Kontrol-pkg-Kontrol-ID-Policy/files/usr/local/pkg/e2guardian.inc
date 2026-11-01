@@ -2745,7 +2745,11 @@ EOF;
         $port_map_body = ($filterport ? $filterport . "=filter1" : "#No port based filter overrides defined");
         file_put_contents($e2guardian_dir . "/lists/authplugins/portmap", $map_header . $port_map_body . "\n", LOCK_EX);
         file_put_contents($e2guardian_dir . "/lists/browser", $map_header . "#Populate this list with User-Agent rules when needed\n", LOCK_EX);
-        file_put_contents($e2guardian_dir . "/lists/nomitm", $map_header . "#Populate this list with hosts that must bypass MITM inspection\n", LOCK_EX);
+        $kontrol_id_tls_bypass = trim((string)($e2guardian['kontrol_id_tls_bypass_sites'] ?? ''));
+        $nomitm_body = ($kontrol_id_tls_bypass !== '') ?
+            $kontrol_id_tls_bypass . "\n" :
+            "#No Kontrol-ID TLS inspection bypass sites configured\n";
+        file_put_contents($e2guardian_dir . "/lists/nomitm", $map_header . $nomitm_body, LOCK_EX);
     e2guardian_write_gateway_rules_file();
     //Create/update userlist xml file
     $ips_xml_header = file_get_contents(E2GUARDIAN_PKGDIR . "/e2guardian_ips_header.template");
@@ -3591,8 +3595,24 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
                 $savemsg = gettext('Kontrol-ID could not stop the legacy engine process. The new listener was not started.');
                 return false;
             }
-            $action = e2guardian_processes_running() ? 'restart' : 'start';
-            $status = mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' ' . $action);
+            $running = e2guardian_processes_running();
+            $apply_action = (string)($e2g_cfg['applyaction'] ?? '-r');
+            if (!$running) {
+                e2g_log_info('[Kontrol-ID] Starting the native service while applying configuration.');
+                $status = mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' start');
+            } elseif ($apply_action === '-r') {
+                e2g_log_info('[Kontrol-ID] Reloading lists and groups with USR1; active connections are preserved.');
+                $status = mwexec(escapeshellarg(KONTROL_ID_ENGINE_BINARY) . ' -g');
+            } elseif ($apply_action === '-Q') {
+                e2g_log_info('[Kontrol-ID] Replacing the running engine using its native -Q action.');
+                $status = mwexec('/usr/bin/env ' .
+                    'KRB5_CONFIG=/usr/local/etc/kontrol-id/krb5.conf ' .
+                    'KRB5_KTNAME=/var/db/kontrol-id-domain/krb5.keytab ' .
+                    escapeshellarg(KONTROL_ID_ENGINE_BINARY) . ' -Q');
+            } else {
+                e2g_log_info('[Kontrol-ID] Restarting the native rc.d service while applying configuration.');
+                $status = mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' restart');
+            }
             if ($status !== 0) {
                 mark_subsystem_dirty('e2guardian');
                 $savemsg = gettext('Kontrol-ID could not be started. Review the engine log and generated configuration.');

@@ -158,6 +158,22 @@
 			<default_value>256</default_value>
 		</field>
 		<field>
+			<fielddescr>Apply Action</fielddescr>
+			<fieldname>applyaction</fieldname>
+			<description><![CDATA[
+				Controls how Kontrol-ID activates generated policy, list and group changes. <strong>Reload with USR1</strong> preserves
+				the running process, worker threads and active connections and is recommended for ordinary policy changes.
+				Choose a restart action after changing worker count, listener ports, authentication, TLS inspection or other engine-wide settings.
+			]]></description>
+			<type>select</type>
+			<default_value>-r</default_value>
+			<options>
+				<option><name>Reload lists and groups with USR1 (preserve active connections)</name><value>-r</value></option>
+				<option><name>Restart using the Kontrol-ID rc.d service</name><value>rc.d</value></option>
+				<option><name>Kill the running engine and start a new copy</name><value>-Q</value></option>
+			</options>
+		</field>
+		<field>
 			<fielddescr>Web Traffic Inspection</fielddescr>
 			<fieldname>traffic_mode</fieldname>
 			<description><![CDATA[
@@ -215,24 +231,41 @@
 			<required/>
 		</field>
 		<field>
+			<name>Proxy and TLS Bypass</name>
+			<type>listtopic</type>
+		</field>
+		<field>
 			<fielddescr>Bypass Private Destinations</fielddescr>
 			<fieldname>bypass_private_destinations</fieldname>
-			<description><![CDATA[In transparent modes, pass RFC 1918 destination networks directly instead of sending them through Kontrol-ID.]]></description>
+			<description><![CDATA[In transparent modes, pass RFC 1918 destination networks directly instead of sending them through Kontrol-ID. This remains visible in explicit mode for configuration consistency, but explicit clients must use PAC/GPO <code>DIRECT</code> rules to bypass the proxy itself.]]></description>
 			<type>checkbox</type>
 		</field>
 		<field>
 			<fielddescr>Bypass Source Addresses</fielddescr>
 			<fieldname>bypass_sources</fieldname>
-			<description><![CDATA[Source IPs, CIDR networks, hostnames or firewall aliases that bypass transparent interception. Separate entries with semicolons.]]></description>
+			<description><![CDATA[Source IPs, CIDR networks or firewall aliases that bypass transparent interception completely. Separate entries with semicolons. In explicit mode, source bypass must be configured as <code>DIRECT</code> in PAC/GPO because the client has already selected the proxy before connecting.]]></description>
 			<type>input</type>
 			<size>70</size>
 		</field>
 		<field>
-			<fielddescr>Bypass Destination Addresses</fielddescr>
+			<fielddescr>Bypass Destination Addresses / Sites</fielddescr>
 			<fieldname>bypass_destinations</fieldname>
-			<description><![CDATA[Destination IPs, CIDR networks, hostnames or firewall aliases that bypass transparent interception. Separate entries with semicolons.]]></description>
+			<description><![CDATA[Destination IPs, CIDR networks, hostnames, firewall aliases or full URLs that bypass transparent interception. Separate entries with semicolons. A URL is reduced to its hostname because the path is not available before interception; hostnames are resolved when the rules are applied.]]></description>
 			<type>input</type>
 			<size>70</size>
+		</field>
+		<field>
+			<fielddescr>TLS Inspection Bypass Sites</fielddescr>
+			<fieldname>tls_bypass_sites</fieldname>
+			<description><![CDATA[
+				Sites that must remain proxied but must not have HTTPS decrypted, useful for banks, certificate-pinned applications and problematic services.
+				Enter one hostname, IP or URL per line. <code>*.example.com</code> is accepted and normalized to the E2Guardian domain-list format.
+				Full URLs are reduced to their hostname because a URL path is visible only after TLS interception. For path-specific filtering exceptions,
+				use the <a href="/pkg.php?xml=e2guardian_site_acl.xml">Site Lists</a> and <a href="/pkg.php?xml=e2guardian_url_acl.xml">URL Lists</a> policy pages.
+			]]></description>
+			<type>textarea</type>
+			<cols>80</cols>
+			<rows>6</rows>
 		</field>
 		<field>
 			<fielddescr>Download Limiter</fielddescr>

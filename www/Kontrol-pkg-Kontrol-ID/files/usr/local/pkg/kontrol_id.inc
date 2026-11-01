@@ -51,6 +51,7 @@ function kontrol_id_defaults() {
 		'ad_dc' => '',
 		'ad_workgroup' => '',
 		'engine_workers' => '256',
+		'applyaction' => '-r',
 		'http_proxy_port' => '3128',
 		'https_intercept_port' => '3129',
 		'engine_integration' => 'on',
@@ -59,6 +60,7 @@ function kontrol_id_defaults() {
 		'bypass_private_destinations' => '',
 		'bypass_sources' => '',
 		'bypass_destinations' => '',
+		'tls_bypass_sites' => '',
 		'download_limiter' => 'none',
 		'upload_limiter' => 'none',
 		'winrm_port' => '5986',
@@ -205,6 +207,58 @@ function kontrol_id_get_settings() {
 		$settings = array();
 	}
 	return array_merge(kontrol_id_defaults(), $settings);
+}
+
+function kontrol_id_normalize_tls_bypass_sites($value, &$invalid = null) {
+	$invalid_entries = array();
+	$normalized = array();
+	foreach (preg_split('/[\r\n;,]+/', (string)$value) as $entry) {
+		$entry = trim($entry);
+		if ($entry === '') {
+			continue;
+		}
+		$host = $entry;
+		if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $host)) {
+			$host = (string)parse_url($host, PHP_URL_HOST);
+		} elseif (strpos($host, '/') !== false) {
+			$host = (string)parse_url('https://' . ltrim($host, '/'), PHP_URL_HOST);
+		}
+		if (strpos($host, '*.') === 0) {
+			$host = '.' . substr($host, 2);
+		}
+		$host = strtolower(trim($host));
+		$validation_host = ltrim($host, '.');
+		if ($validation_host === '' ||
+			(!is_hostname($validation_host) && !is_ipaddr($validation_host) &&
+			!is_ipaddrv6($validation_host))) {
+			$invalid_entries[] = $entry;
+			continue;
+		}
+		$normalized[] = $host;
+	}
+	$invalid = array_values(array_unique($invalid_entries));
+	return array_values(array_unique($normalized));
+}
+
+function kontrol_id_normalize_destination_bypass($value) {
+	$normalized = array();
+	foreach (explode(';', (string)$value) as $entry) {
+		$entry = trim($entry);
+		if ($entry === '') {
+			continue;
+		}
+		if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $entry)) {
+			$host = (string)parse_url($entry, PHP_URL_HOST);
+			$normalized[] = ($host !== '') ? $host : $entry;
+		} elseif (strpos($entry, '/') !== false && !is_subnet($entry) &&
+			!is_subnetv6($entry)) {
+			$host = (string)parse_url('https://' . ltrim($entry, '/'), PHP_URL_HOST);
+			$normalized[] = ($host !== '') ? $host : $entry;
+		} else {
+			$normalized[] = $entry;
+		}
+	}
+	return implode(';', array_values(array_unique($normalized)));
 }
 
 function kontrol_id_listener_owners($port) {
@@ -382,11 +436,7 @@ function kontrol_id_print_general_auth_visibility() {
 events.push(function() {
 	function kontrolIdUpdateExplicitAuthVisibility() {
 		var explicitMode = ($('#access_mode').val() === 'explicit');
-		var transparentMode = !explicitMode;
 		$('#explicit_auth').closest('.form-group').toggle(explicitMode);
-		$('#bypass_private_destinations').closest('.form-group').toggle(transparentMode);
-		$('#bypass_sources').closest('.form-group').toggle(transparentMode);
-		$('#bypass_destinations').closest('.form-group').toggle(transparentMode);
 	}
 	$('#access_mode').on('change', kontrolIdUpdateExplicitAuthVisibility);
 	kontrolIdUpdateExplicitAuthVisibility();
@@ -2027,7 +2077,8 @@ function kontrol_id_e2guardian_managed_fields() {
 	return array(
 		'enable', 'interface', 'filterports', 'icapport', 'allow_interface', 'applyaction', 'transparent_proxy',
 		'transparent_active_interface', 'enablessl', 'ssl_proxy',
-		'ssl_proxy_port', 'dca', 'parentmode', 'proxyip', 'proxyport'
+		'ssl_proxy_port', 'dca', 'parentmode', 'proxyip', 'proxyport',
+		'kontrol_id_tls_bypass_sites'
 	);
 }
 
@@ -2418,7 +2469,9 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['icapport'] = '';
 	$engine['watchdog'] = '';
 	$engine['allow_interface'] = 'on';
-	$engine['applyaction'] = 'rc.d';
+	$apply_action = (string)($settings['applyaction'] ?? '-r');
+	$engine['applyaction'] = in_array($apply_action, array('-r', 'rc.d', '-Q'), true) ?
+		$apply_action : '-r';
 	$engine['daemon_options'] = 'softrestart';
 	$engine['inpipe'] = $settings['download_limiter'] ?? 'none';
 	$engine['outpipe'] = $settings['upload_limiter'] ?? 'none';
@@ -2441,7 +2494,8 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		$engine['private_subnet_proxy_off'] =
 			(($settings['bypass_private_destinations'] ?? '') === 'on') ? 'on' : '';
 		$engine['defined_ip_proxy_off'] = trim((string)($settings['bypass_sources'] ?? ''));
-		$engine['defined_ip_proxy_off_dest'] = trim((string)($settings['bypass_destinations'] ?? ''));
+		$engine['defined_ip_proxy_off_dest'] = kontrol_id_normalize_destination_bypass(
+			$settings['bypass_destinations'] ?? '');
 		$plugins['auth_plugin'] = ($enabled && $access_mode === 'transparent') ?
 			'ip.conf' : '';
 	} else {
@@ -2460,6 +2514,10 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		$plugins['auth_plugin'] = $enabled ?
 			($auth_plugins[$auth_method] ?? $auth_plugins['kerberos']) : '';
 	}
+	$invalid_tls_bypass = array();
+	$engine['kontrol_id_tls_bypass_sites'] = implode("\n",
+		kontrol_id_normalize_tls_bypass_sites(
+			$settings['tls_bypass_sites'] ?? '', $invalid_tls_bypass));
 
 	$domain = kontrol_id_domain_values($settings);
 	$auth_config = "# Managed by Kontrol-ID.\n" .
@@ -2678,6 +2736,9 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	if (!in_array($post['traffic_mode'] ?? '', array('http_only', 'http_https'), true)) {
 		$input_errors[] = 'Select a valid TLS inspection mode.';
 	}
+	if (!in_array($post['applyaction'] ?? '', array('-r', 'rc.d', '-Q'), true)) {
+		$input_errors[] = 'Select a valid policy apply action.';
+	}
 	$selected_ca = kontrol_id_extract_item(lookup_ca($post['ca_ref'] ?? ''));
 	if (!kontrol_id_ca_is_usable($selected_ca)) {
 		$input_errors[] = 'Select a valid certificate authority that includes its private key, is currently valid and is permitted to sign certificates.';
@@ -2689,6 +2750,18 @@ function kontrol_id_validate(&$post, &$input_errors) {
 		$value = (string)($post[$field] ?? '');
 		if (strlen($value) > 4096 || preg_match('/[\r\n]/', $value)) {
 			$input_errors[] = $field . ' must be a single line no longer than 4096 characters.';
+		}
+	}
+	if (strlen((string)($post['tls_bypass_sites'] ?? '')) > 16384) {
+		$input_errors[] = 'TLS inspection bypass sites must be no longer than 16384 characters.';
+	} else {
+		$invalid_tls_bypass = array();
+		kontrol_id_normalize_tls_bypass_sites(
+			$post['tls_bypass_sites'] ?? '', $invalid_tls_bypass);
+		if (!empty($invalid_tls_bypass)) {
+			$input_errors[] = 'Invalid TLS inspection bypass entr' .
+				(count($invalid_tls_bypass) === 1 ? 'y: ' : 'ies: ') .
+				implode(', ', $invalid_tls_bypass) . '.';
 		}
 	}
 	$valid_limiters = array('none', '');
