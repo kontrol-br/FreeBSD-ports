@@ -23,6 +23,7 @@ define('KONTROL_ID_KEYTAB', KONTROL_ID_DOMAIN_DIR . '/krb5.keytab');
 define('KONTROL_ID_ENGINE_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-negotiate.conf');
 define('KONTROL_ID_ENGINE_NTLM_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-ntlm.conf');
 define('KONTROL_ID_ENGINE_BASIC_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-basic.conf');
+define('KONTROL_ID_ENGINE_IDENTITY_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-identity.conf');
 define('KONTROL_ID_ENGINE_PID', '/var/run/kontrol-id.pid');
 define('KONTROL_ID_WINBIND_MARKER', KONTROL_ID_DOMAIN_DIR . '/winbind.enabled');
 define('KONTROL_ID_WINBIND_PID', '/var/run/kontrol-id-samba/winbindd.pid');
@@ -2497,7 +2498,7 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		$engine['defined_ip_proxy_off_dest'] = kontrol_id_normalize_destination_bypass(
 			$settings['bypass_destinations'] ?? '');
 		$plugins['auth_plugin'] = ($enabled && $access_mode === 'transparent') ?
-			'ip.conf' : '';
+			'kontrol-identity.conf' : '';
 	} else {
 		$engine['transparent_proxy'] = '';
 		$engine['transparent_active_interface'] = '';
@@ -2547,6 +2548,24 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		"realm = 'Kontrol Internet Access'\n" .
 		"defaultfiltergroup = 1\n";
 	kontrol_id_atomic_write(KONTROL_ID_ENGINE_BASIC_AUTH_CONF, $basic_config, 0640, 'wheel');
+	$identity_helpers = max(8, min(64, (int)ceil(
+		max(64, (int)($settings['engine_workers'] ?? 256)) / 16)));
+	$identity_timeout = max(2000, min(60000,
+		(int)($settings['connect_timeout_ms'] ?? 1200) +
+		(int)($settings['request_timeout_ms'] ?? 2500) + 1000));
+	$identity_config = "# Managed by Kontrol-ID.\n" .
+		"plugname = 'kontrol-identity'\n" .
+		"story_function = 'auth_ip'\n" .
+		"helper_program = '/usr/local/libexec/kontrol-identity-helper'\n" .
+		"helper_config = '" . KONTROL_ID_CONF . "'\n" .
+		"helper_children = " . $identity_helpers . "\n" .
+		"helper_timeout_ms = " . $identity_timeout . "\n" .
+		"ipgroups = '/usr/local/etc/e2guardian/lists/authplugins/ipgroups'\n" .
+		"usergroups = '/usr/local/etc/e2guardian/lists/authplugins/filtergroupslist'\n" .
+		"unknown_user = '" . ($settings['unknown_user'] ?? 'unknown') . "'\n" .
+		"defaulttransparentfiltergroup = 1\n";
+	kontrol_id_atomic_write(KONTROL_ID_ENGINE_IDENTITY_CONF,
+		$identity_config, 0640, 'wheel');
 
 	config_set_path('installedpackages/e2guardian/config/0', $engine);
 	config_set_path('installedpackages/e2guardianconfig/config/0', $plugins);
@@ -2636,7 +2655,10 @@ function kontrol_id_chain_status() {
 	}
 	$credential_ready = $auth_profile['ready'];
 	$transparent_plugin_ok = $transparent_identity ?
-		(($plugins['auth_plugin'] ?? '') === 'ip.conf') :
+		(($plugins['auth_plugin'] ?? '') === 'kontrol-identity.conf' &&
+		is_executable('/usr/local/libexec/kontrol-identity-helper') &&
+		strpos((string)@file_get_contents(KONTROL_ID_ENGINE_IDENTITY_CONF),
+			"plugname = 'kontrol-identity'") !== false) :
 		(($plugins['auth_plugin'] ?? '') === '');
 	return array(
 		array(
@@ -2655,7 +2677,7 @@ function kontrol_id_chain_status() {
 				$auth_config_ok) : $transparent_plugin_ok),
 			'detail' => ($explicit ?
 				$auth_profile['detail'] :
-				($transparent_identity ? 'Native source-IP policy mapping' :
+				($transparent_identity ? 'Native identity helper with user and source-IP policy mapping' :
 				'Native interception using the default policy group')) .
 				' on ' . ($interfaces ?: 'no interface')
 		),
@@ -2866,7 +2888,7 @@ function kontrol_id_manage_winbind($enabled) {
 	}
 }
 
-function kontrol_id_resync($sync = true) {
+function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 	global $savemsg;
 
 	$changed = kontrol_id_ensure_defaults();
@@ -2941,6 +2963,14 @@ function kontrol_id_resync($sync = true) {
 		$engine_start_ok = true;
 		if (function_exists('e2guardian_start')) {
 			$engine_start_ok = (e2guardian_start('no', false, true) !== false);
+			/* A package install can replace the native binary or auth plugin while
+			 * the configured apply action is USR1. USR1 reloads policy data but
+			 * cannot replace already-instantiated plugin classes or executable
+			 * text, so upgrades require one controlled service restart. */
+			if ($stack_enabled && $force_engine_restart) {
+				$engine_start_ok =
+					(mwexec('/usr/local/etc/rc.d/kontrol_id restart') === 0);
+			}
 			if (function_exists('e2guardian_wait_for_process_state')) {
 				$engine_start_ok = e2guardian_wait_for_process_state($stack_enabled, 10) &&
 					$engine_start_ok;
@@ -3003,7 +3033,7 @@ function kontrol_id_install() {
 		kontrol_id_ensure_group();
 		kontrol_id_ensure_pki();
 		write_config('Kontrol-ID installed with safe defaults.');
-		kontrol_id_resync(false);
+		kontrol_id_resync(false, true);
 	} catch (Exception $e) {
 		log_error('[Kontrol-ID] Installation failed: ' . $e->getMessage());
 	}

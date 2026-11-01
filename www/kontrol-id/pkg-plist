@@ -368,6 +368,7 @@ sbin/e2guardian
 %%DATADIR%%/transparent1x1.gif
 @sample %%ETCDIR%%/authplugins/pf-basic.conf.sample
 @sample %%ETCDIR%%/authplugins/kontrol-basic.conf.sample
+@sample %%ETCDIR%%/authplugins/kontrol-identity.conf.sample
 @sample %%ETCDIR%%/authplugins/kontrol-negotiate.conf.sample
 @sample %%ETCDIR%%/authplugins/kontrol-ntlm.conf.sample
 @sample %%ETCDIR%%/lists/authplugins/filtergroupslist.sample

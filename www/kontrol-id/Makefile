@@ -1,6 +1,6 @@
 PORTNAME=	kontrol-id
 PORTVERSION=	5.4.23
-PORTREVISION=	9
+PORTREVISION=	10
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=	kontrol-br
@@ -96,6 +96,8 @@ post-patch:
 		${WRKSRC}/src/authplugins/kontrol_ntlm.cpp
 	@${CP} ${FILESDIR}/kontrol_basic.cpp \
 		${WRKSRC}/src/authplugins/kontrol_basic.cpp
+	@${CP} ${FILESDIR}/kontrol_identity.cpp \
+		${WRKSRC}/src/authplugins/kontrol_identity.cpp
 
 post-install:
 	@${MV} ${STAGEDIR}${PREFIX}/sbin/e2guardian \
@@ -107,6 +109,8 @@ post-install:
 		${STAGEDIR}${ETCDIR}/authplugins/kontrol-ntlm.conf.sample
 	@${INSTALL_DATA} ${FILESDIR}/kontrol-basic.conf \
 		${STAGEDIR}${ETCDIR}/authplugins/kontrol-basic.conf.sample
+	@${INSTALL_DATA} ${FILESDIR}/kontrol-identity.conf \
+		${STAGEDIR}${ETCDIR}/authplugins/kontrol-identity.conf.sample
 	@${FIND} ${STAGEDIR}${ETCDIR} -type f \
 		\( -name '*.conf' -or -name '*list' -or -name '*.story' \) \
 		-exec ${MV} {} {}.sample \;
