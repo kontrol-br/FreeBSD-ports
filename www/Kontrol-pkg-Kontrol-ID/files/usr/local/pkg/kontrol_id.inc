@@ -113,6 +113,57 @@ function kontrol_id_authserver_options() {
 	return $options;
 }
 
+function kontrol_id_ca_is_usable($ca) {
+	if (!is_array($ca) || empty($ca['refid']) || empty($ca['crt']) || empty($ca['prv'])) {
+		return false;
+	}
+	$certificate = base64_decode($ca['crt'], true);
+	$private_key = base64_decode($ca['prv'], true);
+	if ($certificate === false || $private_key === false ||
+		!function_exists('openssl_x509_check_private_key') ||
+		!@openssl_x509_check_private_key($certificate, $private_key)) {
+		return false;
+	}
+	$details = @openssl_x509_parse($certificate);
+	if (!is_array($details)) {
+		return false;
+	}
+	$now = time();
+	if ((isset($details['validFrom_time_t']) && (int)$details['validFrom_time_t'] > $now) ||
+		(isset($details['validTo_time_t']) && (int)$details['validTo_time_t'] <= $now)) {
+		return false;
+	}
+	$constraints = (string)($details['extensions']['basicConstraints'] ?? '');
+	return stripos($constraints, 'CA:TRUE') !== false;
+}
+
+function kontrol_id_ca_options() {
+	$options = array();
+	foreach (config_get_path('ca', array()) as $ca) {
+		if (!kontrol_id_ca_is_usable($ca)) {
+			continue;
+		}
+		$internal = (($ca['descr'] ?? '') === 'Kontrol-ID Internal CA');
+		$options[] = array(
+			'name' => ($ca['descr'] ?? $ca['refid']) .
+				($internal ? ' (recommended)' : ''),
+			'value' => $ca['refid'],
+			'internal' => $internal ? 0 : 1
+		);
+	}
+	usort($options, function($left, $right) {
+		if ($left['internal'] !== $right['internal']) {
+			return $left['internal'] <=> $right['internal'];
+		}
+		return strnatcasecmp($left['name'], $right['name']);
+	});
+	foreach ($options as &$option) {
+		unset($option['internal']);
+	}
+	unset($option);
+	return $options;
+}
+
 function kontrol_id_authenticate_basic($username, $password) {
 	if (!is_string($username) || !is_string($password) || $username === '' ||
 		strlen($username) > 255 || strlen($password) > 4096 ||
@@ -2310,8 +2361,14 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['httpworkers'] = (string)max(64, min(20000,
 		(int)($settings['engine_workers'] ?? 256)));
 	$engine['enablessl'] = (($settings['traffic_mode'] ?? 'http_only') === 'http_https') ? 'on' : '';
+	$previous_ca_ref = $engine['dca'] ?? '';
 	$engine['dca'] = $settings['ca_ref'] ?? '';
 	$engine['ssl_proxy_port'] = '3129';
+	if ($previous_ca_ref !== '' && $engine['dca'] !== '' &&
+		$previous_ca_ref !== $engine['dca']) {
+		kontrol_id_clear_mitm_certificate_cache();
+		log_error('[Kontrol-ID] Cleared the generated MITM certificate cache after changing the inspection CA.');
+	}
 
 	$access_mode = $settings['access_mode'] ?? 'transparent';
 	if (kontrol_id_transparent_mode($settings)) {
@@ -2371,6 +2428,28 @@ function kontrol_id_apply_standalone_engine($enabled) {
 
 	config_set_path('installedpackages/e2guardian/config/0', $engine);
 	config_set_path('installedpackages/e2guardianconfig/config/0', $plugins);
+}
+
+function kontrol_id_clear_mitm_certificate_cache() {
+	$directory = '/usr/local/etc/e2guardian/ssl/generatedcerts';
+	if (!is_dir($directory)) {
+		return;
+	}
+	$resolved = realpath($directory);
+	if ($resolved !== $directory || strpos($resolved, '/usr/local/etc/e2guardian/ssl/') !== 0) {
+		throw new Exception('Refusing to clear a certificate cache outside the Kontrol-ID engine directory.');
+	}
+	$iterator = new RecursiveIteratorIterator(
+		new RecursiveDirectoryIterator($resolved, FilesystemIterator::SKIP_DOTS),
+		RecursiveIteratorIterator::CHILD_FIRST
+	);
+	foreach ($iterator as $entry) {
+		if ($entry->isLink() || $entry->isFile()) {
+			@unlink($entry->getPathname());
+		} elseif ($entry->isDir()) {
+			@rmdir($entry->getPathname());
+		}
+	}
 }
 
 function kontrol_id_chain_status() {
@@ -2493,6 +2572,10 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	}
 	if (!in_array($post['traffic_mode'] ?? '', array('http_only', 'http_https'), true)) {
 		$input_errors[] = 'Select a valid TLS inspection mode.';
+	}
+	$selected_ca = kontrol_id_extract_item(lookup_ca($post['ca_ref'] ?? ''));
+	if (!kontrol_id_ca_is_usable($selected_ca)) {
+		$input_errors[] = 'Select a valid certificate authority that includes its private key, is currently valid and is permitted to sign certificates.';
 	}
 	if (!in_array($post['unknown_action'] ?? '', array('portal', 'deny', 'allow'), true)) {
 		$input_errors[] = 'Select a valid unknown-user action.';

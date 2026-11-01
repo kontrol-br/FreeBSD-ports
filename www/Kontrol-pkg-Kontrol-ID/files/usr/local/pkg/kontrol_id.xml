@@ -161,8 +161,8 @@
 			<fielddescr>Web Traffic Inspection</fielddescr>
 			<fieldname>traffic_mode</fieldname>
 			<description><![CDATA[
-				HTTP-only is the safe onboarding mode. HTTP + HTTPS enables native Kontrol-ID TLS inspection and automatically selects
-				the internal Kontrol-ID CA. Every inspected client must first be enrolled so the CA is installed in Windows.
+				HTTP-only is the safe onboarding mode. HTTP + HTTPS enables native Kontrol-ID TLS inspection with the certificate authority
+				selected below. Every inspected client must trust that CA before HTTPS interception is enabled.
 			]]></description>
 			<type>select</type>
 			<default_value>http_only</default_value>
@@ -182,11 +182,17 @@
 		</field>
 		<field>
 			<fielddescr>Inspection CA</fielddescr>
+			<fieldname>ca_ref</fieldname>
 			<description><![CDATA[
-				The package-owned <strong>Kontrol-ID Internal CA</strong> is selected by the gateway automatically and its private key remains
-				on the appliance. The Windows provisioner installs only the public CA certificate in the Trusted Root store.
+				Select the certificate authority used to generate HTTPS inspection certificates and to enroll Windows endpoints.
+				<strong>Kontrol-ID Internal CA</strong> is the recommended default. A custom corporate CA must contain its private key on this appliance,
+				be currently valid and be authorized to sign certificates. Clients must trust the public certificate of the selected CA.
 			]]></description>
-			<type>info</type>
+			<type>select_source</type>
+			<source><![CDATA[kontrol_id_ca_options()]]></source>
+			<source_name>name</source_name>
+			<source_value>value</source_value>
+			<required/>
 		</field>
 		<field>
 			<name>Traffic Handling</name>
