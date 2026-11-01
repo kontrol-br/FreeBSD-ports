@@ -2209,7 +2209,7 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		"plugname = 'kontrol-basic'\n" .
 		"story_function = 'auth_pf_basic'\n" .
 		"helper_program = '/usr/local/libexec/kontrol-basic-auth'\n" .
-		"helper_children = 32\n" .
+		"helper_children = 8\n" .
 		"helper_timeout_ms = 10000\n" .
 		"realm = 'Kontrol Internet Access'\n" .
 		"defaultfiltergroup = 1\n";
