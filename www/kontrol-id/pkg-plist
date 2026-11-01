@@ -241,6 +241,7 @@
 @sample %%ETCDIR%%/lists/urlredirectregexplist.sample
 @sample %%ETCDIR%%/lists/urlregexplist.sample
 @sample %%ETCDIR%%/lists/weightedphraselist.sample
+sbin/kontrol-id
 sbin/e2guardian
 %%PORTDOCS%%%%DOCSDIR%%/AuthPlugins
 %%PORTDOCS%%%%DOCSDIR%%/ContentScanners

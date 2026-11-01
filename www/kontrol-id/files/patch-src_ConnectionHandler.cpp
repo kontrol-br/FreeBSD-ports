@@ -27,6 +27,11 @@
 @@ -1510 +1528 @@ int ConnectionHandler::handleConnection(Socket &peerconn, String &ip, bool ismit
 -            if (fg_resp && (!checkme.isItNaughty) && (!checkme.upfailure) && (!checkme.isconnect) && (!checkme.logcategory) && !checkme.tunnel_rest) {
 +            if (fg_resp && (!checkme.isItNaughty) && (!checkme.upfailure) && (!checkme.isconnect) && (!checkme.logcategory) && !checkme.tunnel_rest && !protocolUpgrade) {
+@@ -3021,2 +3039,2 @@ bool ConnectionHandler::goMITM(NaughtyFilter &checkme, Socket &proxysock, Socket
+-            writecert = o.ca->writeCertificate(checkme.urldomain.c_str(), cert,
+-                                               &caser);
++            writecert = o.ca->writeCertificate(checkme.urldomain.c_str(), cert,
++                                               &caser, checkme.isiphost);
 @@ -4739,4 +4757,8 @@ int ConnectionHandler::handleICAPresmod(Socket &peerconn, String &ip, NaughtyFil
 -            //Log
 -    if (!checkme.isourwebserver && checkme.isItNaughty) { // don't log requests to the web server & and normal response

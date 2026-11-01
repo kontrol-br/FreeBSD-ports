@@ -1,6 +1,6 @@
 PORTNAME=	kontrol-id
 PORTVERSION=	5.4.23
-PORTREVISION=	8
+PORTREVISION=	9
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=	kontrol-br
@@ -98,6 +98,9 @@ post-patch:
 		${WRKSRC}/src/authplugins/kontrol_basic.cpp
 
 post-install:
+	@${MV} ${STAGEDIR}${PREFIX}/sbin/e2guardian \
+		${STAGEDIR}${PREFIX}/sbin/kontrol-id
+	@${LN} -sf kontrol-id ${STAGEDIR}${PREFIX}/sbin/e2guardian
 	@${INSTALL_DATA} ${FILESDIR}/kontrol-negotiate.conf \
 		${STAGEDIR}${ETCDIR}/authplugins/kontrol-negotiate.conf.sample
 	@${INSTALL_DATA} ${FILESDIR}/kontrol-ntlm.conf \
