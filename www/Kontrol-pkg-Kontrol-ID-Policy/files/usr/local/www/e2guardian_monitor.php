@@ -74,6 +74,56 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
     line-height: 19px;
 }
 
+.kid-filter-panel > .panel-body {
+    padding: 11px 14px 13px;
+}
+
+.kid-filter-grid {
+    align-items: end;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 110px 130px minmax(170px, .9fr) 145px minmax(240px, 1.4fr) 130px;
+    margin: 0;
+}
+
+.kid-filter-field {
+    min-width: 0;
+}
+
+.kid-filter-field label {
+    color: #415866;
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    line-height: 15px;
+    margin: 0 0 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.kid-filter-field label .fa {
+    color: #78909d;
+    font-size: 10px;
+    margin-left: 3px;
+}
+
+.kid-filter-control {
+    border-color: rgba(47, 73, 89, .28);
+    border-radius: 3px;
+    box-shadow: none;
+    font-size: 11px;
+    height: 30px;
+    padding-bottom: 4px;
+    padding-top: 4px;
+    width: 100%;
+}
+
+.kid-filter-control:focus {
+    border-color: #2787bd;
+    box-shadow: 0 0 0 2px rgba(39, 135, 189, .12);
+}
+
 .kid-live-state {
     align-items: center;
     background: rgba(255, 255, 255, .1);
@@ -177,6 +227,10 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
 }
 
 @media (max-width: 767px) {
+    .kid-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
     .kid-log-scroll {
         max-height: 62vh;
     }
@@ -187,107 +241,74 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
         padding-right: 8px;
     }
 }
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .kid-filter-grid {
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
+    }
+}
 </style>
 
 <div class="panel panel-default kid-filter-panel">
-    <div class="panel-heading"><h2 class="panel-title"><?=gettext("Filtering"); ?></h2></div>
+    <div class="panel-heading"><h2 class="panel-title"><?=gettext("Log filters"); ?></h2></div>
     <div class="panel-body">
-        <div class="table">
-            <form id="paramsForm" name="paramsForm" method="post" action="">
-            <table class="table table-striped table-hover table-condensed">
-                <tbody>
-                <tr>
-                    <td width="22%" valign="top" class="vncellreq">Max lines:</td>
-                    <td width="78%" class="vtable">
-                        <select name="maxlines" id="maxlines">
-                            <option value="5">5 lines</option>
-                            <option value="10">10 lines</option>
-                            <option value="15">15 lines</option>
-                            <option value="20" selected="selected">20 lines</option>
-                            <option value="25">25 lines</option>
-                            <option value="100">100 lines</option>
-                            <option value="200">200 lines</option>
-                        </select>
-                        <br/>
-                        <span class="vexpl">
-                            <?=gettext("Max. lines to be displayed.")?>
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td width="22%" valign="top" class="vncellreq">Update Interval:</td>
-                    <td width="78%" class="vtable">
-                        <select name="interval" id="interval">
-                            <option value="1000">1 second</option>
-                            <option value="3000" selected="selected">3 seconds</option>
-                            <option value="5000">5 seconds</option>
-                            <option value="10000">10 seconds</option>
-                            <option value="15000">15 seconds</option>
-                            <option value="20000">20 seconds</option>
-                        </select>
-                        <br/>
-                        <span class="vexpl">
-                            <?=gettext("How often log entries are updated.")?>
-                        </span>
-                    </td>
-                </tr>
-                <?php if ((int)($e2glog['logfileformat'] ?? 1) === 1) {?>
-                <tr>
-                    <td width="22%" valign="top" class="vncellreq"><?=gettext("Traffic to show:")?></td>
-                    <td width="78%" class="vtable">
-                        <select name="traffic" id="traffic">
-                            <option value="all" selected="selected"><?=gettext("All connections")?></option>
-                            <option value="allowed"><?=gettext("Allowed connections")?></option>
-                            <option value="blocked"><?=gettext("Blocked connections")?></option>
-                        </select>
-                        <br/>
-                        <span class="vexpl">
-                            <?=gettext("Allowed connections are marked in green and blocked connections in red. Filtered views search the configured log scan window.")?>
-                        </span>
-                    </td>
-                </tr>
-                <?php }?>
-                <?php if($e2glog['logfileformat'] == 1 || $e2glog['logfileformat'] == 4 || $e2glog['logdeniedcgi'] == "on") {?>
-                <tr>
-                <td width="22%" valign="top" class="vncellreq">Erro to show:</td>
-                                        <td width="78%" class="vtable">
-                                                <select name="error" id="error">
-                                                        <option value="reason">Reason</option>
-                                                        <option value="detailed" selected="selected">Detailed info</option>
-                                                </select>
-                                                <br/>
-                                                <span class="vexpl">
-                                                        <?=gettext("Select denied info to show while using logs in E2g format.")?>
-                                                </span>
-                                        </td>
-                </tr>
-                <?php }?>
-                <tr>
-                    <td width="22%" valign="top" class="vncellreq">String filter:</td>
-                    <td width="78%" class="vtable">
-                        <input name="strfilter" type="text" class="formfld search" id="strfilter" size="50" value="" />
-                        <br/>
-                        <span class="vexpl">
-                            <?=gettext("Enter a grep-like string/pattern to filter the log entries.")?><br/>
-                            <?=gettext("E.g.: username, IP address, URL.")?><br/>
-                            <?=gettext("Use <strong>!</strong> to invert the sense of matching (to select non-matching lines).")?>
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td width="22%" valign="top" class="vncellreq">String filter limit:</td>
-                    <td width="78%" class="vtable">
-                        <input name="readlines" type="text" class="formfld search" id="readlines" size="50" value="" />
-                        <br/>
-                        <span class="vexpl">
-                            <?=gettext("Enter the number of log entries that should be checked to match the string filter")?><br/>
-                        </span>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-            </form>
-        </div>
+        <form id="paramsForm" name="paramsForm" method="post" action="" class="kid-filter-grid">
+            <div class="kid-filter-field">
+                <label for="maxlines"><?=gettext("Rows")?> <i class="fa fa-info-circle" title="<?=gettext("Maximum number of log entries displayed.")?>"></i></label>
+                <select name="maxlines" id="maxlines" class="form-control input-sm kid-filter-control" title="<?=gettext("Maximum number of log entries displayed.")?>">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="20" selected="selected">20</option>
+                    <option value="25">25</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+            </div>
+
+            <div class="kid-filter-field">
+                <label for="interval"><?=gettext("Refresh")?> <i class="fa fa-info-circle" title="<?=gettext("How often log entries are updated.")?>"></i></label>
+                <select name="interval" id="interval" class="form-control input-sm kid-filter-control" title="<?=gettext("How often log entries are updated.")?>">
+                    <option value="1000"><?=gettext("1 second")?></option>
+                    <option value="3000" selected="selected"><?=gettext("3 seconds")?></option>
+                    <option value="5000"><?=gettext("5 seconds")?></option>
+                    <option value="10000"><?=gettext("10 seconds")?></option>
+                    <option value="15000"><?=gettext("15 seconds")?></option>
+                    <option value="20000"><?=gettext("20 seconds")?></option>
+                </select>
+            </div>
+
+            <?php if ((int)($e2glog['logfileformat'] ?? 1) === 1) {?>
+            <div class="kid-filter-field">
+                <label for="traffic"><?=gettext("Traffic")?> <i class="fa fa-info-circle" title="<?=gettext("Show all, allowed, or blocked connections.")?>"></i></label>
+                <select name="traffic" id="traffic" class="form-control input-sm kid-filter-control" title="<?=gettext("Show all, allowed, or blocked connections.")?>">
+                    <option value="all" selected="selected"><?=gettext("All connections")?></option>
+                    <option value="allowed"><?=gettext("Allowed connections")?></option>
+                    <option value="blocked"><?=gettext("Blocked connections")?></option>
+                </select>
+            </div>
+            <?php }?>
+
+            <?php if($e2glog['logfileformat'] == 1 || $e2glog['logfileformat'] == 4 || $e2glog['logdeniedcgi'] == "on") {?>
+            <div class="kid-filter-field">
+                <label for="error"><?=gettext("Denied detail")?> <i class="fa fa-info-circle" title="<?=gettext("Choose the amount of detail shown for denied entries.")?>"></i></label>
+                <select name="error" id="error" class="form-control input-sm kid-filter-control" title="<?=gettext("Choose the amount of detail shown for denied entries.")?>">
+                    <option value="reason"><?=gettext("Reason")?></option>
+                    <option value="detailed" selected="selected"><?=gettext("Detailed info")?></option>
+                </select>
+            </div>
+            <?php }?>
+
+            <div class="kid-filter-field">
+                <label for="strfilter"><?=gettext("Search logs")?> <i class="fa fa-info-circle" title="<?=gettext("Filter by user, IP, URL, or pattern. Prefix with ! to exclude matches.")?>"></i></label>
+                <input name="strfilter" type="text" class="form-control input-sm kid-filter-control" id="strfilter" value="" placeholder="<?=gettext("User, IP, URL or pattern")?>" title="<?=gettext("Filter by user, IP, URL, or pattern. Prefix with ! to exclude matches.")?>" />
+            </div>
+
+            <div class="kid-filter-field">
+                <label for="readlines"><?=gettext("Scan limit")?> <i class="fa fa-info-circle" title="<?=gettext("Number of recent entries searched when a filter is active.")?>"></i></label>
+                <input name="readlines" type="number" min="1" max="20000" step="1" class="form-control input-sm kid-filter-control" id="readlines" value="" placeholder="2000" title="<?=gettext("Number of recent entries searched when a filter is active.")?>" />
+            </div>
+        </form>
     </div>
 </div>
 
