@@ -154,6 +154,40 @@ function kontrol_id_transparent_mode() {
 	return ($settings['access_mode'] ?? 'transparent') === 'transparent';
 }
 
+/* The policy package originally registered its own Services menu entry as
+ * "E2guardian Proxy". Removing the <menu> block from the package XML prevents
+ * new installations from creating it, but pfSense preserves an already
+ * imported installedpackages/menu item across package upgrades. Remove only
+ * that exact legacy entry; the e2guardian_*.xml policy pages remain installed
+ * and are still reached through the unified Kontrol-ID tabs. */
+function kontrol_id_remove_legacy_e2guardian_menu() {
+	$menus = config_get_path('installedpackages/menu', array());
+	if (!is_array($menus)) {
+		return false;
+	}
+
+	$changed = false;
+	$filtered = array();
+	foreach ($menus as $menu) {
+		$name = trim((string)($menu['name'] ?? ''));
+		$url = html_entity_decode((string)($menu['url'] ?? ''), ENT_QUOTES, 'UTF-8');
+		$is_legacy_entry = (
+			strcasecmp($name, 'E2guardian Proxy') === 0 &&
+			strpos($url, 'xml=e2guardian.xml') !== false
+		);
+		if ($is_legacy_entry) {
+			$changed = true;
+			continue;
+		}
+		$filtered[] = $menu;
+	}
+
+	if ($changed) {
+		config_set_path('installedpackages/menu', array_values($filtered));
+	}
+	return $changed;
+}
+
 function kontrol_id_tab_definitions() {
 	$tabs = array(
 		array('key' => 'general', 'text' => 'General', 'url' => '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0')
@@ -2430,6 +2464,7 @@ function kontrol_id_resync($sync = true) {
 	$changed = kontrol_id_prepare_dependency_defaults() || $changed;
 	$changed = kontrol_id_ensure_group() || $changed;
 	$changed = kontrol_id_ensure_pki() || $changed;
+	$changed = kontrol_id_remove_legacy_e2guardian_menu() || $changed;
 	kontrol_id_ensure_storage();
 	kontrol_id_write_pki();
 	kontrol_id_write_helper_config();
