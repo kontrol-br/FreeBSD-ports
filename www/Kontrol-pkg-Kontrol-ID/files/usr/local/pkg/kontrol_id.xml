@@ -190,6 +190,17 @@
 			</options>
 		</field>
 		<field>
+			<fielddescr>Block HTTP/3 / QUIC</fielddescr>
+			<fieldname>block_quic</fieldname>
+			<description><![CDATA[
+				Blocks QUIC on UDP port 443 for transparent HTTPS clients, forcing standards-compliant browsers to retry over inspected
+				HTTP/2 or HTTP/1.1 on TCP. Keep this enabled while Kontrol-ID does not provide native HTTP/3 inspection. Proxy bypass
+				sources, destinations and private networks remain exempt. This option applies only to transparent HTTP + HTTPS inspection.
+			]]></description>
+			<type>checkbox</type>
+			<default_value>on</default_value>
+		</field>
+		<field>
 			<fielddescr>Client Interface(s)</fielddescr>
 			<fieldname>intercept_interfaces</fieldname>
 			<description><![CDATA[Interfaces where Kontrol-ID listens for explicit clients or installs transparent HTTP/HTTPS redirects.]]></description>

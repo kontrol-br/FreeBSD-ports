@@ -1205,14 +1205,15 @@ function e2g_generate_rules($type) {
             }
             $rules .= "\n";
             break;
-        case 'filter':
-        case 'rule':
+        case 'pfearly':
             /* QUIC carries HTTP/3 over UDP and cannot be inspected by the
              * current TCP/TLS gateway.  Block it only for transparent HTTPS
              * interception so standards-compliant clients fall back to TCP.
              * Preserve the same source/destination bypasses as the redirect
-             * rules; never use a quick pass that could override site policy. */
-            if ($e2g_conf['transparent_proxy'] == 'on' && $ssl_intercept_enabled) {
+             * rules.  The pfearly package hook places this quick block before
+             * user interface rules such as "Default allow LAN to any". */
+            if ($e2g_conf['transparent_proxy'] == 'on' && $ssl_intercept_enabled &&
+                ($e2g_conf['kontrol_id_block_quic'] ?? '') === 'on') {
                 $quic_source_bypass = e2g_normalize_bypass_entries(
                     $e2g_conf['defined_ip_proxy_off'] ?? '',
                     'transparent QUIC source bypass list'
@@ -1226,20 +1227,35 @@ function e2g_generate_rules($type) {
                         '192.168.0.0/16', '172.16.0.0/12', '10.0.0.0/8'
                     ));
                 }
-                $quic_source = empty($quic_source_bypass) ?
-                    'any' : '{ any, ! ' . implode(', ! ', array_unique($quic_source_bypass)) . ' }';
-                $quic_destination = empty($quic_destination_bypass) ?
-                    'any' : '{ any, ! ' . implode(', ! ', array_unique($quic_destination_bypass)) . ' }';
-                $rules .= "\n# Kontrol-ID: force HTTP/3 clients to inspected TCP/TLS\n";
+                $quic_source = 'any';
+                $quic_destination = 'any';
+                $rules .= "\n# Kontrol-ID: block HTTP/3/QUIC and force inspected TCP/TLS fallback\n";
+                if (!empty($quic_source_bypass)) {
+                    if (!is_alias('KID_QUIC_SRC_BYPASS')) {
+                        log_error('[Kontrol-ID] QUIC source bypass alias is missing; skipping the QUIC block rule.');
+                        break;
+                    }
+                    $quic_source = '! $KID_QUIC_SRC_BYPASS';
+                }
+                if (!empty($quic_destination_bypass)) {
+                    if (!is_alias('KID_QUIC_DST_BYPASS')) {
+                        log_error('[Kontrol-ID] QUIC destination bypass alias is missing; skipping the QUIC block rule.');
+                        break;
+                    }
+                    $quic_destination = '! $KID_QUIC_DST_BYPASS';
+                }
                 foreach ($transparent_ifaces as $iface) {
-                    $rules .= "block drop in quick on {$iface} inet proto udp from {$quic_source} to {$quic_destination} port 443\n";
+                    $rules .= "block return in quick on {$iface} inet proto udp from {$quic_source} to {$quic_destination} port 443 label \"Kontrol-ID block HTTP3 QUIC\"\n";
                 }
                 if (($config['pppoe']['mode'] == 'server' && $config['pppoe']['localip']) ||
                     (function_exists('is_pppoe_server_enabled') && is_pppoe_server_enabled())) {
-                    $rules .= "block drop in quick on \$pppoe inet proto udp from {$quic_source} to {$quic_destination} port 443\n";
+                    $rules .= "block return in quick on \$pppoe inet proto udp from {$quic_source} to {$quic_destination} port 443 label \"Kontrol-ID block HTTP3 QUIC\"\n";
                 }
                 $rules .= "\n";
             }
+            break;
+        case 'filter':
+        case 'rule':
             /*
              * Outbound Gateway Policy Routing rules for E2guardian
              * Match packets tagged with each gateway's TOS mark and route-to the corresponding gateway

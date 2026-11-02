@@ -38,6 +38,8 @@ define('KONTROL_ID_POLICY_CACHE', KONTROL_ID_DOMAIN_DIR . '/policy-members.json'
 define('KONTROL_ID_POLICY_STATUS', KONTROL_ID_DOMAIN_DIR . '/policy-status.json');
 define('KONTROL_ID_POLICY_LOCK', KONTROL_ID_DOMAIN_DIR . '/policy-sync.lock');
 define('KONTROL_ID_GROUP', 'kontrol-internet-users');
+define('KONTROL_ID_QUIC_SOURCE_ALIAS', 'KID_QUIC_SRC_BYPASS');
+define('KONTROL_ID_QUIC_DESTINATION_ALIAS', 'KID_QUIC_DST_BYPASS');
 define('KONTROL_ID_BEGIN', '# BEGIN KONTROL-ID');
 define('KONTROL_ID_END', '# END KONTROL-ID');
 define('KONTROL_ID_E2G_BEGIN', '# BEGIN KONTROL-ID ICAP SSL BUMP');
@@ -58,6 +60,7 @@ function kontrol_id_defaults() {
 		'https_intercept_port' => '3129',
 		'engine_integration' => 'on',
 		'traffic_mode' => 'http_only',
+		'block_quic' => 'on',
 		'intercept_interfaces' => 'lan',
 		'bypass_private_destinations' => '',
 		'bypass_sources' => '',
@@ -459,9 +462,11 @@ function kontrol_id_print_general_auth_visibility() {
 events.push(function() {
 	function kontrolIdUpdateExplicitAuthVisibility() {
 		var explicitMode = ($('#access_mode').val() === 'explicit');
+		var transparentHttps = !explicitMode && ($('#traffic_mode').val() === 'http_https');
 		$('#explicit_auth').closest('.form-group').toggle(explicitMode);
+		$('#block_quic').closest('.form-group').toggle(transparentHttps);
 	}
-	$('#access_mode').on('change', kontrolIdUpdateExplicitAuthVisibility);
+	$('#access_mode, #traffic_mode').on('change', kontrolIdUpdateExplicitAuthVisibility);
 	kontrolIdUpdateExplicitAuthVisibility();
 });
 //]]>
@@ -2475,6 +2480,89 @@ function kontrol_id_apply_e2guardian_storybook($enabled) {
 	rename($tmp, $path);
 }
 
+function kontrol_id_quic_bypass_addresses($list, $include_private = false) {
+	if (!function_exists('filter_expand_alias')) {
+		require_once('filter.inc');
+	}
+
+	$addresses = $include_private ?
+		array('192.168.0.0/16', '172.16.0.0/12', '10.0.0.0/8') : array();
+	foreach (preg_split('/[;\r\n]+/', (string)$list) as $entry) {
+		$entry = trim($entry);
+		if ($entry === '') {
+			continue;
+		}
+
+		if (is_alias($entry)) {
+			foreach (preg_split('/\s+/', trim((string)filter_expand_alias($entry))) as $alias_entry) {
+				if (is_ipaddrv4($alias_entry) || is_subnetv4($alias_entry)) {
+					$addresses[] = $alias_entry;
+				}
+			}
+			continue;
+		}
+
+		if (is_ipaddrv4($entry) || is_subnetv4($entry)) {
+			$addresses[] = $entry;
+			continue;
+		}
+
+		if (is_hostname($entry)) {
+			$records = @dns_get_record($entry, DNS_A);
+			if (is_array($records)) {
+				foreach ($records as $record) {
+					if (!empty($record['ip']) && is_ipaddrv4($record['ip'])) {
+						$addresses[] = $record['ip'];
+					}
+				}
+			}
+		}
+	}
+
+	return array_values(array_unique($addresses));
+}
+
+function kontrol_id_update_quic_bypass_aliases($engine, $enabled) {
+	$managed_aliases = array(
+		KONTROL_ID_QUIC_SOURCE_ALIAS => array(),
+		KONTROL_ID_QUIC_DESTINATION_ALIAS => array()
+	);
+	if ($enabled) {
+		$managed_aliases[KONTROL_ID_QUIC_SOURCE_ALIAS] =
+			kontrol_id_quic_bypass_addresses($engine['defined_ip_proxy_off'] ?? '');
+		$managed_aliases[KONTROL_ID_QUIC_DESTINATION_ALIAS] =
+			kontrol_id_quic_bypass_addresses(
+				$engine['defined_ip_proxy_off_dest'] ?? '',
+				($engine['private_subnet_proxy_off'] ?? '') === 'on'
+			);
+	}
+
+	$aliases = config_get_path('aliases/alias', array());
+	if (!is_array($aliases)) {
+		$aliases = array();
+	}
+	foreach ($aliases as $index => $alias) {
+		if (isset($managed_aliases[$alias['name'] ?? ''])) {
+			unset($aliases[$index]);
+		}
+	}
+	$aliases = array_values($aliases);
+
+	foreach ($managed_aliases as $name => $addresses) {
+		if (empty($addresses)) {
+			continue;
+		}
+		$aliases[] = array(
+			'name' => $name,
+			'type' => 'network',
+			'address' => implode(' ', $addresses),
+			'descr' => 'Managed by Kontrol-ID for HTTP/3 / QUIC bypass',
+			'detail' => ''
+		);
+	}
+	config_set_path('aliases/alias', $aliases);
+}
+
 function kontrol_id_apply_standalone_engine($enabled) {
 	$settings = kontrol_id_get_settings();
 	$engine = config_get_path('installedpackages/e2guardian/config/0', array());
@@ -2505,6 +2593,7 @@ function kontrol_id_apply_standalone_engine($enabled) {
 	$engine['httpworkers'] = (string)max(64, min(20000,
 		(int)($settings['engine_workers'] ?? 256)));
 	$engine['enablessl'] = (($settings['traffic_mode'] ?? 'http_only') === 'http_https') ? 'on' : '';
+	$engine['kontrol_id_block_quic'] = (($settings['block_quic'] ?? '') === 'on') ? 'on' : '';
 	$previous_ca_ref = $engine['dca'] ?? '';
 	$engine['dca'] = $settings['ca_ref'] ?? '';
 	$engine['ssl_proxy_port'] = (string)($settings['https_intercept_port'] ?? '3129');
@@ -2541,6 +2630,12 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		$plugins['auth_plugin'] = $enabled ?
 			($auth_plugins[$auth_method] ?? $auth_plugins['kerberos']) : '';
 	}
+	kontrol_id_update_quic_bypass_aliases(
+		$engine,
+		$enabled && kontrol_id_transparent_mode($settings) &&
+		($engine['enablessl'] ?? '') === 'on' &&
+		($engine['kontrol_id_block_quic'] ?? '') === 'on'
+	);
 	$invalid_tls_bypass = array();
 	$engine['kontrol_id_tls_bypass_sites'] = implode("\n",
 		kontrol_id_normalize_tls_bypass_sites(
