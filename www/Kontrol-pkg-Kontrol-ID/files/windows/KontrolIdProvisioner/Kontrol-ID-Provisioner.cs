@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -22,10 +23,10 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("Provisionamento seguro de estações Windows para o Kontrol-ID")]
 [assembly: AssemblyCompany("Kontrol")]
 [assembly: AssemblyProduct("Kontrol-ID Provisioner")]
-[assembly: AssemblyCopyright("Copyright © 2026 Kontrol")]
-[assembly: AssemblyVersion("0.5.0.45")]
-[assembly: AssemblyFileVersion("0.5.0.45")]
-[assembly: AssemblyInformationalVersion("0.5.0_45")]
+[assembly: AssemblyCopyright("Copyright © 2010-2026 Kontrol Tecnologia EPP")]
+[assembly: AssemblyVersion("0.5.0.46")]
+[assembly: AssemblyFileVersion("0.5.0.46")]
+[assembly: AssemblyInformationalVersion("0.5.0_46")]
 
 namespace Kontrol.Identity.Provisioner
 {
@@ -106,11 +107,17 @@ namespace Kontrol.Identity.Provisioner
     internal sealed class ProvisionerForm : Form
     {
         private readonly TextBox appliance = new TextBox();
-        private readonly TextBox token = new TextBox();
-        private readonly TextBox fingerprint = new TextBox();
         private readonly TextBox log = new TextBox();
         private readonly Button install = new Button();
         private readonly Button remove = new Button();
+        private readonly Label packageStatus = new Label();
+        private readonly Label stationStatus = new Label();
+        private string enrollmentToken = "";
+        private string webGuiPin = "";
+        private string enrollmentConfigPath = "";
+        private long enrollmentExpiresAt;
+        private bool busy;
+        private bool stationConfigured;
 
         public ProvisionerForm()
         {
@@ -120,37 +127,63 @@ namespace Kontrol.Identity.Provisioner
                     Icon = (System.Drawing.Icon)appIcon.Clone();
             }
             StartPosition = FormStartPosition.CenterScreen;
-            MinimumSize = new Size(690, 590);
-            Size = new Size(760, 650);
-            Font = new Font("Segoe UI", 9.5F);
-            BackColor = Color.FromArgb(242, 246, 249);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(500, 350);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
+            Font = new Font("Segoe UI", 9F);
+            BackColor = Color.FromArgb(245, 247, 249);
 
-            var title = new Label {
-                Text = "Kontrol-ID",
-                Font = new Font("Segoe UI Semibold", 24F),
-                ForeColor = Color.FromArgb(17, 38, 61),
+            var header = new Panel {
+                Location = new Point(0, 0),
+                Size = new Size(500, 72),
+                BackColor = Color.FromArgb(49, 47, 48),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            var logo = new PictureBox {
+                Location = new Point(18, 15),
+                Size = new Size(145, 42),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Image = LoadLogo()
+            };
+            var product = new Label {
+                Text = "KONTROL-ID PROVISIONER",
+                Font = new Font("Segoe UI Semibold", 11F),
+                ForeColor = Color.White,
                 AutoSize = true,
-                Location = new Point(34, 25)
+                Location = new Point(184, 17)
             };
             var subtitle = new Label {
-                Text = "Inscrição segura desta estação Windows, sem instalar serviço residente.",
-                ForeColor = Color.FromArgb(80, 98, 114),
+                Text = "Configuração segura da estação Windows",
+                ForeColor = Color.FromArgb(205, 213, 220),
                 AutoSize = true,
-                Location = new Point(38, 72)
+                Location = new Point(185, 42)
             };
-            Controls.Add(title);
-            Controls.Add(subtitle);
+            header.Controls.Add(logo);
+            header.Controls.Add(product);
+            header.Controls.Add(subtitle);
+            Controls.Add(header);
 
-            AddField("Endereço HTTPS do Kontrol", appliance, 112,
-                "Exemplo: https://192.168.1.1");
-            AddField("Token temporário de inscrição", token, 180,
-                "Gerado em Serviços > Kontrol-ID > Estações e sessões");
-            AddField("SHA-256 do certificado da WebGUI", fingerprint, 248,
-                "Confirme este valor na GUI do Kontrol antes de continuar");
+            var applianceLabel = new Label {
+                Text = "Kontrol associado ao pacote de matrícula",
+                AutoSize = true,
+                Location = new Point(24, 84)
+            };
+            appliance.Location = new Point(24, 104);
+            appliance.Size = new Size(452, 23);
+            appliance.ReadOnly = true;
+            appliance.BackColor = Color.White;
+            packageStatus.Location = new Point(24, 133);
+            packageStatus.Size = new Size(452, 20);
+            packageStatus.ForeColor = Color.FromArgb(110, 83, 0);
+            Controls.Add(applianceLabel);
+            Controls.Add(appliance);
+            Controls.Add(packageStatus);
 
             install.Text = "Configurar estação";
-            install.Location = new Point(38, 325);
-            install.Size = new Size(205, 39);
+            install.Location = new Point(24, 158);
+            install.Size = new Size(218, 38);
             install.BackColor = Color.FromArgb(23, 105, 170);
             install.ForeColor = Color.White;
             install.FlatStyle = FlatStyle.Flat;
@@ -158,69 +191,137 @@ namespace Kontrol.Identity.Provisioner
             install.Click += async (s, e) => await InstallAsync();
             Controls.Add(install);
 
-            remove.Text = "Remover Kontrol-ID";
-            remove.Location = new Point(255, 325);
-            remove.Size = new Size(185, 39);
+            remove.Text = "Remover configuração";
+            remove.Location = new Point(258, 158);
+            remove.Size = new Size(218, 38);
             remove.FlatStyle = FlatStyle.Flat;
             remove.Click += async (s, e) => await RemoveAsync();
             Controls.Add(remove);
 
-            log.Location = new Point(38, 387);
-            log.Size = new Size(668, 204);
-            log.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            log.Location = new Point(24, 210);
+            log.Size = new Size(452, 82);
             log.Multiline = true;
             log.ReadOnly = true;
             log.ScrollBars = ScrollBars.Vertical;
             log.BackColor = Color.White;
-            log.Font = new Font("Consolas", 9F);
+            log.Font = new Font("Consolas", 8.25F);
             Controls.Add(log);
 
+            stationStatus.Location = new Point(24, 299);
+            stationStatus.Size = new Size(452, 19);
+            stationStatus.Font = new Font("Segoe UI Semibold", 8.5F);
+            Controls.Add(stationStatus);
+
+            var footer = new Label {
+                Text = "2010–" + DateTime.Now.Year + " - Copyright - Kontrol Tecnologia EPP - Powered by KONTROL.",
+                ForeColor = Color.FromArgb(105, 115, 124),
+                Font = new Font("Segoe UI", 7.25F),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Location = new Point(14, 324),
+                Size = new Size(472, 18)
+            };
+            Controls.Add(footer);
+
+            LoadEnrollmentPackage();
+            RefreshStationState();
+
             Shown += (s, e) => {
-                if (!NativeMethods.IsAdministrator()) {
-                    Append("Este aplicativo precisa ser executado como Administrador.");
-                    install.Enabled = false;
-                    remove.Enabled = false;
-                } else {
-                    Append("Pronto. Nenhum daemon será instalado nesta estação.");
-                }
+                Append(NativeMethods.IsAdministrator()
+                    ? "Pronto. Executando com privilégios administrativos."
+                    : "Pronto. A elevação será solicitada somente ao aplicar alterações.");
             };
         }
 
-        private void AddField(string labelText, TextBox box, int top, string hint)
+        private static Image LoadLogo()
         {
-            var label = new Label { Text = labelText, AutoSize = true, Location = new Point(38, top) };
-            box.Location = new Point(38, top + 23);
-            box.Size = new Size(668, 25);
-            box.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            var note = new Label {
-                Text = hint,
-                AutoSize = true,
-                ForeColor = Color.FromArgb(99, 113, 126),
-                Location = new Point(40, top + 49)
-            };
-            Controls.Add(label);
-            Controls.Add(box);
-            Controls.Add(note);
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("KontrolIdProvisioner.Logo")) {
+                if (stream == null) return null;
+                using (Image source = Image.FromStream(stream)) return new Bitmap(source);
+            }
+        }
+
+        private void LoadEnrollmentPackage()
+        {
+            enrollmentConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Kontrol-ID-Enrollment.json");
+            if (!File.Exists(enrollmentConfigPath)) {
+                packageStatus.Text = "Pacote de matrícula ausente. Gere-o na WebGUI do Kontrol-ID.";
+                appliance.Text = "Nenhum pacote carregado";
+                UpdateActionState();
+                return;
+            }
+            try {
+                var serializer = new JavaScriptSerializer();
+                var data = serializer.Deserialize<Dictionary<string, object>>(
+                    File.ReadAllText(enrollmentConfigPath, Encoding.UTF8));
+                appliance.Text = GetRequiredString(data, "appliance");
+                enrollmentToken = GetRequiredString(data, "token");
+                webGuiPin = NormalizeThumbprint(GetRequiredString(data, "fingerprint"));
+                enrollmentExpiresAt = Convert.ToInt64(data["expiresAt"]);
+                Uri uri;
+                if (!Uri.TryCreate(appliance.Text, UriKind.Absolute, out uri) ||
+                    !String.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+                    webGuiPin.Length != 64 || webGuiPin.Any(c => !Uri.IsHexDigit(c)) ||
+                    enrollmentExpiresAt <= UnixNow()) {
+                    throw new InvalidOperationException("O pacote está vencido ou contém dados inválidos.");
+                }
+                packageStatus.Text = "Pacote autenticado, válido até " + UnixToLocal(enrollmentExpiresAt).ToString("dd/MM/yyyy HH:mm") + ".";
+                packageStatus.ForeColor = Color.FromArgb(28, 113, 62);
+            } catch (Exception ex) {
+                enrollmentToken = "";
+                webGuiPin = "";
+                packageStatus.Text = "Pacote de matrícula inválido: " + ex.Message;
+                packageStatus.ForeColor = Color.FromArgb(172, 46, 36);
+            }
+            UpdateActionState();
+        }
+
+        private void RefreshStationState()
+        {
+            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Kontrol\Kontrol-ID")) {
+                stationConfigured = key != null;
+                string configuredAppliance = key == null ? "" : Convert.ToString(key.GetValue("Appliance", ""));
+                stationStatus.Text = stationConfigured
+                    ? "● Estação configurada" + (String.IsNullOrWhiteSpace(configuredAppliance) ? "" : " para " + configuredAppliance)
+                    : "○ Estação ainda não configurada";
+                stationStatus.ForeColor = stationConfigured ? Color.FromArgb(28, 113, 62) : Color.FromArgb(105, 115, 124);
+            }
+            UpdateActionState();
+        }
+
+        private bool EnrollmentReady()
+        {
+            return !String.IsNullOrWhiteSpace(enrollmentToken) && webGuiPin.Length == 64 &&
+                enrollmentExpiresAt > UnixNow();
+        }
+
+        private void UpdateActionState()
+        {
+            install.Enabled = !busy && EnrollmentReady();
+            remove.Enabled = !busy && stationConfigured;
+            UseWaitCursor = busy;
+        }
+
+        private static long UnixNow()
+        {
+            return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        }
+
+        private static DateTime UnixToLocal(long value)
+        {
+            return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(value).ToLocalTime();
         }
 
         private async Task InstallAsync()
         {
             Uri baseUri;
-            string normalizedPin;
             if (!Uri.TryCreate(appliance.Text.Trim(), UriKind.Absolute, out baseUri) ||
                 !String.Equals(baseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) {
-                MessageBox.Show("Informe um endereço HTTPS válido para o Kontrol.", Text,
+                MessageBox.Show("O pacote não contém um endereço HTTPS válido para o Kontrol.", Text,
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            normalizedPin = NormalizeThumbprint(fingerprint.Text);
-            if (normalizedPin.Length != 64 || normalizedPin.Any(c => !Uri.IsHexDigit(c))) {
-                MessageBox.Show("O SHA-256 deve conter 64 caracteres hexadecimais.", Text,
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            if (String.IsNullOrWhiteSpace(token.Text)) {
-                MessageBox.Show("Informe o token temporário de inscrição.", Text,
+            if (!EnrollmentReady()) {
+                MessageBox.Show("O pacote de matrícula está ausente, inválido ou vencido. Gere outro na WebGUI do Kontrol-ID.", Text,
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -228,9 +329,18 @@ namespace Kontrol.Identity.Provisioner
             SetBusy(true);
             log.Clear();
             try {
-                string tokenValue = token.Text.Trim();
-                await Task.Run(() => Provision(baseUri, tokenValue, normalizedPin));
-                token.Clear();
+                string tokenValue = enrollmentToken;
+                string pinValue = webGuiPin;
+                if (NativeMethods.IsAdministrator())
+                    await Task.Run(() => Provision(baseUri, tokenValue, pinValue));
+                else
+                    await Task.Run(() => RunElevated("--install-config", new Dictionary<string, object> {
+                        { "appliance", baseUri.GetLeftPart(UriPartial.Authority) },
+                        { "token", tokenValue },
+                        { "fingerprint", pinValue }
+                    }));
+                DeleteEnrollmentPackage();
+                RefreshStationState();
                 Append("Concluído. A estação está pronta para identificação automática.");
                 MessageBox.Show("A configuração do Kontrol-ID foi concluída.", Text,
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -252,8 +362,14 @@ namespace Kontrol.Identity.Provisioner
             SetBusy(true);
             log.Clear();
             try {
-                await Task.Run(() => RemoveProvisioning());
-                Append("Configuração removida. Não há serviço Kontrol-ID residente.");
+                if (NativeMethods.IsAdministrator())
+                    await Task.Run(() => RemoveProvisioning());
+                else
+                    await Task.Run(() => RunElevated("--remove-config", new Dictionary<string, object>()));
+                RefreshStationState();
+                Append("CA, certificados, políticas, firewall e conta técnica removidos.");
+                MessageBox.Show("A configuração do Kontrol-ID foi removida.", Text,
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
             } catch (Exception ex) {
                 Append("ERRO: " + ex.Message);
                 MessageBox.Show(ex.Message, "Falha na remoção", MessageBoxButtons.OK,
@@ -265,9 +381,55 @@ namespace Kontrol.Identity.Provisioner
 
         private void SetBusy(bool busy)
         {
-            install.Enabled = !busy;
-            remove.Enabled = !busy;
-            UseWaitCursor = busy;
+            this.busy = busy;
+            UpdateActionState();
+        }
+
+        private void DeleteEnrollmentPackage()
+        {
+            try {
+                if (!String.IsNullOrWhiteSpace(enrollmentConfigPath) && File.Exists(enrollmentConfigPath))
+                    File.Delete(enrollmentConfigPath);
+            } catch (IOException) { }
+            enrollmentToken = "";
+            webGuiPin = "";
+            enrollmentExpiresAt = 0;
+            packageStatus.Text = "Matrícula utilizada. Gere um novo pacote para reconfigurar esta estação.";
+            packageStatus.ForeColor = Color.FromArgb(105, 115, 124);
+            UpdateActionState();
+        }
+
+        private static void RunElevated(string mode, Dictionary<string, object> settings)
+        {
+            string configPath = Path.Combine(Path.GetTempPath(), "Kontrol-ID-" + Guid.NewGuid().ToString("N") + ".json");
+            string resultPath = configPath + ".result.json";
+            var serializer = new JavaScriptSerializer();
+            settings["resultPath"] = resultPath;
+            try {
+                File.WriteAllText(configPath, serializer.Serialize(settings), new UTF8Encoding(false));
+                var start = new ProcessStartInfo(Application.ExecutablePath,
+                    mode + " \"" + configPath.Replace("\"", "") + "\"") {
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
+                };
+                try {
+                    using (Process process = Process.Start(start)) process.WaitForExit();
+                } catch (Win32Exception ex) {
+                    if (ex.NativeErrorCode == 1223)
+                        throw new InvalidOperationException("A elevação administrativa foi cancelada.");
+                    throw;
+                }
+                if (!File.Exists(resultPath))
+                    throw new InvalidOperationException("O processo administrativo não retornou um resultado.");
+                var result = serializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(resultPath, Encoding.UTF8));
+                object ok;
+                if (!result.TryGetValue("ok", out ok) || !(ok is bool) || !(bool)ok)
+                    throw new InvalidOperationException(GetString(result, "error", "A operação administrativa falhou."));
+            } finally {
+                try { File.Delete(configPath); } catch { }
+                try { File.Delete(resultPath); } catch { }
+            }
         }
 
         private void Append(string message)
