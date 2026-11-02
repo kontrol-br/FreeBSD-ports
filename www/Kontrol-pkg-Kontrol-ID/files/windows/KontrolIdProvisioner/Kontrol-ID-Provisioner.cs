@@ -121,14 +121,14 @@ namespace Kontrol.Identity.Provisioner
 
         public ProvisionerForm()
         {
-            Text = "Kontrol-ID - Configurar estação";
+            Text = "Kontrol-ID Provisioner";
             using (System.Drawing.Icon appIcon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath)) {
                 if (appIcon != null)
                     Icon = (System.Drawing.Icon)appIcon.Clone();
             }
             StartPosition = FormStartPosition.CenterScreen;
             AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(500, 350);
+            ClientSize = new Size(450, 300);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             Font = new Font("Segoe UI", 9F);
@@ -136,29 +136,29 @@ namespace Kontrol.Identity.Provisioner
 
             var header = new Panel {
                 Location = new Point(0, 0),
-                Size = new Size(500, 72),
+                Size = new Size(450, 60),
                 BackColor = Color.FromArgb(49, 47, 48),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             var logo = new PictureBox {
-                Location = new Point(18, 15),
-                Size = new Size(145, 42),
+                Location = new Point(14, 12),
+                Size = new Size(120, 35),
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.Transparent,
                 Image = LoadLogo()
             };
             var product = new Label {
                 Text = "KONTROL-ID PROVISIONER",
-                Font = new Font("Segoe UI Semibold", 11F),
+                Font = new Font("Segoe UI Semibold", 10F),
                 ForeColor = Color.White,
                 AutoSize = true,
-                Location = new Point(184, 17)
+                Location = new Point(150, 11)
             };
             var subtitle = new Label {
                 Text = "Configuração segura da estação Windows",
                 ForeColor = Color.FromArgb(205, 213, 220),
                 AutoSize = true,
-                Location = new Point(185, 42)
+                Location = new Point(151, 33)
             };
             header.Controls.Add(logo);
             header.Controls.Add(product);
@@ -168,22 +168,22 @@ namespace Kontrol.Identity.Provisioner
             var applianceLabel = new Label {
                 Text = "Kontrol associado ao pacote de matrícula",
                 AutoSize = true,
-                Location = new Point(24, 84)
+                Location = new Point(20, 68)
             };
-            appliance.Location = new Point(24, 104);
-            appliance.Size = new Size(452, 23);
+            appliance.Location = new Point(20, 87);
+            appliance.Size = new Size(410, 23);
             appliance.ReadOnly = true;
             appliance.BackColor = Color.White;
-            packageStatus.Location = new Point(24, 133);
-            packageStatus.Size = new Size(452, 20);
+            packageStatus.Location = new Point(20, 115);
+            packageStatus.Size = new Size(410, 18);
             packageStatus.ForeColor = Color.FromArgb(110, 83, 0);
             Controls.Add(applianceLabel);
             Controls.Add(appliance);
             Controls.Add(packageStatus);
 
             install.Text = "Configurar estação";
-            install.Location = new Point(24, 158);
-            install.Size = new Size(218, 38);
+            install.Location = new Point(20, 137);
+            install.Size = new Size(198, 34);
             install.BackColor = Color.FromArgb(23, 105, 170);
             install.ForeColor = Color.White;
             install.FlatStyle = FlatStyle.Flat;
@@ -192,14 +192,14 @@ namespace Kontrol.Identity.Provisioner
             Controls.Add(install);
 
             remove.Text = "Remover configuração";
-            remove.Location = new Point(258, 158);
-            remove.Size = new Size(218, 38);
+            remove.Location = new Point(232, 137);
+            remove.Size = new Size(198, 34);
             remove.FlatStyle = FlatStyle.Flat;
             remove.Click += async (s, e) => await RemoveAsync();
             Controls.Add(remove);
 
-            log.Location = new Point(24, 210);
-            log.Size = new Size(452, 82);
+            log.Location = new Point(20, 181);
+            log.Size = new Size(410, 54);
             log.Multiline = true;
             log.ReadOnly = true;
             log.ScrollBars = ScrollBars.Vertical;
@@ -207,18 +207,18 @@ namespace Kontrol.Identity.Provisioner
             log.Font = new Font("Consolas", 8.25F);
             Controls.Add(log);
 
-            stationStatus.Location = new Point(24, 299);
-            stationStatus.Size = new Size(452, 19);
+            stationStatus.Location = new Point(20, 241);
+            stationStatus.Size = new Size(410, 19);
             stationStatus.Font = new Font("Segoe UI Semibold", 8.5F);
             Controls.Add(stationStatus);
 
             var footer = new Label {
                 Text = "2010–" + DateTime.Now.Year + " - Copyright - Kontrol Tecnologia EPP - Powered by KONTROL.",
                 ForeColor = Color.FromArgb(105, 115, 124),
-                Font = new Font("Segoe UI", 7.25F),
+                Font = new Font("Segoe UI", 6.75F),
                 TextAlign = ContentAlignment.MiddleCenter,
-                Location = new Point(14, 324),
-                Size = new Size(472, 18)
+                Location = new Point(10, 272),
+                Size = new Size(430, 18)
             };
             Controls.Add(footer);
 
