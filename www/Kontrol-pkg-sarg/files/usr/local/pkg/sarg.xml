@@ -84,10 +84,10 @@
 		<field>
 			<fielddescr>Proxy Server</fielddescr>
 			<fieldname>proxy_server</fieldname>
-			<description>Select proxy server type to read logs from.</description>
+			<description>Select the native Kontrol-ID/E2Guardian log or a compatible Squid log source.</description>
 			<type>select</type>
  			<options>
- 				<option><name>E2guardian</name><value>e2guardian</value></option>
+				<option><name>Kontrol-ID / E2Guardian (native)</name><value>e2guardian</value></option>
  				<option><name>Squidguard</name><value>squidguard</value></option>
  				<option><name>Squid</name><value>squid</value></option>
  			</options>

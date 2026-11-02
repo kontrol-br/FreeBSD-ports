@@ -232,7 +232,13 @@ if ($proxy === 'e2guardian' && is_array($config['installedpackages']['e2guardian
 }
 $format_names = array('1' => 'nativo', '2' => 'CSV', '3' => 'Squid', '4' => 'tabulado');
 $format_label = isset($format_names[$format]) ? $format_names[$format] : $format;
-$source_label = strtoupper($proxy) . ($format !== '' ? ' · formato ' . $format_label : '');
+$source_names = array(
+	'e2guardian' => 'KONTROL-ID / E2GUARDIAN',
+	'squid' => 'SQUID',
+	'squidguard' => 'SQUIDGUARD'
+);
+$source_label = (isset($source_names[$proxy]) ? $source_names[$proxy] : strtoupper($proxy)) .
+	($format !== '' ? ' · formato ' . $format_label : '');
 
 ?>
 <style>

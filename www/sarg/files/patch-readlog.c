@@ -8,8 +8,9 @@
 +extern const struct ReadLogProcessStruct ReadE2GuardianLog;
 @@ -105,5 +106,6 @@ static const struct ReadLogProcessStruct * const LogFo
  {
- 	&ReadSquidLog,
+-	&ReadSquidLog,
 +	&ReadE2GuardianLog,
++	&ReadSquidLog,
  	&ReadCommonLog,
  	&ReadSargLog,
  	&ReadExtLog

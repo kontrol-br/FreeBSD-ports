@@ -53,6 +53,30 @@ static bool E2Guardian_IsTimestamp(const char *Text)
 	return(dot);
 }
 
+/*
+ * Log readers are tried in sequence against the same mutable input buffer.
+ * Reject Squid/common/Sarg records before splitting the line so the next
+ * reader always receives the original content.
+ */
+static bool E2Guardian_HasHumanTimestamp(const char *Line)
+{
+	const unsigned char *text=(const unsigned char *)Line;
+
+	if (!text)
+		return(false);
+	if (*text == '"')
+		text++;
+	if (strlen((const char *)text) < 19)
+		return(false);
+	return(isdigit(text[0]) && isdigit(text[1]) &&
+	       isdigit(text[2]) && isdigit(text[3]) && text[4] == '.' &&
+	       isdigit(text[5]) && isdigit(text[6]) && text[7] == '.' &&
+	       isdigit(text[8]) && isdigit(text[9]) && isspace(text[10]) &&
+	       isdigit(text[11]) && isdigit(text[12]) && text[13] == ':' &&
+	       isdigit(text[14]) && isdigit(text[15]) && text[16] == ':' &&
+	       isdigit(text[17]) && isdigit(text[18]));
+}
+
 static bool E2Guardian_IsMethod(const char *Text)
 {
 	static const char * const Methods[]={
@@ -66,6 +90,17 @@ static bool E2Guardian_IsMethod(const char *Text)
 		if (strcmp(Text,Methods[i]) == 0)
 			return(true);
 	return(false);
+}
+
+static bool E2Guardian_IsHttpStatus(const char *Text)
+{
+	long status;
+	char *end;
+
+	if (!E2Guardian_IsInteger(Text))
+		return(false);
+	status=strtol(Text,&end,10);
+	return(*end == '\0' && (status == 0 || (status >= 100 && status <= 599)));
 }
 
 static bool E2Guardian_ParseHumanTime(const char *Date,const char *Time,struct tm *Result)
@@ -212,6 +247,8 @@ static enum ReadLogReturnCodeEnum E2Guardian_ReadNative(char *Line,struct ReadLo
 	int count;
 	int base=0;
 	int method;
+	int status=-1;
+	int field;
 
 	count=E2Guardian_SplitWhitespace(Line,fields,E2G_MAX_FIELDS);
 	if (count < 14 || !E2Guardian_ParseHumanTime(fields[0],fields[1],&Entry->EntryTime))
@@ -221,15 +258,24 @@ static enum ReadLogReturnCodeEnum E2Guardian_ReadNative(char *Line,struct ReadLo
 	if (count < 14+base)
 		return(RLRC_Unknown);
 
-	for (method=5+base ; method+5<count ; method++) {
+	for (method=5+base ; method+2<count ; method++) {
 		if (E2Guardian_IsMethod(fields[method]) &&
 		    E2Guardian_IsInteger(fields[method+1]) &&
-		    E2Guardian_IsInteger(fields[method+2]) &&
-		    E2Guardian_IsInteger(fields[method+4]) &&
-		    E2Guardian_IsInteger(fields[method+5]))
+		    E2Guardian_IsInteger(fields[method+2]))
 			break;
 	}
-	if (method+5 >= count)
+	if (method+2 >= count)
+		return(RLRC_Unknown);
+
+	/* The category may contain spaces. The last adjacent numeric pair after
+	 * the byte counters is filter-group/status; scanning from the method and
+	 * retaining the last match avoids treating bytes/elapsed as HTTP status. */
+	for (field=method+3 ; field+1<count ; field++) {
+		if (E2Guardian_IsInteger(fields[field]) &&
+		    E2Guardian_IsHttpStatus(fields[field+1]))
+			status=field+1;
+	}
+	if (status < 0)
 		return(RLRC_Unknown);
 
 	Entry->User=fields[2+base];
@@ -238,14 +284,14 @@ static enum ReadLogReturnCodeEnum E2Guardian_ReadNative(char *Line,struct ReadLo
 	Entry->HttpMethod=fields[method];
 	Entry->DataSize=strtoll(fields[method+1],NULL,10);
 	Entry->ElapsedTime=0LL;
-	Entry->HttpCode=fields[method+5];
+	Entry->HttpCode=fields[status];
 	Entry->UserAgent=NULL;
 	return(RLRC_NoError);
 }
 
 static enum ReadLogReturnCodeEnum E2Guardian_ReadEntry(char *Line,struct ReadLogStruct *Entry)
 {
-	if (!Line || !*Line)
+	if (!Line || !*Line || !E2Guardian_HasHumanTimestamp(Line))
 		return(RLRC_Unknown);
 	if (strchr(Line,'\t') != NULL)
 		return(E2Guardian_ReadDelimited(Line,Entry,false));
@@ -256,7 +302,7 @@ static enum ReadLogReturnCodeEnum E2Guardian_ReadEntry(char *Line,struct ReadLog
 
 const struct ReadLogProcessStruct ReadE2GuardianLog=
 {
-	N_("E2Guardian native log format"),
+	N_("Kontrol-ID/E2Guardian native log format"),
 	E2Guardian_NewFile,
 	E2Guardian_ReadEntry
 };

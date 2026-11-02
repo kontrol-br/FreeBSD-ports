@@ -279,7 +279,7 @@ function sync_package_sarg() {
 	conf_mount_rw();
 	if (! is_array($config['installedpackages']['sarg']['config'])) {
 	    $update_conf++;
-		$config['installedpackages']['sarg']['config'][0] = array('report_options' => 'use_graphs,remove_temp_files,main_index,use_comma,date_time_by_bytes',
+		$config['installedpackages']['sarg']['config'][0] = array('report_options' => 'use_graphs,remove_temp_files,main_index,index_tree,use_comma,date_time_by_bytes',
 		                                                          'report_type' => 'topusers,topsites,sites_users,users_sites,date_time,denied,auth_failures,site_user_time_date,downloads',
 		                                                          'report_date_format' => 'u',
 		                                                          'report_charset' => 'UTF-8',
@@ -293,6 +293,16 @@ function sync_package_sarg() {
 		                                                          'activity_timeout' => '15');
 	}
 	$sarg = $config['installedpackages']['sarg']['config'][0];
+	if (($config['installedpackages']['sarg']['report_layout_version'] ?? '') !== '1') {
+		$report_options = array_values(array_filter(explode(',', (string)$sarg['report_options']), 'strlen'));
+		if (!in_array('index_tree', $report_options, true)) {
+			$report_options[] = 'index_tree';
+			$config['installedpackages']['sarg']['config'][0]['report_options'] = implode(',', $report_options);
+		}
+		$config['installedpackages']['sarg']['report_layout_version'] = '1';
+		$update_conf++;
+		$sarg = $config['installedpackages']['sarg']['config'][0];
+	}
 	if (! is_array($config['installedpackages']['sarguser']['config'])) {
 	    $update_conf++;
 		$config['installedpackages']['sarguser']['config'][0] = array('user_sort_field' => 'BYTES',
@@ -306,7 +316,7 @@ function sync_package_sarg() {
 	}
 	$sarguser = $config['installedpackages']['sarguser']['config'][0];
 	$access_log = $sarg['proxy_server'];
-	$sarg_title = ucfirst($sarg['proxy_server']);
+	$sarg_title = ($sarg['proxy_server'] === 'e2guardian') ? 'Kontrol-ID / E2Guardian' : ucfirst($sarg['proxy_server']);
 	$e2guardian_conf = 'none';
 	$e2guardian_filter_out_date = '# E2Guardian access.log is parsed natively by Sarg';
 	$squidguard_conf = 'squidguard_conf none';
@@ -332,7 +342,7 @@ function sync_package_sarg() {
 			}
 			break;
 	}
-	$sarg_title = ucfirst($sarg['proxy_server']);
+	$sarg_title = ($sarg['proxy_server'] === 'e2guardian') ? 'Kontrol-ID / E2Guardian' : ucfirst($sarg['proxy_server']);
 	if (!file_exists($access_log) && $access_log != "") {
 		$error = "[sarg] Config error: " . $sarg['proxy_server'] . " log file ($access_log) does not exists";
 		log_error($error);
@@ -430,24 +440,25 @@ function sync_package_sarg() {
 
 	// write config if any file from filesystem was loaded
 	if ($update_conf > 0) {
-		write_config(gettext("Sarg package defaults initialized."));
+		write_config(gettext("Sarg package defaults and report layout updated."));
 	}
 
 	sarg_sync_on_changes();
 }
 
 function sarg_validate_input($post, &$input_errors) {
-	global $config, $g;
+	global $config, $g, $sarg_proxy;
 	// E2Guardian formats 1, 2 and 4 are parsed natively. Format 3 remains
 	// supported by Sarg's original Squid reader.
 	if ($_POST["proxy_server"] == "e2guardian") {
+		if (!is_readable($sarg_proxy['e2guardian_log'])) {
+			$input_errors[] = 'Kontrol-ID/E2Guardian access log was not found or is not readable.';
+		}
 		if (is_array($config['installedpackages']['e2guardianlog']['config'])) {
 			$log_format = (string)$config['installedpackages']['e2guardianlog']['config'][0]['logfileformat'];
 			if (!in_array($log_format, array('1', '2', '3', '4'), true)) {
 				$input_errors[] = 'The selected E2Guardian log format is not supported. Use format 1, 2, 3 or 4.';
 			}
-		} else {
-			$input_errors[]='E2Guardian package is not installed';
 		}
 	}
 

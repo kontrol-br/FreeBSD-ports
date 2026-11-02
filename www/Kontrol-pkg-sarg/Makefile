@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Sarg
 PORTVERSION=	0.8.0
-PORTREVISION=	4
+PORTREVISION=	7
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -13,7 +13,7 @@ COMMENT=	Kontrol SARG Package
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	${LOCALBASE}/bin/sarg:www/sarg
+RUN_DEPENDS=	sarg>=2.4.0_8:www/sarg
 
 USES=		php:cli
 USE_PHP=	posix session zlib
