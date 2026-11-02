@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Security;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -16,6 +17,15 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
+
+[assembly: AssemblyTitle("Kontrol-ID Provisioner")]
+[assembly: AssemblyDescription("Provisionamento seguro de estações Windows para o Kontrol-ID")]
+[assembly: AssemblyCompany("Kontrol")]
+[assembly: AssemblyProduct("Kontrol-ID Provisioner")]
+[assembly: AssemblyCopyright("Copyright © 2026 Kontrol")]
+[assembly: AssemblyVersion("0.5.0.45")]
+[assembly: AssemblyFileVersion("0.5.0.45")]
+[assembly: AssemblyInformationalVersion("0.5.0_45")]
 
 namespace Kontrol.Identity.Provisioner
 {

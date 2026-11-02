@@ -18,4 +18,9 @@ if (-not (Test-Path -LiteralPath $compiler)) {
 if ($LASTEXITCODE -ne 0) {
     throw "C# compilation failed with exit code $LASTEXITCODE."
 }
+try {
+    [Reflection.AssemblyName]::GetAssemblyName($output) | Out-Null
+} catch {
+    throw "The generated Provisioner is not a valid PE/CLR executable: $($_.Exception.Message)"
+}
 Write-Host "Built $output"
