@@ -1,5 +1,35 @@
 #!/bin/sh
 
+# Never execute the product deinstall path during pkg upgrade.  In particular,
+# do not disable the saved configuration or remove managed files between the
+# old package's pre-deinstall and the new package's post-install phases.
+if [ -n "${PKG_UPGRADE+x}" ]; then
+	domain_state="/var/db/kontrol-id-domain"
+	backup_dir="/var/backups/kontrol-id"
+	backup_tmp="${backup_dir}/domain-state.pre-upgrade.tar.tmp.$$"
+	backup_file="${backup_dir}/domain-state.pre-upgrade.tar"
+	if [ -f "${domain_state}/krb5.keytab" ] || \
+	    [ -f "${domain_state}/samba/private/secrets.tdb" ]; then
+		umask 077
+		if ! /usr/bin/install -d -o root -g wheel -m 0700 "${backup_dir}"; then
+			echo "Kontrol-ID: unable to create the protected pre-upgrade backup directory." >&2
+			exit 1
+		fi
+		if ! /usr/bin/tar -cpf "${backup_tmp}" \
+		    --exclude 'kontrol-id-domain/samba/run' \
+		    --exclude 'kontrol-id-domain/samba/cache' \
+		    --exclude 'kontrol-id-domain/samba/lock' \
+		    -C /var/db kontrol-id-domain; then
+			/bin/rm -f "${backup_tmp}"
+			echo "Kontrol-ID: unable to preserve the AD machine trust before upgrade." >&2
+			exit 1
+		fi
+		/bin/chmod 0600 "${backup_tmp}"
+		/bin/mv -f "${backup_tmp}" "${backup_file}"
+	fi
+	exit 0
+fi
+
 if [ -f /etc/rc.packages ]; then
 	/usr/local/bin/php -f /etc/rc.packages %%PORTNAME%% ${2}
 fi

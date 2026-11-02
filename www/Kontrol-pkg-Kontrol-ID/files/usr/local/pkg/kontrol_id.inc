@@ -3406,6 +3406,34 @@ function kontrol_id_install() {
 	} catch (Exception $e) {
 		log_error('[Kontrol-ID] Installation failed: ' . $e->getMessage());
 	}
+	kontrol_id_post_upgrade_domain_health();
+}
+
+function kontrol_id_post_upgrade_domain_health() {
+	$has_keytab = is_file(KONTROL_ID_KEYTAB);
+	$has_machine_secret = is_file(KONTROL_ID_SAMBA_PRIVATE . '/secrets.tdb');
+	if (!$has_keytab && !$has_machine_secret) {
+		return;
+	}
+	try {
+		$status = kontrol_id_domain_status();
+		$failed = array();
+		foreach ((array)($status['checks'] ?? array()) as $check) {
+			if (empty($check['ok'])) {
+				$failed[] = trim((string)($check['name'] ?? 'Domain check')) . ': ' .
+					trim((string)($check['detail'] ?? 'validation failed'));
+			}
+		}
+		if (empty($failed)) {
+			log_error('[Kontrol-ID] Post-upgrade AD validation succeeded; the existing machine trust was preserved.');
+		} else {
+			log_error('[Kontrol-ID] Post-upgrade AD validation requires attention. The existing trust data was preserved and no automatic rejoin was attempted. ' .
+				implode(' | ', $failed));
+		}
+	} catch (Exception $e) {
+		log_error('[Kontrol-ID] Unable to validate the preserved AD trust after package installation. No automatic unjoin or rejoin was attempted: ' .
+			$e->getMessage());
+	}
 }
 
 function kontrol_id_deinstall() {

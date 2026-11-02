@@ -91,3 +91,29 @@
 		</tab>
 	</tabs>
 	<fields>
+        <field>
+            <name>Exception User List</name>
+            <type>listtopic</type>
+        </field>
+        <field>
+            <fieldname>exceptionuserlist</fieldname>
+            <fielddescr>Exception User List</fielddescr>
+            <description><![CDATA[Users in this list bypass content filtering while access remains logged. Enter one identity per line. DOMAIN\user, user@REALM and bare user names are normalized case-insensitively.]]></description>
+            <type>textarea</type>
+            <cols>80</cols>
+            <rows>12</rows>
+            <encoding>base64</encoding>
+        </field>
+        <field>
+            <name>Banned User List</name>
+            <type>listtopic</type>
+        </field>
+        <field>
+            <fieldname>banneduserlist</fieldname>
+            <fielddescr>Banned User List</fielddescr>
+            <description><![CDATA[Users in this list are denied before group policy is evaluated. A banned entry takes precedence when the same identity is also present in the exception list.]]></description>
+            <type>textarea</type>
+            <cols>80</cols>
+            <rows>12</rows>
+            <encoding>base64</encoding>
+        </field>

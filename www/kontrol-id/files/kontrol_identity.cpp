@@ -34,6 +34,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <arpa/inet.h>
 
@@ -75,6 +76,8 @@ struct map_snapshot {
     std::vector<network_entry> networks;
     std::vector<range_entry> ranges;
     std::unordered_map<std::string, int> users;
+    std::unordered_set<std::string> exception_users;
+    std::unordered_set<std::string> banned_users;
 };
 
 std::string trim_copy(const std::string &value)
@@ -211,6 +214,24 @@ void read_user_map(const std::string &path, map_snapshot &snapshot)
         const int group = parse_group(line.substr(separator + 1));
         if (!username.empty() && group >= 0)
             snapshot.users[username] = group;
+    }
+}
+
+void read_user_policy(const std::string &path,
+    std::unordered_set<std::string> &target)
+{
+    std::ifstream input(path.c_str());
+    std::string line;
+    while (std::getline(input, line)) {
+        const std::string::size_type comment = line.find('#');
+        if (comment != std::string::npos)
+            line.erase(comment);
+        std::istringstream fields(line);
+        std::string identity;
+        fields >> identity;
+        identity = lower_copy(normalise_auth_username(identity));
+        if (!identity.empty() && identity != "-")
+            target.insert(identity);
     }
 }
 
@@ -443,6 +464,12 @@ void kontrol_identity_instance::refresh_maps(bool force)
     std::shared_ptr<map_snapshot> next(new map_snapshot());
     read_ip_map(ipgroups_path, *next);
     read_user_map(usergroups_path, *next);
+    read_user_policy(
+        "/usr/local/etc/e2guardian/lists/authplugins/exceptionuserlist",
+        next->exception_users);
+    read_user_policy(
+        "/usr/local/etc/e2guardian/lists/authplugins/banneduserlist",
+        next->banned_users);
     std::atomic_store(&maps, std::shared_ptr<const map_snapshot>(next));
     last_map_refresh.store(now);
 }
@@ -595,11 +622,39 @@ int kontrol_identity_instance::determineGroup(std::string &user,
     std::string source;
     const std::string normalized_user = lower_copy(normalise_auth_username(user));
     if (!normalized_user.empty() && normalized_user != lower_copy(unknown_user)) {
-        const std::unordered_map<std::string, int>::const_iterator found =
-            snapshot->users.find(normalized_user);
-        if (found != snapshot->users.end()) {
-            group = found->second;
-            source = "identity";
+        if (snapshot->banned_users.find(normalized_user) !=
+            snapshot->banned_users.end()) {
+            check.isBlocked = true;
+            check.isItNaughty = true;
+            check.blocktype = 0;
+            check.whatIsNaughty = "Access denied by the Kontrol-ID user policy.";
+            check.whatIsNaughtyLog = "User denied by Kontrol-ID banned user list";
+            check.whatIsNaughtyCategories = "User policy";
+            check.whatIsNaughtyDisplayCategories = "User policy";
+            group = get_default(!check.request_header->isProxyRequest) - 1;
+            if (group < 0)
+                group = 0;
+            source = "banned-user";
+        } else if (snapshot->exception_users.find(normalized_user) !=
+            snapshot->exception_users.end()) {
+            check.isexception = true;
+            check.isException = true;
+            check.nomitm = true;
+            check.automitm = false;
+            group = get_default(!check.request_header->isProxyRequest) - 1;
+            if (group < 0)
+                group = 0;
+            source = "exception-user";
+        }
+    }
+    if (!normalized_user.empty() && normalized_user != lower_copy(unknown_user)) {
+        if (group < 0) {
+            const std::unordered_map<std::string, int>::const_iterator found =
+                snapshot->users.find(normalized_user);
+            if (found != snapshot->users.end()) {
+                group = found->second;
+                source = "identity";
+            }
         }
     }
 

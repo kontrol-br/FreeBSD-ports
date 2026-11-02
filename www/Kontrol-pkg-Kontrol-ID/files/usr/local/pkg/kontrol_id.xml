@@ -484,7 +484,8 @@
 			<fielddescr>Export Kontrol-ID Settings</fielddescr>
 			<fieldname>kontrol_id_export_settings_button</fieldname>
 			<description><![CDATA[
-				Download a versioned XML file containing the Kontrol-ID identity, engine and policy configuration.
+				Download a versioned XML file containing the Kontrol-ID identity, engine and policy configuration, including user/IP lists and AD policy mappings.<br/>
+				<strong>Configuration-only backup:</strong> this file does not contain the selected CA/private key, Kerberos keytab, Samba machine-trust database, logs or runtime identity cache. It may contain configured directory or XMLRPC credentials and is not encrypted; store it securely. A restored or replaced appliance must validate or rejoin the domain before domain authentication is enabled.
 				<button class="btn btn-primary btn-sm" name="kontrol_id_export_settings" id="kontrol_id_export_settings" type="submit" value="kontrol_id_export_settings">
 					<i class="fa fa-download icon-embed-btn"></i>Export Kontrol-ID settings
 				</button>
@@ -495,7 +496,7 @@
 			<fielddescr>Import Kontrol-ID Settings</fielddescr>
 			<fieldname>kontrol_id_import_controls</fieldname>
 			<description><![CDATA[
-				Choose an XML file exported by Kontrol-ID. A valid import replaces the package sections and immediately applies the managed configuration.<br/>
+				Choose a compatible XML file exported by Kontrol-ID. A valid import verifies every section checksum, replaces the package sections and immediately applies the managed configuration. Domain trust and referenced PKI must already exist on this appliance or be restored separately.<br/>
 				<input class="form-control" type="file" id="kontrol_id_import_file" accept=".xml,text/xml,application/xml" />
 				<div id="kontrol_id_import_file_status" class="text-muted" style="margin-top:6px;">No file selected.</div>
 				<textarea name="kontrol_id_import_payload" id="kontrol_id_import_payload" style="display:none;"></textarea>

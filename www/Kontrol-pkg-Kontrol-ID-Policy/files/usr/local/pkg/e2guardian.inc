@@ -1606,6 +1606,8 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         $files = array(
                 "/e2guardianf1.conf",
                 "/lists/authplugins/filtergroupslist",
+                "/lists/authplugins/exceptionuserlist",
+                "/lists/authplugins/banneduserlist",
                 "/lists/bannedphraselist",
                 "/lists/exceptionphraselist",
                 "/lists/weightedphraselist",
@@ -2357,6 +2359,24 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
     // Exception IP list is user-managed; do not reload sample defaults when emptied.
     file_put_contents($e2guardian_dir . "/lists/exceptioniplist", e2_text_area_decode($config['installedpackages']['e2guardianips']['config'][0]['exceptioniplist']), LOCK_EX);
     file_put_contents($e2guardian_dir . "/lists/bannediplist", e2_text_area_decode($config['installedpackages']['e2guardianips']['config'][0]['bannediplist']), LOCK_EX);
+
+    if (!is_array($config['installedpackages']['e2guardianusers']['config'])) {
+        config_set_path("installedpackages/e2guardianusers/config/0", array(
+            "exceptionuserlist" => "",
+            "banneduserlist" => ""
+        ));
+    }
+    $e2guardian_users = $config['installedpackages']['e2guardianusers']['config'][0];
+    file_put_contents(
+        $e2guardian_dir . "/lists/authplugins/exceptionuserlist",
+        e2_text_area_decode($e2guardian_users['exceptionuserlist'] ?? ''),
+        LOCK_EX
+    );
+    file_put_contents(
+        $e2guardian_dir . "/lists/authplugins/banneduserlist",
+        e2_text_area_decode($e2guardian_users['banneduserlist'] ?? ''),
+        LOCK_EX
+    );
 
     //save schedules used on acls and it's current state
     file_put_contents("/tmp/e2g_scheds.txt",serialize($e2g_sched_in_use),LOCK_EX);
@@ -4116,7 +4136,7 @@ function e2guardian_php_deinstall_command() {
 }
 
 function e2guardian_package_version() {
-    return '0.9.3';
+    return '0.9.4';
 }
 
 function e2guardian_export_sections($include_identity = true) {
@@ -4299,8 +4319,13 @@ function e2guardian_import_settings_xml($xml_contents, &$input_errors = array())
     if (!in_array($package_name, array('kontrol-id', 'e2guardian'), true)) {
         $input_errors[] = gettext('Invalid import file: package marker is not Kontrol-ID.');
     }
-    if ($package_version !== e2guardian_package_version()) {
-        $input_errors[] = sprintf(gettext('Package version mismatch: expected %s, got %s.'), e2guardian_package_version(), $package_version);
+    if (!preg_match('/^\d+\.\d+\.\d+$/', $package_version)) {
+        $input_errors[] = gettext('Invalid or missing package version marker.');
+    } elseif (version_compare($package_version, e2guardian_package_version(), '>')) {
+        $input_errors[] = sprintf(
+            gettext('This backup was created by a newer Kontrol-ID configuration format (%s). Upgrade the package before importing it.'),
+            $package_version
+        );
     }
     if (!isset($xml->installedpackages_sections->section)) {
         $input_errors[] = gettext('No valid installedpackages sections were found in the import file.');
