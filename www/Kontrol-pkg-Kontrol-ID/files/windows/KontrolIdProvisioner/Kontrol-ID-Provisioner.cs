@@ -23,10 +23,10 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("Provisionamento seguro de estações Windows para o Kontrol-ID")]
 [assembly: AssemblyCompany("Kontrol")]
 [assembly: AssemblyProduct("Kontrol-ID Provisioner")]
-[assembly: AssemblyCopyright("Copyright © 2010-2026 Kontrol Tecnologia EPP")]
-[assembly: AssemblyVersion("0.5.0.46")]
-[assembly: AssemblyFileVersion("0.5.0.46")]
-[assembly: AssemblyInformationalVersion("0.5.0_46")]
+[assembly: AssemblyCopyright("Copyright © 2016-2026 Kontrol Tecnologia EPP")]
+[assembly: AssemblyVersion("0.5.0.47")]
+[assembly: AssemblyFileVersion("0.5.0.47")]
+[assembly: AssemblyInformationalVersion("0.5.0_47")]
 
 namespace Kontrol.Identity.Provisioner
 {
@@ -213,7 +213,7 @@ namespace Kontrol.Identity.Provisioner
             Controls.Add(stationStatus);
 
             var footer = new Label {
-                Text = "2010–" + DateTime.Now.Year + " - Copyright - Kontrol Tecnologia EPP - Powered by KONTROL.",
+                Text = "2016–" + DateTime.Now.Year + " - Copyright - Kontrol Tecnologia EPP - Powered by KONTROL.",
                 ForeColor = Color.FromArgb(105, 115, 124),
                 Font = new Font("Segoe UI", 6.75F),
                 TextAlign = ContentAlignment.MiddleCenter,
