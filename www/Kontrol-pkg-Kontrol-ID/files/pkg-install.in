@@ -1,5 +1,32 @@
 #!/bin/sh
 
+if [ "${2}" = "PRE-INSTALL" ]; then
+	domain_state="/var/db/kontrol-id-domain"
+	backup_dir="/var/backups/kontrol-id"
+	backup_tmp="${backup_dir}/domain-state.pre-upgrade.tar.tmp.$$"
+	backup_file="${backup_dir}/domain-state.pre-upgrade.tar"
+	if [ -f "${domain_state}/krb5.keytab" ] || \
+	    [ -f "${domain_state}/samba/private/secrets.tdb" ]; then
+		umask 077
+		if ! /usr/bin/install -d -o root -g wheel -m 0700 "${backup_dir}"; then
+			echo "Kontrol-ID: unable to create the protected pre-install backup directory." >&2
+			exit 1
+		fi
+		if ! /usr/bin/tar -cpf "${backup_tmp}" \
+		    --exclude 'kontrol-id-domain/samba/run' \
+		    --exclude 'kontrol-id-domain/samba/cache' \
+		    --exclude 'kontrol-id-domain/samba/lock' \
+		    -C /var/db kontrol-id-domain; then
+			/bin/rm -f "${backup_tmp}"
+			echo "Kontrol-ID: unable to preserve the AD machine trust before installation." >&2
+			exit 1
+		fi
+		/bin/chmod 0600 "${backup_tmp}"
+		/bin/mv -f "${backup_tmp}" "${backup_file}"
+	fi
+	exit 0
+fi
+
 if [ "${2}" != "POST-INSTALL" ]; then
 	exit 0
 fi

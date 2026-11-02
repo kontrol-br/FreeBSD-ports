@@ -2365,6 +2365,17 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
             "exceptionuserlist" => "",
             "banneduserlist" => ""
         ));
+    } elseif (!is_array($config['installedpackages']['e2guardianusers']['config'][0])) {
+        config_set_path("installedpackages/e2guardianusers/config/0", array(
+            "exceptionuserlist" => "",
+            "banneduserlist" => ""
+        ));
+    } else {
+        foreach (array("exceptionuserlist", "banneduserlist") as $user_list_key) {
+            if (!array_key_exists($user_list_key, $config['installedpackages']['e2guardianusers']['config'][0])) {
+                config_set_path("installedpackages/e2guardianusers/config/0/{$user_list_key}", "");
+            }
+        }
     }
     $e2guardian_users = $config['installedpackages']['e2guardianusers']['config'][0];
     file_put_contents(

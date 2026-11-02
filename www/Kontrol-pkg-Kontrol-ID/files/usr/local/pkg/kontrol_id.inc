@@ -3237,6 +3237,7 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 	global $savemsg;
 
 	$changed = kontrol_id_ensure_defaults();
+	$changed = kontrol_id_migrate_dashboard_widget() || $changed;
 	$changed = kontrol_id_prepare_dependency_defaults() || $changed;
 	$changed = kontrol_id_ensure_group() || $changed;
 	$changed = kontrol_id_ensure_pki() || $changed;
@@ -3393,6 +3394,57 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 		log_error('[Kontrol-ID] Restarting the WebGUI to activate the portal certificate.');
 		send_event('service restart webgui');
 	}
+}
+
+function kontrol_id_migrate_dashboard_widget_settings($widgets) {
+	$changed = false;
+	if (!is_array($widgets)) {
+		return array($widgets, false);
+	}
+
+	if (!empty($widgets['sequence']) && is_string($widgets['sequence'])) {
+		$sequence = preg_replace('/(^|,)e2guardian:/', '$1kontrol_id:', $widgets['sequence']);
+		if ($sequence !== $widgets['sequence']) {
+			$widgets['sequence'] = $sequence;
+			$changed = true;
+		}
+	}
+	foreach (array_keys($widgets) as $key) {
+		if (strpos((string)$key, 'e2guardian-') !== 0) {
+			continue;
+		}
+		$new_key = 'kontrol_id-' . substr((string)$key, strlen('e2guardian-'));
+		if (!array_key_exists($new_key, $widgets)) {
+			$widgets[$new_key] = $widgets[$key];
+		}
+		unset($widgets[$key]);
+		$changed = true;
+	}
+	return array($widgets, $changed);
+}
+
+function kontrol_id_migrate_dashboard_widget() {
+	$changed = false;
+	list($widgets, $widgets_changed) = kontrol_id_migrate_dashboard_widget_settings(
+		config_get_path('widgets', array()));
+	if ($widgets_changed) {
+		config_set_path('widgets', $widgets);
+		$changed = true;
+	}
+
+	$users = config_get_path('system/user', array());
+	foreach ((array)$users as $index => $user) {
+		if (!is_array($user) || !isset($user['widgets'])) {
+			continue;
+		}
+		list($user_widgets, $user_changed) =
+			kontrol_id_migrate_dashboard_widget_settings($user['widgets']);
+		if ($user_changed) {
+			config_set_path("system/user/{$index}/widgets", $user_widgets);
+			$changed = true;
+		}
+	}
+	return $changed;
 }
 
 function kontrol_id_install() {

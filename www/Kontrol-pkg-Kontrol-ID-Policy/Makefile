@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID-Policy
 PORTVERSION=	1.0.0
-PORTREVISION=	28
+PORTREVISION=	30
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -36,6 +36,7 @@ do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/www
 	${MKDIR} ${STAGEDIR}${PREFIX}/etc/e2guardian
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/widgets/widgets
+	${MKDIR} ${STAGEDIR}${PREFIX}/www/widgets/include
 	${MKDIR} ${STAGEDIR}${PREFIX}/www/shortcuts
 	${MKDIR} ${STAGEDIR}/etc/inc/priv
 	${MKDIR} ${STAGEDIR}/root
@@ -128,8 +129,10 @@ do-install:
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/etc/e2guardian/squidparent.conf \
 		${STAGEDIR}${PREFIX}/etc/e2guardian
-	${INSTALL_DATA} -m 0755 ${FILESDIR}${PREFIX}/www/widgets/widgets/e2guardian.widget.php \
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/widgets/widgets/kontrol_id.widget.php \
 		${STAGEDIR}${PREFIX}/www/widgets/widgets
+	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/widgets/include/kontrol_id.inc \
+		${STAGEDIR}${PREFIX}/www/widgets/include
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${PREFIX}/www/shortcuts/pkg_e2guardian.inc \
 		${STAGEDIR}${PREFIX}/www/shortcuts
 	${INSTALL_DATA} -m 0644 ${FILESDIR}${DATADIR}/info.xml \

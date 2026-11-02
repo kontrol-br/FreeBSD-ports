@@ -23,8 +23,8 @@
 global $priv_list;
 
 $priv_list['page-services-e2guardian'] = array();
-$priv_list['page-services-e2guardian']['name'] = "WebCfg -Services: E2guardian package";
-$priv_list['page-services-e2guardian']['descr'] = "Allow access to E2guardian package GUI";
+$priv_list['page-services-e2guardian']['name'] = "WebCfg -Services: Kontrol-ID package";
+$priv_list['page-services-e2guardian']['descr'] = "Allow access to the Kontrol-ID package GUI";
 
 $priv_list['page-services-e2guardian']['match'] = array();
 $priv_list['page-services-e2guardian']['match'][] = "pkg.php?xml=e2guardian*";
@@ -34,6 +34,6 @@ $priv_list['page-services-e2guradian']['match'][] = "e2guardian_about.php";
 $priv_list['page-services-e2guradian']['match'][] = "e2guardian_monitor.php";
 $priv_list['page-services-e2guradian']['match'][] = "e2guardian_monitor_data.php";
 $priv_list['page-services-e2guradian']['match'][] = "e2guardian_log_parser.php";
-$priv_list['page-services-e2guradian']['match'][] = "e2guardian.widget.php";
+$priv_list['page-services-e2guardian']['match'][] = "kontrol_id.widget.php";
 
 ?>
