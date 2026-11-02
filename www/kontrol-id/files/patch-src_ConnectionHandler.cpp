@@ -27,12 +27,37 @@
 @@ -1510 +1528 @@ int ConnectionHandler::handleConnection(Socket &peerconn, String &ip, bool ismit
 -            if (fg_resp && (!checkme.isItNaughty) && (!checkme.upfailure) && (!checkme.isconnect) && (!checkme.logcategory) && !checkme.tunnel_rest) {
 +            if (fg_resp && (!checkme.isItNaughty) && (!checkme.upfailure) && (!checkme.isconnect) && (!checkme.logcategory) && !checkme.tunnel_rest && !protocolUpgrade) {
-@@ -3021,2 +3039,2 @@ bool ConnectionHandler::goMITM(NaughtyFilter &checkme, Socket &proxysock, Socket
+@@ -1838,4 +1856,6 @@ void ConnectionHandler::doRQLog(std::string &who, std::string &from, NaughtyFilt
++    if (o.rqlog_only_tunnel_open && funct != "THTTPS_OPEN")
++        return;
+     String rtype = cm.request_header->requestType();
+     String where = cm.logurl;
+     unsigned int port = cm.request_header->port;
+     std::string what = thread_id;
+@@ -3021,2 +3041,2 @@ bool ConnectionHandler::goMITM(NaughtyFilter &checkme, Socket &proxysock, Socket
 -            writecert = o.ca->writeCertificate(checkme.urldomain.c_str(), cert,
 -                                               &caser);
 +            writecert = o.ca->writeCertificate(checkme.urldomain.c_str(), cert,
 +                                               &caser, checkme.isiphost);
-@@ -4739,4 +4757,8 @@ int ConnectionHandler::handleICAPresmod(Socket &peerconn, String &ip, NaughtyFil
+@@ -3611,4 +3631,4 @@ int ConnectionHandler::handleTHTTPSConnection(Socket &peerconn, String &ip, Sock
+-            if(o.log_requests) {
++            if(o.log_requests && !o.rqlog_only_tunnel_open) {
+                 std::string fnt = "THTTPS";
+                 doRQLog(clientuser, clientip, checkme, fnt);
+             }
+@@ -3782,6 +3802,11 @@ int ConnectionHandler::handleTHTTPSConnection(Socket &peerconn, String &ip, Sock
+ #ifdef E2DEBUG
+                 std::cerr << thread_id << " -Tunnelling to client" << std::endl;
+ #endif
++                if (o.log_requests && o.rqlog_only_tunnel_open) {
++                    std::string fnt = "THTTPS_OPEN";
++                    doRQLog(clientuser, clientip, checkme, fnt);
++                }
++
+                 if (!fdt.tunnel(proxysock, peerconn,true, -1 , true))
+                     persistProxy = false;
+                 checkme.docsize += fdt.throughput;
+@@ -4739,4 +4764,8 @@ int ConnectionHandler::handleICAPresmod(Socket &peerconn, String &ip, NaughtyFil
 -            //Log
 -    if (!checkme.isourwebserver && checkme.isItNaughty) { // don't log requests to the web server & and normal response
 -        checkme.whatIsNaughtyLog = "ICAP Response filtering: ";

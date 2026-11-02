@@ -67,6 +67,11 @@ if ($_POST) {
                     show_tds(array("","Date", "IP", "Url", "Response", "User", "Group", "Blacklist", "Reason"));
                     $shown = 0;
                     foreach ($logarr as $logent) {
+                        $live_marker = "\t__KONTROL_ID_TUNNEL_OPEN__";
+                        $is_live = (substr($logent, -strlen($live_marker)) === $live_marker);
+                        if ($is_live) {
+                            $logent = substr($logent, 0, -strlen($live_marker));
+                        }
                         //split log
                         if (preg_match("/^(\S+\s+\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+([A-Z]+|-)\s+\d+\s+\d+\s+(.*?)\s+\d+\s+(\d+)\s+\S+\s+\S+\s+(\S+)/", $logent, $logline)) {
 
@@ -85,7 +90,9 @@ if ($_POST) {
 
                             echo "<tr valign='top'>\n";
 
-                            if (preg_match("/(404|50\d)/",$logline[8])) {
+                            if ($is_live) {
+                                echo "<td><i class='fa fa-circle text-info'></i></td>\n";
+                            } else if (preg_match("/(404|50\d)/",$logline[8])) {
                                 echo "<td><i class='fa fa-times text-warning'></i></td>\n";
                             } else  if (preg_match("/40\d/",$logline[8])) {
                                 echo "<td><i class='fa fa-times text-danger'></i></td>\n";
@@ -97,12 +104,13 @@ if ($_POST) {
                                                        echo "<td class='listlr' nowrap='nowrap'>" . e2gm($logline[1]) . "</td>\n";
                                                           echo "<td $listr>" . e2gm($logline[3]) . "</td>\n";
                                                        echo "<td $listr title='{$logline[4]}' width='*'>" . e2gm(preg_replace("/(\?|;).*/","",$url)) . "</td>\n";
-                                                    echo "<td $listr>" . e2gm($logline[8]) . "</td>\n";
+                                                    echo "<td $listr>" . ($is_live ? gettext("LIVE") : e2gm($logline[8])) . "</td>\n";
                                                     echo "<td $listr>" . e2gm($logline[2]) . "</td>\n";
                                                     echo "<td $listr>" . e2gm($logline[9]) . "</td>\n";
                             $cat_val = ($logline[7] !== '' && $logline[7] !== '-') ? '<b>' . e2gm($logline[7]) . '</b>' : '-';
                             echo "<td $listr>" . $cat_val . "</td>\n";
-                            echo "<td $listr>" . e2gm($logline[5]) . "</td>\n";
+                            $reason = $is_live ? gettext("Active TLS tunnel (SNI); final counters are recorded when it closes.") : e2gm($logline[5]);
+                            echo "<td $listr>" . $reason . "</td>\n";
                                                     echo "</tr>\n";
                             $shown++;
                             if ($shown >= $display_limit) {
@@ -251,6 +259,10 @@ function fetch_log($log) {
     $readlines = is_numeric($_POST['readlines'] ?? null) ? (int)$_POST['readlines'] : 2000;
     $readlines = max($lines, min(20000, $readlines));
     $scanlines = ($program === 'access' && ($traffic !== 'all' || $filter !== '')) ? $readlines : $lines;
+
+    if ($program === 'access' && (int)($e2glog['logfileformat'] ?? 1) === 1) {
+        return fetch_access_and_live_logs($scanlines, $filter);
+    }
     if (preg_match("/!/", htmlspecialchars($_POST['strfilter']))) {
         $grep_arg = "-iv";
     } else {
@@ -273,6 +285,79 @@ function fetch_log($log) {
     // Return logs
     return ${$logarr.$program};
 };
+
+/*
+ * Trusted TLS tunnels are accounted in access.log only after they close.  The
+ * engine writes a lightweight opening event to request.log so Real Time can
+ * show the SNI immediately.  A completed access record supersedes its opening
+ * event; reports continue to consume access.log exclusively.
+ */
+function fetch_access_and_live_logs($scanlines, $filter) {
+    $access_log = '/var/log/e2guardian/access.log';
+    $live_log = '/var/log/e2guardian/request.log';
+    $marker = "\t__KONTROL_ID_TUNNEL_OPEN__";
+    $limit = max(1, min(20000, (int)$scanlines));
+    $access_lines = array();
+    $live_lines = array();
+
+    if (is_file($access_log)) {
+        exec('/usr/bin/tail -r -n ' . $limit . ' ' . escapeshellarg($access_log), $access_lines);
+    }
+    if (is_file($live_log)) {
+        exec('/usr/bin/tail -r -n ' . $limit . ' ' . escapeshellarg($live_log), $live_lines);
+    }
+
+    $completed = array();
+    $entries = array();
+    foreach ($access_lines as $line) {
+        $identity = kontrol_id_log_identity($line);
+        if ($identity !== false) {
+            $completed[$identity['key']] = max($completed[$identity['key']] ?? '', $identity['time']);
+            $entries[] = array('line' => $line, 'time' => $identity['time'], 'live' => false);
+        }
+    }
+
+    foreach ($live_lines as $line) {
+        if (strpos($line, 'THTTPS_OPEN') === false) {
+            continue;
+        }
+        $identity = kontrol_id_log_identity($line);
+        if ($identity === false) {
+            continue;
+        }
+        if (isset($completed[$identity['key']]) && $completed[$identity['key']] >= $identity['time']) {
+            continue;
+        }
+        $entries[] = array('line' => $line . $marker, 'time' => $identity['time'], 'live' => true);
+    }
+
+    if ($filter !== '') {
+        $entries = array_values(array_filter($entries, function($entry) use ($filter) {
+            return stripos($entry['line'], $filter) !== false;
+        }));
+    }
+
+    usort($entries, function($left, $right) {
+        $time_cmp = strcmp($right['time'], $left['time']);
+        if ($time_cmp !== 0) {
+            return $time_cmp;
+        }
+        return ((int)$left['live']) <=> ((int)$right['live']);
+    });
+
+    $entries = array_slice($entries, 0, $limit);
+    return array_map(function($entry) { return $entry['line']; }, $entries);
+}
+
+function kontrol_id_log_identity($line) {
+    if (!preg_match('/^(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+(\S+)\s+(\S+)/', $line, $match)) {
+        return false;
+    }
+    return array(
+        'time' => $match[1],
+        'key' => $match[2] . "\n" . $match[3] . "\n" . $match[4],
+    );
+}
 
 function show_tds($tds) {
     echo "<tr valign='top'>\n";

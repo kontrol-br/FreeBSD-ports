@@ -48,25 +48,23 @@ mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' stop');
 e2g_log_info("e2guardian - stopping");
 $e2guardian_log = $config['installedpackages']['e2guardianlog']['config'][0];
 $logfilecount = ($e2guardian_log['logcount'] ? $e2guardian_log['logcount'] : "30");
-$log="/var/log/e2guardian/access.log";
-//log_error("e2guardian - max logs: " . $logfilecount);
-// This script is the logrotate script file distrubuted with e2guardian translated to php
-if (file_exists("{$log}.{$logfilecount}")){
-    //log_error("e2guardian - deleting: " . $log . $logfilecount);
-    unlink("{$log}.{$logfilecount}");
-}
-$n = $logfilecount - 1;
-while ($n > 0){
-    $m = $n + 1;
-    if(file_exists("{$log}.{$n}")){
-        //log_error("e2guardian - moving: " . $log . $n . " to " . $log . ($n + 1));
-        rename("{$log}.{$n}", "{$log}.{$m}");
+$logs = array('/var/log/e2guardian/access.log', '/var/log/e2guardian/request.log');
+// This script is the logrotate script file distributed with e2guardian translated to php
+foreach ($logs as $log) {
+    if (file_exists("{$log}.{$logfilecount}")) {
+        unlink("{$log}.{$logfilecount}");
     }
-    $n--;
-}
-if (file_exists($log)){
-    //log_error("e2guardian - moving: " . $log . " to " . $log . "1");
-    rename($log, "{$log}.1");
+    $n = $logfilecount - 1;
+    while ($n > 0) {
+        $m = $n + 1;
+        if (file_exists("{$log}.{$n}")) {
+            rename("{$log}.{$n}", "{$log}.{$m}");
+        }
+        $n--;
+    }
+    if (file_exists($log)) {
+        rename($log, "{$log}.1");
+    }
 }
 
 //$result = system($script);

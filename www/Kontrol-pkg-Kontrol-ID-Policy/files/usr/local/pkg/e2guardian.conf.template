@@ -131,6 +131,11 @@ anonymizelogs = {$anonymizelogs}
 # Defines the log directory and filename.
 
 loglocation = '/var/log/e2guardian/access.log'
+
+# Kontrol-ID Real Time receives an immediate SNI event when a trusted TLS
+# tunnel opens. Completed accounting remains exclusively in access.log.
+rqloglocation = '/var/log/e2guardian/request.log'
+rqlogonlytunnelopen = on
 # Dymamic statistics log file location
 #
 # Defines the dstats file directory and filename.
