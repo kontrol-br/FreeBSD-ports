@@ -395,6 +395,15 @@
 			</options>
 		</field>
 		<field>
+			<fielddescr>Manage Local Portal Certificate</fielddescr>
+			<fieldname>manage_portal_certificate</fieldname>
+			<description><![CDATA[
+				When the Portal URL is empty, issue a dedicated server certificate for the local portal using the selected Kontrol-ID CA and activate it on the WebGUI. The certificate includes the portal FQDN, short hostname and local interface IPs as Subject Alternative Names. The previous WebGUI certificate is preserved and restored if this option is disabled or the package is removed.
+			]]></description>
+			<type>checkbox</type>
+			<default_value>on</default_value>
+		</field>
+		<field>
 			<fielddescr>Portal URL</fielddescr>
 			<fieldname>portal_url</fieldname>
 			<description>Leave empty to use the Kontrol WebGUI hostname and /kontrol_id_portal.php.</description>

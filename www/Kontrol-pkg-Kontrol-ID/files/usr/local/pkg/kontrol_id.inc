@@ -78,6 +78,9 @@ function kontrol_id_defaults() {
 		'unknown_user' => 'unknown',
 		'unknown_action' => 'portal',
 		'portal_url' => '',
+		'manage_portal_certificate' => 'on',
+		'portal_cert_ref' => '',
+		'previous_webgui_cert_ref' => '',
 		'login_template' => 'kontrol_dark',
 		'admin_contact' => '<p><strong>Identificação necessária.</strong></p>' .
 			'<p>Esta estação ainda não possui uma identidade válida. Use uma credencial autorizada para liberar temporariamente o acesso à Internet.</p>' .
@@ -877,6 +880,170 @@ function kontrol_id_certificate_matches_ca($certificate, $ca) {
 	}
 	$ca_public_key = @openssl_pkey_get_public($ca_pem);
 	return $ca_public_key !== false && @openssl_x509_verify($certificate_pem, $ca_public_key) === 1;
+}
+
+function kontrol_id_certificate_covers_host($certificate, $host) {
+	$host = strtolower(rtrim(trim((string)$host), '.'));
+	if ($host === '' || empty($certificate['crt'])) {
+		return false;
+	}
+	$certificate_pem = base64_decode($certificate['crt'], true);
+	$parsed = ($certificate_pem === false) ? false : @openssl_x509_parse($certificate_pem);
+	if (!is_array($parsed)) {
+		return false;
+	}
+	$subject_alt_name = (string)($parsed['extensions']['subjectAltName'] ?? '');
+	foreach (array_map('trim', explode(',', $subject_alt_name)) as $entry) {
+		if (!preg_match('/^(DNS|IP Address):(.+)$/i', $entry, $match)) {
+			continue;
+		}
+		$type = strtolower($match[1]);
+		$name = strtolower(rtrim(trim($match[2]), '.'));
+		if ($type === 'ip address') {
+			if ((is_ipaddr($host) || is_ipaddrv6($host)) && $name === $host) {
+				return true;
+			}
+			continue;
+		}
+		if ($name === $host) {
+			return true;
+		}
+		if (strpos($name, '*.') === 0) {
+			$suffix = substr($name, 1);
+			$prefix = substr($host, 0, -strlen($suffix));
+			if ($prefix !== '' && strpos($prefix, '.') === false &&
+				substr($host, -strlen($suffix)) === $suffix) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function kontrol_id_portal_certificate_sans($settings, $portal_host) {
+	$subject_alt_names = array();
+	$add_name = function($type, $value) use (&$subject_alt_names) {
+		$value = trim((string)$value);
+		if ($value !== '') {
+			$subject_alt_names[] = $type . ':' . $value;
+		}
+	};
+	if (is_ipaddr($portal_host) || is_ipaddrv6($portal_host)) {
+		$add_name('IP', $portal_host);
+	} else {
+		$add_name('DNS', $portal_host);
+	}
+	$hostname = trim((string)config_get_path('system/hostname', ''));
+	if ($hostname !== '' && is_hostname($hostname)) {
+		$add_name('DNS', $hostname);
+	}
+	$interfaces = explode(',', kontrol_id_normalize_interfaces(
+		$settings['intercept_interfaces'] ?? 'lan'));
+	$interfaces[] = 'lan';
+	foreach (array_unique(array_filter($interfaces)) as $interface) {
+		$address = (string)get_interface_ip($interface);
+		if (is_ipaddr($address) || is_ipaddrv6($address)) {
+			$add_name('IP', $address);
+		}
+	}
+	return array_values(array_unique($subject_alt_names));
+}
+
+function kontrol_id_restore_webgui_certificate(&$settings) {
+	$current_ref = (string)config_get_path('system/webgui/ssl-certref', '');
+	$portal_ref = (string)($settings['portal_cert_ref'] ?? '');
+	$previous_ref = (string)($settings['previous_webgui_cert_ref'] ?? '');
+	if ($portal_ref === '' || $current_ref !== $portal_ref || $previous_ref === '') {
+		return false;
+	}
+	$previous = kontrol_id_extract_item(lookup_cert($previous_ref));
+	if (empty($previous['crt']) || empty($previous['prv'])) {
+		return false;
+	}
+	config_set_path('system/webgui/ssl-certref', $previous_ref);
+	return true;
+}
+
+function kontrol_id_ensure_portal_certificate() {
+	global $cert_strict_values;
+
+	$settings = kontrol_id_get_settings();
+	$result = array('changed' => false, 'restart_webgui' => false);
+	$manage = ($settings['manage_portal_certificate'] ?? 'on') === 'on';
+	$local_portal = trim((string)($settings['portal_url'] ?? '')) === '';
+	$https_webgui = config_get_path('system/webgui/protocol', 'https') === 'https';
+	if (!$manage || !$local_portal || !$https_webgui) {
+		if ((!$manage || !$local_portal) && kontrol_id_restore_webgui_certificate($settings)) {
+			$result['changed'] = true;
+			$result['restart_webgui'] = true;
+		}
+		kontrol_id_set_settings($settings);
+		return $result;
+	}
+
+	$portal_host = strtolower((string)parse_url(kontrol_id_portal_url(), PHP_URL_HOST));
+	if ($portal_host === '' ||
+		(!is_hostname($portal_host) && !is_ipaddr($portal_host) && !is_ipaddrv6($portal_host))) {
+		throw new Exception('The local Kontrol-ID portal hostname is invalid.');
+	}
+	$current_ref = (string)config_get_path('system/webgui/ssl-certref', '');
+	$current = kontrol_id_extract_item(lookup_cert($current_ref));
+	$ca = kontrol_id_extract_item(lookup_ca($settings['ca_ref'] ?? ''));
+	if (!kontrol_id_ca_is_usable($ca)) {
+		throw new Exception('The selected Kontrol-ID CA cannot issue the local portal certificate.');
+	}
+	$portal_ref = (string)($settings['portal_cert_ref'] ?? '');
+	$current_is_managed = $portal_ref !== '' && $current_ref === $portal_ref;
+	$current_parsed = empty($current['crt']) ? false :
+		@openssl_x509_parse(base64_decode($current['crt']));
+	$current_not_expiring = is_array($current_parsed) &&
+		(int)($current_parsed['validTo_time_t'] ?? 0) > time() + 86400;
+	if (kontrol_id_certificate_covers_host($current, $portal_host) &&
+		$current_not_expiring &&
+		(!$current_is_managed || kontrol_id_certificate_matches_ca($current, $ca))) {
+		return $result;
+	}
+	$portal = kontrol_id_extract_item(lookup_cert($portal_ref));
+	$portal_valid = kontrol_id_certificate_matches_ca($portal, $ca) &&
+		kontrol_id_certificate_covers_host($portal, $portal_host);
+	if ($portal_valid) {
+		$parsed = @openssl_x509_parse(base64_decode($portal['crt']));
+		$portal_valid = is_array($parsed) &&
+			(int)($parsed['validTo_time_t'] ?? 0) > time() + 86400;
+	}
+	if (!$portal_valid) {
+		$portal = array(
+			'refid' => uniqid(),
+			'descr' => 'Kontrol-ID Portal - ' . $portal_host,
+			'autorenew' => 'enabled'
+		);
+		$dn = array(
+			'organizationName' => 'Kontrol',
+			'organizationalUnitName' => 'Kontrol-ID Portal',
+			'commonName' => $portal_host,
+			'subjectAltName' => implode(',',
+				kontrol_id_portal_certificate_sans($settings, $portal_host))
+		);
+		$max_lifetime = max(1, (int)($cert_strict_values['max_server_cert_lifetime'] ?? 825));
+		if (!cert_create($portal, $settings['ca_ref'], '3072', (string)$max_lifetime,
+			$dn, 'server', 'sha256')) {
+			throw new Exception('Unable to create the Kontrol-ID portal server certificate.');
+		}
+		config_set_path('cert/', $portal);
+		$settings['portal_cert_ref'] = $portal['refid'];
+		$result['changed'] = true;
+	}
+
+	if ($current_ref !== ($portal['refid'] ?? '')) {
+		if (empty($settings['previous_webgui_cert_ref'])) {
+			$settings['previous_webgui_cert_ref'] = $current_ref;
+		}
+		config_set_path('system/webgui/ssl-certref', $portal['refid']);
+		$result['changed'] = true;
+		$result['restart_webgui'] = true;
+	}
+	kontrol_id_set_settings($settings);
+	return $result;
 }
 
 function kontrol_id_load_pki_backup() {
@@ -3028,6 +3195,8 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 	$changed = kontrol_id_prepare_dependency_defaults() || $changed;
 	$changed = kontrol_id_ensure_group() || $changed;
 	$changed = kontrol_id_ensure_pki() || $changed;
+	$portal_certificate = kontrol_id_ensure_portal_certificate();
+	$changed = !empty($portal_certificate['changed']) || $changed;
 	$changed = kontrol_id_remove_legacy_e2guardian_menu() || $changed;
 	$changed = kontrol_id_remove_legacy_e2guardian_service() || $changed;
 	kontrol_id_ensure_storage();
@@ -3175,6 +3344,10 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 	if ($sync) {
 		kontrol_id_sync_on_changes();
 	}
+	if (!empty($portal_certificate['restart_webgui'])) {
+		log_error('[Kontrol-ID] Restarting the WebGUI to activate the portal certificate.');
+		send_event('service restart webgui');
+	}
 }
 
 function kontrol_id_install() {
@@ -3198,10 +3371,14 @@ function kontrol_id_deinstall() {
 		kontrol_id_apply_standalone_engine(false);
 		$settings['ad_policy_enable'] = '';
 		kontrol_id_set_settings($settings);
+		$restart_webgui = kontrol_id_restore_webgui_certificate($settings);
 		kontrol_id_policy_schedule();
 		@unlink(KONTROL_ID_WINBIND_MARKER);
 		kontrol_id_manage_winbind(false);
 		write_config('Kontrol-ID integrations removed.');
+		if ($restart_webgui) {
+			send_event('service restart webgui');
+		}
 		@unlink(KONTROL_ID_CONF);
 		@unlink(KONTROL_ID_CA_FILE);
 		@unlink(KONTROL_ID_CLIENT_CERT);
@@ -3298,7 +3475,8 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 			'previous_squid_auth_method', 'previous_squid_auth_config', 'previous_squid_config',
 			'previous_e2guardian_config', 'previous_e2guardian_auth_plugin',
 			'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added',
-			'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses'
+			'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses',
+			'portal_cert_ref', 'previous_webgui_cert_ref'
 		) as $local_field) {
 			unset($kontrolid['config'][0][$local_field]);
 		}
@@ -3333,7 +3511,7 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 		"\$kid_sync = json_decode(base64_decode('{$sync_payload}'), true);\n" .
 		"\$kid_local = kontrol_id_get_settings();\n" .
 		"\$kid_incoming = \$kid_sync['settings'];\n" .
-		"foreach (array('previous_squid_auth_method', 'previous_squid_auth_config', 'previous_squid_config', 'previous_e2guardian_config', 'previous_e2guardian_auth_plugin', 'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added', 'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses') as \$kid_local_field) {\n" .
+		"foreach (array('previous_squid_auth_method', 'previous_squid_auth_config', 'previous_squid_config', 'previous_e2guardian_config', 'previous_e2guardian_auth_plugin', 'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added', 'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses', 'portal_cert_ref', 'previous_webgui_cert_ref') as \$kid_local_field) {\n" .
 		"  if (array_key_exists(\$kid_local_field, \$kid_local)) { \$kid_incoming[\$kid_local_field] = \$kid_local[\$kid_local_field]; }\n" .
 		"}\n" .
 		"config_set_path('installedpackages/kontrolid/config/0', array_merge(kontrol_id_defaults(), \$kid_incoming));\n" .
