@@ -22,7 +22,7 @@ if (-not (Test-Path -LiteralPath $compiler)) {
     /win32icon:$icon `
     $logoResource `
     /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll `
-    /reference:System.Windows.Forms.dll /reference:System.Web.dll /reference:System.Web.Extensions.dll `
+    /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll `
     /out:$output $source
 if ($LASTEXITCODE -ne 0) {
     throw "C# compilation failed with exit code $LASTEXITCODE."

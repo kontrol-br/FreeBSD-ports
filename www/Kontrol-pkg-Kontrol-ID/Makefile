@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
-PORTREVISION=	50
+PORTREVISION=	51
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -83,7 +83,9 @@ do-install:
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_enrollment.php \
 		${STAGEDIR}${PREFIX}/www
-	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_authorize.php \
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_api_authorize.php \
+		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_provisioner.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_unenrollment.php \
 		${STAGEDIR}${PREFIX}/www

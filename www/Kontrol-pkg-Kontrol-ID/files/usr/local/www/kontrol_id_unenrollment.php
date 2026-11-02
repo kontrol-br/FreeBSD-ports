@@ -55,7 +55,7 @@ $fingerprint = strtoupper(openssl_x509_fingerprint($certificate, 'sha256'));
 kontrol_id_ensure_storage();
 $db = new SQLite3(KONTROL_ID_DB);
 $db->busyTimeout(1000);
-$stmt = $db->prepare('SELECT ip,revoked FROM endpoints WHERE hostname=:hostname AND cert_sha256=:fingerprint LIMIT 1');
+$stmt = $db->prepare('SELECT ip FROM endpoints WHERE hostname=:hostname AND cert_sha256=:fingerprint LIMIT 1');
 $stmt->bindValue(':hostname', $hostname, SQLITE3_TEXT);
 $stmt->bindValue(':fingerprint', $fingerprint, SQLITE3_TEXT);
 $result = $stmt->execute();
@@ -72,23 +72,22 @@ if (@openssl_verify($payload, $signature, $certificate, OPENSSL_ALGO_SHA256) !==
 }
 
 $ip = $endpoint['ip'];
-if (!(int)$endpoint['revoked']) {
-	$db->exec('BEGIN IMMEDIATE');
-	$stmt = $db->prepare('UPDATE endpoints SET revoked=1 WHERE ip=:ip AND cert_sha256=:fingerprint');
-	$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
-	$stmt->bindValue(':fingerprint', $fingerprint, SQLITE3_TEXT);
-	$stmt->execute();
-	$stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
-	$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
-	$stmt->execute();
-	$stmt = $db->prepare('UPDATE portal_sessions SET revoked=1 WHERE ip=:ip');
-	$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
-	$stmt->execute();
-	$db->exec('COMMIT');
-	write_config('Kontrol-ID station unenrolled: ' . $hostname . ' (' . $ip . ')');
-}
+$db->exec('BEGIN IMMEDIATE');
+$stmt = $db->prepare('DELETE FROM endpoints WHERE ip=:ip AND cert_sha256=:fingerprint');
+$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
+$stmt->bindValue(':fingerprint', $fingerprint, SQLITE3_TEXT);
+$stmt->execute();
+$stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
+$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
+$stmt->execute();
+$stmt = $db->prepare('DELETE FROM portal_sessions WHERE ip=:ip');
+$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
+$stmt->execute();
+$db->exec('COMMIT');
 $db->close();
 
-kontrol_id_unenroll_response(200, array('ok' => true, 'status' => 'revoked'));
+write_config('Kontrol-ID station removed: ' . $hostname . ' (' . $ip . ')');
+
+kontrol_id_unenroll_response(200, array('ok' => true, 'status' => 'removed'));
 
 ?>

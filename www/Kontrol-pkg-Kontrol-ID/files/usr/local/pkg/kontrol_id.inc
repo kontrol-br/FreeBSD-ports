@@ -230,6 +230,41 @@ function kontrol_id_authenticate_basic($username, $password) {
 	return in_array($settings['local_group'], is_array($groups) ? $groups : array(), true);
 }
 
+function kontrol_id_authenticate_administrator($username, $password) {
+	global $userindex, $groupindex;
+
+	if (!is_string($username) || !is_string($password) || $username === '' ||
+		strlen($username) > 255 || strlen($password) > 4096 ||
+		!preg_match('/^[A-Za-z0-9_.@\\-\\\\]+$/D', $username)) {
+		return false;
+	}
+	$userindex = index_users();
+	$groupindex = array();
+	foreach (config_get_path('system/group', array()) as $index => $group) {
+		if (!empty($group['name'])) {
+			$groupindex[$group['name']] = $index;
+		}
+	}
+	$attributes = array('nas_identifier' => 'kontrol-id-provisioner-' . gethostname());
+	$webgui_auth = auth_get_authserver(config_get_path('system/webgui/authmode', 'Local Database'));
+	$authenticated_remotely = is_array($webgui_auth) &&
+		authenticate_user($username, $password, $webgui_auth, $attributes);
+	$effective_auth = $webgui_auth;
+	if (!$authenticated_remotely) {
+		$effective_auth = auth_get_authserver('Local Database');
+		if (!authenticate_user($username, $password, $effective_auth, $attributes)) {
+			return false;
+		}
+	}
+	$user_entry = getUserEntry($username);
+	$user = is_array($user_entry) ? ($user_entry['item'] ?? array()) : array();
+	if ((string)($user['uid'] ?? '') === '0') {
+		return true;
+	}
+	$groups = getUserGroups($username, $effective_auth, $attributes);
+	return in_array('admins', is_array($groups) ? $groups : array(), true);
+}
+
 function kontrol_id_get_settings() {
 	$settings = config_get_path('installedpackages/kontrolid/config/0', array());
 	if (!is_array($settings)) {
@@ -1231,10 +1266,15 @@ function kontrol_id_ensure_storage() {
 		'last_seen INTEGER NOT NULL DEFAULT 0, revoked INTEGER NOT NULL DEFAULT 0)');
 	$db->exec('CREATE TABLE IF NOT EXISTS auth_attempts (' .
 		'ip TEXT NOT NULL, attempted_at INTEGER NOT NULL, success INTEGER NOT NULL DEFAULT 0)');
+	$db->exec('CREATE TABLE IF NOT EXISTS provisioner_auth_attempts (' .
+		'ip TEXT NOT NULL, attempted_at INTEGER NOT NULL, success INTEGER NOT NULL DEFAULT 0)');
 	$db->exec('CREATE TABLE IF NOT EXISTS enrollment_authorizations (' .
 		'code_hash TEXT PRIMARY KEY, pkce_challenge TEXT NOT NULL, hostname TEXT NOT NULL, ' .
 		"fqdn TEXT NOT NULL DEFAULT '', approved_by TEXT NOT NULL, created_at INTEGER NOT NULL, " .
 		'expires_at INTEGER NOT NULL, consumed INTEGER NOT NULL DEFAULT 0)');
+	/* Removed stations are not an inventory or revocation list. A signed
+	 * unenrollment deletes the row, and this migration clears legacy rows. */
+	$db->exec('DELETE FROM endpoints WHERE revoked<>0');
 	$db->close();
 	@chown(KONTROL_ID_DB, 'squid');
 	@chgrp(KONTROL_ID_DB, 'proxy');

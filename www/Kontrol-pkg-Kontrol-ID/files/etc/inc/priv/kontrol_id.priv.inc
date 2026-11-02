@@ -16,6 +16,6 @@ $priv_list['page-services-kontrol-id-enroll'] = array();
 $priv_list['page-services-kontrol-id-enroll']['name'] = 'WebCfg - Services: Kontrol-ID: Authorize stations';
 $priv_list['page-services-kontrol-id-enroll']['descr'] = 'Allow authorization of Windows station enrollment in Kontrol-ID';
 $priv_list['page-services-kontrol-id-enroll']['match'] = array();
-$priv_list['page-services-kontrol-id-enroll']['match'][] = 'kontrol_id_authorize.php*';
+$priv_list['page-services-kontrol-id-enroll']['match'][] = 'kontrol_id_provisioner.php*';
 
 ?>
