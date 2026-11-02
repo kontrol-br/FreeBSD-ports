@@ -13,11 +13,17 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <sqlite3.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <syslog.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cctype>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
@@ -32,7 +38,7 @@
 
 namespace {
 
-constexpr const char *kVersion = "0.1.0";
+constexpr const char *kVersion = "0.1.4";
 constexpr const char *kResourceUri =
     "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_ComputerSystem";
 
@@ -129,6 +135,7 @@ struct Identity {
 
 struct Endpoint {
     std::string hostname;
+    std::string connection_name;
 };
 
 long long now_seconds() {
@@ -194,11 +201,13 @@ public:
 
     std::optional<Endpoint> endpoint(const std::string &ip) {
         sqlite3_stmt *statement = nullptr;
-        prepare("SELECT CASE WHEN fqdn<>'' THEN fqdn ELSE hostname END FROM endpoints "
+        prepare("SELECT hostname,CASE WHEN fqdn<>'' THEN fqdn ELSE hostname END FROM endpoints "
                 "WHERE ip=?1 AND revoked=0", &statement);
         sqlite3_bind_text(statement, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
         std::optional<Endpoint> result;
-        if (sqlite3_step(statement) == SQLITE_ROW) result = Endpoint{column(statement, 0)};
+        if (sqlite3_step(statement) == SQLITE_ROW) {
+            result = Endpoint{column(statement, 0), column(statement, 1)};
+        }
         sqlite3_finalize(statement);
         return result;
     }
@@ -342,6 +351,75 @@ struct WinrmHttpResult {
     std::string error;
 };
 
+/* The engine keeps a pool of helper processes.  When a cached identity
+ * expires, a busy browser can send the same source address to every child at
+ * once.  Without a per-endpoint lock those children all open WinRM sessions;
+ * a late timeout can then overwrite a successful user lookup with the
+ * hostname fallback.  Serialize only lookups for the same IP so unrelated
+ * workstations remain fully parallel. */
+class EndpointLookupLock {
+public:
+    EndpointLookupLock(const std::string &database, const std::string &ip) {
+        const std::string::size_type separator = database.find_last_of('/');
+        const std::string parent = separator == std::string::npos ? "." :
+            (separator == 0 ? "/" : database.substr(0, separator));
+        const std::string directory = parent + "/locks";
+        if (::mkdir(directory.c_str(), 0770) != 0 && errno != EEXIST) {
+            throw std::runtime_error("cannot create identity lock directory");
+        }
+        struct stat directory_stat {};
+        if (::lstat(directory.c_str(), &directory_stat) != 0 ||
+            !S_ISDIR(directory_stat.st_mode)) {
+            throw std::runtime_error("identity lock path is not a directory");
+        }
+
+        std::uint64_t hash = 1469598103934665603ULL;
+        for (const unsigned char c : ip) {
+            hash ^= c;
+            hash *= 1099511628211ULL;
+        }
+        std::ostringstream name;
+        name << directory << "/endpoint-" << std::hex << hash << ".lock";
+        fd_ = ::open(name.str().c_str(), O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, 0660);
+        if (fd_ < 0) {
+            throw std::runtime_error("cannot open identity endpoint lock");
+        }
+        const auto deadline = std::chrono::steady_clock::now() +
+            std::chrono::milliseconds(250);
+        while (::flock(fd_, LOCK_EX | LOCK_NB) != 0) {
+            const int saved_errno = errno;
+            if (saved_errno == EWOULDBLOCK) {
+                if (std::chrono::steady_clock::now() >= deadline) {
+                    ::close(fd_);
+                    fd_ = -1;
+                    return;
+                }
+                ::usleep(10000);
+                continue;
+            }
+            ::close(fd_);
+            fd_ = -1;
+            errno = saved_errno;
+            throw std::runtime_error("cannot acquire identity endpoint lock");
+        }
+    }
+
+    EndpointLookupLock(const EndpointLookupLock &) = delete;
+    EndpointLookupLock &operator=(const EndpointLookupLock &) = delete;
+
+    bool acquired() const { return fd_ >= 0; }
+
+    ~EndpointLookupLock() {
+        if (fd_ >= 0) {
+            ::flock(fd_, LOCK_UN);
+            ::close(fd_);
+        }
+    }
+
+private:
+    int fd_{-1};
+};
+
 WinrmHttpResult winrm_post(const Config &config, const std::string &ip,
                            const std::string &hostname, const std::string &url,
                            const std::string &soap) {
@@ -429,6 +507,21 @@ bool valid_sid(const std::string &sid) {
            });
 }
 
+std::string profile_username(const std::string &path) {
+    std::string value = trim(path);
+    while (!value.empty() && (value.back() == '\\' || value.back() == '/')) value.pop_back();
+    const std::size_t separator = value.find_last_of("\\/");
+    if (separator != std::string::npos) value.erase(0, separator + 1);
+    value.erase(std::remove_if(value.begin(), value.end(), [](unsigned char c) {
+        return c < 0x20 || c == 0x7f;
+    }), value.end());
+    if (value.empty() || value == "." || value == ".." || value.size() > 128 ||
+        value.find('\\') != std::string::npos || value.find('/') != std::string::npos) {
+        return "";
+    }
+    return value;
+}
+
 WinrmResult query_winrm(const Config &config, const std::string &ip,
                         const std::string &hostname) {
     if (!valid_hostname(hostname)) return {"", "invalid enrolled hostname"};
@@ -473,16 +566,50 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
         }
 
         const std::string sid = xpath_text(profiles.body, "//*[local-name()='SID']");
-        if (!valid_sid(sid)) return {"", "Windows reported no interactive user"};
-        const std::string account_query =
-            "SELECT Name,Domain,SID FROM Win32_UserAccount WHERE SID='" + sid + "'";
-        const WinrmHttpResult account = winrm_post(
-            config, ip, hostname, url, enumerate_soap(url, account_query, 8));
-        if (!account.error.empty() || account.status != 200) return {"", winrm_error(account)};
+        const std::string local_path = xpath_text(profiles.body, "//*[local-name()='LocalPath']");
+        std::string name;
+        std::string domain;
+        std::string account_error;
+        if (valid_sid(sid)) {
+            const std::string account_query =
+                "SELECT Name,Domain,SID FROM Win32_UserAccount WHERE SID='" + sid + "'";
+            const WinrmHttpResult account = winrm_post(
+                config, ip, hostname, url, enumerate_soap(url, account_query, 8));
+            if (account.error.empty() && account.status == 200) {
+                name = xpath_text(account.body, "//*[local-name()='Name']");
+                domain = xpath_text(account.body, "//*[local-name()='Domain']");
+            } else {
+                account_error = winrm_error(account);
+            }
 
-        const std::string name = xpath_text(account.body, "//*[local-name()='Name']");
-        const std::string domain = xpath_text(account.body, "//*[local-name()='Domain']");
-        if (name.empty()) return {"", "Windows could not resolve the interactive user SID"};
+            /* Win32_UserAccount may return an empty result for a loaded domain
+             * profile while the SID provider can still resolve it. */
+            if (name.empty()) {
+                const std::string sid_query =
+                    "SELECT AccountName,ReferencedDomainName,SID FROM Win32_SID WHERE SID='" + sid + "'";
+                const WinrmHttpResult sid_account = winrm_post(
+                    config, ip, hostname, url, enumerate_soap(url, sid_query, 8));
+                if (sid_account.error.empty() && sid_account.status == 200) {
+                    name = xpath_text(sid_account.body, "//*[local-name()='AccountName']");
+                    domain = xpath_text(sid_account.body, "//*[local-name()='ReferencedDomainName']");
+                } else if (account_error.empty()) {
+                    account_error = winrm_error(sid_account);
+                }
+            }
+        }
+
+        /* A least-privilege certificate-mapped WinRM account can read loaded
+         * profiles while Windows deliberately hides the owning account and
+         * RDP logon association.  The profile leaf is still the Windows user
+         * name and is also one of the identity variants generated by AD Policy. */
+        if (name.empty()) {
+            name = profile_username(local_path);
+            domain.clear();
+        }
+        if (name.empty()) {
+            return {"", account_error.empty() ?
+                "Windows reported no interactive user" : account_error};
+        }
         username = domain.empty() ? name : domain + "\\" + name;
     }
 
@@ -545,7 +672,7 @@ Identity unknown_identity(const Config &config, long long now) {
 }
 
 int run_lookup(const Config &config, Database &database, const Request &request) {
-    const long long now = now_seconds();
+    long long now = now_seconds();
     if (!valid_source_address(request.ip)) {
         reply(request, config.unknown_user, "invalid-source", "Invalid source address");
         return 1;
@@ -555,26 +682,53 @@ int run_lookup(const Config &config, Database &database, const Request &request)
         return 0;
     }
 
-    if (const auto portal = database.portal(request.ip, now)) {
-        reply(request, portal->username, portal->source);
-        return 0;
-    }
-
-    const auto cached = database.cached(request.ip);
-    if (cached && cached->expires_at > now) {
+    auto cached = database.cached(request.ip);
+    if (cached && cached->username != config.unknown_user && cached->expires_at > now) {
         reply(request, cached->username, cached->source);
         return 0;
     }
 
     const auto endpoint = database.endpoint(request.ip);
     if (!endpoint) {
+        if (const auto portal = database.portal(request.ip, now)) {
+            reply(request, portal->username, portal->source);
+            return 0;
+        }
         const auto unknown = unknown_identity(config, now);
         database.store(request.ip, unknown, "unknown", "Endpoint is not enrolled");
         reply(request, unknown.username, "needs-login", "Endpoint is not enrolled");
         return 0;
     }
 
-    const WinrmResult result = query_winrm(config, request.ip, endpoint->hostname);
+    EndpointLookupLock lookup_lock(config.database, request.ip);
+    now = now_seconds();
+    cached = database.cached(request.ip);
+    if (cached && cached->username != config.unknown_user && cached->expires_at > now) {
+        reply(request, cached->username, cached->source);
+        return 0;
+    }
+    if (!lookup_lock.acquired()) {
+        /* Never let a burst from one slow or offline workstation consume the
+         * complete helper pool.  The lock owner performs the network query;
+         * concurrent requests immediately use the last verified user, or the
+         * enrolled hostname only while that first lookup is still pending. */
+        if (cached && cached->username != config.unknown_user &&
+            cached->source == "winrm" && cached->stale_until > now) {
+            reply(request, cached->username, "stale-winrm", "Identity refresh in progress");
+            return 0;
+        }
+        if (valid_hostname(endpoint->hostname)) {
+            std::string hostname = endpoint->hostname;
+            std::transform(hostname.begin(), hostname.end(), hostname.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            reply(request, hostname, "hostname-pending", "Identity lookup in progress");
+            return 0;
+        }
+        reply(request, config.unknown_user, "lookup-pending", "Identity lookup in progress");
+        return 0;
+    }
+
+    const WinrmResult result = query_winrm(config, request.ip, endpoint->connection_name);
     if (!result.username.empty()) {
         Identity identity{result.username, "winrm", now + config.positive_ttl,
                           now + config.positive_ttl + config.stale_ttl};
@@ -584,8 +738,38 @@ int run_lookup(const Config &config, Database &database, const Request &request)
         return 0;
     }
 
-    if (cached && cached->username != config.unknown_user && cached->stale_until > now) {
+    if (cached && cached->username != config.unknown_user &&
+        cached->source == "winrm" && cached->stale_until > now) {
         reply(request, cached->username, "stale-winrm", result.error);
+        return 0;
+    }
+
+    /* Enrollment authenticates the workstation and records its hostname.  A
+     * temporary WinRM/WMI failure must therefore degrade to that trusted
+     * machine identity instead of treating an enrolled endpoint as unknown.
+     * The unknown-user policy is reserved for endpoints for which neither a
+     * logged-on user nor an enrolled hostname can be established. */
+    if (valid_hostname(endpoint->hostname)) {
+        std::string hostname = endpoint->hostname;
+        std::transform(hostname.begin(), hostname.end(), hostname.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        /* A hostname is a safe machine identity, but it must not suppress a
+         * new user lookup for the full positive-user TTL after a transient
+         * WinRM failure. */
+        Identity identity{hostname, "hostname", now + config.negative_ttl,
+                          now + config.negative_ttl};
+        database.store(request.ip, identity, "identified-hostname", result.error);
+        database.touch_endpoint(request.ip, now);
+        if (config.debug) {
+            syslog(LOG_NOTICE, "Kontrol-ID: %s: using enrolled hostname %s after WinRM failure: %s",
+                   request.ip.c_str(), hostname.c_str(), result.error.c_str());
+        }
+        reply(request, identity.username, identity.source);
+        return 0;
+    }
+
+    if (const auto portal = database.portal(request.ip, now)) {
+        reply(request, portal->username, portal->source);
         return 0;
     }
 

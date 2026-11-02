@@ -2686,7 +2686,7 @@ break;
                //Always expose the first group in the Users tab so every group can be edited.
                $user_xml .=<<<EOF
         <field>
-            <name>{$e2guardian_groups['description']} ({$filtergroup_count})</name>
+            <name>{$e2guardian_groups['name']} ({$filtergroup_count})</name>
             <type>listtopic</type>
         </field>
         <field>
@@ -2701,7 +2701,7 @@ break;
 EOF;
         $ips_xml .=<<<EOF
         <field>
-            <name>{$e2guardian_groups['description']} ({$filtergroupip_count})</name>
+            <name>{$e2guardian_groups['name']} ({$filtergroupip_count})</name>
             <type>listtopic</type>
         </field>
         <field>

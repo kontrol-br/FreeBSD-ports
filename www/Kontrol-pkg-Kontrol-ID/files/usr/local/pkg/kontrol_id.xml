@@ -90,8 +90,9 @@
 			<fielddescr>Client Access Mode</fielddescr>
 			<fieldname>access_mode</fieldname>
 			<description><![CDATA[
-				Transparent identification associates the source IP with an IP policy and does not challenge the browser. Transparent
-				without identification skips identity processing and applies the default policy group, while preserving optional IP
+				Transparent identification first resolves the logged-on Windows user, then falls back to the enrolled workstation hostname.
+				Only when neither identity is available is the configured Unknown User Fallback applied; the proxy never sends an authentication
+				challenge in this mode. Transparent without identification skips identity processing and applies the default policy group, while preserving optional IP
 				exceptions and overrides. Explicit mode requires clients to use the proxy address or PAC/WPAD. The standalone engine
 				supports native Kerberos/SPNEGO, NTLMv2, and HTTP Basic backed by the selected Kontrol authentication server.
 			]]></description>
@@ -385,7 +386,7 @@
 		<field>
 			<fielddescr>Unknown User Action</fielddescr>
 			<fieldname>unknown_action</fieldname>
-			<description>Redirect blocks navigation until the user authenticates. HTTPS redirection requires HTTP + HTTPS inspection and a trusted Kontrol-ID CA. Deny access uses the selected standard block page.</description>
+			<description>Applied only after both automatic user lookup and enrolled-hostname fallback fail. Redirect blocks navigation until the user authenticates against the selected Kontrol local or directory backend. HTTPS redirection requires HTTP + HTTPS inspection and a trusted Kontrol-ID CA. Deny access uses the selected standard block page.</description>
 			<type>select</type>
 			<default_value>portal</default_value>
 			<options>
