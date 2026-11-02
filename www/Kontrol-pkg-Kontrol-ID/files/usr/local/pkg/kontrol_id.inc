@@ -6,9 +6,6 @@ require_once('util.inc');
 require_once('auth.inc');
 require_once('certs.inc');
 require_once('xmlrpc_client.inc');
-if (file_exists('/usr/local/pkg/e2guardian.inc')) {
-	require_once('/usr/local/pkg/e2guardian.inc');
-}
 
 define('KONTROL_ID_CONF', '/usr/local/etc/kontrol-identity.conf');
 define('KONTROL_ID_DB_DIR', '/var/db/kontrol-identity');
@@ -89,7 +86,7 @@ function kontrol_id_defaults() {
 			'<p>Esta estação ainda não possui uma identidade válida. Use uma credencial autorizada para liberar temporariamente o acesso à Internet.</p>' .
 			'<p>Se você ainda não possui uma credencial, entre em contato com o administrador da rede.</p>',
 		'auth_server' => 'Local Database',
-		'local_group' => KONTROL_ID_GROUP,
+		'local_group' => defined('KONTROL_ID_GROUP') ? KONTROL_ID_GROUP : 'kontrol-internet-users',
 		'ad_groups' => 'Domain Users',
 		'ad_policy_enable' => '',
 		'ad_policy_cache_ttl' => '300',
@@ -3661,6 +3658,10 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 		"kontrol_id_resync(false);";
 	$client->xmlrpc_exec_php($command, $timeout);
 	log_error("[Kontrol-ID] XMLRPC configuration synchronized to {$host}.");
+}
+
+if (file_exists('/usr/local/pkg/e2guardian.inc')) {
+	require_once('/usr/local/pkg/e2guardian.inc');
 }
 
 ?>
