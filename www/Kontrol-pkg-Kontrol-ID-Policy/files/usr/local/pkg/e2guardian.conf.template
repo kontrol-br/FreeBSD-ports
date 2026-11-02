@@ -136,6 +136,7 @@ loglocation = '/var/log/e2guardian/access.log'
 # tunnel opens. Completed accounting remains exclusively in access.log.
 rqloglocation = '/var/log/e2guardian/request.log'
 rqlogonlytunnelopen = on
+rqlogmaxbytes = 8388608
 # Dymamic statistics log file location
 #
 # Defines the dstats file directory and filename.

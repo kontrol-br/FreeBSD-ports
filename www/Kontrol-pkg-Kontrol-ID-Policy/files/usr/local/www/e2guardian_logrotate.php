@@ -48,22 +48,33 @@ mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' stop');
 e2g_log_info("e2guardian - stopping");
 $e2guardian_log = $config['installedpackages']['e2guardianlog']['config'][0];
 $logfilecount = ($e2guardian_log['logcount'] ? $e2guardian_log['logcount'] : "30");
-$logs = array('/var/log/e2guardian/access.log', '/var/log/e2guardian/request.log');
+$log = '/var/log/e2guardian/access.log';
 // This script is the logrotate script file distributed with e2guardian translated to php
-foreach ($logs as $log) {
-    if (file_exists("{$log}.{$logfilecount}")) {
-        unlink("{$log}.{$logfilecount}");
+if (file_exists("{$log}.{$logfilecount}")) {
+    unlink("{$log}.{$logfilecount}");
+}
+$n = $logfilecount - 1;
+while ($n > 0) {
+    $m = $n + 1;
+    if (file_exists("{$log}.{$n}")) {
+        rename("{$log}.{$n}", "{$log}.{$m}");
     }
-    $n = $logfilecount - 1;
-    while ($n > 0) {
-        $m = $n + 1;
-        if (file_exists("{$log}.{$n}")) {
-            rename("{$log}.{$n}", "{$log}.{$m}");
-        }
-        $n--;
-    }
-    if (file_exists($log)) {
-        rename($log, "{$log}.1");
+    $n--;
+}
+if (file_exists($log)) {
+    rename($log, "{$log}.1");
+}
+
+// request.log is a bounded, transient Real Time buffer.  access.log remains
+// the canonical audit/Sarg source, so retaining request.log archives would
+// duplicate data and consume disk without adding reporting value.
+$realtime_log = '/var/log/e2guardian/request.log';
+if (file_exists($realtime_log)) {
+    unlink($realtime_log);
+}
+foreach (glob("{$realtime_log}.*") ?: array() as $realtime_archive) {
+    if (preg_match('/^request\.log\.[0-9]+$/', basename($realtime_archive))) {
+        unlink($realtime_archive);
     }
 }
 

@@ -27,13 +27,17 @@
 @@ -1510 +1528 @@ int ConnectionHandler::handleConnection(Socket &peerconn, String &ip, bool ismit
 -            if (fg_resp && (!checkme.isItNaughty) && (!checkme.upfailure) && (!checkme.isconnect) && (!checkme.logcategory) && !checkme.tunnel_rest) {
 +            if (fg_resp && (!checkme.isItNaughty) && (!checkme.upfailure) && (!checkme.isconnect) && (!checkme.logcategory) && !checkme.tunnel_rest && !protocolUpgrade) {
+@@ -1671 +1689 @@ void ConnectionHandler::doLog(std::string &who, std::string &from, NaughtyFilter
+-    if(o.log_requests) {
++    if(o.log_requests && !o.rqlog_only_tunnel_open) {
 @@ -1838,4 +1856,6 @@ void ConnectionHandler::doRQLog(std::string &who, std::string &from, NaughtyFilt
 +    if (o.rqlog_only_tunnel_open && funct != "THTTPS_OPEN")
 +        return;
      String rtype = cm.request_header->requestType();
      String where = cm.logurl;
      unsigned int port = cm.request_header->port;
-     std::string what = thread_id;
+-    std::string what = thread_id;
++    std::string what = o.rqlog_only_tunnel_open ? "" : thread_id;
 @@ -3021,2 +3041,2 @@ bool ConnectionHandler::goMITM(NaughtyFilter &checkme, Socket &proxysock, Socket
 -            writecert = o.ca->writeCertificate(checkme.urldomain.c_str(), cert,
 -                                               &caser);

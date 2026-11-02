@@ -109,7 +109,10 @@ if ($_POST) {
                                                     echo "<td $listr>" . e2gm($logline[9]) . "</td>\n";
                             $cat_val = ($logline[7] !== '' && $logline[7] !== '-') ? '<b>' . e2gm($logline[7]) . '</b>' : '-';
                             echo "<td $listr>" . $cat_val . "</td>\n";
-                            $reason = $is_live ? gettext("Active TLS tunnel (SNI); final counters are recorded when it closes.") : e2gm($logline[5]);
+                            $clean_reason = preg_replace('/\bhw[0-9]+:\s*/i', '', $logline[5]);
+                            $reason = $is_live ?
+                                gettext("Active TLS tunnel (SNI); final counters are recorded when it closes.") :
+                                e2gm($clean_reason !== '' ? $clean_reason : '-');
                             echo "<td $listr>" . $reason . "</td>\n";
                                                     echo "</tr>\n";
                             $shown++;
