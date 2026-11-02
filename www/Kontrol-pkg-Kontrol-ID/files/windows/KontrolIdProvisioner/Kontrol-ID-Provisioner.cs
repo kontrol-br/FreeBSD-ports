@@ -1,7 +1,6 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -9,13 +8,16 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
@@ -24,9 +26,9 @@ using System.Windows.Forms;
 [assembly: AssemblyCompany("Kontrol")]
 [assembly: AssemblyProduct("Kontrol-ID Provisioner")]
 [assembly: AssemblyCopyright("Copyright © 2016-2026 Kontrol Tecnologia EPP")]
-[assembly: AssemblyVersion("0.5.0.49")]
-[assembly: AssemblyFileVersion("0.5.0.49")]
-[assembly: AssemblyInformationalVersion("0.5.0_49")]
+[assembly: AssemblyVersion("0.5.0.50")]
+[assembly: AssemblyFileVersion("0.5.0.50")]
+[assembly: AssemblyInformationalVersion("0.5.0_50")]
 
 namespace Kontrol.Identity.Provisioner
 {
@@ -35,72 +37,9 @@ namespace Kontrol.Identity.Provisioner
         [STAThread]
         private static void Main(string[] args)
         {
-            if (args.Length == 2 && String.Equals(args[0], "--install-config", StringComparison.OrdinalIgnoreCase)) {
-                RunHeadlessInstall(args[1]);
-                return;
-            }
-            if (args.Length == 2 && String.Equals(args[0], "--remove-config", StringComparison.OrdinalIgnoreCase)) {
-                RunHeadlessRemove(args[1]);
-                return;
-            }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new ProvisionerForm());
-        }
-
-        private static void RunHeadlessInstall(string configPath)
-        {
-            string resultPath = configPath + ".result.json";
-            var serializer = new JavaScriptSerializer();
-            var result = new Dictionary<string, object>();
-            try {
-                var settings = serializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(configPath, Encoding.UTF8));
-                object configuredResult;
-                if (settings.TryGetValue("resultPath", out configuredResult) && configuredResult != null)
-                    resultPath = Convert.ToString(configuredResult);
-                if (!NativeMethods.IsAdministrator())
-                    throw new InvalidOperationException("O provisionamento silencioso requer privilégios administrativos.");
-                var form = new ProvisionerForm();
-                form.ProvisionForAutomation(new Uri(Convert.ToString(settings["appliance"])),
-                    Convert.ToString(settings["token"]), Convert.ToString(settings["fingerprint"]));
-                result["ok"] = true;
-                result["message"] = "Kontrol-ID provisioned successfully.";
-                Environment.ExitCode = 0;
-            } catch (Exception ex) {
-                result["ok"] = false;
-                result["error"] = ex.Message;
-                Environment.ExitCode = 1;
-            } finally {
-                try { File.WriteAllText(resultPath, serializer.Serialize(result), new UTF8Encoding(false)); } catch { }
-                try { File.Delete(configPath); } catch { }
-            }
-        }
-
-        private static void RunHeadlessRemove(string configPath)
-        {
-            string resultPath = configPath + ".result.json";
-            var serializer = new JavaScriptSerializer();
-            var result = new Dictionary<string, object>();
-            try {
-                var settings = serializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(configPath, Encoding.UTF8));
-                object configuredResult;
-                if (settings.TryGetValue("resultPath", out configuredResult) && configuredResult != null)
-                    resultPath = Convert.ToString(configuredResult);
-                if (!NativeMethods.IsAdministrator())
-                    throw new InvalidOperationException("A remoção silenciosa requer privilégios administrativos.");
-                var form = new ProvisionerForm();
-                form.RemoveForAutomation();
-                result["ok"] = true;
-                result["message"] = "Kontrol-ID configuration removed successfully.";
-                Environment.ExitCode = 0;
-            } catch (Exception ex) {
-                result["ok"] = false;
-                result["error"] = ex.Message;
-                Environment.ExitCode = 1;
-            } finally {
-                try { File.WriteAllText(resultPath, serializer.Serialize(result), new UTF8Encoding(false)); } catch { }
-                try { File.Delete(configPath); } catch { }
-            }
         }
     }
 
@@ -112,10 +51,6 @@ namespace Kontrol.Identity.Provisioner
         private readonly Button remove = new Button();
         private readonly Label packageStatus = new Label();
         private readonly Label stationStatus = new Label();
-        private string enrollmentToken = "";
-        private string webGuiPin = "";
-        private string enrollmentConfigPath = "";
-        private long enrollmentExpiresAt;
         private bool busy;
         private bool stationConfigured;
 
@@ -166,22 +101,24 @@ namespace Kontrol.Identity.Provisioner
             Controls.Add(header);
 
             var applianceLabel = new Label {
-                Text = "Kontrol associado ao pacote de matrícula",
+                Text = "Endereço HTTPS do Kontrol",
                 AutoSize = true,
                 Location = new Point(20, 68)
             };
             appliance.Location = new Point(20, 87);
             appliance.Size = new Size(410, 23);
-            appliance.ReadOnly = true;
             appliance.BackColor = Color.White;
+            appliance.Text = "https://";
+            appliance.TextChanged += (s, e) => UpdateActionState();
             packageStatus.Location = new Point(20, 115);
             packageStatus.Size = new Size(410, 18);
             packageStatus.ForeColor = Color.FromArgb(110, 83, 0);
+            packageStatus.Text = "A autorização administrativa será concluída no navegador.";
             Controls.Add(applianceLabel);
             Controls.Add(appliance);
             Controls.Add(packageStatus);
 
-            install.Text = "Configurar estação";
+            install.Text = "Autorizar e configurar";
             install.Location = new Point(20, 137);
             install.Size = new Size(198, 34);
             install.BackColor = Color.FromArgb(23, 105, 170);
@@ -222,13 +159,10 @@ namespace Kontrol.Identity.Provisioner
             };
             Controls.Add(footer);
 
-            LoadEnrollmentPackage();
             RefreshStationState();
 
             Shown += (s, e) => {
-                Append(NativeMethods.IsAdministrator()
-                    ? "Pronto. Executando com privilégios administrativos."
-                    : "Pronto. A elevação será solicitada somente ao aplicar alterações.");
+                Append("Pronto. Executando com privilégios administrativos.");
             };
         }
 
@@ -240,46 +174,13 @@ namespace Kontrol.Identity.Provisioner
             }
         }
 
-        private void LoadEnrollmentPackage()
-        {
-            enrollmentConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Kontrol-ID-Enrollment.json");
-            if (!File.Exists(enrollmentConfigPath)) {
-                packageStatus.Text = "Pacote de matrícula ausente. Gere-o na WebGUI do Kontrol-ID.";
-                appliance.Text = "Nenhum pacote carregado";
-                UpdateActionState();
-                return;
-            }
-            try {
-                var serializer = new JavaScriptSerializer();
-                var data = serializer.Deserialize<Dictionary<string, object>>(
-                    File.ReadAllText(enrollmentConfigPath, Encoding.UTF8));
-                appliance.Text = GetRequiredString(data, "appliance");
-                enrollmentToken = GetRequiredString(data, "token");
-                webGuiPin = NormalizeThumbprint(GetRequiredString(data, "fingerprint"));
-                enrollmentExpiresAt = Convert.ToInt64(data["expiresAt"]);
-                Uri uri;
-                if (!Uri.TryCreate(appliance.Text, UriKind.Absolute, out uri) ||
-                    !String.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
-                    webGuiPin.Length != 64 || webGuiPin.Any(c => !Uri.IsHexDigit(c)) ||
-                    enrollmentExpiresAt <= UnixNow()) {
-                    throw new InvalidOperationException("O pacote está vencido ou contém dados inválidos.");
-                }
-                packageStatus.Text = "Pacote autenticado, válido até " + UnixToLocal(enrollmentExpiresAt).ToString("dd/MM/yyyy HH:mm") + ".";
-                packageStatus.ForeColor = Color.FromArgb(28, 113, 62);
-            } catch (Exception ex) {
-                enrollmentToken = "";
-                webGuiPin = "";
-                packageStatus.Text = "Pacote de matrícula inválido: " + ex.Message;
-                packageStatus.ForeColor = Color.FromArgb(172, 46, 36);
-            }
-            UpdateActionState();
-        }
-
         private void RefreshStationState()
         {
             using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Kontrol\Kontrol-ID")) {
                 stationConfigured = key != null;
                 string configuredAppliance = key == null ? "" : Convert.ToString(key.GetValue("Appliance", ""));
+                if (!String.IsNullOrWhiteSpace(configuredAppliance))
+                    appliance.Text = configuredAppliance;
                 stationStatus.Text = stationConfigured
                     ? "● Estação configurada" + (String.IsNullOrWhiteSpace(configuredAppliance) ? "" : " para " + configuredAppliance)
                     : "○ Estação ainda não configurada";
@@ -288,15 +189,17 @@ namespace Kontrol.Identity.Provisioner
             UpdateActionState();
         }
 
-        private bool EnrollmentReady()
+        private bool ApplianceReady()
         {
-            return !String.IsNullOrWhiteSpace(enrollmentToken) && webGuiPin.Length == 64 &&
-                enrollmentExpiresAt > UnixNow();
+            Uri uri;
+            return Uri.TryCreate(appliance.Text.Trim(), UriKind.Absolute, out uri) &&
+                String.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+                !String.IsNullOrWhiteSpace(uri.Host);
         }
 
         private void UpdateActionState()
         {
-            install.Enabled = !busy && EnrollmentReady();
+            install.Enabled = !busy && ApplianceReady();
             remove.Enabled = !busy && stationConfigured;
             UseWaitCursor = busy;
         }
@@ -306,22 +209,12 @@ namespace Kontrol.Identity.Provisioner
             return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
         }
 
-        private static DateTime UnixToLocal(long value)
-        {
-            return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(value).ToLocalTime();
-        }
-
         private async Task InstallAsync()
         {
             Uri baseUri;
             if (!Uri.TryCreate(appliance.Text.Trim(), UriKind.Absolute, out baseUri) ||
                 !String.Equals(baseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) {
-                MessageBox.Show("O pacote não contém um endereço HTTPS válido para o Kontrol.", Text,
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            if (!EnrollmentReady()) {
-                MessageBox.Show("O pacote de matrícula está ausente, inválido ou vencido. Gere outro na WebGUI do Kontrol-ID.", Text,
+                MessageBox.Show("Informe um endereço HTTPS válido para o Kontrol.", Text,
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -329,18 +222,13 @@ namespace Kontrol.Identity.Provisioner
             SetBusy(true);
             log.Clear();
             try {
-                string tokenValue = enrollmentToken;
-                string pinValue = webGuiPin;
-                if (NativeMethods.IsAdministrator())
-                    await Task.Run(() => Provision(baseUri, tokenValue, pinValue));
-                else
-                    await Task.Run(() => RunElevated("--install-config", new Dictionary<string, object> {
-                        { "appliance", baseUri.GetLeftPart(UriPartial.Authority) },
-                        { "token", tokenValue },
-                        { "fingerprint", pinValue }
-                    }));
-                DeleteEnrollmentPackage();
+                if (!NativeMethods.IsAdministrator())
+                    throw new InvalidOperationException("Execute o Provisioner com privilégios administrativos.");
+                BrowserAuthorization authorization = await AuthorizeInBrowserAsync(baseUri);
+                await Task.Run(() => Provision(baseUri, authorization.Code, authorization.Verifier, authorization.WebGuiFingerprint));
                 RefreshStationState();
+                packageStatus.Text = "Autorização consumida com segurança. Nenhum manifesto foi salvo no disco.";
+                packageStatus.ForeColor = Color.FromArgb(28, 113, 62);
                 Append("Concluído. A estação está pronta para identificação automática.");
                 MessageBox.Show("A configuração do Kontrol-ID foi concluída.", Text,
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -362,10 +250,9 @@ namespace Kontrol.Identity.Provisioner
             SetBusy(true);
             log.Clear();
             try {
-                if (NativeMethods.IsAdministrator())
-                    await Task.Run(() => RemoveProvisioning());
-                else
-                    await Task.Run(() => RunElevated("--remove-config", new Dictionary<string, object>()));
+                if (!NativeMethods.IsAdministrator())
+                    throw new InvalidOperationException("Execute o Provisioner com privilégios administrativos.");
+                await Task.Run(() => RemoveProvisioning());
                 RefreshStationState();
                 Append("CA, certificados, políticas, firewall e conta técnica removidos.");
                 MessageBox.Show("A configuração do Kontrol-ID foi removida.", Text,
@@ -385,51 +272,118 @@ namespace Kontrol.Identity.Provisioner
             UpdateActionState();
         }
 
-        private void DeleteEnrollmentPackage()
+        private sealed class BrowserAuthorization
         {
-            try {
-                if (!String.IsNullOrWhiteSpace(enrollmentConfigPath) && File.Exists(enrollmentConfigPath))
-                    File.Delete(enrollmentConfigPath);
-            } catch (IOException) { }
-            enrollmentToken = "";
-            webGuiPin = "";
-            enrollmentExpiresAt = 0;
-            packageStatus.Text = "Matrícula utilizada. Gere um novo pacote para reconfigurar esta estação.";
-            packageStatus.ForeColor = Color.FromArgb(105, 115, 124);
-            UpdateActionState();
+            internal string Code;
+            internal string Verifier;
+            internal string WebGuiFingerprint;
         }
 
-        private static void RunElevated(string mode, Dictionary<string, object> settings)
+        private async Task<BrowserAuthorization> AuthorizeInBrowserAsync(Uri baseUri)
         {
-            string configPath = Path.Combine(Path.GetTempPath(), "Kontrol-ID-" + Guid.NewGuid().ToString("N") + ".json");
-            string resultPath = configPath + ".result.json";
-            var serializer = new JavaScriptSerializer();
-            settings["resultPath"] = resultPath;
+            string hostname = Environment.MachineName.ToLowerInvariant();
+            string fqdn = GetFqdn().ToLowerInvariant();
+            string state = RandomBase64Url(32);
+            string verifier = RandomBase64Url(32);
+            string challenge;
+            using (SHA256 sha = SHA256.Create())
+                challenge = Base64Url(sha.ComputeHash(Encoding.ASCII.GetBytes(verifier)));
+
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start(1);
             try {
-                File.WriteAllText(configPath, serializer.Serialize(settings), new UTF8Encoding(false));
-                var start = new ProcessStartInfo(Application.ExecutablePath,
-                    mode + " \"" + configPath.Replace("\"", "") + "\"") {
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
-                };
-                try {
-                    using (Process process = Process.Start(start)) process.WaitForExit();
-                } catch (Win32Exception ex) {
-                    if (ex.NativeErrorCode == 1223)
-                        throw new InvalidOperationException("A elevação administrativa foi cancelada.");
-                    throw;
+                int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+                string authorizationUrl = baseUri.GetLeftPart(UriPartial.Authority) + "/kontrol_id_authorize.php?" +
+                    "state=" + Uri.EscapeDataString(state) +
+                    "&challenge=" + Uri.EscapeDataString(challenge) +
+                    "&port=" + port +
+                    "&hostname=" + Uri.EscapeDataString(hostname) +
+                    "&fqdn=" + Uri.EscapeDataString(fqdn);
+
+                Append("Abrindo a WebGUI para autorização administrativa...");
+                packageStatus.Text = "Aguardando autorização do administrador no navegador...";
+                packageStatus.ForeColor = Color.FromArgb(110, 83, 0);
+                Process.Start(new ProcessStartInfo(authorizationUrl) { UseShellExecute = true });
+
+                Task<TcpClient> acceptTask = listener.AcceptTcpClientAsync();
+                if (await Task.WhenAny(acceptTask, Task.Delay(TimeSpan.FromMinutes(5))) != acceptTask)
+                    throw new InvalidOperationException("O tempo para autorização expirou. Inicie o processo novamente.");
+
+                using (TcpClient client = await acceptTask)
+                using (NetworkStream stream = client.GetStream())
+                using (var reader = new StreamReader(stream, Encoding.ASCII, false, 2048, true)) {
+                    string requestLine = await reader.ReadLineAsync();
+                    if (String.IsNullOrWhiteSpace(requestLine))
+                        throw new InvalidOperationException("O retorno da autorização está vazio.");
+                    string[] parts = requestLine.Split(' ');
+                    if (parts.Length < 2)
+                        throw new InvalidOperationException("O retorno da autorização é inválido.");
+                    Uri callback = new Uri("http://127.0.0.1" + parts[1]);
+                    if (!String.Equals(callback.AbsolutePath, "/callback/", StringComparison.Ordinal))
+                        throw new InvalidOperationException("O retorno da autorização possui um caminho inválido.");
+                    var query = HttpUtility.ParseQueryString(callback.Query);
+                    string returnedState = query["state"] ?? "";
+                    bool stateMatches = FixedTimeEquals(state, returnedState);
+                    string error = query["error"] ?? "";
+                    string code = query["code"] ?? "";
+                    string fingerprint = NormalizeThumbprint(query["fingerprint"] ?? "");
+
+                    string html = error == "" && stateMatches
+                        ? "<!doctype html><meta charset=utf-8><title>Kontrol-ID</title><h2>Estação autorizada</h2><p>Você pode fechar esta janela e retornar ao Provisioner.</p>"
+                        : "<!doctype html><meta charset=utf-8><title>Kontrol-ID</title><h2>Autorização não concluída</h2><p>Retorne ao Provisioner para tentar novamente.</p>";
+                    byte[] response = Encoding.UTF8.GetBytes(html);
+                    byte[] headers = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: " + response.Length + "\r\nConnection: close\r\n\r\n");
+                    await stream.WriteAsync(headers, 0, headers.Length);
+                    await stream.WriteAsync(response, 0, response.Length);
+
+                    if (!stateMatches || error != "")
+                        throw new InvalidOperationException("A autorização não foi concedida. Verifique as credenciais e permissões da conta e tente novamente.");
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(code, "^[A-Za-z0-9_-]{43}$") ||
+                        fingerprint.Length != 64 || fingerprint.Any(c => !Uri.IsHexDigit(c)))
+                        throw new InvalidOperationException("O Kontrol retornou uma autorização inválida.");
+
+                    Append("Autorização administrativa recebida. Gerando a matrícula...");
+                    return new BrowserAuthorization {
+                        Code = code,
+                        Verifier = verifier,
+                        WebGuiFingerprint = fingerprint
+                    };
                 }
-                if (!File.Exists(resultPath))
-                    throw new InvalidOperationException("O processo administrativo não retornou um resultado.");
-                var result = serializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(resultPath, Encoding.UTF8));
-                object ok;
-                if (!result.TryGetValue("ok", out ok) || !(ok is bool) || !(bool)ok)
-                    throw new InvalidOperationException(GetString(result, "error", "A operação administrativa falhou."));
             } finally {
-                try { File.Delete(configPath); } catch { }
-                try { File.Delete(resultPath); } catch { }
+                listener.Stop();
             }
+        }
+
+        private static string RandomBase64Url(int length)
+        {
+            byte[] bytes = new byte[length];
+            try {
+                using (RandomNumberGenerator random = RandomNumberGenerator.Create()) random.GetBytes(bytes);
+                return Base64Url(bytes);
+            } finally {
+                Array.Clear(bytes, 0, bytes.Length);
+            }
+        }
+
+        private static string Base64Url(byte[] bytes)
+        {
+            return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        }
+
+        private static bool FixedTimeEquals(string expected, string actual)
+        {
+            byte[] left = Encoding.ASCII.GetBytes(expected ?? "");
+            byte[] right = Encoding.ASCII.GetBytes(actual ?? "");
+            int difference = left.Length ^ right.Length;
+            int length = Math.Max(left.Length, right.Length);
+            for (int i = 0; i < length; i++) {
+                byte a = i < left.Length ? left[i] : (byte)0;
+                byte b = i < right.Length ? right[i] : (byte)0;
+                difference |= a ^ b;
+            }
+            Array.Clear(left, 0, left.Length);
+            Array.Clear(right, 0, right.Length);
+            return difference == 0;
         }
 
         private void Append(string message)
@@ -441,7 +395,7 @@ namespace Kontrol.Identity.Provisioner
             log.AppendText("[" + DateTime.Now.ToString("HH:mm:ss") + "] " + message + Environment.NewLine);
         }
 
-        private void Provision(Uri baseUri, string enrollmentToken, string webGuiPin)
+        private void Provision(Uri baseUri, string authorizationCode, string codeVerifier, string webGuiPin)
         {
             string host = Environment.MachineName.ToLowerInvariant();
             string fqdn = GetFqdn().ToLowerInvariant();
@@ -469,7 +423,8 @@ namespace Kontrol.Identity.Provisioner
                 Append("Enviando CSR ao Kontrol com validação por pin SHA-256...");
                 var serializer = new JavaScriptSerializer { MaxJsonLength = 131072 };
                 string requestBody = serializer.Serialize(new Dictionary<string, object> {
-                    { "token", enrollmentToken }, { "hostname", host }, { "fqdn", fqdn }, { "csr", csr }
+                    { "authorizationCode", authorizationCode }, { "codeVerifier", codeVerifier },
+                    { "hostname", host }, { "fqdn", fqdn }, { "csr", csr }
                 });
                 Uri endpoint = new Uri(baseUri.ToString().TrimEnd('/') + "/kontrol_id_enrollment.php");
                 string responseBody = PostPinnedJson(endpoint, requestBody, webGuiPin);
@@ -538,23 +493,6 @@ namespace Kontrol.Identity.Provisioner
             } finally {
                 try { Directory.Delete(working, true); } catch { }
             }
-        }
-
-        internal void ProvisionForAutomation(Uri baseUri, string enrollmentToken, string webGuiPin)
-        {
-            if (baseUri == null || !String.Equals(baseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("O endereço do Kontrol deve usar HTTPS.");
-            string pin = NormalizeThumbprint(webGuiPin);
-            if (pin.Length != 64 || pin.Any(c => !Uri.IsHexDigit(c)))
-                throw new InvalidOperationException("O pin SHA-256 da WebGUI é inválido.");
-            if (String.IsNullOrWhiteSpace(enrollmentToken))
-                throw new InvalidOperationException("O token de inscrição não foi informado.");
-            Provision(baseUri, enrollmentToken, pin);
-        }
-
-        internal void RemoveForAutomation()
-        {
-            RemoveProvisioning();
         }
 
         private void RemoveProvisioning()

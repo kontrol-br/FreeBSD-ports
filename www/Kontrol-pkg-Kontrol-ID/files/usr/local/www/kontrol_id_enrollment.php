@@ -29,6 +29,15 @@ if (!is_array($request)) {
 	kontrol_id_api_response(400, array('ok' => false, 'error' => 'Invalid JSON'));
 }
 
+$hostname = strtolower(trim($request['hostname'] ?? ''));
+$fqdn = strtolower(trim($request['fqdn'] ?? ''));
+if (!preg_match('/^[a-z0-9][a-z0-9-]{0,62}$/', $hostname)) {
+	kontrol_id_api_response(400, array('ok' => false, 'error' => 'Invalid hostname'));
+}
+if (!empty($fqdn) && !preg_match('/^[a-z0-9][a-z0-9.-]{0,252}$/', $fqdn)) {
+	kontrol_id_api_response(400, array('ok' => false, 'error' => 'Invalid FQDN'));
+}
+
 $remote_ip = $_SERVER['REMOTE_ADDR'] ?? '';
 if (filter_var($remote_ip, FILTER_VALIDATE_IP) === false) {
 	kontrol_id_api_response(400, array('ok' => false, 'error' => 'Invalid source address'));
@@ -46,26 +55,45 @@ if ($failures >= 10) {
 	kontrol_id_api_response(429, array('ok' => false, 'error' => 'Too many enrollment attempts'));
 }
 
-$valid_token = kontrol_id_token_valid($request['token'] ?? '');
+$valid_authorization = false;
+$legacy_token = false;
+$authorization_code = trim($request['authorizationCode'] ?? '');
+$code_verifier = trim($request['codeVerifier'] ?? '');
+if ($authorization_code !== '' || $code_verifier !== '') {
+	if (preg_match('/^[A-Za-z0-9_-]{43}$/', $authorization_code) &&
+		preg_match('/^[A-Za-z0-9_-]{43,128}$/', $code_verifier)) {
+		$code_hash = hash('sha256', $authorization_code);
+		$challenge = rtrim(strtr(base64_encode(hash('sha256', $code_verifier, true)), '+/', '-_'), '=');
+		$stmt = $db->prepare('SELECT pkce_challenge,hostname,fqdn,expires_at,consumed ' .
+			'FROM enrollment_authorizations WHERE code_hash=:code_hash LIMIT 1');
+		$stmt->bindValue(':code_hash', $code_hash, SQLITE3_TEXT);
+		$result = $stmt->execute();
+		$authorization = $result ? $result->fetchArray(SQLITE3_ASSOC) : false;
+		if (is_array($authorization) && !(int)$authorization['consumed'] &&
+			(int)$authorization['expires_at'] >= time() &&
+			hash_equals($authorization['pkce_challenge'], $challenge) &&
+			hash_equals($authorization['hostname'], $hostname) &&
+			hash_equals($authorization['fqdn'], $fqdn)) {
+			$stmt = $db->prepare('UPDATE enrollment_authorizations SET consumed=1 ' .
+				'WHERE code_hash=:code_hash AND consumed=0 AND expires_at>=:now');
+			$stmt->bindValue(':code_hash', $code_hash, SQLITE3_TEXT);
+			$stmt->bindValue(':now', time(), SQLITE3_INTEGER);
+			$stmt->execute();
+			$valid_authorization = ($db->changes() === 1);
+		}
+	}
+} else {
+	$legacy_token = kontrol_id_token_valid($request['token'] ?? '');
+	$valid_authorization = $legacy_token;
+}
 $attempt = $db->prepare('INSERT INTO auth_attempts(ip,attempted_at,success) VALUES(:ip,:now,:success)');
 $attempt->bindValue(':ip', $remote_ip, SQLITE3_TEXT);
 $attempt->bindValue(':now', time(), SQLITE3_INTEGER);
-$attempt->bindValue(':success', $valid_token ? 1 : 0, SQLITE3_INTEGER);
+$attempt->bindValue(':success', $valid_authorization ? 1 : 0, SQLITE3_INTEGER);
 $attempt->execute();
-if (!$valid_token) {
+if (!$valid_authorization) {
 	$db->close();
-	kontrol_id_api_response(403, array('ok' => false, 'error' => 'Invalid or expired enrollment token'));
-}
-
-$hostname = strtolower(trim($request['hostname'] ?? ''));
-$fqdn = strtolower(trim($request['fqdn'] ?? ''));
-if (!preg_match('/^[a-z0-9][a-z0-9-]{0,62}$/', $hostname)) {
-	$db->close();
-	kontrol_id_api_response(400, array('ok' => false, 'error' => 'Invalid hostname'));
-}
-if (!empty($fqdn) && !preg_match('/^[a-z0-9][a-z0-9.-]{0,252}$/', $fqdn)) {
-	$db->close();
-	kontrol_id_api_response(400, array('ok' => false, 'error' => 'Invalid FQDN'));
+	kontrol_id_api_response(403, array('ok' => false, 'error' => 'Invalid or expired enrollment authorization'));
 }
 
 $csr_pem = $request['csr'] ?? '';
@@ -122,7 +150,9 @@ $stmt->bindValue(':ip', $remote_ip, SQLITE3_TEXT);
 $stmt->execute();
 $db->close();
 
-kontrol_id_consume_token();
+if ($legacy_token) {
+	kontrol_id_consume_token();
+}
 write_config('Kontrol-ID station enrolled: ' . $hostname . ' (' . $remote_ip . ')');
 
 $client_parsed = openssl_x509_parse(base64_decode($client['crt']));

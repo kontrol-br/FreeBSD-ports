@@ -1231,6 +1231,10 @@ function kontrol_id_ensure_storage() {
 		'last_seen INTEGER NOT NULL DEFAULT 0, revoked INTEGER NOT NULL DEFAULT 0)');
 	$db->exec('CREATE TABLE IF NOT EXISTS auth_attempts (' .
 		'ip TEXT NOT NULL, attempted_at INTEGER NOT NULL, success INTEGER NOT NULL DEFAULT 0)');
+	$db->exec('CREATE TABLE IF NOT EXISTS enrollment_authorizations (' .
+		'code_hash TEXT PRIMARY KEY, pkce_challenge TEXT NOT NULL, hostname TEXT NOT NULL, ' .
+		"fqdn TEXT NOT NULL DEFAULT '', approved_by TEXT NOT NULL, created_at INTEGER NOT NULL, " .
+		'expires_at INTEGER NOT NULL, consumed INTEGER NOT NULL DEFAULT 0)');
 	$db->close();
 	@chown(KONTROL_ID_DB, 'squid');
 	@chgrp(KONTROL_ID_DB, 'proxy');

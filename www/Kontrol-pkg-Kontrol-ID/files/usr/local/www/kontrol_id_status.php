@@ -14,83 +14,6 @@ $search = trim(substr($_GET['q'] ?? '', 0, 100));
 $page = max(1, (int)($_GET['page'] ?? 1));
 $page_size = 50;
 
-function kontrol_id_provisioner_base_url() {
-	$host = trim($_SERVER['HTTP_HOST'] ?? '');
-	if (!preg_match('/^(?:[a-z0-9.-]+|\[[0-9a-f:]+\])(?::[0-9]{1,5})?$/i', $host)) {
-		$hostname = config_get_path('system/hostname', 'kontrol');
-		$domain = config_get_path('system/domain', 'localdomain');
-		$port = (int)config_get_path('system/webgui/port', 443);
-		$host = $hostname . (!empty($domain) ? '.' . $domain : '') . (($port > 0 && $port !== 443) ? ':' . $port : '');
-	}
-	return 'https://' . $host;
-}
-
-function kontrol_id_send_provisioner_bundle($uses) {
-	if (config_get_path('system/webgui/protocol', 'https') !== 'https') {
-		throw new Exception('Enable HTTPS on the WebGUI before creating an enrollment package.');
-	}
-	$webcert_ref = config_get_path('system/webgui/ssl-certref');
-	$webcert = $webcert_ref ? kontrol_id_extract_item(lookup_cert($webcert_ref)) : array();
-	if (empty($webcert['crt'])) {
-		throw new Exception('The WebGUI certificate is unavailable.');
-	}
-	$fingerprint = strtoupper(openssl_x509_fingerprint(base64_decode($webcert['crt']), 'sha256'));
-	$uses = max(1, min(500, (int)$uses));
-	$token = kontrol_id_generate_token($uses, 1800);
-	$settings = kontrol_id_get_settings();
-	$expires = (int)$settings['enrollment_token_expires'];
-	$source = '/usr/local/www/kontrol-id/Kontrol-ID-Provisioner.exe';
-	if (!is_file($source) || filesize($source) < 4096) {
-		throw new Exception('The Kontrol-ID Provisioner executable is unavailable.');
-	}
-	$temporary = sys_get_temp_dir() . '/kontrol-id-provisioner-' . bin2hex(random_bytes(8));
-	$archive = $temporary . '.zip';
-	if (!mkdir($temporary, 0700, true)) {
-		throw new Exception('Unable to create the temporary enrollment package.');
-	}
-	$exe = $temporary . '/Kontrol-ID-Provisioner.exe';
-	$config_file = $temporary . '/Kontrol-ID-Enrollment.json';
-	try {
-		if (!copy($source, $exe)) {
-			throw new Exception('Unable to copy the Provisioner executable.');
-		}
-		$config = array(
-			'schema' => 1,
-			'appliance' => kontrol_id_provisioner_base_url(),
-			'token' => $token,
-			'fingerprint' => $fingerprint,
-			'expiresAt' => $expires
-		);
-		if (file_put_contents($config_file, json_encode($config, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), LOCK_EX) === false) {
-			throw new Exception('Unable to create the enrollment manifest.');
-		}
-		chmod($exe, 0600);
-		chmod($config_file, 0600);
-		$output = array();
-		$status = 0;
-		$command = '/usr/bin/tar --format zip -cf ' . escapeshellarg($archive) .
-			' -C ' . escapeshellarg($temporary) .
-			' Kontrol-ID-Provisioner.exe Kontrol-ID-Enrollment.json 2>&1';
-		exec($command, $output, $status);
-		if ($status !== 0 || !is_file($archive) || filesize($archive) < 4096) {
-			throw new Exception('Unable to assemble the enrollment ZIP: ' . implode(' ', $output));
-		}
-		header('Content-Type: application/zip');
-		header('Content-Disposition: attachment; filename="Kontrol-ID-Provisioner.zip"');
-		header('Content-Length: ' . filesize($archive));
-		header('Cache-Control: no-store, no-cache, must-revalidate');
-		header('Pragma: no-cache');
-		header('X-Content-Type-Options: nosniff');
-		readfile($archive);
-	} finally {
-		@unlink($exe);
-		@unlink($config_file);
-		@unlink($archive);
-		@rmdir($temporary);
-	}
-	exit;
-}
-
 if (!kontrol_id_transparent_identity_mode()) {
 	header('Location: /pkg_edit.php?xml=kontrol_id.xml&id=0&savemsg=' . rawurlencode(
 		'Status and Enrollment is available only in Transparent identification mode.'
@@ -99,14 +22,7 @@ if (!kontrol_id_transparent_identity_mode()) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-	if (isset($_POST['download_bundle'])) {
-		try {
-			kontrol_id_send_provisioner_bundle(1);
-		} catch (Exception $e) {
-			$savemsg = $e->getMessage();
-			$saveerror = true;
-		}
-	} elseif (isset($_POST['revoke_endpoint']) && filter_var($_POST['revoke_endpoint'], FILTER_VALIDATE_IP)) {
+	if (isset($_POST['revoke_endpoint']) && filter_var($_POST['revoke_endpoint'], FILTER_VALIDATE_IP)) {
 		$db = new SQLite3(KONTROL_ID_DB);
 		$stmt = $db->prepare('UPDATE endpoints SET revoked=1 WHERE ip=:ip');
 		$stmt->bindValue(':ip', $_POST['revoke_endpoint'], SQLITE3_TEXT);
@@ -258,14 +174,12 @@ if (!empty($savemsg)) {
 <div class="panel panel-default">
 	<div class="panel-heading"><h2 class="panel-title">Windows Provisioning</h2></div>
 	<div class="panel-body">
-		<p>Download a ready-to-use package for one Windows station. The secure enrollment data is embedded automatically; the operator only needs to run the Provisioner as administrator.</p>
+		<p>Download the universal Windows Provisioner. The same executable can be reused on any number of stations.</p>
 		<?php if (config_get_path('system/webgui/protocol', 'https') !== 'https'): ?>
 			<div class="alert alert-danger">The enrollment API requires an HTTPS WebGUI. Enable HTTPS before provisioning stations.</div>
 		<?php endif; ?>
-		<form method="post" class="form-inline">
-			<button class="btn btn-success" type="submit" name="download_bundle" value="1"><i class="fa fa-download"></i> Download configured Provisioner</button>
-		</form>
-		<p class="help-block">For security, each download enrolls one station and remains valid for 30 minutes. Extract both files to the same folder and run Kontrol-ID-Provisioner.exe. The temporary enrollment manifest is deleted after successful configuration.</p>
+		<a class="btn btn-success" href="/kontrol-id/Kontrol-ID-Provisioner.exe" download><i class="fa fa-download"></i> Download universal Provisioner</a>
+		<p class="help-block">Run the application as administrator, enter the Kontrol HTTPS address and authorize the station in the browser. Authorization and certificate data remain only in memory; no enrollment JSON file is created.</p>
 		<p class="help-block">Each station creates its own non-exportable private key and receives a unique WinRM HTTPS server certificate. Kontrol-ID uses one appliance client certificate to authenticate its queries; no shared station private key is distributed.</p>
 	</div>
 </div>
