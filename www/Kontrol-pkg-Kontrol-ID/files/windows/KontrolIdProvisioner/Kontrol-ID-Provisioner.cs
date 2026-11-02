@@ -105,6 +105,10 @@ namespace Kontrol.Identity.Provisioner
         public ProvisionerForm()
         {
             Text = "Kontrol-ID - Configurar estação";
+            using (System.Drawing.Icon appIcon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath)) {
+                if (appIcon != null)
+                    Icon = (System.Drawing.Icon)appIcon.Clone();
+            }
             StartPosition = FormStartPosition.CenterScreen;
             MinimumSize = new Size(690, 590);
             Size = new Size(760, 650);
