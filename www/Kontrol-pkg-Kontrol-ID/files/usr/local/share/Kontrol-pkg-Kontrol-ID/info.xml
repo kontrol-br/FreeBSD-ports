@@ -7,5 +7,6 @@
 		<pkginfolink>https://kontrol.com.br/</pkginfolink>
 		<version>%%PKGVERSION%%</version>
 		<configurationfile>kontrol_id.xml</configurationfile>
+		<filter_rule_function>e2g_generate_rules</filter_rule_function>
 	</package>
 </pfsensepkgs>

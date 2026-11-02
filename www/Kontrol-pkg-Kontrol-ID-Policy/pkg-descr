@@ -1,5 +1,0 @@
-Policy, TLS inspection, reporting, blacklist, and access-control GUI for the
-standalone Kontrol-ID secure web gateway. The Kontrol-ID profile deliberately
-excludes the retired antivirus, phrase-list, and PICS integrations.
-
-WWW: https://kontrol.com.br/

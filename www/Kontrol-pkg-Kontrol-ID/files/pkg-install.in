@@ -31,6 +31,14 @@ if [ "${2}" != "POST-INSTALL" ]; then
 	exit 0
 fi
 
+# Remove pages retired in 6.6.26_18. They are deliberately not part of the
+# current manifest, but may survive an in-place/forced upgrade from an older
+# package and remain reachable by a direct URL.
+rm -f /usr/local/pkg/e2guardian_antivirus_acl.xml \
+	/usr/local/pkg/e2guardian_phrase_acl.xml \
+	/usr/local/pkg/e2guardian_pics_acl.xml \
+	/usr/local/www/e2guardian_about.php
+
 if [ -f /etc/rc.packages ]; then
 	/usr/local/bin/php -f /etc/rc.packages %%PORTNAME%% ${2}
 fi

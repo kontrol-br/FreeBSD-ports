@@ -10,6 +10,39 @@ pkg/kontrol-id-login-kontrol-dark.css
 pkg/kontrol-id-login-aurora.css
 pkg/kontrol-id-login-corporate.css
 pkg/kontrol-id-login-signal.css
+pkg/e2guardian.xml
+pkg/e2guardian_blacklist.xml
+pkg/e2guardian_config.xml
+pkg/e2guardian_content_acl.xml
+pkg/e2guardian_file_acl.xml
+pkg/e2guardian_gateways.xml
+pkg/e2guardian_groups.xml
+pkg/e2guardian_header_acl.xml
+pkg/e2guardian_ldap.xml
+pkg/e2guardian_limits.xml
+pkg/e2guardian_log.xml
+pkg/e2guardian_search_acl.xml
+pkg/e2guardian_sync.xml
+pkg/e2guardian_site_acl.xml
+pkg/e2guardian_url_acl.xml
+pkg/e2guardian.inc
+pkg/pkg_e2guardian.inc
+pkg/e2guardian.conf.template
+pkg/e2guardian_ips_header.template
+pkg/e2guardian_users_footer.template
+pkg/e2guardian_users_header.template
+pkg/e2guardian_story.template
+pkg/common.story.default
+pkg/preauth.story.default
+pkg/site.story.default
+pkg/default.conf.default
+pkg/kontrol-id-block-template.html
+pkg/kontrol-id-block-template-aurora.html
+pkg/kontrol-id-block-template-corporate.html
+pkg/kontrol-id-block-template-signal.html
+pkg/e2guardianfx.conf.template
+pkg/e2guardian_ips.xml
+pkg/e2guardian_users.xml
 www/kontrol_id_status.php
 www/kontrol_id_domain.php
 www/kontrol_id_policy.php
@@ -18,11 +51,29 @@ www/kontrol_id_enrollment.php
 www/kontrol_id_api_authorize.php
 www/kontrol_id_provisioner.php
 www/kontrol_id_unenrollment.php
+www/e2guardian_ldap.php
+www/e2guardian_scheds.php
+www/e2guardian_logrotate.php
+www/e2guardian_monitor_data.php
+www/e2guardian_monitor.php
+www/e2guardian_log_parser.php
+www/e2guardian_clone.php
+www/e2guardian.php
+www/e2gerror.php
+@dir www/kontrol-id
 www/kontrol-id/index.html
 www/kontrol-id/Kontrol-ID-Provisioner.exe
-/etc/inc/priv/kontrol_id.priv.inc
-share/Kontrol-pkg-Kontrol-ID/info.xml
-@dir www/kontrol-id
+@dir etc/e2guardian
+etc/e2guardian/squidparent.conf
+@dir www/widgets/widgets
+www/widgets/widgets/kontrol_id.widget.php
+@dir www/widgets/include
+www/widgets/include/kontrol_id.inc
+@dir www/shortcuts
+www/shortcuts/pkg_e2guardian.inc
 @dir share/Kontrol-pkg-Kontrol-ID
+share/Kontrol-pkg-Kontrol-ID/info.xml
 @dir /etc/inc/priv
 @dir /etc/inc
+/etc/inc/priv/kontrol_id.priv.inc
+/etc/inc/priv/e2guardian.priv.inc
