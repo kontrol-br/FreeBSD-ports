@@ -6,6 +6,9 @@ require_once('util.inc');
 require_once('auth.inc');
 require_once('certs.inc');
 require_once('xmlrpc_client.inc');
+if (file_exists('/usr/local/pkg/e2guardian.inc')) {
+	require_once('/usr/local/pkg/e2guardian.inc');
+}
 
 define('KONTROL_ID_CONF', '/usr/local/etc/kontrol-identity.conf');
 define('KONTROL_ID_DB_DIR', '/var/db/kontrol-identity');
