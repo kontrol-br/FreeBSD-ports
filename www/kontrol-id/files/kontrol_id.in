@@ -23,15 +23,24 @@ load_rc_config $name
 : ${kontrol_id_config="%%PREFIX%%/etc/e2guardian/e2guardian.conf"}
 : ${kontrol_id_krb5_config="%%PREFIX%%/etc/kontrol-id/krb5.conf"}
 : ${kontrol_id_keytab="/var/db/kontrol-id-domain/krb5.keytab"}
+: ${kontrol_id_logdir="/var/log/kontrol-id"}
+: ${kontrol_id_error_log="${kontrol_id_logdir}/kontrol-id-error.log"}
 
 command=%%PREFIX%%/sbin/kontrol-id
 command_env="KRB5_CONFIG=${kontrol_id_krb5_config} KRB5_KTNAME=${kontrol_id_keytab}"
 pidfile=/var/run/kontrol-id.pid
 stop_postcmd="kontrol_id_stop_postcmd"
+start_precmd="kontrol_id_start_precmd"
 reload_cmd="kontrol_id_reload_cmd"
 extra_commands="reload"
 
-command_args="-c ${kontrol_id_config}"
+command_args="-c ${kontrol_id_config} >> ${kontrol_id_error_log} 2>&1"
+
+kontrol_id_start_precmd() {
+	/usr/bin/install -d -m 0750 "${kontrol_id_logdir}"
+	/usr/bin/touch "${kontrol_id_error_log}"
+	/bin/chmod 0640 "${kontrol_id_error_log}"
+}
 
 kontrol_id_reload_cmd() {
 	if [ -r "${pidfile}" ]; then

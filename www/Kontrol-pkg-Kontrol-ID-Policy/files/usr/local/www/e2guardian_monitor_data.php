@@ -59,7 +59,7 @@ if ($_POST) {
     switch ($program) {
         case 'access':
             // Define log file
-            $log = '/var/log/e2guardian/access.log';
+            $log = KONTROL_ID_ACCESS_LOG;
             // Fetch lines
             $logarr = fetch_log($log);
             switch($e2glog['logfileformat']) {
@@ -206,7 +206,7 @@ if ($_POST) {
         case 'e2gerror':
             show_tds(array("","Date", "User", "IP", "Url", "Reason", "Group"));
             // Define log file
-                        $log = '/var/log/e2guardian/denied.log';
+                        $log = KONTROL_ID_DENIED_LOG;
                         // Fetch lines
                         $logarr = fetch_log($log);
             foreach ($logarr as $logent) {
@@ -290,14 +290,14 @@ function fetch_log($log) {
 };
 
 /*
- * Trusted TLS tunnels are accounted in access.log only after they close.  The
- * engine writes a lightweight opening event to request.log so Real Time can
- * show the SNI immediately.  A completed access record supersedes its opening
- * event; reports continue to consume access.log exclusively.
+ * Trusted TLS tunnels are accounted in the access log only after they close.
+ * The engine writes a lightweight opening event to the request log so Real
+ * Time can show the SNI immediately. A completed access record supersedes its
+ * opening event; reports continue to consume the access log exclusively.
  */
 function fetch_access_and_live_logs($scanlines, $filter) {
-    $access_log = '/var/log/e2guardian/access.log';
-    $live_log = '/var/log/e2guardian/request.log';
+    $access_log = KONTROL_ID_ACCESS_LOG;
+    $live_log = KONTROL_ID_REQUEST_LOG;
     $marker = "\t__KONTROL_ID_TUNNEL_OPEN__";
     $limit = max(1, min(20000, (int)$scanlines));
     $access_lines = array();

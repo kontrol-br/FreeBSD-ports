@@ -47,13 +47,31 @@ define('DANSG_DIR', '/usr/local');
 
 $uname = posix_uname();
 
+function sarg_native_gateway_log() {
+	$new_log = '/var/log/kontrol-id/kontrol-id-access.log';
+	$legacy_log = '/var/log/e2guardian/access.log';
+	foreach (array($new_log, $legacy_log) as $candidate) {
+		if (is_file($candidate) || is_readable($candidate)) {
+			return $candidate;
+		}
+	}
+
+	/* Prefer the new path on a fresh Kontrol-ID installation, while retaining
+	 * the legacy E2Guardian location for existing standalone deployments. */
+	if (is_executable('/usr/local/sbin/kontrol-id') ||
+		is_array(config_get_path('installedpackages/kontrolid/config', null))) {
+		return $new_log;
+	}
+	return $legacy_log;
+}
+
 // STATIC VARS
 $GLOBALS['sarg_proxy']['squid_rc'] = SQUID_DIR . '/etc/rc.d/squid.sh';
 $GLOBALS['sarg_proxy']['squid_config'] = '/var/squid/logs/access.log';
 $GLOBALS['sarg_proxy']['squidguard_config'] = SQGARD_DIR . '/etc/squidGuard/squidGuard.conf';
 $GLOBALS['sarg_proxy']['squidguard_block_log'] = '/var/squidGuard/log/block.log';
 $GLOBALS['sarg_proxy']['e2guardian_config'] = DANSG_DIR . '/etc/e2guardian/e2guardian.conf';
-$GLOBALS['sarg_proxy']['e2guardian_log'] = '/var/log/e2guardian/access.log';
+$GLOBALS['sarg_proxy']['e2guardian_log'] = sarg_native_gateway_log();
 // END STATIC VARS
 
 function sarg_text_area_decode($text) {
@@ -174,7 +192,7 @@ function run_sarg($id = -1) {
 	global $config, $g, $sarg_proxy;
 
 
-	$log_files = array('e2guardian' => '/var/log/e2guardian/access.log',
+	$log_files = array('e2guardian' => sarg_native_gateway_log(),
 	                   'squid' => '/var/squid/logs/access.log');
 
 	$cmd = SARG_DIR . "/bin/sarg";
@@ -318,7 +336,7 @@ function sync_package_sarg() {
 	$access_log = $sarg['proxy_server'];
 	$sarg_title = ($sarg['proxy_server'] === 'e2guardian') ? 'Kontrol-ID / E2Guardian' : ucfirst($sarg['proxy_server']);
 	$e2guardian_conf = 'none';
-	$e2guardian_filter_out_date = '# E2Guardian access.log is parsed natively by Sarg';
+	$e2guardian_filter_out_date = '# Kontrol-ID/E2Guardian native access log is parsed directly by Sarg';
 	$squidguard_conf = 'squidguard_conf none';
 	$redirector_log_format = '';
 	switch ($sarg['proxy_server']) {

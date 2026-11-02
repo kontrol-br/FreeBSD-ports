@@ -66,7 +66,7 @@ if ($requested_widgetkey !== null) {
 $service = array('name' => 'kontrol_id');
 $service_running = get_service_status($service);
 $service_enabled = config_get_path('installedpackages/kontrolid/config/0/enable') === 'on';
-$stats = kontrol_id_widget_latest_stats('/var/log/e2guardian/dstats.log');
+$stats = kontrol_id_widget_latest_stats('/var/log/kontrol-id/kontrol-id-stats.log');
 $stats_fresh = !empty($stats['timestamp']) && (time() - $stats['timestamp']) <= 90;
 $status_class = $service_running ? 'success' : ($service_enabled ? 'danger' : 'warning');
 $status_icon = $service_running ? 'fa-check-circle' : ($service_enabled ? 'fa-times-circle' : 'fa-pause-circle');

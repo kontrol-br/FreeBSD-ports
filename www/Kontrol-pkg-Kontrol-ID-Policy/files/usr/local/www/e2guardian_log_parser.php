@@ -24,7 +24,7 @@
 
 /*
 * Simple Squid Log parser to rewrite line with date/time human readable
-* Usage:  cat /var/log/e2guardian/access.log | parser_squid_log.php
+* Usage: cat /var/log/kontrol-id/kontrol-id-access.log | e2guardian_log_parser.php
 */
 
 $logline = fopen("php://stdin", "r");

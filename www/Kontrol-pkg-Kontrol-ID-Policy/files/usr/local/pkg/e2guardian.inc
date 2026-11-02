@@ -333,10 +333,59 @@ if (!defined('KONTROL_ID_SERVICE_SCRIPT')) {
 if (!defined('KONTROL_ID_PIDFILE')) {
     define('KONTROL_ID_PIDFILE', '/var/run/kontrol-id.pid');
 }
+if (!defined('KONTROL_ID_LOGDIR')) {
+    define('KONTROL_ID_LOGDIR', '/var/log/kontrol-id');
+}
+if (!defined('KONTROL_ID_ACCESS_LOG')) {
+    define('KONTROL_ID_ACCESS_LOG', KONTROL_ID_LOGDIR . '/kontrol-id-access.log');
+}
+if (!defined('KONTROL_ID_REQUEST_LOG')) {
+    define('KONTROL_ID_REQUEST_LOG', KONTROL_ID_LOGDIR . '/kontrol-id-request.log');
+}
+if (!defined('KONTROL_ID_STATS_LOG')) {
+    define('KONTROL_ID_STATS_LOG', KONTROL_ID_LOGDIR . '/kontrol-id-stats.log');
+}
+if (!defined('KONTROL_ID_DENIED_LOG')) {
+    define('KONTROL_ID_DENIED_LOG', KONTROL_ID_LOGDIR . '/kontrol-id-denied.log');
+}
+if (!defined('KONTROL_ID_SERVICE_LOG')) {
+    define('KONTROL_ID_SERVICE_LOG', KONTROL_ID_LOGDIR . '/kontrol-id-service.log');
+}
 if (!defined('KONTROL_ID_ENGINE_BINARY')) {
     define('KONTROL_ID_ENGINE_BINARY',
         is_executable(E2GUARDIAN_SBINDIR . '/kontrol-id') ?
         E2GUARDIAN_SBINDIR . '/kontrol-id' : E2GUARDIAN_SBINDIR . '/e2guardian');
+}
+
+function kontrol_id_migrate_log_files() {
+    $legacy_dir = '/var/log/e2guardian';
+    if (!is_dir(KONTROL_ID_LOGDIR)) {
+        @mkdir(KONTROL_ID_LOGDIR, 0750, true);
+    }
+    if (!is_dir($legacy_dir) || !is_dir(KONTROL_ID_LOGDIR)) {
+        return;
+    }
+
+    $log_map = array(
+        'access.log' => basename(KONTROL_ID_ACCESS_LOG),
+        'request.log' => basename(KONTROL_ID_REQUEST_LOG),
+        'dstats.log' => basename(KONTROL_ID_STATS_LOG),
+        'denied.log' => basename(KONTROL_ID_DENIED_LOG),
+        'start.log' => basename(KONTROL_ID_SERVICE_LOG),
+        'debuge2' => 'kontrol-id-error.log'
+    );
+    foreach ($log_map as $legacy_name => $new_name) {
+        foreach ((array)(glob($legacy_dir . '/' . $legacy_name . '*') ?: array()) as $legacy_path) {
+            $suffix = substr(basename($legacy_path), strlen($legacy_name));
+            if ($suffix !== '' && !preg_match('/^\.[0-9]+(?:\.gz)?$/', $suffix)) {
+                continue;
+            }
+            $new_path = KONTROL_ID_LOGDIR . '/' . $new_name . $suffix;
+            if (!file_exists($new_path)) {
+                @rename($legacy_path, $new_path);
+            }
+        }
+    }
 }
 
 if ($_POST['clear_cert_cache'] == 'clear_cert_cache') {
@@ -691,7 +740,7 @@ function e2g_check_sched($iface_sched){
 function e2g_check_logdeniedcgi($logdeniedcgi) {
     $e2g_file = E2GUARDIAN_WWWDIR . "/e2gerror.php";
     if ($logdeniedcgi == 'on') {
-        $e2g_log = "/var/log/e2guardian/denied.log";
+        $e2g_log = KONTROL_ID_DENIED_LOG;
     } else {
          $e2g_log = "none";
     }
@@ -702,7 +751,7 @@ function e2g_check_logdeniedcgi($logdeniedcgi) {
 }
 
 function e2g_watchdog_script($wpid, $wcmd, $winfo){
-    $wlog = "/var/log/e2guardian/start.log";
+    $wlog = KONTROL_ID_SERVICE_LOG;
     $wprocess = ($winfo == "e2guardian" ? "^/usr/local/sbin/(kontrol-id|e2guardian)([[:space:]]|$)" : "");
     $wscript = <<<EOF
 # watchdog script for {$winfo}
@@ -1753,12 +1802,13 @@ function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
         $load_samples = 0;
 
     #ssl men-in-the-middle feature
-    $dirs = array("/var/log/e2guardian", "/var/log/e2guardian/stats", "/etc/ssl/demoCA", "/etc/ssl/demoCA/private", "/etc/ssl/demoCA/crl", "/etc/ssl/demoCA/certs", $e2guardian_dir . "/ssl/generatedcerts", $e2guardian_dir . "/ssl/generatedlinks");
+    $dirs = array(KONTROL_ID_LOGDIR, "/etc/ssl/demoCA", "/etc/ssl/demoCA/private", "/etc/ssl/demoCA/crl", "/etc/ssl/demoCA/certs", $e2guardian_dir . "/ssl/generatedcerts", $e2guardian_dir . "/ssl/generatedlinks");
     foreach ($dirs as $dir) {
         if (!is_dir($dir)) {
             mkdir ($dir, 0755, true);
         }
     }
+    kontrol_id_migrate_log_files();
 
         $enablessl = (e2g_ssl_intercept_is_enabled($e2guardian) ? "on" : "off");
     $ca_cert = e2g_extract_certmanager_item(lookup_ca($e2guardian["dca"]));
@@ -2963,7 +3013,7 @@ EOF;
 
         $dirs = array(
                 E2GUARDIAN_ETCDIR . '/lists/bannedrooms/',
-                '/var/log/e2guardian');
+                KONTROL_ID_LOGDIR);
 
     foreach ($dirs as $dir) {
         if (!is_dir($dir)) {
@@ -2973,7 +3023,7 @@ EOF;
 
     //update file owner
         mwexec("chown -R $daemonuser:$daemongroup " . E2GUARDIAN_ETCDIR);
-    mwexec("chown -R $daemonuser:$daemongroup /var/log/e2guardian");
+    mwexec("chown -R $daemonuser:$daemongroup " . escapeshellarg(KONTROL_ID_LOGDIR));
 
     //create config files
     file_put_contents($e2guardian_dir . "/e2guardian.conf", $dg, LOCK_EX);
