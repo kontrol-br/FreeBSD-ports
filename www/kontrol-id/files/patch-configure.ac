@@ -1,0 +1,12 @@
+--- configure.ac.orig	2026-11-01 18:00:00 UTC
++++ configure.ac
+@@ -586,7 +586,8 @@ else
+ 	AC_MSG_RESULT(yes)
+ 	sslmitm=true
+ 	SSLMITMSUPPORT=""
+-	LIBS="${LIBS} -lssl -lcrypto"
++	KONTROL_SSL_LIBS="${KONTROL_SSL_LIBS:--lssl -lcrypto}"
++	LIBS="${LIBS} ${KONTROL_SSL_LIBS}"
+ 	AC_DEFINE([__SSLMITM],[],[Define to enable SSL MITM ])
+ 	AC_DEFINE([__SSLCERT],[],[Define to enable SSL CERT ])
+     PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1])

@@ -401,15 +401,20 @@
 				<option><name>Aurora</name><value>aurora</value></option>
 				<option><name>Corporate</name><value>corporate</value></option>
 				<option><name>Signal</name><value>signal</value></option>
+				<option><name>Custom Message</name><value>custom_message</value></option>
 			</options>
 		</field>
 		<field>
 			<fielddescr>Administrator Message</fielddescr>
 			<fieldname>admin_contact</fieldname>
-			<description>Message shown when the user needs an account or administrative assistance.</description>
+			<description><![CDATA[
+				Message shown when the user needs an account or administrative assistance. Plain text and the following safe HTML tags are accepted:
+				<code>p, br, strong, b, em, i, u, ul, ol, li, small, code</code>. Attributes, scripts, styles and embedded content are removed.
+				The <strong>Custom Message</strong> template displays this content prominently.
+			]]></description>
 			<type>textarea</type>
 			<cols>70</cols>
-			<rows>3</rows>
+			<rows>8</rows>
 		</field>
 		<field>
 			<name>Portal Authentication</name>

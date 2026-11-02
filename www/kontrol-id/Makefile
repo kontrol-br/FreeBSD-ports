@@ -1,6 +1,6 @@
 PORTNAME=	kontrol-id
 PORTVERSION=	5.4.23
-PORTREVISION=	11
+PORTREVISION=	12
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=	kontrol-br
@@ -19,11 +19,9 @@ LICENSE=	GPLv2
 # installed together because they own the same binary and configuration paths.
 CONFLICTS_INSTALL=	e2guardian* Kontrol-pkg-E2guardian54*
 
-RUN_DEPENDS+=   openssl111>=1.1.1w_2:security/openssl111
-
 LIB_DEPENDS=	libpcre.so:devel/pcre
 
-USES=		autoreconf compiler:c++11-lang gssapi:mit,flags libtool localbase \
+USES=		autoreconf compiler:c++11-lang libtool localbase \
 		pkgconfig python
 USE_GITHUB=	yes
 #BINARY_ALIAS=	autom4te2.72=autom4te-2.72
@@ -33,10 +31,8 @@ USE_RC_SUBR=	kontrol_id
 GNU_CONFIGURE=	yes
 CONFIGURE_ARGS=	--with-logdir=/var/log \
 		--with-piddir=/var/run
-CONFIGURE_ENV+=	LIBS="${GSSAPILIBS}"
-
-OPTIONS_DEFINE=	NTLM DNS EMAIL DEBUG DOCS SSL_MITM
-OPTIONS_DEFAULT=DNS NTLM SSL_MITM
+OPTIONS_DEFINE=	NTLM DNS EMAIL DEBUG DOCS SSL_MITM OPENSSL111
+OPTIONS_DEFAULT=DNS NTLM SSL_MITM OPENSSL111
 OPTIONS_SUB=	yes
 
 NTLM_DESC=	Include NTLM authentication plugin
@@ -44,6 +40,13 @@ DNS_DESC=	Include DNS authetication plugin
 EMAIL_DESC=	Enable e-mail reporting support
 DEBUG_DESC=	Enable debug build mode
 SSL_MITM_DESC=	Enable support for the SSL MITM plugin
+OPENSSL111_DESC=	Link Kontrol-ID exclusively against the isolated OpenSSL 1.1.1 port
+
+# A process linked to OpenSSL 1.1.1 must not also pull the base libcrypto
+# through Heimdal.  Keep the complete GSSAPI dependency chain on the same
+# crypto generation while leaving the rest of the appliance on base OpenSSL.
+OPENSSL111_USES=		gssapi:mit,flags
+OPENSSL111_OFF_USES=		gssapi:base,flags
 
 ETCDIR=		${PREFIX}/etc/e2guardian
 DATADIR=	${PREFIX}/share/e2guardian
@@ -61,24 +64,32 @@ DEBUG_CFLAGS=		-g -O0 -fno-omit-frame-pointer
 DEBUG_CXXFLAGS=		-g -O0 -fno-omit-frame-pointer
 DEBUG_VARS=		STRIP=
 
-#SSL_MITM_USES=                 ssl
 SSL_MITM_CONFIGURE_ENABLE=      sslmitm
-#DEFAULT_VERSIONS+=                     ssl=openssl
-BROKEN_SSL=                     openssl30 openssl31 openssl32
-BROKEN_SSL_REASON= required openssl111 semantics for peer certificate
-
-OPENSSLBASE=    /usr/local
-OPENSSLINC=     ${OPENSSLBASE}/include
-OPENSSLLIB=     ${OPENSSLBASE}/lib
-
-SSL_MITM_CONFIGURE_ENV=         OPENSSL_LIBS="${OPENSSLLIB}/libssl.so ${OPENSSLLIB}/libcrypto.so" \
-                                OPENSSL_CFLAGS="-I${OPENSSLINC}" \
-                                OPENSSL_LDFLAGS="-L${OPENSSLLIB}"
-CFLAGS+=        -I${OPENSSLINC}
-CPPFLAGS+=      -I${OPENSSLINC}
-LDFLAGS+=       -L${OPENSSLLIB}
 
 .include <bsd.port.options.mk>
+
+.if ${PORT_OPTIONS:MOPENSSL111}
+BUILD_DEPENDS+=	openssl111>=1.1.1w_2:security/openssl111
+RUN_DEPENDS+=	openssl111>=1.1.1w_2:security/openssl111
+OPENSSLBASE=	${LOCALBASE}
+GSSAPIBASE=	${LOCALBASE}
+.else
+OPENSSLBASE=	/usr
+GSSAPIBASE=	/usr
+.endif
+OPENSSLINC=	${OPENSSLBASE}/include
+OPENSSLLIB=	${OPENSSLBASE}/lib
+GSSAPILIB=	${GSSAPIBASE}/lib
+
+.if ${PORT_OPTIONS:MSSL_MITM}
+CONFIGURE_ENV+=	KONTROL_SSL_LIBS="${OPENSSLLIB}/libssl.so ${OPENSSLLIB}/libcrypto.so"
+.endif
+CONFIGURE_ENV+=	LIBS="${GSSAPILIB}/libkrb5.so ${GSSAPILIB}/libgssapi_krb5.so"
+CFLAGS+=	-I${OPENSSLINC}
+CPPFLAGS+=	-I${OPENSSLINC}
+# Link the selected SSL implementation by absolute path through
+# KONTROL_SSL_LIBS.  The OpenSSL 1.1.1 option deliberately brings its matching
+# MIT Kerberos chain so base libcrypto is never loaded into the same process.
 
 # These switches disable content-scanner plugins. They do not disable the
 # native E2Guardian ICAP service consumed by Squid.

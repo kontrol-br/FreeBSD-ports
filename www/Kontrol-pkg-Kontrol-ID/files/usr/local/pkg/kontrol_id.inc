@@ -76,7 +76,9 @@ function kontrol_id_defaults() {
 		'unknown_action' => 'portal',
 		'portal_url' => '',
 		'login_template' => 'kontrol_dark',
-		'admin_contact' => 'Entre em contato com o administrador da rede para solicitar sua credencial.',
+		'admin_contact' => '<p><strong>Identificação necessária.</strong></p>' .
+			'<p>Esta estação ainda não possui uma identidade válida. Use uma credencial autorizada para liberar temporariamente o acesso à Internet.</p>' .
+			'<p>Se você ainda não possui uma credencial, entre em contato com o administrador da rede.</p>',
 		'auth_server' => 'Local Database',
 		'local_group' => KONTROL_ID_GROUP,
 		'ad_groups' => 'Domain Users',
@@ -111,7 +113,8 @@ function kontrol_id_login_template_catalog() {
 		'kontrol_dark' => 'kontrol-id-login-kontrol-dark.css',
 		'aurora' => 'kontrol-id-login-aurora.css',
 		'corporate' => 'kontrol-id-login-corporate.css',
-		'signal' => 'kontrol-id-login-signal.css'
+		'signal' => 'kontrol-id-login-signal.css',
+		'custom_message' => 'kontrol-id-login-corporate.css'
 	);
 }
 
@@ -732,6 +735,10 @@ function kontrol_id_ensure_defaults() {
 		if (!array_key_exists($setting, $current) && array_key_exists($legacy, $engine)) {
 			$defaults[$setting] = $engine[$legacy];
 		}
+	}
+	if (($current['admin_contact'] ?? '') ===
+		'Entre em contato com o administrador da rede para solicitar sua credencial.') {
+		$current['admin_contact'] = $defaults['admin_contact'];
 	}
 	$merged = array_merge($defaults, $current);
 	if ($merged != $current) {
@@ -2795,6 +2802,9 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	}
 	if (!isset(kontrol_id_login_template_catalog()[$post['login_template'] ?? ''])) {
 		$input_errors[] = 'Select a valid login page template.';
+	}
+	if (strlen((string)($post['admin_contact'] ?? '')) > 8192) {
+		$input_errors[] = 'Administrator Message must not exceed 8192 characters.';
 	}
 	foreach (array('bypass_sources', 'bypass_destinations') as $field) {
 		$value = (string)($post[$field] ?? '');

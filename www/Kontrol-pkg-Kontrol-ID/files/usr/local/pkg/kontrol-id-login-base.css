@@ -91,6 +91,11 @@ body {
 .kicker, .step { margin: 0 0 9px; color: var(--accent); font-size: 11px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
 h1 { margin: 0; font-size: clamp(40px, 5vw, 62px); line-height: .98; letter-spacing: -.048em; }
 .lead { max-width: 35rem; margin: 21px 0 0; color: var(--muted); font-size: 16px; }
+.custom-copy { max-width: 35rem; margin-top: 22px; color: var(--muted); font-size: 15px; }
+.custom-copy p, .admin-message p { margin: 0; }
+.custom-copy p + p, .admin-message p + p { margin-top: 10px; }
+.custom-copy ul, .custom-copy ol, .admin-message ul, .admin-message ol { margin: 10px 0 0; padding-left: 21px; }
+.custom-copy strong { color: var(--text); }
 .station { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 31px; padding-top: 19px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .station span { letter-spacing: .08em; text-transform: uppercase; }
 .station strong { color: var(--text); font-size: 14px; }

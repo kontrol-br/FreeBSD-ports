@@ -86,8 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				$stmt->bindValue(':expires', $now + (int)$settings['portal_ttl'], SQLITE3_INTEGER);
 				$stmt->execute();
 				$success = 'Autenticação concluída. O acesso será liberado em alguns segundos.';
-			} elseif ($authenticated) {
-				$error = 'A credencial é válida, mas não pertence a um grupo autorizado para acesso à Internet.';
 			} else {
 				$error = 'Usuário ou senha inválidos.';
 			}
@@ -100,6 +98,23 @@ function kid_h($value) {
 	return htmlspecialchars((string)$value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 }
 
+function kid_safe_admin_html($value) {
+	$value = trim((string)$value);
+	if ($value === '') {
+		return '';
+	}
+	$allowed = '<p><br><strong><b><em><i><u><ul><ol><li><small><code>';
+	if (!preg_match('#</?(?:p|br|strong|b|em|i|u|ul|ol|li|small|code)\b#i', $value)) {
+		return nl2br(kid_h($value));
+	}
+	$clean = strip_tags($value, $allowed);
+	/* No attributes are required by the supported formatting vocabulary. This
+	 * removes event handlers, style, URL-bearing attributes and malformed
+	 * attribute payloads while preserving the small structural allowlist. */
+	$clean = preg_replace('/<([a-z][a-z0-9]*)\b[^>]*>/i', '<$1>', $clean);
+	return $clean;
+}
+
 $theme_id = $settings['login_template'] ?? 'kontrol_dark';
 $theme_catalog = kontrol_id_login_template_catalog();
 if (!isset($theme_catalog[$theme_id])) {
@@ -107,6 +122,8 @@ if (!isset($theme_catalog[$theme_id])) {
 }
 $base_css = @file_get_contents(KONTROL_ID_LOGIN_TEMPLATE_DIR . '/kontrol-id-login-base.css');
 $theme_css = @file_get_contents(kontrol_id_login_template_path($theme_id));
+$custom_message = ($theme_id === 'custom_message');
+$admin_message = kid_safe_admin_html($settings['admin_contact'] ?? '');
 ?>
 <!doctype html>
 <html lang="pt-BR" data-kontrol-id-login="<?=kid_h($theme_id)?>">
@@ -132,9 +149,13 @@ $theme_css = @file_get_contents(kontrol_id_login_template_path($theme_id));
 					<path d="M31 66c3-10 10-15 17-15s14 5 17 15" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
 				</svg>
 			</div>
-			<p class="kicker">Identidade de rede</p>
-			<h1 id="login-title">Identificação<br>necessária</h1>
-			<p class="lead">Esta estação ainda não possui uma identidade válida. Autentique-se para liberar temporariamente o acesso à Internet.</p>
+			<p class="kicker"><?=$custom_message ? 'Mensagem da organização' : 'Identidade de rede'?></p>
+			<h1 id="login-title"><?=$custom_message ? 'Comunicado<br>de acesso' : 'Identificação<br>necessária'?></h1>
+			<?php if ($custom_message): ?>
+				<div class="custom-copy"><?=$admin_message?></div>
+			<?php else: ?>
+				<p class="lead">Esta estação ainda não possui uma identidade válida. Autentique-se para liberar temporariamente o acesso à Internet.</p>
+			<?php endif; ?>
 			<div class="station"><span>Estação detectada</span><strong><?=kid_h($client_ip)?></strong></div>
 		</section>
 
@@ -155,7 +176,7 @@ $theme_css = @file_get_contents(kontrol_id_login_template_path($theme_id));
 			<?php else: ?>
 				<p class="ready">A identidade já foi associada. Feche esta página e tente acessar novamente.</p>
 			<?php endif; ?>
-			<?php if (!empty($settings['admin_contact'])): ?><div class="help"><span aria-hidden="true">i</span><p><?=nl2br(kid_h($settings['admin_contact']))?></p></div><?php endif; ?>
+			<?php if (!$custom_message && $admin_message !== ''): ?><div class="help"><span aria-hidden="true">i</span><div class="admin-message"><?=$admin_message?></div></div><?php endif; ?>
 			<footer>A autenticação é validada diretamente pelo appliance e não é armazenada nesta página.</footer>
 		</section>
 	</main>
