@@ -15,6 +15,7 @@ www/kontrol_id_domain.php
 www/kontrol_id_policy.php
 www/kontrol_id_portal.php
 www/kontrol_id_enrollment.php
+www/kontrol_id_unenrollment.php
 www/kontrol-id/index.html
 www/kontrol-id/Kontrol-ID-Provisioner.exe
 /etc/inc/priv/kontrol_id.priv.inc

@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
-PORTREVISION=	48
+PORTREVISION=	49
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -82,6 +82,8 @@ do-install:
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/pkg/kontrol-id-login-signal.css \
 		${STAGEDIR}${PREFIX}/pkg
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_enrollment.php \
+		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_unenrollment.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol-id/index.html \
 		${STAGEDIR}${PREFIX}/www/kontrol-id

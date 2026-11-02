@@ -24,9 +24,9 @@ using System.Windows.Forms;
 [assembly: AssemblyCompany("Kontrol")]
 [assembly: AssemblyProduct("Kontrol-ID Provisioner")]
 [assembly: AssemblyCopyright("Copyright © 2016-2026 Kontrol Tecnologia EPP")]
-[assembly: AssemblyVersion("0.5.0.47")]
-[assembly: AssemblyFileVersion("0.5.0.47")]
-[assembly: AssemblyInformationalVersion("0.5.0_47")]
+[assembly: AssemblyVersion("0.5.0.49")]
+[assembly: AssemblyFileVersion("0.5.0.49")]
+[assembly: AssemblyInformationalVersion("0.5.0_49")]
 
 namespace Kontrol.Identity.Provisioner
 {
@@ -510,6 +510,7 @@ namespace Kontrol.Identity.Provisioner
                     key.SetValue("LocalAccount", account, RegistryValueKind.String);
                     key.SetValue("WinRmPort", winrmPort, RegistryValueKind.DWord);
                     key.SetValue("Appliance", baseUri.GetLeftPart(UriPartial.Authority), RegistryValueKind.String);
+                    key.SetValue("WebGuiFingerprint", webGuiPin, RegistryValueKind.String);
                 }
 
                 Append("Criando conta técnica aleatória e aplicando restrições de logon...");
@@ -567,6 +568,9 @@ namespace Kontrol.Identity.Provisioner
                 string subject = Convert.ToString(key.GetValue("ClientSubject", ""));
                 string resource = Convert.ToString(key.GetValue("ResourceUri", ""));
                 string account = Convert.ToString(key.GetValue("LocalAccount", "KontrolIdentity"));
+                string applianceUrl = Convert.ToString(key.GetValue("Appliance", ""));
+                string webGuiFingerprint = NormalizeThumbprint(Convert.ToString(key.GetValue("WebGuiFingerprint", "")));
+                RequestRemoteUnenrollment(applianceUrl, webGuiFingerprint, certThumb);
                 string script = BuildRemovalScript(certThumb, subject, resource, caThumb, account);
                 RunProcess("powershell.exe", "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -",
                     script, true);
@@ -575,6 +579,56 @@ namespace Kontrol.Identity.Provisioner
                 NativeMethods.DeleteLocalUser(account);
             }
             Registry.LocalMachine.DeleteSubKeyTree(@"SOFTWARE\Kontrol\Kontrol-ID", false);
+        }
+
+        private void RequestRemoteUnenrollment(string applianceUrl, string webGuiFingerprint, string certThumbprint)
+        {
+            Uri baseUri;
+            if (!Uri.TryCreate(applianceUrl, UriKind.Absolute, out baseUri) ||
+                !String.Equals(baseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) {
+                throw new InvalidOperationException(
+                    "A matrícula local não contém um endereço HTTPS válido para revogação no Kontrol.");
+            }
+            if (webGuiFingerprint.Length != 64 || webGuiFingerprint.Any(c => !Uri.IsHexDigit(c)))
+                webGuiFingerprint = "";
+            X509Certificate2 certificate = FindCertificate(StoreName.My, certThumbprint, "SHA1");
+            if (certificate == null || !certificate.HasPrivateKey)
+                throw new InvalidOperationException("O certificado privado da estação não está disponível para autorizar a desmatrícula.");
+
+            string hostname = Environment.MachineName.ToLowerInvariant();
+            long timestamp = UnixNow();
+            byte[] nonceBytes = new byte[32];
+            byte[] signature = null;
+            try {
+                using (RandomNumberGenerator random = RandomNumberGenerator.Create()) random.GetBytes(nonceBytes);
+                string nonce = Convert.ToBase64String(nonceBytes);
+                string fingerprint;
+                using (SHA256 sha = SHA256.Create())
+                    fingerprint = BitConverter.ToString(sha.ComputeHash(certificate.RawData)).Replace("-", "");
+                string signedPayload = "kontrol-id-unenroll-v1\n" + hostname + "\n" + timestamp + "\n" + nonce + "\n" + fingerprint;
+                using (RSA privateKey = certificate.GetRSAPrivateKey()) {
+                    if (privateKey == null) throw new InvalidOperationException("A chave privada da estação não é RSA.");
+                    signature = privateKey.SignData(Encoding.UTF8.GetBytes(signedPayload), HashAlgorithmName.SHA256,
+                        RSASignaturePadding.Pkcs1);
+                }
+                string certificatePem = "-----BEGIN CERTIFICATE-----\n" +
+                    Convert.ToBase64String(certificate.RawData, Base64FormattingOptions.InsertLineBreaks) +
+                    "\n-----END CERTIFICATE-----\n";
+                var serializer = new JavaScriptSerializer { MaxJsonLength = 65536 };
+                string requestBody = serializer.Serialize(new Dictionary<string, object> {
+                    { "hostname", hostname }, { "timestamp", timestamp }, { "nonce", nonce },
+                    { "certificate", certificatePem }, { "signature", Convert.ToBase64String(signature) }
+                });
+                Uri endpoint = new Uri(baseUri.ToString().TrimEnd('/') + "/kontrol_id_unenrollment.php");
+                Append("Revogando a matrícula no Kontrol...");
+                string responseBody = PostPinnedJson(endpoint, requestBody, webGuiFingerprint);
+                var response = serializer.Deserialize<Dictionary<string, object>>(responseBody);
+                if (!response.ContainsKey("ok") || !(response["ok"] is bool) || !(bool)response["ok"])
+                    throw new InvalidOperationException(GetString(response, "error", "O Kontrol recusou a desmatrícula."));
+            } finally {
+                Array.Clear(nonceBytes, 0, nonceBytes.Length);
+                if (signature != null) Array.Clear(signature, 0, signature.Length);
+            }
         }
 
         private static string BuildRequestInf(string hostname, string fqdn)
@@ -596,6 +650,7 @@ namespace Kontrol.Identity.Provisioner
             RemoteCertificateValidationCallback previous = ServicePointManager.ServerCertificateValidationCallback;
             ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, errors) => {
                 if (certificate == null) return false;
+                if (String.IsNullOrWhiteSpace(requiredPin)) return errors == SslPolicyErrors.None;
                 using (var sha = SHA256.Create()) {
                     string observed = BitConverter.ToString(sha.ComputeHash(certificate.GetRawCertData())).Replace("-", "");
                     return String.Equals(observed, requiredPin, StringComparison.OrdinalIgnoreCase);
