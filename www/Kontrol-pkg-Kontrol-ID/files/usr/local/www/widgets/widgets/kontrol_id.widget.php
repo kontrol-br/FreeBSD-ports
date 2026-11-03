@@ -72,29 +72,38 @@ $status_class = $service_running ? 'success' : ($service_enabled ? 'danger' : 'w
 $status_icon = $service_running ? 'fa-check-circle' : ($service_enabled ? 'fa-times-circle' : 'fa-pause-circle');
 $status_text = $service_running ? gettext('Running') : ($service_enabled ? gettext('Stopped') : gettext('Disabled'));
 $sample_text = $stats_fresh ? sprintf(gettext('Updated %s'), date('H:i:s', $stats['timestamp'])) : gettext('Waiting for current statistics');
+
+$http_queue = (int)($stats['http_queue'] ?? 0);
+$log_queue = (int)($stats['log_queue'] ?? 0);
+$http_queue_alert = $http_queue > 10 ? 'kontrol-id-widget__queue--danger' : ($http_queue > 0 ? 'kontrol-id-widget__queue--warning' : '');
+$log_queue_alert = $log_queue > 20 ? 'kontrol-id-widget__queue--danger' : ($log_queue > 0 ? 'kontrol-id-widget__queue--warning' : '');
 ?>
 <style>
 .kontrol-id-widget { color: inherit; }
 .kontrol-id-widget__status { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:1px 1px 8px; border-bottom:1px solid rgba(127,127,127,.22); }
 .kontrol-id-widget__service { display:flex; align-items:center; gap:7px; min-width:0; }
-.kontrol-id-widget__service i { font-size:1.1rem; }
+.kontrol-id-widget__service i { font-size:1.15rem; }
 .kontrol-id-widget__service strong { display:block; font-size:13px; line-height:1.15; }
-.kontrol-id-widget__meta { color:#6b7785; font-size:9.5px; line-height:1.25; margin-top:2px; }
-.kontrol-id-widget__mode { white-space:nowrap; font-size:9.5px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; }
+.kontrol-id-widget__meta { color:#6b7785; font-size:10px; line-height:1.25; margin-top:2px; }
+.kontrol-id-widget__mode { white-space:nowrap; font-size:10px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; }
 .kontrol-id-widget__metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; margin:0; }
 .kontrol-id-widget__metric { padding:8px 5px 6px; border-right:1px solid rgba(127,127,127,.18); min-width:0; }
 .kontrol-id-widget__metric:last-child { border-right:0; }
-.kontrol-id-widget__value { display:block; font-size:16px; font-weight:600; line-height:1.05; overflow:hidden; text-overflow:ellipsis; }
-.kontrol-id-widget__label { display:block; margin-top:3px; color:#6b7785; font-size:8.5px; font-weight:600; letter-spacing:.035em; text-transform:uppercase; }
-.kontrol-id-widget__queues { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; margin-top:1px; padding:7px 1px 0; border-top:1px solid rgba(127,127,127,.16); color:#5d6875; font-size:9.5px; }
-.kontrol-id-widget__queues span { white-space:nowrap; }
-.kontrol-id-widget__empty { padding:12px 6px 8px; text-align:center; color:#6b7785; font-size:12px; }
+.kontrol-id-widget__value { display:block; font-size:17px; font-weight:700; line-height:1.05; overflow:hidden; text-overflow:ellipsis; }
+.kontrol-id-widget__label { display:block; margin-top:3px; color:#6b7785; font-size:9px; font-weight:600; letter-spacing:.035em; text-transform:uppercase; }
+.kontrol-id-widget__queues { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-top:3px; padding:8px 2px 2px; border-top:1px solid rgba(127,127,127,.16); color:#5d6875; font-size:11.5px; }
+.kontrol-id-widget__queue-item { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; padding:1px 4px; border-radius:3px; }
+.kontrol-id-widget__queue-item strong { font-size:12.5px; font-weight:700; color:inherit; }
+.kontrol-id-widget__queue-item i { font-size:11px; opacity:.85; }
+.kontrol-id-widget__queue--warning { color:#d97706 !important; font-weight:700; }
+.kontrol-id-widget__queue--danger { color:#dc2626 !important; font-weight:700; }
+.kontrol-id-widget__empty { padding:14px 6px 10px; text-align:center; color:#6b7785; font-size:12px; }
 .kontrol-id-widget__empty i { display:block; margin-bottom:6px; font-size:18px; opacity:.72; }
 @media (max-width:520px) {
 	.kontrol-id-widget__metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
 	.kontrol-id-widget__metric:nth-child(2) { border-right:0; }
 	.kontrol-id-widget__metric:nth-child(-n+2) { border-bottom:1px solid rgba(127,127,127,.18); }
-	.kontrol-id-widget__queues { flex-wrap:wrap; }
+	.kontrol-id-widget__queues { flex-wrap:wrap; gap:6px; }
 }
 </style>
 <div id="kontrol-id-widget-<?=htmlspecialchars($widgetkey ?? '0')?>" class="kontrol-id-widget">
@@ -129,9 +138,9 @@ $sample_text = $stats_fresh ? sprintf(gettext('Updated %s'), date('H:i:s', $stat
 		</div>
 	</div>
 	<div class="kontrol-id-widget__queues">
-		<span><i class="fa-solid fa-globe" aria-hidden="true"></i> <?=gettext('HTTP queue')?>: <strong><?=kontrol_id_widget_number($stats['http_queue'])?></strong></span>
-		<span><i class="fa-solid fa-list" aria-hidden="true"></i> <?=gettext('Log queue')?>: <strong><?=kontrol_id_widget_number($stats['log_queue'])?></strong></span>
-		<span><i class="fa-solid fa-bolt" aria-hidden="true"></i> <?=gettext('Connections / s')?>: <strong><?=kontrol_id_widget_number($stats['connections_rate'], 1)?></strong></span>
+		<span class="kontrol-id-widget__queue-item <?=$http_queue_alert?>"><i class="fa-solid fa-globe" aria-hidden="true"></i> <?=gettext('HTTP queue')?>: <strong><?=kontrol_id_widget_number($stats['http_queue'])?></strong></span>
+		<span class="kontrol-id-widget__queue-item <?=$log_queue_alert?>"><i class="fa-solid fa-list" aria-hidden="true"></i> <?=gettext('Log queue')?>: <strong><?=kontrol_id_widget_number($stats['log_queue'])?></strong></span>
+		<span class="kontrol-id-widget__queue-item"><i class="fa-solid fa-bolt" aria-hidden="true"></i> <?=gettext('Connections / s')?>: <strong><?=kontrol_id_widget_number($stats['connections_rate'], 1)?></strong></span>
 	</div>
 	<?php else: ?>
 	<div class="kontrol-id-widget__empty">
