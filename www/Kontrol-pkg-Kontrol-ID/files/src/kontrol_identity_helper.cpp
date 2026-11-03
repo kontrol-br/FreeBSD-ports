@@ -38,7 +38,7 @@
 
 namespace {
 
-constexpr const char *kVersion = "0.1.4";
+constexpr const char *kVersion = "0.1.5";
 constexpr const char *kResourceUri =
     "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_ComputerSystem";
 
@@ -343,6 +343,7 @@ bool valid_hostname(const std::string &hostname) {
 struct WinrmResult {
     std::string username;
     std::string error;
+    bool no_interactive_user{false};
 };
 
 struct WinrmHttpResult {
@@ -607,8 +608,10 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
             domain.clear();
         }
         if (name.empty()) {
-            return {"", account_error.empty() ?
-                "Windows reported no interactive user" : account_error};
+            const bool no_interactive_user = account_error.empty();
+            return {"", no_interactive_user ?
+                "Windows reported no interactive user" : account_error,
+                no_interactive_user};
         }
         username = domain.empty() ? name : domain + "\\" + name;
     }
@@ -616,7 +619,7 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
     username.erase(std::remove_if(username.begin(), username.end(), [](unsigned char c) {
         return c < 0x20 || c == 0x7f;
     }), username.end());
-    if (username.empty()) return {"", "Windows reported no interactive user"};
+    if (username.empty()) return {"", "Windows reported no interactive user", true};
     if (username.size() > 255) return {"", "Windows username exceeds limit"};
     return {username, ""};
 }
@@ -738,7 +741,8 @@ int run_lookup(const Config &config, Database &database, const Request &request)
         return 0;
     }
 
-    if (cached && cached->username != config.unknown_user &&
+    if (!result.no_interactive_user &&
+        cached && cached->username != config.unknown_user &&
         cached->source == "winrm" && cached->stale_until > now) {
         reply(request, cached->username, "stale-winrm", result.error);
         return 0;
