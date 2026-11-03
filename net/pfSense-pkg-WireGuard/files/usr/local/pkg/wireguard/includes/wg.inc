@@ -729,6 +729,14 @@ function wg_resync() {
 	// Update globals
 	wg_globals();
 
+	// Ensure php_wg matches current php binary
+	if (file_exists($wgg['php'])) {
+		if (!file_exists($wgg['php_wg']) || fileinode($wgg['php']) !== @fileinode($wgg['php_wg'])) {
+			unlink_if_exists($wgg['php_wg']);
+			@link($wgg['php'], $wgg['php_wg']);
+		}
+	}
+
 	// Create WireGuard configuration files
 	wg_create_config_files();
 

@@ -191,6 +191,9 @@ function wg_service_rcfile() {
 
 	$start = $stop = array();
 
+	// Self-heal: ensure php_wg exists and matches current PHP binary inode before launching
+	$start[] 		= "if [ -f \"{$wgg['php']}\" ]; then if [ ! -f \"{$wgg['php_wg']}\" ] || [ \"$(stat -f %i \"{$wgg['php']}\")\" != \"$(stat -f %i \"{$wgg['php_wg']}\" 2>/dev/null)\" ]; then ln -f \"{$wgg['php']}\" \"{$wgg['php_wg']}\"; fi; fi";
+
 	$start[] 		= "{$wgg['wg_daemon']} start";
 
 	$stop[] 		= "{$wgg['wg_daemon']} stop";
@@ -211,7 +214,10 @@ function wg_service_install() {
 
 	wg_service_deinstall();
 
-	link($wgg['php'], $wgg['php_wg']);
+	if (file_exists($wgg['php'])) {
+		unlink_if_exists($wgg['php_wg']);
+		@link($wgg['php'], $wgg['php_wg']);
+	}
 }
 
 function wg_service_deinstall($force_stop = false) {
