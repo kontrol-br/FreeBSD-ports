@@ -2,25 +2,23 @@
 /*
  * kontrol_id.widget.php
  *
- * Dashboard health and activity summary for the Kontrol-ID secure web
- * gateway. The widget intentionally reads only the compact engine statistics
- * file so refreshing the dashboard does not scan access logs or burden proxy
- * worker threads.
+ * Dashboard health, queue monitoring and DSTAT history for the
+ * Kontrol-ID secure web gateway.
  */
 
 require_once('guiconfig.inc');
 require_once('functions.inc');
 require_once('service-utils.inc');
 
-if (!function_exists('kontrol_id_widget_latest_stats')) {
-	function kontrol_id_widget_latest_stats($path) {
-		$stats = array();
+if (!function_exists('kontrol_id_widget_history_stats')) {
+	function kontrol_id_widget_history_stats($path, $limit = 10) {
+		$history = array();
 		if (!is_readable($path)) {
-			return $stats;
+			return $history;
 		}
 
 		$lines = array();
-		exec('/usr/bin/tail -n 120 ' . escapeshellarg($path), $lines);
+		exec('/usr/bin/tail -n 150 ' . escapeshellarg($path), $lines);
 		for ($index = count($lines) - 1; $index >= 0; $index--) {
 			$line = trim((string)$lines[$index]);
 			if ($line === '' || stripos($line, 'httpw') !== false) {
@@ -30,7 +28,7 @@ if (!function_exists('kontrol_id_widget_latest_stats')) {
 			if (count($fields) < 11 || !is_numeric($fields[0]) || !is_numeric($fields[3])) {
 				continue;
 			}
-			$stats = array(
+			$history[] = array(
 				'timestamp' => (int)$fields[0],
 				'busy' => (float)$fields[2],
 				'http_queue' => (float)$fields[3],
@@ -42,9 +40,11 @@ if (!function_exists('kontrol_id_widget_latest_stats')) {
 				'max_fds' => (float)$fields[9],
 				'list_cache' => (float)$fields[10]
 			);
-			break;
+			if (count($history) >= $limit) {
+				break;
+			}
 		}
-		return $stats;
+		return $history;
 	}
 }
 
@@ -66,12 +66,14 @@ if ($requested_widgetkey !== null) {
 $service = array('name' => 'kontrol_id');
 $service_running = get_service_status($service);
 $service_enabled = config_get_path('installedpackages/kontrolid/config/0/enable') === 'on';
-$stats = kontrol_id_widget_latest_stats('/var/log/kontrol-id/kontrol-id-stats.log');
-$stats_fresh = !empty($stats['timestamp']) && (time() - $stats['timestamp']) <= 90;
+$history = kontrol_id_widget_history_stats('/var/log/kontrol-id/kontrol-id-stats.log', 10);
+$stats = !empty($history) ? $history[0] : array();
+
+$stats_fresh = !empty($stats['timestamp']) && (time() - $stats['timestamp']) <= 420;
 $status_class = $service_running ? 'success' : ($service_enabled ? 'danger' : 'warning');
 $status_icon = $service_running ? 'fa-check-circle' : ($service_enabled ? 'fa-times-circle' : 'fa-pause-circle');
 $status_text = $service_running ? gettext('Running') : ($service_enabled ? gettext('Stopped') : gettext('Disabled'));
-$sample_text = $stats_fresh ? sprintf(gettext('Updated %s'), date('H:i:s', $stats['timestamp'])) : gettext('Waiting for current statistics');
+$sample_text = !empty($stats['timestamp']) ? sprintf(gettext('DSTAT: %s (%s)'), date('H:i:s', $stats['timestamp']), $stats_fresh ? gettext('Online') : gettext('Stale')) : gettext('Waiting for DSTAT statistics');
 
 $http_queue = (int)($stats['http_queue'] ?? 0);
 $log_queue = (int)($stats['log_queue'] ?? 0);
@@ -91,12 +93,21 @@ $log_queue_alert = $log_queue > 20 ? 'kontrol-id-widget__queue--danger' : ($log_
 .kontrol-id-widget__metric:last-child { border-right:0; }
 .kontrol-id-widget__value { display:block; font-size:17px; font-weight:700; line-height:1.05; overflow:hidden; text-overflow:ellipsis; }
 .kontrol-id-widget__label { display:block; margin-top:3px; color:#6b7785; font-size:9px; font-weight:600; letter-spacing:.035em; text-transform:uppercase; }
-.kontrol-id-widget__queues { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-top:3px; padding:8px 2px 2px; border-top:1px solid rgba(127,127,127,.16); color:#5d6875; font-size:11.5px; }
+.kontrol-id-widget__queues { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-top:3px; padding:8px 2px 5px; border-top:1px solid rgba(127,127,127,.16); color:#5d6875; font-size:11.5px; }
 .kontrol-id-widget__queue-item { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; padding:1px 4px; border-radius:3px; }
 .kontrol-id-widget__queue-item strong { font-size:12.5px; font-weight:700; color:inherit; }
 .kontrol-id-widget__queue-item i { font-size:11px; opacity:.85; }
 .kontrol-id-widget__queue--warning { color:#d97706 !important; font-weight:700; }
 .kontrol-id-widget__queue--danger { color:#dc2626 !important; font-weight:700; }
+.kontrol-id-widget__history-wrap { margin-top:6px; border-top:1px solid rgba(127,127,127,.16); padding-top:6px; }
+.kontrol-id-widget__history-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:9.5px; font-weight:600; color:#6b7785; text-transform:uppercase; letter-spacing:.03em; }
+.kontrol-id-widget__history-tbl { width:100%; border-collapse:collapse; font-size:10px; line-height:1.3; }
+.kontrol-id-widget__history-tbl th { text-align:left; font-weight:600; padding:2px 4px; color:#6b7785; border-bottom:1px solid rgba(127,127,127,.15); font-size:9px; text-transform:uppercase; }
+.kontrol-id-widget__history-tbl td { padding:3px 4px; border-bottom:1px solid rgba(127,127,127,.08); }
+.kontrol-id-widget__history-tbl tr:last-child td { border-bottom:0; }
+.kontrol-id-widget__history-tbl .text-right { text-align:right; }
+.kontrol-id-widget__history-tbl .num-warn { color:#d97706; font-weight:700; }
+.kontrol-id-widget__history-tbl .num-alert { color:#dc2626; font-weight:700; }
 .kontrol-id-widget__empty { padding:14px 6px 10px; text-align:center; color:#6b7785; font-size:12px; }
 .kontrol-id-widget__empty i { display:block; margin-bottom:6px; font-size:18px; opacity:.72; }
 @media (max-width:520px) {
@@ -142,6 +153,46 @@ $log_queue_alert = $log_queue > 20 ? 'kontrol-id-widget__queue--danger' : ($log_
 		<span class="kontrol-id-widget__queue-item <?=$log_queue_alert?>"><i class="fa-solid fa-list" aria-hidden="true"></i> <?=gettext('Log queue')?>: <strong><?=kontrol_id_widget_number($stats['log_queue'])?></strong></span>
 		<span class="kontrol-id-widget__queue-item"><i class="fa-solid fa-bolt" aria-hidden="true"></i> <?=gettext('Connections / s')?>: <strong><?=kontrol_id_widget_number($stats['connections_rate'], 1)?></strong></span>
 	</div>
+
+	<?php if (count($history) > 1): ?>
+	<div class="kontrol-id-widget__history-wrap">
+		<div class="kontrol-id-widget__history-head">
+			<span><i class="fa-solid fa-clock-rotate-left"></i> <?=gettext('Histórico DSTAT (últimos 10 intervalos / 50 min)')?></span>
+			<span>10 amostras</span>
+		</div>
+		<table class="kontrol-id-widget__history-tbl">
+			<thead>
+				<tr>
+					<th><?=gettext('Hora')?></th>
+					<th class="text-right"><?=gettext('Busy')?></th>
+					<th class="text-right"><?=gettext('HTTP Q')?></th>
+					<th class="text-right"><?=gettext('Log Q')?></th>
+					<th class="text-right"><?=gettext('Conx/s')?></th>
+					<th class="text-right"><?=gettext('Reqs/s')?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ($history as $h): ?>
+				<?php
+					$hq = (int)$h['http_queue'];
+					$lq = (int)$h['log_queue'];
+					$hq_style = $hq > 10 ? 'num-alert' : ($hq > 0 ? 'num-warn' : '');
+					$lq_style = $lq > 20 ? 'num-alert' : ($lq > 0 ? 'num-warn' : '');
+				?>
+				<tr>
+					<td><?=date('H:i:s', $h['timestamp'])?></td>
+					<td class="text-right"><?=kontrol_id_widget_number($h['busy'])?></td>
+					<td class="text-right <?=$hq_style?>"><?=kontrol_id_widget_number($h['http_queue'])?></td>
+					<td class="text-right <?=$lq_style?>"><?=kontrol_id_widget_number($h['log_queue'])?></td>
+					<td class="text-right"><?=kontrol_id_widget_number($h['connections_rate'], 1)?></td>
+					<td class="text-right"><?=kontrol_id_widget_number($h['requests_rate'], 1)?></td>
+				</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+	</div>
+	<?php endif; ?>
+
 	<?php else: ?>
 	<div class="kontrol-id-widget__empty">
 		<i class="fa-solid fa-chart-line" aria-hidden="true"></i>
