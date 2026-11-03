@@ -75,21 +75,21 @@ $sample_text = $stats_fresh ? sprintf(gettext('Updated %s'), date('H:i:s', $stat
 ?>
 <style>
 .kontrol-id-widget { color: inherit; }
-.kontrol-id-widget__status { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:2px 2px 12px; border-bottom:1px solid rgba(127,127,127,.22); }
-.kontrol-id-widget__service { display:flex; align-items:center; gap:9px; min-width:0; }
-.kontrol-id-widget__service i { font-size:1.35rem; }
-.kontrol-id-widget__service strong { display:block; line-height:1.15; }
-.kontrol-id-widget__meta { color:#6b7785; font-size:11px; line-height:1.25; margin-top:3px; }
-.kontrol-id-widget__mode { white-space:nowrap; font-size:11px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; }
-.kontrol-id-widget__metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; margin:0 -10px; }
-.kontrol-id-widget__metric { padding:13px 10px 10px; border-right:1px solid rgba(127,127,127,.18); min-width:0; }
+.kontrol-id-widget__status { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:1px 1px 8px; border-bottom:1px solid rgba(127,127,127,.22); }
+.kontrol-id-widget__service { display:flex; align-items:center; gap:7px; min-width:0; }
+.kontrol-id-widget__service i { font-size:1.1rem; }
+.kontrol-id-widget__service strong { display:block; font-size:13px; line-height:1.15; }
+.kontrol-id-widget__meta { color:#6b7785; font-size:9.5px; line-height:1.25; margin-top:2px; }
+.kontrol-id-widget__mode { white-space:nowrap; font-size:9.5px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; }
+.kontrol-id-widget__metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; margin:0; }
+.kontrol-id-widget__metric { padding:8px 5px 6px; border-right:1px solid rgba(127,127,127,.18); min-width:0; }
 .kontrol-id-widget__metric:last-child { border-right:0; }
-.kontrol-id-widget__value { display:block; font-size:20px; font-weight:600; line-height:1.05; overflow:hidden; text-overflow:ellipsis; }
-.kontrol-id-widget__label { display:block; margin-top:5px; color:#6b7785; font-size:10px; font-weight:600; letter-spacing:.035em; text-transform:uppercase; }
-.kontrol-id-widget__queues { display:flex; justify-content:space-between; gap:14px; margin-top:2px; padding:10px 2px 0; border-top:1px solid rgba(127,127,127,.16); color:#5d6875; font-size:11px; }
+.kontrol-id-widget__value { display:block; font-size:16px; font-weight:600; line-height:1.05; overflow:hidden; text-overflow:ellipsis; }
+.kontrol-id-widget__label { display:block; margin-top:3px; color:#6b7785; font-size:8.5px; font-weight:600; letter-spacing:.035em; text-transform:uppercase; }
+.kontrol-id-widget__queues { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; margin-top:1px; padding:7px 1px 0; border-top:1px solid rgba(127,127,127,.16); color:#5d6875; font-size:9.5px; }
 .kontrol-id-widget__queues span { white-space:nowrap; }
-.kontrol-id-widget__empty { padding:18px 8px 10px; text-align:center; color:#6b7785; }
-.kontrol-id-widget__empty i { display:block; margin-bottom:8px; font-size:22px; opacity:.72; }
+.kontrol-id-widget__empty { padding:12px 6px 8px; text-align:center; color:#6b7785; font-size:12px; }
+.kontrol-id-widget__empty i { display:block; margin-bottom:6px; font-size:18px; opacity:.72; }
 @media (max-width:520px) {
 	.kontrol-id-widget__metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
 	.kontrol-id-widget__metric:nth-child(2) { border-right:0; }
