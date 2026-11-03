@@ -60,15 +60,16 @@ $stmt->bindValue(':hostname', $hostname, SQLITE3_TEXT);
 $stmt->bindValue(':fingerprint', $fingerprint, SQLITE3_TEXT);
 $result = $stmt->execute();
 $endpoint = $result ? $result->fetchArray(SQLITE3_ASSOC) : false;
-if (!is_array($endpoint)) {
-	$db->close();
-	kontrol_id_unenroll_response(403, array('ok' => false, 'error' => 'Station enrollment could not be authenticated'));
-}
 
 $payload = "kontrol-id-unenroll-v1\n" . $hostname . "\n" . $timestamp . "\n" . $nonce . "\n" . $fingerprint;
 if (@openssl_verify($payload, $signature, $certificate, OPENSSL_ALGO_SHA256) !== 1) {
 	$db->close();
 	kontrol_id_unenroll_response(403, array('ok' => false, 'error' => 'Station enrollment could not be authenticated'));
+}
+
+if (!is_array($endpoint)) {
+	$db->close();
+	kontrol_id_unenroll_response(200, array('ok' => true, 'status' => 'already_removed'));
 }
 
 $ip = $endpoint['ip'];

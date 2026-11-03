@@ -571,7 +571,11 @@ namespace Kontrol.Identity.Provisioner
                 string applianceUrl = Convert.ToString(key.GetValue("Appliance", ""));
                 string webGuiFingerprint = NormalizeThumbprint(Convert.ToString(key.GetValue("WebGuiFingerprint", "")));
                 string trustCaThumbprint = NormalizeThumbprint(Convert.ToString(key.GetValue("TrustCaThumbprint", "")));
-                RequestRemoteUnenrollment(applianceUrl, webGuiFingerprint, trustCaThumbprint, certThumb);
+                try {
+                    RequestRemoteUnenrollment(applianceUrl, webGuiFingerprint, trustCaThumbprint, certThumb);
+                } catch (Exception ex) {
+                    Append("Aviso: Falha ao notificar a API do Kontrol (" + ex.Message + "). Prosseguindo com a limpeza local completa da estação...");
+                }
                 string script = BuildRemovalScript(certThumb, subject, resource, caThumb, account);
                 RunProcess("powershell.exe", "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -",
                     script, true);
