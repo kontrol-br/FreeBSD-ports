@@ -189,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 		conf_mount_rw();
 		try {
 			sarg_remove_report_tree($delete_target);
-			log_error(sprintf('[sarg] Generated report "%s" deleted through the WebGUI.', $report_name));
+			logger(LOG_INFO, sprintf('Generated report "%s" deleted through the WebGUI.', $report_name), 'sarg');
 		} catch (Exception $exception) {
 			$input_errors[] = gettext('The report could not be completely deleted. Check filesystem permissions and try again.');
 		} finally {

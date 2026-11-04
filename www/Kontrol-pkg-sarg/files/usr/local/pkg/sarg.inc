@@ -240,7 +240,7 @@ function run_sarg($id = -1) {
 	}
 	print "$cmd -f /usr/local/etc/sarg/sarg.conf $args\n";
 	$find = (preg_match("/(\d+)/", $find, $find_matches) ? $find_matches[1] : "60");
-	log_error("[sarg] Force refresh now with {$args} args, compress({$gzip}).");
+	logger(LOG_INFO, "Force refresh now with {$args} args, compress({$gzip}).", 'sarg');
 	$gzip_script = "#!/bin/sh\n";
 	if ($gzip == "on") {
 		// remove old file if exists
@@ -275,7 +275,7 @@ EOF;
 	}
 	try {
 		$activity_reports = sarg_generate_activity_reports($rs_file, $output_dir, $proxy_server_log, $activity_timeout, $run_started);
-		log_error("[sarg] Generated {$activity_reports} estimated activity dataset(s).");
+		logger(LOG_INFO, "Generated {$activity_reports} estimated activity dataset(s).", 'sarg');
 	} catch (Throwable $error) {
 		log_error("[sarg] Unable to generate estimated activity data: " . $error->getMessage());
 	}
@@ -531,7 +531,7 @@ function sarg_sync_on_changes() {
 				if (is_array($sarg_sync['row'])) {
 					$rs = $sarg_sync['row'];
 				} else {
-					log_error("[sarg] XMLRPC sync is enabled but there are no hosts configured as replication targets.");
+					logger(LOG_WARNING, "XMLRPC sync is enabled but there are no hosts configured as replication targets.", 'sarg');
 					return;
 				}
 				break;
@@ -552,13 +552,13 @@ function sarg_sync_on_changes() {
 						$rs[0]['syncport'] = $config['system']['webgui']['port'] ?: '443';
 					}
 					if ($system_carp['synchronizetoip'] == "") {
-						log_error("[sarg] XMLRPC CARP/HA sync is enabled but there are no system backup hosts configured as replication targets.");
+						logger(LOG_WARNING, "XMLRPC CARP/HA sync is enabled but there are no system backup hosts configured as replication targets.", 'sarg');
 						return;
 					} else {
 						$rs[0]['syncdestinenable'] = TRUE;
 					}
 				} else {
-					log_error("[sarg] XMLRPC CARP/HA sync is enabled but there are no system backup hosts configured as replication targets.");
+					logger(LOG_WARNING, "XMLRPC CARP/HA sync is enabled but there are no system backup hosts configured as replication targets.", 'sarg');
 					return;
 				}
 				break;
@@ -567,7 +567,7 @@ function sarg_sync_on_changes() {
 				break;
 		}
 		if (is_array($rs)) {
-			log_error("[sarg] XMLRPC sync is starting.");
+			logger(LOG_INFO, "XMLRPC sync is starting.", 'sarg');
 			foreach ($rs as $sh) {
 				// Only sync enabled replication targets
 				if ($sh['syncdestinenable']) {
@@ -599,7 +599,7 @@ function sarg_sync_on_changes() {
 					}
 				}
 			}
-			log_error("[sarg] XMLRPC sync completed.");
+			logger(LOG_INFO, "XMLRPC sync completed.", 'sarg');
 		}
  	}
 }
@@ -648,7 +648,7 @@ function sarg_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $password
         log_error("[sarg] {$error}");
         file_notice("sync_settings", $error, "sarg Settings Sync", "");
     } else {
-        log_error("[sarg] XMLRPC sync successfully completed with {$url}:{$port}.");
+        logger(LOG_INFO, "XMLRPC sync successfully completed with {$url}:{$port}.", 'sarg');
     }
 
     /* Tell sarg to reload our settings on the destination sync host. */
@@ -658,7 +658,7 @@ function sarg_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $password
     /* Assemble XMLRPC payload. */
     $params = array(XML_RPC_encode($password), XML_RPC_encode($execcmd));
 
-    log_error("[sarg] XMLRPC reload data {$url}:{$port}.");
+    logger(LOG_INFO, "XMLRPC reload data {$url}:{$port}.", 'sarg');
     $msg = new XML_RPC_Message($method, $params);
     $cli = new XML_RPC_Client('/xmlrpc.php', $url, $port);
     $cli->setCredentials($username, $password);
@@ -674,7 +674,7 @@ function sarg_do_xmlrpc_sync($sync_to_ip, $port, $protocol, $username, $password
         log_error("[sarg] {$error}");
         file_notice("sync_settings", $error, "sarg Settings Sync", "");
     } else {
-        log_error("[sarg] XMLRPC reload data success with {$url}:{$port} (pfsense.exec_php).");
+        logger(LOG_INFO, "XMLRPC reload data success with {$url}:{$port} (pfsense.exec_php).", 'sarg');
     }
 }
 
