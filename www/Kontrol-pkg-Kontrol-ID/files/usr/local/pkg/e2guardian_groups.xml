@@ -155,18 +155,22 @@
         <field>
             <fielddescr>Group Options</fielddescr>
             <fieldname>group_options</fieldname>
-            <description><![CDATA[Select options to apply on this group. Default values are in ( )]]></description>
+            <description><![CDATA[
+                Select options to apply on this group. Default values are in ( ).<br>
+                <strong>Selective MITM</strong> intercepts only blocked HTTPS connections to deliver the Kontrol-ID block page; permitted sites keep their original certificate.<br>
+                <strong>Full HTTPS inspection</strong> intercepts every non-exception HTTPS site and enables filtering by complete URL path and other features that require decrypted traffic. If both modes are selected, full inspection takes precedence.
+            ]]></description>
             <type>select</type>
             <options>
                 <option><name>Hex decode content (off)</name><value>hexdecodecontent</value></option>
                 <option><name>Block Download not in Exception Lists (off)</name><value>blockdownloads</value></option>
                 <option><name>Enable Deep URL Analysis (off)</name><value>deepurlanalysis</value></option>
                 <option><name>Check Server SSLCertificates (off)</name><value>sslcheckcert</value></option>
-                <option><name>Filter ssl sites forging SSL Certificates (off)</name><value>sslmitm</value></option>
+                <option><name>Full HTTPS inspection - MITM all non-exception sites (off)</name><value>sslmitm</value></option>
                 <option><name>Limit ssl MITM filter to sslgreylist acls (off)</name><value>onlymitmsslgrey</value></option>
                 <option><name>Allow non-tls tunnell connections (off)</name><value>nontls</value></option>
                 <option><name>Allow non-sni tunnell connections (off)</name><value>nonsni</value></option>
-                <option><name>Auto switch to MITM to deliver block page (on)</name><value>automitm</value></option>
+                <option><name>Selective MITM - intercept only to deliver block pages (recommended)</name><value>automitm</value></option>
             </options>
             <multiple/>
             <size>12</size>

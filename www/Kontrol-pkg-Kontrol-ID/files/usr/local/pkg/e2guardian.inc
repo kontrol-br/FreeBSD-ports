@@ -1384,6 +1384,37 @@ function e2guardian_enforce_kontrol_id_managed_config() {
     return $changed;
 }
 
+function e2guardian_group_https_inspection_mode($filter_group) {
+    if (!is_array($filter_group)) {
+        return 'off';
+    }
+
+    $options = is_array($filter_group['group_options'] ?? null) ?
+        $filter_group['group_options'] :
+        preg_split('/\s*,\s*/', (string)($filter_group['group_options'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+    $options = array_values(array_filter(array_map('trim', $options), 'strlen'));
+
+    /* Full inspection deliberately takes precedence when an upgraded system
+     * already has both legacy flags selected. */
+    if (in_array('sslmitm', $options, true)) {
+        return 'full';
+    }
+    if (in_array('automitm', $options, true)) {
+        return 'selective';
+    }
+    return 'off';
+}
+
+function e2guardian_has_full_https_inspection_group() {
+    $filter_groups = config_get_path('installedpackages/e2guardiangroups/config', array());
+    foreach (is_array($filter_groups) ? $filter_groups : array() as $filter_group) {
+        if (e2guardian_group_https_inspection_mode($filter_group) === 'full') {
+            return true;
+        }
+    }
+    return false;
+}
+
 function e2guardian_retire_removed_features() {
     global $config;
 
@@ -2517,9 +2548,19 @@ break;
                 $groupaccessdeniedaddress = "";
         }
 
+        /* Keep the two established GUI values, but distinguish their intent:
+         * sslmitm means full HTTPS inspection; automitm by itself means the
+         * engine may forge a certificate only after the domain policy blocks
+         * the request.  The engine requires sslmitm=on as the cryptographic
+         * capability switch even in that selective mode. */
+        $https_inspection_mode = e2guardian_group_https_inspection_mode($e2guardian_groups);
+
         // assign all options selected under group_options
         foreach ($groups as $group) {
             $e2guardian_groups[$group] = (preg_match("/$group/", $e2guardian_groups['group_options']) ? "on" : "off");
+        }
+        if ($https_inspection_mode === 'selective') {
+            $e2guardian_groups['sslmitm'] = 'on';
         }
 
         //story file options
@@ -2561,9 +2602,17 @@ break;
                 $group_type = "# Normal filtering group type\n";
         }
 
-        if ( $e2guardian_groups['onlymitmsslgrey'] == "on" ) {
+        if ($https_inspection_mode === 'selective') {
+            /* Do not proactively set gomitm.  ConnectionHandler will set it
+             * only after a domain/SNI policy block (or an upstream failure)
+             * while automitm is enabled, allowing the branded block page to
+             * be delivered without intercepting permitted sites. */
+            $sslcheckmitmgreyonly = "# Selective MITM: allowed HTTPS remains tunnelled\n";
+            $sslcheckmitmgreyonly .= "function(sslcheckmitm)\n";
+            $sslcheckmitmgreyonly .= "if(true) return false\n";
+        } elseif (($e2guardian_groups['onlymitmsslgrey'] ?? 'off') == "on") {
             $sslcheckmitmgreyonly = "function(sslcheckmitm)\n";
-            $sslcheckmitmgreyonly = "if(true) return sslcheckmitmgreyonly";
+            $sslcheckmitmgreyonly .= "if(true) return sslcheckmitmgreyonly\n";
         } else {
             $sslcheckmitmgreyonly = "#Normal ssl filtering if enabled\n";
         }
@@ -3520,16 +3569,29 @@ function e2guardian_check_config() {
 
 function e2guardian_adjust_kontrol_id_directory_gui(&$package) {
     $kontrol_id = config_get_path('installedpackages/kontrolid/config/0', array());
-    if (!is_array($package) || !is_array($kontrol_id) ||
-        ($kontrol_id['e2guardian_integration'] ?? '') !== 'on' ||
+    $integration_enabled = is_array($kontrol_id) &&
+        (($kontrol_id['engine_integration'] ?? '') === 'on' ||
+        ($kontrol_id['e2guardian_integration'] ?? '') === 'on');
+    if (!is_array($package) || !$integration_enabled ||
         !is_file('/usr/local/pkg/kontrol_id.inc')) {
         return;
     }
+    $full_https_inspection = e2guardian_has_full_https_inspection_group();
     if (is_array($package['tabs']['tab'] ?? null)) {
         $package['tabs']['tab'] = array_values(array_filter(
             $package['tabs']['tab'],
-            function ($tab) {
-                return strcasecmp((string)($tab['text'] ?? ''), 'LDAP') !== 0;
+            function ($tab) use ($full_https_inspection) {
+                $tab_name = (string)($tab['text'] ?? '');
+                if (strcasecmp($tab_name, 'LDAP') === 0) {
+                    return false;
+                }
+                /* Full URL paths inside HTTPS are not visible in selective
+                 * mode.  Preserve every saved URL ACL, but hide its editor
+                 * until at least one group enables full HTTPS inspection. */
+                if (!$full_https_inspection && strcasecmp($tab_name, 'URL Lists') === 0) {
+                    return false;
+                }
+                return true;
             }
         ));
     }
