@@ -43,7 +43,7 @@ require_once(E2GUARDIAN_DIR . "/pkg/e2guardian.inc");
 
 function e2g_blacklist_notice($message) {
         $error = null;
-        file_notice("E2guardian", $error, "E2guardian - " . gettext($message), "");
+        file_notice("Kontrol-ID", $error, "Kontrol-ID - " . gettext($message), "");
 }
 
 function e2g_blacklist_lock() {
@@ -70,7 +70,7 @@ function e2g_blacklist_reload_service() {
                 return;
         }
 
-        e2g_log_info("E2guardian - restarting service after blacklist update.");
+        e2g_log_info("Kontrol-ID - restarting service after blacklist update.");
         if (function_exists('e2g_stop_watchdog_processes')) {
                 e2g_stop_watchdog_processes();
         }
@@ -243,12 +243,12 @@ function fetch_blacklist($log_notice = true, $install_process = false) {
                         if ($return == 0) {
                                 return extract_black_list($log_notice, $lock_handle);
                         }
-                        file_notice("E2guardian", $error, "E2guardian" . gettext("Could not fetch blacklists from url"), "");
+                        file_notice("Kontrol-ID", $error, "Kontrol-ID" . gettext("Could not fetch blacklists from url"), "");
                 } else {
                         if ($install_process == true) {
                                 read_lists(false, $uw);
                         } elseif (!empty($url)) {
-                                file_notice("E2guardian", $error, "E2guardian" . gettext("Blacklist url is invalid."), "");
+                                file_notice("Kontrol-ID", $error, "Kontrol-ID" . gettext("Blacklist url is invalid."), "");
                         }
                 }
         } finally {
@@ -288,11 +288,11 @@ function extract_black_list($log_notice = true, $lock_handle = null, $options = 
                 $target_bl_dir = $blacklists_dir . '/BL';
                 $backup_bl_dir = $blacklists_dir . '/BL.old.' . getmypid();
                 if (!is_dir($lists_dir) && !@mkdir($lists_dir, 0755, true)) {
-                        e2g_blacklist_notice("Could not create the E2guardian lists directory.");
+                        e2g_blacklist_notice("Could not create the Kontrol-ID lists directory.");
                         return false;
                 }
                 if (!is_dir($blacklists_dir) && !@mkdir($blacklists_dir, 0755, true)) {
-                        e2g_blacklist_notice("Could not create the E2guardian blacklist directory.");
+                        e2g_blacklist_notice("Could not create the Kontrol-ID blacklist directory.");
                         return false;
                 }
 
@@ -439,7 +439,7 @@ function read_lists($log_notice=true, $uw="") {
 
         write_config("Saving...");
         if ($log_notice == true && $uw == "") {
-                file_notice("E2guardian", "E2Guardian Blacklist applied, check site and URL access lists for categories", "E2guardian BlackList Updated.");
+                file_notice("Kontrol-ID", "Kontrol-ID Blacklist applied, check site and URL access lists for categories", "Kontrol-ID BlackList Updated.");
         } elseif ($uw != "") {
                 $uw .= "done\n";
                 update_output_window($uw);

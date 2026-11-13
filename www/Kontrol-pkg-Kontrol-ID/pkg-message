@@ -6,22 +6,37 @@ it is enabled at Services > Kontrol-ID. Existing settings are preserved during
 upgrades. The package manager installs the standalone multithread Kontrol-ID
 engine and its exclusive policy GUI, including their dependencies.
 
-Kontrol-ID cannot coexist with the conventional Squid or E2Guardian GUI/engine
+Kontrol-ID cannot coexist with the conventional Squid or legacy filtering
 packages because they own the same listener and policy paths. Remove the
 conflicting products before installing Kontrol-ID.
 
+When migrating from Kontrol-pkg-E2guardian54, export its settings XML and make
+a full Kontrol configuration backup first. Removing the old package preserves
+its installedpackages policy sections, which Kontrol-ID reuses for groups,
+ACLs, site/URL lists, users and IP assignments. The Kontrol-ID importer also
+accepts a valid schema-1 XML exported by Kontrol-pkg-E2guardian54 as a recovery path.
+Kontrol-ID access mode, endpoint identity, domain/keytab and selected PKI are
+product-specific and must be configured or restored separately.
+
 Transparent identification maps source IPs to policies and never challenges an
 intercepted browser. Transparent without identification skips the identity and
-portal workflow and applies the default policy group. Explicit proxy mode
-supports Kerberos/SPNEGO, Kerberos with NTLMv2 fallback, standalone NTLMv2 and
-HTTP Basic for trusted networks.
+portal workflow and applies the default policy group. Explicit proxy clients can
+use endpoint identification from the Provisioner, intentionally anonymous
+default/source-IP policy, Kerberos/SPNEGO, Kerberos with NTLMv2 fallback,
+standalone NTLMv2 or HTTP Basic for trusted networks.
 Domain authentication uses the package-owned keytab and managed Winbind
 service. Configure and validate them under Services > Kontrol-ID > Domain and
 Keytab before enabling the respective method.
 
-Endpoint enrollment is available only with transparent identification. It is
-not required by transparent mode without identification. Domain join passwords
-are sent only to kinit over a pipe and are never stored in config.xml.
+The Provisioner download and endpoint enrollment remain available in every
+access mode so stations can be prepared in advance. Automatic WinRM identity
+queries run only in transparent identification and explicit endpoint
+identification modes. Domain join passwords are sent only to kinit over a pipe
+and are never stored in config.xml.
+
+The WPAD tab can publish a syntax-validated PAC over HTTP without disabling the
+HTTPS WebGUI. Optional DHCP Option 252 and DNS host override integration is
+ownership-aware and reversible; unmanaged files and records are never replaced.
 
 Runtime databases in /var/db/kontrol-identity and protected domain state in
 /var/db/kontrol-id-domain are intentionally preserved when the package is

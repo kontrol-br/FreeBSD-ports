@@ -2,7 +2,7 @@
 /*
  * Kontrol-ID access denied page.
  *
- * E2Guardian sends a non-standard query string whose fields are separated by
+ * Kontrol-ID sends a non-standard query string whose fields are separated by
  * "::" and whose names and values are separated by "==".  Keep that wire
  * format here, but never render its values without escaping them first.
  */

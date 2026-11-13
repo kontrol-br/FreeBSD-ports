@@ -31,9 +31,9 @@
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardianconfig</name>
     <version>1.0</version>
-    <title>Services: E2guardian</title>
-    <delete_string>E2guardian: removed a configuration item.</delete_string>
-    <addedit_string>E2guardian: changed settings.</addedit_string>
+    <title>Services: Kontrol-ID</title>
+    <delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+    <addedit_string>Kontrol-ID: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <tabs>
         <tab>
@@ -101,7 +101,7 @@
             <description><![CDATA[This option handles the extraction of client usernames from various sources, such as Proxy-Authorisation headers and ident servers,
                 enabling requests to be handled according to the settings of the user's filter group.<br>
                 Use CTRL + click for multiple select.<br>
-                <strong>Note:</strong>E2guardian supports different authentication on different ports but
+                <strong>Note:</strong>Kontrol-ID supports different authentication on different ports but
                  Current package configuration forces multiport to off.]]></description>
             <type>select</type>
             <options>

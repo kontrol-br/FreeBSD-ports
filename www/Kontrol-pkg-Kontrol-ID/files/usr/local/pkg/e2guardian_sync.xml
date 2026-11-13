@@ -31,9 +31,9 @@
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardiansync</name>
     <version>1.0</version>
-    <title>Services: E2guardian</title>
-    <delete_string>E2guardian: removed a configuration item.</delete_string>
-    <addedit_string>E2guardian: changed settings.</addedit_string>
+    <title>Services: Kontrol-ID</title>
+    <delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+    <addedit_string>Kontrol-ID: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <tabs>
         <tab>
@@ -92,13 +92,13 @@
     </tabs>
     <fields>
         <field>
-            <name>E2guardian XMLRPC Sync</name>
+            <name>Kontrol-ID XMLRPC Sync</name>
             <type>listtopic</type>
         </field>
         <field>
-            <fielddescr>Automatically sync e2guardian configuration changes</fielddescr>
+            <fielddescr>Automatically sync Kontrol-ID configuration changes</fielddescr>
             <fieldname>synconchanges</fieldname>
-            <description>Select a sync method for e2guardian.</description>
+            <description>Select a synchronization method for Kontrol-ID.</description>
             <type>select</type>
             <required/>
             <default_value>auto</default_value>
@@ -187,6 +187,6 @@
         e2guardian_validate_input($_POST, $input_errors);
     </custom_php_validation_command>
     <custom_php_resync_config_command>
-        write_config("E2guardian sync settings.");
+        write_config("Kontrol-ID sync settings.");
     </custom_php_resync_config_command>
 </packagegui>

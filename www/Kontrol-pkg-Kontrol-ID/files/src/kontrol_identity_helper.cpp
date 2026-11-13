@@ -1,10 +1,10 @@
 /*
- * Kontrol-ID Squid external ACL helper.
+ * Kontrol-ID external identity helper.
  *
- * The process is owned by Squid and accepts one source address per line. It
- * does not listen on a network socket. Endpoint queries use WS-Management over
- * mutual TLS. It reads Win32_ComputerSystem.UserName and, when no console
- * user exists, resolves the first loaded non-special user profile.
+ * The process is owned by the Kontrol-ID engine and accepts one source address
+ * per line. It does not listen on a network socket. Endpoint queries use
+ * WS-Management over mutual TLS. It reads Win32_ComputerSystem.UserName and,
+ * when no console user exists, resolves the first loaded non-special profile.
  */
 
 #include <netinet/in.h>
@@ -13,6 +13,7 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <sqlite3.h>
+#include <sha256.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <syslog.h>
@@ -38,7 +39,7 @@
 
 namespace {
 
-constexpr const char *kVersion = "0.1.5";
+constexpr const char *kVersion = "0.2.0";
 constexpr const char *kResourceUri =
     "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_ComputerSystem";
 
@@ -134,8 +135,10 @@ struct Identity {
 };
 
 struct Endpoint {
+    std::string ip;
     std::string hostname;
     std::string connection_name;
+    std::string cert_sha256;
 };
 
 long long now_seconds() {
@@ -161,9 +164,12 @@ public:
                 "ip TEXT PRIMARY KEY, username TEXT NOT NULL, backend TEXT NOT NULL, "
                 "created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0)");
         execute("CREATE TABLE IF NOT EXISTS endpoints ("
-                "ip TEXT PRIMARY KEY, hostname TEXT NOT NULL, fqdn TEXT NOT NULL DEFAULT '', "
-                "cert_sha256 TEXT NOT NULL DEFAULT '', enrolled_at INTEGER NOT NULL, "
+                "cert_sha256 TEXT PRIMARY KEY, ip TEXT NOT NULL DEFAULT '', "
+                "hostname TEXT NOT NULL, fqdn TEXT NOT NULL DEFAULT '', enrolled_at INTEGER NOT NULL, "
                 "last_seen INTEGER NOT NULL DEFAULT 0, revoked INTEGER NOT NULL DEFAULT 0)");
+        ensure_endpoint_schema();
+        execute("CREATE UNIQUE INDEX IF NOT EXISTS endpoints_current_ip ON endpoints(ip) "
+                "WHERE ip<>'' AND revoked=0");
     }
 
     ~Database() {
@@ -201,12 +207,28 @@ public:
 
     std::optional<Endpoint> endpoint(const std::string &ip) {
         sqlite3_stmt *statement = nullptr;
-        prepare("SELECT hostname,CASE WHEN fqdn<>'' THEN fqdn ELSE hostname END FROM endpoints "
+        prepare("SELECT ip,hostname,CASE WHEN fqdn<>'' THEN fqdn ELSE hostname END,cert_sha256 "
+                "FROM endpoints "
                 "WHERE ip=?1 AND revoked=0", &statement);
         sqlite3_bind_text(statement, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
         std::optional<Endpoint> result;
         if (sqlite3_step(statement) == SQLITE_ROW) {
-            result = Endpoint{column(statement, 0), column(statement, 1)};
+            result = Endpoint{column(statement, 0), column(statement, 1),
+                              column(statement, 2), column(statement, 3)};
+        }
+        sqlite3_finalize(statement);
+        return result;
+    }
+
+    std::optional<Endpoint> endpoint_by_fingerprint(const std::string &fingerprint) {
+        sqlite3_stmt *statement = nullptr;
+        prepare("SELECT ip,hostname,CASE WHEN fqdn<>'' THEN fqdn ELSE hostname END,cert_sha256 "
+                "FROM endpoints WHERE cert_sha256=?1 AND revoked=0 LIMIT 1", &statement);
+        sqlite3_bind_text(statement, 1, fingerprint.c_str(), -1, SQLITE_TRANSIENT);
+        std::optional<Endpoint> result;
+        if (sqlite3_step(statement) == SQLITE_ROW) {
+            result = Endpoint{column(statement, 0), column(statement, 1),
+                              column(statement, 2), column(statement, 3)};
         }
         sqlite3_finalize(statement);
         return result;
@@ -234,10 +256,52 @@ public:
         sqlite3_finalize(statement);
     }
 
-    void touch_endpoint(const std::string &ip, long long now) {
+    void rebind_endpoint(const Endpoint &endpoint, const std::string &ip, long long now) {
+        execute("BEGIN IMMEDIATE");
+        try {
+            sqlite3_stmt *statement = nullptr;
+            prepare("UPDATE endpoints SET ip='' WHERE ip=?1 AND cert_sha256<>?2", &statement);
+            sqlite3_bind_text(statement, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(statement, 2, endpoint.cert_sha256.c_str(), -1, SQLITE_TRANSIENT);
+            if (sqlite3_step(statement) != SQLITE_DONE) {
+                sqlite3_finalize(statement);
+                throw std::runtime_error(sqlite3_errmsg(db_));
+            }
+            sqlite3_finalize(statement);
+
+            prepare("UPDATE endpoints SET ip=?1,last_seen=?2 WHERE cert_sha256=?3 AND revoked=0",
+                    &statement);
+            sqlite3_bind_text(statement, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int64(statement, 2, now);
+            sqlite3_bind_text(statement, 3, endpoint.cert_sha256.c_str(), -1, SQLITE_TRANSIENT);
+            if (sqlite3_step(statement) != SQLITE_DONE || sqlite3_changes(db_) != 1) {
+                sqlite3_finalize(statement);
+                throw std::runtime_error("enrolled endpoint disappeared during IP rebinding");
+            }
+            sqlite3_finalize(statement);
+
+            for (const std::string &stale_ip : {endpoint.ip, ip}) {
+                if (stale_ip.empty()) continue;
+                prepare("DELETE FROM identities WHERE ip=?1", &statement);
+                sqlite3_bind_text(statement, 1, stale_ip.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(statement);
+                sqlite3_finalize(statement);
+                prepare("DELETE FROM portal_sessions WHERE ip=?1", &statement);
+                sqlite3_bind_text(statement, 1, stale_ip.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(statement);
+                sqlite3_finalize(statement);
+            }
+            execute("COMMIT");
+        } catch (...) {
+            try { execute("ROLLBACK"); } catch (...) {}
+            throw;
+        }
+    }
+
+    void touch_endpoint(const std::string &fingerprint, long long now) {
         sqlite3_stmt *statement = nullptr;
-        prepare("UPDATE endpoints SET last_seen=?2 WHERE ip=?1", &statement);
-        sqlite3_bind_text(statement, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+        prepare("UPDATE endpoints SET last_seen=?2 WHERE cert_sha256=?1", &statement);
+        sqlite3_bind_text(statement, 1, fingerprint.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_int64(statement, 2, now);
         sqlite3_step(statement);
         sqlite3_finalize(statement);
@@ -245,6 +309,41 @@ public:
 
 private:
     sqlite3 *db_{nullptr};
+
+    void ensure_endpoint_schema() {
+        sqlite3_stmt *statement = nullptr;
+        prepare("PRAGMA table_info(endpoints)", &statement);
+        std::string primary_key;
+        while (sqlite3_step(statement) == SQLITE_ROW) {
+            if (sqlite3_column_int(statement, 5) == 1) {
+                primary_key = column(statement, 1);
+                break;
+            }
+        }
+        sqlite3_finalize(statement);
+        if (primary_key == "cert_sha256") return;
+
+        execute("BEGIN IMMEDIATE");
+        try {
+            execute("DROP TABLE IF EXISTS endpoints_device_migration");
+            execute("CREATE TABLE endpoints_device_migration ("
+                    "cert_sha256 TEXT PRIMARY KEY, ip TEXT NOT NULL DEFAULT '', "
+                    "hostname TEXT NOT NULL, fqdn TEXT NOT NULL DEFAULT '', "
+                    "enrolled_at INTEGER NOT NULL, last_seen INTEGER NOT NULL DEFAULT 0, "
+                    "revoked INTEGER NOT NULL DEFAULT 0)");
+            execute("INSERT OR REPLACE INTO endpoints_device_migration "
+                    "(cert_sha256,ip,hostname,fqdn,enrolled_at,last_seen,revoked) "
+                    "SELECT UPPER(REPLACE(cert_sha256, ':', '')),ip,hostname,fqdn,enrolled_at,"
+                    "last_seen,revoked FROM endpoints "
+                    "WHERE LENGTH(REPLACE(cert_sha256, ':', ''))=64 ORDER BY enrolled_at");
+            execute("DROP TABLE endpoints");
+            execute("ALTER TABLE endpoints_device_migration RENAME TO endpoints");
+            execute("COMMIT");
+        } catch (...) {
+            try { execute("ROLLBACK"); } catch (...) {}
+            throw;
+        }
+    }
 
     void execute(const char *sql) {
         char *error = nullptr;
@@ -305,6 +404,70 @@ size_t curl_write(char *data, size_t size, size_t count, void *context) {
     return size * count;
 }
 
+int base64_value(unsigned char value) {
+    if (value >= 'A' && value <= 'Z') return value - 'A';
+    if (value >= 'a' && value <= 'z') return value - 'a' + 26;
+    if (value >= '0' && value <= '9') return value - '0' + 52;
+    if (value == '+') return 62;
+    if (value == '/') return 63;
+    return -1;
+}
+
+std::vector<unsigned char> certificate_der(const std::string &pem) {
+    static const std::string begin = "-----BEGIN CERTIFICATE-----";
+    static const std::string end = "-----END CERTIFICATE-----";
+    const std::size_t first = pem.find(begin);
+    const std::size_t last = first == std::string::npos ? std::string::npos :
+        pem.find(end, first + begin.size());
+    if (first == std::string::npos || last == std::string::npos) return {};
+
+    std::vector<unsigned char> decoded;
+    unsigned int accumulator = 0;
+    int bits = -8;
+    for (std::size_t i = first + begin.size(); i < last; ++i) {
+        const unsigned char character = static_cast<unsigned char>(pem[i]);
+        if (std::isspace(character)) continue;
+        if (character == '=') break;
+        const int value = base64_value(character);
+        if (value < 0) return {};
+        accumulator = (accumulator << 6) | static_cast<unsigned int>(value);
+        bits += 6;
+        if (bits >= 0) {
+            decoded.push_back(static_cast<unsigned char>((accumulator >> bits) & 0xff));
+            bits -= 8;
+        }
+    }
+    return decoded;
+}
+
+std::string sha256_fingerprint(const std::vector<unsigned char> &data) {
+    if (data.empty()) return "";
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    SHA256_CTX context;
+    SHA256_Init(&context);
+    SHA256_Update(&context, data.data(), data.size());
+    SHA256_Final(digest, &context);
+    std::ostringstream output;
+    output << std::uppercase << std::hex << std::setfill('0');
+    for (const unsigned char byte : digest) output << std::setw(2) << static_cast<int>(byte);
+    return output.str();
+}
+
+std::string curl_peer_fingerprint(CURL *curl) {
+    struct curl_certinfo *certificates = nullptr;
+    if (curl_easy_getinfo(curl, CURLINFO_CERTINFO, &certificates) != CURLE_OK ||
+        !certificates || certificates->num_of_certs < 1 || !certificates->certinfo) {
+        return "";
+    }
+    for (struct curl_slist *item = certificates->certinfo[0]; item; item = item->next) {
+        const std::string value = item->data ? item->data : "";
+        if (value.rfind("Cert:", 0) == 0) {
+            return sha256_fingerprint(certificate_der(value.substr(5)));
+        }
+    }
+    return "";
+}
+
 std::string xpath_text(const std::string &document, const char *expression) {
     xmlDocPtr parsed = xmlReadMemory(document.data(), static_cast<int>(document.size()),
                                      "winrm.xml", nullptr,
@@ -344,11 +507,18 @@ struct WinrmResult {
     std::string username;
     std::string error;
     bool no_interactive_user{false};
+    bool endpoint_verified{false};
 };
 
 struct WinrmHttpResult {
     long status{0};
     std::string body;
+    std::string error;
+    bool endpoint_verified{false};
+};
+
+struct EndpointProbeResult {
+    std::string fingerprint;
     std::string error;
 };
 
@@ -421,9 +591,50 @@ private:
     int fd_{-1};
 };
 
+std::string ip_url_host(const std::string &ip) {
+    return ip.find(':') == std::string::npos ? ip : "[" + ip + "]";
+}
+
+EndpointProbeResult probe_endpoint_certificate(const Config &config, const std::string &ip) {
+    if (!config.verify_peer || !config.verify_host) {
+        return {"", "dynamic IP discovery requires certificate and hostname verification"};
+    }
+    CURL *curl = curl_easy_init();
+    if (!curl) return {"", "cannot initialize libcurl"};
+
+    char curl_error[CURL_ERROR_SIZE] = {0};
+    const std::string url = "https://" + ip_url_host(ip) + ":" +
+                            std::to_string(config.winrm_port) + "/wsman";
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+    curl_easy_setopt(curl, CURLOPT_CAINFO, config.ca_file.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSLCERT, config.client_cert.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSLKEY, config.client_key.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    /* The first connection does not yet know the enrolled hostname. The CA
+     * chain is still mandatory and the exact leaf fingerprint is matched to
+     * the enrollment database before any address is rebound. */
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    curl_easy_setopt(curl, CURLOPT_CERTINFO, 1L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, static_cast<long>(config.connect_timeout_ms));
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(config.request_timeout_ms));
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curl_error);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+
+    const CURLcode result = curl_easy_perform(curl);
+    const std::string fingerprint = result == CURLE_OK ? curl_peer_fingerprint(curl) : "";
+    const std::string error = result == CURLE_OK ? "" :
+        (curl_error[0] ? curl_error : curl_easy_strerror(result));
+    curl_easy_cleanup(curl);
+    if (result != CURLE_OK) return {"", error};
+    if (fingerprint.empty()) return {"", "WinRM did not provide a usable peer certificate"};
+    return {fingerprint, ""};
+}
+
 WinrmHttpResult winrm_post(const Config &config, const std::string &ip,
                            const std::string &hostname, const std::string &url,
-                           const std::string &soap) {
+                           const std::string &soap, const std::string &expected_fingerprint) {
     CURL *curl = curl_easy_init();
     if (!curl) return {0, "", "cannot initialize libcurl"};
 
@@ -450,6 +661,7 @@ WinrmHttpResult winrm_post(const Config &config, const std::string &ip,
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, config.verify_peer ? 1L : 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, config.verify_host ? 2L : 0L);
+    if (!expected_fingerprint.empty()) curl_easy_setopt(curl, CURLOPT_CERTINFO, 1L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, static_cast<long>(config.connect_timeout_ms));
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(config.request_timeout_ms));
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
@@ -460,14 +672,19 @@ WinrmHttpResult winrm_post(const Config &config, const std::string &ip,
     const CURLcode result = curl_easy_perform(curl);
     long status = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+    const std::string observed_fingerprint = result == CURLE_OK && !expected_fingerprint.empty() ?
+        curl_peer_fingerprint(curl) : "";
     curl_slist_free_all(headers);
     curl_slist_free_all(resolve);
     curl_easy_cleanup(curl);
 
     if (result != CURLE_OK) {
-        return {status, response, curl_error[0] ? curl_error : curl_easy_strerror(result)};
+        return {status, response, curl_error[0] ? curl_error : curl_easy_strerror(result), false};
     }
-    return {status, response, ""};
+    if (!expected_fingerprint.empty() && observed_fingerprint != expected_fingerprint) {
+        return {status, response, "WinRM endpoint certificate does not match enrollment", false};
+    }
+    return {status, response, "", true};
 }
 
 std::string winrm_error(const WinrmHttpResult &result) {
@@ -524,7 +741,8 @@ std::string profile_username(const std::string &path) {
 }
 
 WinrmResult query_winrm(const Config &config, const std::string &ip,
-                        const std::string &hostname) {
+                        const Endpoint &endpoint) {
+    const std::string &hostname = endpoint.connection_name;
     if (!valid_hostname(hostname)) return {"", "invalid enrolled hostname"};
     const std::string url = "https://" + hostname + ":" +
                             std::to_string(config.winrm_port) + "/wsman";
@@ -546,7 +764,11 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
         "</w:Selector></w:SelectorSet><w:OperationTimeout>PT5S</w:OperationTimeout>"
         "</s:Header><s:Body/></s:Envelope>";
 
-    const WinrmHttpResult system = winrm_post(config, ip, hostname, url, soap);
+    const WinrmHttpResult system = winrm_post(
+        config, ip, hostname, url, soap, endpoint.cert_sha256);
+    if (!system.endpoint_verified) {
+        return {"", winrm_error(system), false, false};
+    }
     std::string system_error;
     std::string username;
     if (!system.error.empty() || system.status != 200) {
@@ -559,11 +781,13 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
             "SELECT LocalPath,SID,Loaded,Special FROM Win32_UserProfile "
             "WHERE Loaded=True AND Special=False";
         const WinrmHttpResult profiles = winrm_post(
-            config, ip, hostname, url, enumerate_soap(url, profile_query, 32));
+            config, ip, hostname, url, enumerate_soap(url, profile_query, 32),
+            endpoint.cert_sha256);
         if (!profiles.error.empty() || profiles.status != 200) {
             const std::string fallback_error = winrm_error(profiles);
             return {"", system_error.empty() ? fallback_error :
-                system_error + "; session fallback: " + fallback_error};
+                system_error + "; session fallback: " + fallback_error,
+                false, system.endpoint_verified};
         }
 
         const std::string sid = xpath_text(profiles.body, "//*[local-name()='SID']");
@@ -575,7 +799,8 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
             const std::string account_query =
                 "SELECT Name,Domain,SID FROM Win32_UserAccount WHERE SID='" + sid + "'";
             const WinrmHttpResult account = winrm_post(
-                config, ip, hostname, url, enumerate_soap(url, account_query, 8));
+                config, ip, hostname, url, enumerate_soap(url, account_query, 8),
+                endpoint.cert_sha256);
             if (account.error.empty() && account.status == 200) {
                 name = xpath_text(account.body, "//*[local-name()='Name']");
                 domain = xpath_text(account.body, "//*[local-name()='Domain']");
@@ -589,7 +814,8 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
                 const std::string sid_query =
                     "SELECT AccountName,ReferencedDomainName,SID FROM Win32_SID WHERE SID='" + sid + "'";
                 const WinrmHttpResult sid_account = winrm_post(
-                    config, ip, hostname, url, enumerate_soap(url, sid_query, 8));
+                    config, ip, hostname, url, enumerate_soap(url, sid_query, 8),
+                    endpoint.cert_sha256);
                 if (sid_account.error.empty() && sid_account.status == 200) {
                     name = xpath_text(sid_account.body, "//*[local-name()='AccountName']");
                     domain = xpath_text(sid_account.body, "//*[local-name()='ReferencedDomainName']");
@@ -611,7 +837,7 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
             const bool no_interactive_user = account_error.empty();
             return {"", no_interactive_user ?
                 "Windows reported no interactive user" : account_error,
-                no_interactive_user};
+                no_interactive_user, true};
         }
         username = domain.empty() ? name : domain + "\\" + name;
     }
@@ -619,9 +845,9 @@ WinrmResult query_winrm(const Config &config, const std::string &ip,
     username.erase(std::remove_if(username.begin(), username.end(), [](unsigned char c) {
         return c < 0x20 || c == 0x7f;
     }), username.end());
-    if (username.empty()) return {"", "Windows reported no interactive user", true};
-    if (username.size() > 255) return {"", "Windows username exceeds limit"};
-    return {username, ""};
+    if (username.empty()) return {"", "Windows reported no interactive user", true, true};
+    if (username.size() > 255) return {"", "Windows username exceeds limit", false, true};
+    return {username, "", false, true};
 }
 
 std::string protocol_escape(const std::string &value) {
@@ -686,62 +912,108 @@ int run_lookup(const Config &config, Database &database, const Request &request)
     }
 
     auto cached = database.cached(request.ip);
-    if (cached && cached->username != config.unknown_user && cached->expires_at > now) {
-        reply(request, cached->username, cached->source);
-        return 0;
-    }
-
-    const auto endpoint = database.endpoint(request.ip);
-    if (!endpoint) {
+    if (cached && cached->expires_at > now) {
+        if (cached->username != config.unknown_user) {
+            reply(request, cached->username, cached->source);
+            return 0;
+        }
+        /* A portal login must take effect immediately even while a negative
+         * endpoint-discovery result is cached. */
         if (const auto portal = database.portal(request.ip, now)) {
             reply(request, portal->username, portal->source);
             return 0;
         }
-        const auto unknown = unknown_identity(config, now);
-        database.store(request.ip, unknown, "unknown", "Endpoint is not enrolled");
-        reply(request, unknown.username, "needs-login", "Endpoint is not enrolled");
+        reply(request, cached->username, "needs-login", "Identity discovery is temporarily cached");
         return 0;
     }
 
     EndpointLookupLock lookup_lock(config.database, request.ip);
     now = now_seconds();
     cached = database.cached(request.ip);
-    if (cached && cached->username != config.unknown_user && cached->expires_at > now) {
-        reply(request, cached->username, cached->source);
+    if (cached && cached->expires_at > now) {
+        if (cached->username != config.unknown_user) {
+            reply(request, cached->username, cached->source);
+            return 0;
+        }
+        if (const auto portal = database.portal(request.ip, now)) {
+            reply(request, portal->username, portal->source);
+            return 0;
+        }
+        reply(request, cached->username, "needs-login", "Identity discovery is temporarily cached");
         return 0;
     }
     if (!lookup_lock.acquired()) {
         /* Never let a burst from one slow or offline workstation consume the
-         * complete helper pool.  The lock owner performs the network query;
-         * concurrent requests immediately use the last verified user, or the
-         * enrolled hostname only while that first lookup is still pending. */
+         * complete helper pool. The lock owner performs certificate discovery
+         * and the network query; concurrent requests may use only a previously
+         * verified user, never an IP-derived hostname. */
         if (cached && cached->username != config.unknown_user &&
             cached->source == "winrm" && cached->stale_until > now) {
             reply(request, cached->username, "stale-winrm", "Identity refresh in progress");
-            return 0;
-        }
-        if (valid_hostname(endpoint->hostname)) {
-            std::string hostname = endpoint->hostname;
-            std::transform(hostname.begin(), hostname.end(), hostname.begin(),
-                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            reply(request, hostname, "hostname-pending", "Identity lookup in progress");
             return 0;
         }
         reply(request, config.unknown_user, "lookup-pending", "Identity lookup in progress");
         return 0;
     }
 
-    const WinrmResult result = query_winrm(config, request.ip, endpoint->connection_name);
+    auto endpoint = database.endpoint(request.ip);
+    if (!endpoint) {
+        if (const auto portal = database.portal(request.ip, now)) {
+            reply(request, portal->username, portal->source);
+            return 0;
+        }
+        const EndpointProbeResult probe = probe_endpoint_certificate(config, request.ip);
+        if (!probe.fingerprint.empty()) {
+            endpoint = database.endpoint_by_fingerprint(probe.fingerprint);
+        }
+        if (!endpoint) {
+            const std::string detail = !probe.error.empty() ? probe.error :
+                (probe.fingerprint.empty() ? "Endpoint certificate was not discovered" :
+                 "Endpoint certificate is not enrolled");
+            const auto unknown = unknown_identity(config, now);
+            database.store(request.ip, unknown, "unknown", detail);
+            if (config.debug) syslog(LOG_NOTICE, "Kontrol-ID: %s: %s",
+                                     request.ip.c_str(), detail.c_str());
+            reply(request, unknown.username, "needs-login", detail);
+            return 0;
+        }
+    }
+
+    WinrmResult result = query_winrm(config, request.ip, *endpoint);
+    if (!result.endpoint_verified) {
+        /* A previously bound IP may now belong to another enrolled station.
+         * Discover the presented certificate and switch only after its exact
+         * enrollment fingerprint and hostname both validate. */
+        const EndpointProbeResult probe = probe_endpoint_certificate(config, request.ip);
+        const auto candidate = probe.fingerprint.empty() ? std::optional<Endpoint>() :
+            database.endpoint_by_fingerprint(probe.fingerprint);
+        if (candidate && candidate->cert_sha256 != endpoint->cert_sha256) {
+            const WinrmResult candidate_result = query_winrm(config, request.ip, *candidate);
+            if (candidate_result.endpoint_verified) {
+                endpoint = candidate;
+                result = candidate_result;
+            }
+        }
+    }
+
+    if (result.endpoint_verified && endpoint->ip != request.ip) {
+        database.rebind_endpoint(*endpoint, request.ip, now);
+        endpoint->ip = request.ip;
+        if (config.debug) {
+            syslog(LOG_NOTICE, "Kontrol-ID: rebound enrolled station %s to %s",
+                   endpoint->hostname.c_str(), request.ip.c_str());
+        }
+    }
     if (!result.username.empty()) {
         Identity identity{result.username, "winrm", now + config.positive_ttl,
                           now + config.positive_ttl + config.stale_ttl};
         database.store(request.ip, identity, "identified", "");
-        database.touch_endpoint(request.ip, now);
+        database.touch_endpoint(endpoint->cert_sha256, now);
         reply(request, identity.username, identity.source);
         return 0;
     }
 
-    if (!result.no_interactive_user &&
+    if (result.endpoint_verified && !result.no_interactive_user &&
         cached && cached->username != config.unknown_user &&
         cached->source == "winrm" && cached->stale_until > now) {
         reply(request, cached->username, "stale-winrm", result.error);
@@ -753,7 +1025,7 @@ int run_lookup(const Config &config, Database &database, const Request &request)
      * machine identity instead of treating an enrolled endpoint as unknown.
      * The unknown-user policy is reserved for endpoints for which neither a
      * logged-on user nor an enrolled hostname can be established. */
-    if (valid_hostname(endpoint->hostname)) {
+    if (result.endpoint_verified && valid_hostname(endpoint->hostname)) {
         std::string hostname = endpoint->hostname;
         std::transform(hostname.begin(), hostname.end(), hostname.begin(),
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -763,7 +1035,7 @@ int run_lookup(const Config &config, Database &database, const Request &request)
         Identity identity{hostname, "hostname", now + config.negative_ttl,
                           now + config.negative_ttl};
         database.store(request.ip, identity, "identified-hostname", result.error);
-        database.touch_endpoint(request.ip, now);
+        database.touch_endpoint(endpoint->cert_sha256, now);
         if (config.debug) {
             syslog(LOG_NOTICE, "Kontrol-ID: %s: using enrolled hostname %s after WinRM failure: %s",
                    request.ip.c_str(), hostname.c_str(), result.error.c_str());
@@ -778,9 +1050,10 @@ int run_lookup(const Config &config, Database &database, const Request &request)
     }
 
     const auto unknown = unknown_identity(config, now);
-    database.store(request.ip, unknown, "unknown", result.error);
-    if (config.debug) syslog(LOG_NOTICE, "Kontrol-ID: %s: %s", request.ip.c_str(), result.error.c_str());
-    reply(request, unknown.username, "needs-login", result.error);
+    const std::string detail = result.error.empty() ? "Endpoint identity could not be verified" : result.error;
+    database.store(request.ip, unknown, "unknown", detail);
+    if (config.debug) syslog(LOG_NOTICE, "Kontrol-ID: %s: %s", request.ip.c_str(), detail.c_str());
+    reply(request, unknown.username, "needs-login", detail);
     return 0;
 }
 

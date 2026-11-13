@@ -30,9 +30,9 @@
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardiansiteacl</name>
     <version>1.0</version>
-    <title>Services: E2guardian - Access Lists</title>
-    <delete_string>E2guardian: removed a configuration item.</delete_string>
-    <addedit_string>E2guardian: changed settings.</addedit_string>
+    <title>Services: Kontrol-ID - Access Lists</title>
+    <delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+    <addedit_string>Kontrol-ID: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <tabs>
         <tab>
@@ -190,7 +190,7 @@
             <fielddescr>Config</fielddescr>
             <fieldname>banned_sitelist</fieldname>
             <description><![CDATA[<span class="text-info">Enter Banned Site List for this group.<br>
-                Leave empty to load e2guardian defaults</span>]]></description>
+                Leave empty to load Kontrol-ID defaults</span>]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -200,7 +200,7 @@
             <fielddescr>withbypass</fielddescr>
                         <fieldname>banned_sitelist_withbypass</fieldname>
                         <description><![CDATA[<span class="text-info">Enter Banned Site List that accept bypass key.<br>
-                                Leave empty to load e2guardian defaults</span>]]></description>
+                                Leave empty to load Kontrol-ID defaults</span>]]></description>
                         <type>textarea</type>
                         <cols>80</cols>
                         <rows>10</rows>
@@ -220,7 +220,7 @@
             <fielddescr>Config</fielddescr>
             <fieldname>grey_sitelist</fieldname>
             <description><![CDATA[<span class="text-info">Enter Weighted Site List for this group.<br>
-                Leave empty to load e2guardian defaults</span>]]></description>
+                Leave empty to load Kontrol-ID defaults</span>]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -251,7 +251,7 @@
             <fielddescr>Config</fielddescr>
             <fieldname>exception_sitelist</fieldname>
             <description><![CDATA[<span class="text-info">Enter exception Site List for this group.<br>
-                Leave empty to load e2guardian defaults</span>]]></description>
+                Leave empty to load Kontrol-ID defaults</span>]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -261,7 +261,7 @@
             <fielddescr>File</fielddescr>
             <fieldname>exceptionfile_sitelist</fieldname>
             <description><![CDATA[<span class="text-info">Enter exception File Site List for this group.<br>
-                Leave empty to load e2guardian defaults</span>]]></description>
+                Leave empty to load Kontrol-ID defaults</span>]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -302,7 +302,7 @@
             <fielddescr>Config</fielddescr>
             <fieldname>log_sitelist</fieldname>
             <description><![CDATA[<span class="text-info">Enter log only site List for this group.<br>
-                Leave empty to load e2guardian defaults</div>]]></description>
+                Leave empty to load Kontrol-ID defaults</div>]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>

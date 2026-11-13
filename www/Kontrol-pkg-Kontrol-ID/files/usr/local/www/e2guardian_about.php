@@ -26,7 +26,7 @@ require_once("/etc/inc/pkg-utils.inc");
 require_once("/etc/inc/globals.inc");
 require_once("guiconfig.inc");
 
-$pgtitle = array(gettext("Package"), gettext("Services: E2guardian"), gettext("About"));
+$pgtitle = array(gettext("Package"), gettext("Services: Kontrol-ID"), gettext("About"));
 $shortcut_section = "e2guardian";
 include("head.inc");
 
@@ -49,7 +49,7 @@ display_top_tabs($tab_array);
 
 ?>
 <div class="panel panel-default">
-        <div class="panel-heading"><h2 class="panel-title"><?=gettext("About E2guardian"); ?></h2></div>
+        <div class="panel-heading"><h2 class="panel-title"><?=gettext("About Kontrol-ID"); ?></h2></div>
         <div class="panel-body">
         <div class="table-responsive">
                 <table class="table table-hover table-condensed">
@@ -57,11 +57,11 @@ display_top_tabs($tab_array);
 
                         <tr>
                             <td width="22%" valign="top" class="vncell"><?=gettext("Blacklists");?></td>
-                            <td width="78%" class="vtable"><?=gettext("<a target=_new href='http://www.squidguard.org/blacklists.html'>E2guardian Blacklists</a><br><br>");?>
+                            <td width="78%" class="vtable"><?=gettext("<a target=_new href='http://www.squidguard.org/blacklists.html'>Kontrol-ID Blacklists</a><br><br>");?>
                         </tr>
                         <tr>
                             <td width="22%" valign="top" class="vncell"><?=gettext("Whatis");?></td>
-                            <td width="78%" class="vtable"><a target=_new href='http://e2guardian.org/'><?=gettext("What is E2guardian</a><br><br>");?>
+                            <td width="78%" class="vtable"><a target="_blank" href="https://kontrol.com.br/"><?=gettext("About Kontrol-ID");?></a><br><br>
                         </tr>
                                                 <tr>
                                                         <td width="22%" valign="top" class="vncell"><?=gettext("Configuration");?></td>
@@ -73,7 +73,7 @@ display_top_tabs($tab_array);
                                                </tr>
                                                <tr>
                                                        <td width="22%" valign="top" class="vncell"><?=gettext("Auth maps");?></td>
-                                                       <td width="78%" class="vtable"><?=gettext("Group, user and port mapping files are located in /usr/local/etc/e2guardian/lists/authplugins/ when using E2guardian 5.4.");?><br><br>
+                                                       <td width="78%" class="vtable"><?=gettext("Group, user and port mapping files are located in /usr/local/etc/e2guardian/lists/authplugins/ when using Kontrol-ID 5.4.");?><br><br>
                                                </tr>
 
                         </table>

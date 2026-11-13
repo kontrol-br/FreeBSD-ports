@@ -175,7 +175,7 @@ if (is_array($config['installedpackages']['e2guardiangroups']['config'])) {
 }
 if ($apply_config > 0) {
     print "User list from LDAP is different from current group, applying new configuration...";
-    write_config('e2guardian - update ldap config');
+    write_config('Kontrol-ID LDAP configuration updated.');
     include(E2GUARDIAN_DIR . '/pkg/e2guardian.inc');
     sync_package_e2guardian();
     e2guardian_start();

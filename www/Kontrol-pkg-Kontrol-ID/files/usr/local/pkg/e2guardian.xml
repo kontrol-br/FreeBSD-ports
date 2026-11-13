@@ -31,9 +31,9 @@
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardian</name>
     <version>0.9.2</version>
-    <title>Services: E2guardian</title>
-    <delete_string>E2guardian: removed a configuration item.</delete_string>
-    <addedit_string>E2guardian: changed settings.</addedit_string>
+    <title>Services: Kontrol-ID</title>
+    <delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+    <addedit_string>Kontrol-ID: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <service>
         <name>kontrol_id</name>
@@ -103,26 +103,26 @@
             <type>listtopic</type>
         </field>
         <field>
-            <fielddescr>Enable e2guardian</fielddescr>
+            <fielddescr>Enable Kontrol-ID</fielddescr>
             <fieldname>enable</fieldname>
             <type>checkbox</type>
-            <description><![CDATA[Enable or disable E2guardian service.]]></description>
+            <description><![CDATA[Enable or disable Kontrol-ID service.]]></description>
         </field>
         <field>
             <fielddescr>Force Restart</fielddescr>
             <fieldname>e2g_force_restart_action</fieldname>
             <type>info</type>
             <description><![CDATA[
-                <button type="submit" name="e2g_force_restart" value="yes" class="btn btn-warning" title="Forcefully stop all E2guardian processes and start the service again. Use when normal restart/reload does not recover the proxy." onclick="return confirm('Force Restart will terminate active E2guardian connections, stop all E2guardian processes, remove the pidfile, and start the service again. Continue?');">
+                <button type="submit" name="e2g_force_restart" value="yes" class="btn btn-warning" title="Forcefully stop all Kontrol-ID processes and start the service again. Use when normal restart/reload does not recover the proxy." onclick="return confirm('Force Restart will terminate active Kontrol-ID connections, stop all Kontrol-ID processes, remove the pidfile, and start the service again. Continue?');">
                     <i class="fa fa-exclamation-triangle icon-embed-btn"></i>Force Restart
                 </button>
-                <p class="help-block">Forcefully stop all E2guardian processes and start the service again. Use when normal restart/reload does not recover the proxy.</p>
+                <p class="help-block">Forcefully stop all Kontrol-ID processes and start the service again. Use when normal restart/reload does not recover the proxy.</p>
             ]]></description>
         </field>
         <field>
             <fielddescr>Listen Interface(s)</fielddescr>
             <fieldname>interface</fieldname>
-            <description><![CDATA[Default: <strong>LAN</strong><br>Select interface(s) that you want to e2guardian to listen on.<br>
+            <description><![CDATA[Default: <strong>LAN</strong><br>Select the interface(s) on which Kontrol-ID must listen.<br>
                 <strong>Note: Do NOT select more then one interface if you plan to use more then one authentication plugin.<br>
                     Do NOT select more than one interface if you are usign Transparent Proxy</strong>]]></description>
             <type>interfaces_selection</type>
@@ -134,7 +134,7 @@
             <fieldname>filterports</fieldname>
             <type>input</type>
             <size>10</size>
-            <description><![CDATA[Default: <strong>8080</strong><br>The port(s) that E2Guardian listens to.]]></description>
+            <description><![CDATA[Default: <strong>8080</strong><br>The port(s) that Kontrol-ID listens to.]]></description>
         </field>
         <field>
             <fielddescr>ICAP Listen Port</fielddescr>
@@ -195,7 +195,7 @@
         <field>
                         <fielddescr>Apply action</fielddescr>
                         <fieldname>applyaction</fieldname>
-                        <description><![CDATA[Select action to do on E2guardian daemon within applyconfig.<br/> Sending a USR1 to the e2guardian process allows changes to be applied without killing the e2g process (and subsequently any active connections)]]></description>
+                        <description><![CDATA[Select the action applied to the Kontrol-ID service.<br/>Sending USR1 reloads lists and groups without terminating the running service or its active connections.]]></description>
                         <type>select</type>
                         <options>
                                 <option><name>Kill any running copy and start a new one</name><value>-Q</value></option>
@@ -293,7 +293,7 @@
                         <fielddescr>Enable SSL support</fielddescr>
                         <fieldname>enablessl</fieldname>
                         <type>checkbox</type>
-                        <description><![CDATA[Check to enable E2guardian SSL interception.]]></description>
+                        <description><![CDATA[Check to enable Kontrol-ID SSL interception.]]></description>
                 </field>
                 <field>
                         <fielddescr>CA</fielddescr>
@@ -324,7 +324,7 @@
                         <fielddescr>Parent mode</fielddescr>
                         <fieldname>parentmode</fieldname>
                         <description><![CDATA[Select parent proxy to use.<br>
-                Automatic mode will configure a squid daemon to be used as parent for e2guardian.]]>
+                Automatic mode will configure a Squid daemon to be used as the parent proxy for Kontrol-ID.]]>
             </description>
                         <type>select</type>
                         <options>
@@ -375,7 +375,7 @@
             <fielddescr>Watchdog</fielddescr>
             <fieldname>watchdog</fieldname>
             <type>checkbox</type>
-            <description><![CDATA[Check to enable E2guardian process watchdog and auto restart.]]></description>
+            <description><![CDATA[Check to enable Kontrol-ID process watchdog and auto restart.]]></description>
             <advancedfield/>
         </field>
         <field>
@@ -384,24 +384,24 @@
             <advancedfield/>
         </field>
         <field>
-            <fielddescr>Export E2guardian settings</fielddescr>
+            <fielddescr>Export Kontrol-ID settings</fielddescr>
             <fieldname>e2g_export_settings_button</fieldname>
-            <description><![CDATA[Download an XML file containing only E2guardian package sections from installedpackages.<br/>
+            <description><![CDATA[Download an XML file containing only Kontrol-ID package sections from installedpackages.<br/>
                 <button class="btn btn-primary btn-sm" name='e2g_export_settings' id='e2g_export_settings' type='submit' value='e2g_export_settings'>
-                <i class="fa fa-download icon-embed-btn"></i>Export E2guardian settings</button>]]></description>
+                <i class="fa fa-download icon-embed-btn"></i>Export Kontrol-ID settings</button>]]></description>
             <type>info</type>
             <advancedfield/>
         </field>
         <field>
-            <fielddescr>Import E2guardian settings</fielddescr>
+            <fielddescr>Import Kontrol-ID settings</fielddescr>
             <fieldname>e2g_import_controls</fieldname>
             <description><![CDATA[Choose the XML previously exported from another firewall and then click import.<br/>
                 <input class="form-control" type="file" id="e2g_import_file" accept=".xml,text/xml,application/xml" />
                 <div id="e2g_import_file_status" class="text-muted" style="margin-top:6px;">No file selected.</div>
                 <textarea name="e2g_import_payload" id="e2g_import_payload" style="display:none;"></textarea>
                 <button class="btn btn-success btn-sm" name='e2g_import_settings' id='e2g_import_settings' type='submit' value='e2g_import_settings'>
-                <i class="fa fa-upload icon-embed-btn"></i>Import E2guardian settings</button><br/>
-                <strong>Note:</strong> the import replaces only E2guardian package sections and immediately applies/restarts the service.
+                <i class="fa fa-upload icon-embed-btn"></i>Import Kontrol-ID settings</button><br/>
+                <strong>Note:</strong> the import replaces only Kontrol-ID package sections and immediately applies/restarts the service.
                 <script type="text/javascript">
                 (function() {
                     var fileInput = document.getElementById('e2g_import_file');
@@ -447,7 +447,7 @@
         e2guardian_check_config();
     </custom_php_command_before_form>
     <custom_php_install_command>
-        update_status("Initializing E2guardian access lists...");
+        update_status("Initializing Kontrol-ID access lists...");
         update_output_window("Reading installed blacklist categories and default access lists.");
         e2guardian_php_install_command(false,true);
     </custom_php_install_command>

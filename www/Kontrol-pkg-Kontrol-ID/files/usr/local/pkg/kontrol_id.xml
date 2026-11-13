@@ -26,11 +26,20 @@
 		<section>Services</section>
 		<url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url>
 	</menu>
+	<plugins>
+		<item>
+			<type>plugin_nginx</type>
+		</item>
+	</plugins>
 	<tabs>
 		<tab>
 			<text>General</text>
 			<url>/pkg_edit.php?xml=kontrol_id.xml&amp;id=0</url>
 			<active/>
+		</tab>
+		<tab>
+			<text>WPAD</text>
+			<url>/kontrol_id_wpad.php</url>
 		</tab>
 		<tab>
 			<text>Status and Enrollment</text>
@@ -59,7 +68,7 @@
 			<fieldname>enable</fieldname>
 			<description><![CDATA[
 				Enable the managed gateway after selecting the access mode and client interfaces. Kerberos and NTLM modes remain disabled
-				until their Domain and Keytab prerequisites are complete. Transparent without identification requires no domain membership.
+				until their Domain and Keytab prerequisites are complete. Anonymous transparent and explicit modes require no domain membership.
 			]]></description>
 			<type>checkbox</type>
 		</field>
@@ -68,8 +77,19 @@
 			<description><![CDATA[
 				<strong>Transparent without identification:</strong> select the mode, interfaces and inspection level, then enable and save.<br/>
 				<strong>Transparent identification:</strong> configure the IP policy mappings and optional station enrollment.<br/>
+				<strong>Explicit proxy with endpoint identification:</strong> publish the proxy through PAC/WPAD or configure it manually, then enroll the Windows stations with the Provisioner.<br/>
+				<strong>Explicit proxy without identification:</strong> publish the proxy through PAC/WPAD or configure it manually; the default group and source-IP policies are applied without a login challenge.<br/>
 				<strong>Kerberos or NTLM:</strong> save the domain values, complete <em>Domain and Keytab</em>, then return here to enable.<br/>
-				The standalone Kontrol-ID engine is activated only when the prerequisites of the selected mode are ready.
+				The Provisioner remains available on <em>Status &amp; Enrollment</em> in every mode, allowing stations to be prepared before endpoint identification is enabled. The standalone Kontrol-ID engine is activated only when the prerequisites of the selected mode are ready.
+			]]></description>
+			<type>info</type>
+		</field>
+		<field>
+			<fielddescr>Windows Provisioner</fielddescr>
+			<description><![CDATA[
+				<a class="btn btn-success" href="/kontrol_id_provisioner.php" download><i class="fa fa-download"></i> Download configured Provisioner</a>
+				&nbsp; The download remains available in every access mode so stations can be prepared before endpoint identification is enabled.
+				Enrollment status and station management remain available on <a href="/kontrol_id_status.php">Status &amp; Enrollment</a>.
 			]]></description>
 			<type>info</type>
 		</field>
@@ -92,15 +112,16 @@
 			<description><![CDATA[
 				Transparent identification first resolves the logged-on Windows user, then falls back to the enrolled workstation hostname.
 				Only when neither identity is available is the configured Unknown User Fallback applied; the proxy never sends an authentication
-				challenge in this mode. Transparent without identification skips identity processing and applies the default policy group, while preserving optional IP
-				exceptions and overrides. Explicit mode requires clients to use the proxy address or PAC/WPAD. The standalone engine
-				supports native Kerberos/SPNEGO, NTLMv2, and HTTP Basic backed by the selected Kontrol authentication server.
+				challenge in either endpoint-identification mode. Transparent without identification skips identity processing and applies the default policy group, while preserving optional IP
+				exceptions and overrides. Explicit modes require clients to use the proxy address or PAC/WPAD. Explicit without identification applies the default group and source-IP policies without a login challenge. Explicit endpoint identification reuses the Provisioner and does not require AD; explicit authentication supports native Kerberos/SPNEGO, NTLMv2, and HTTP Basic backed by the selected Kontrol authentication server.
 			]]></description>
 			<type>select</type>
 			<default_value>transparent</default_value>
 			<options>
 				<option><name>Transparent identification (no proxy login)</name><value>transparent</value></option>
 				<option><name>Transparent without identification</name><value>transparent_no_identity</value></option>
+				<option><name>Explicit proxy with endpoint identification (Provisioner)</name><value>explicit_identity</value></option>
+				<option><name>Explicit proxy without user identification</name><value>explicit_no_identity</value></option>
 				<option><name>Explicit proxy authentication</name><value>explicit</value></option>
 			</options>
 		</field>
@@ -257,23 +278,25 @@
 		<field>
 			<fielddescr>Bypass Source Addresses</fielddescr>
 			<fieldname>bypass_sources</fieldname>
-			<description><![CDATA[Source IPs, CIDR networks or firewall aliases that bypass transparent interception completely. Separate entries with semicolons. In explicit mode, source bypass must be configured as <code>DIRECT</code> in PAC/GPO because the client has already selected the proxy before connecting.]]></description>
-			<type>input</type>
-			<size>70</size>
+			<description><![CDATA[Source IPs, CIDR networks or firewall aliases that bypass transparent interception completely. Enter one item per line, or separate items with commas or semicolons. In explicit mode, source bypass must be configured as <code>DIRECT</code> in PAC/GPO because the client has already selected the proxy before connecting.]]></description>
+			<type>textarea</type>
+			<cols>80</cols>
+			<rows>6</rows>
 		</field>
 		<field>
 			<fielddescr>Bypass Destination Addresses / Sites</fielddescr>
 			<fieldname>bypass_destinations</fieldname>
-			<description><![CDATA[Destination IPs, CIDR networks, hostnames, firewall aliases or full URLs that bypass transparent interception. Separate entries with semicolons. A URL is reduced to its hostname because the path is not available before interception; hostnames are resolved when the rules are applied.]]></description>
-			<type>input</type>
-			<size>70</size>
+			<description><![CDATA[Destination IPs, CIDR networks, hostnames, firewall aliases or full URLs that bypass transparent interception. Enter one item per line, or separate items with commas or semicolons. A URL is reduced to its hostname because the path is not available before interception; hostnames are resolved when the rules are applied.]]></description>
+			<type>textarea</type>
+			<cols>80</cols>
+			<rows>6</rows>
 		</field>
 		<field>
 			<fielddescr>TLS Inspection Bypass Sites</fielddescr>
 			<fieldname>tls_bypass_sites</fieldname>
 			<description><![CDATA[
 				Sites that must remain proxied but must not have HTTPS decrypted, useful for banks, certificate-pinned applications and problematic services.
-				Enter one hostname, IP or URL per line. <code>*.example.com</code> is accepted and normalized to the E2Guardian domain-list format.
+				Enter one hostname, IP or URL per line. <code>*.example.com</code> is accepted and normalized to the Kontrol-ID domain-list format.
 				Full URLs are reduced to their hostname because a URL path is visible only after TLS interception. For path-specific filtering exceptions,
 				use the <a href="/pkg.php?xml=e2guardian_site_acl.xml">Site Lists</a> and <a href="/pkg.php?xml=e2guardian_url_acl.xml">URL Lists</a> policy pages.
 			]]></description>
@@ -496,7 +519,7 @@
 			<fielddescr>Import Kontrol-ID Settings</fielddescr>
 			<fieldname>kontrol_id_import_controls</fieldname>
 			<description><![CDATA[
-				Choose a compatible XML file exported by Kontrol-ID. A valid import verifies every section checksum, replaces the package sections and immediately applies the managed configuration. Domain trust and referenced PKI must already exist on this appliance or be restored separately.<br/>
+				Choose a compatible XML file exported by Kontrol-ID or by the legacy Kontrol-pkg-E2guardian54 package. A valid import verifies every section checksum, replaces the compatible package sections and immediately applies the managed configuration. A legacy E2Guardian backup imports filtering policies, lists, users and IP assignments; it does not replace Kontrol-ID access mode, identity, domain or enrollment settings. Domain trust and referenced PKI must already exist on this appliance or be restored separately.<br/>
 				<input class="form-control" type="file" id="kontrol_id_import_file" accept=".xml,text/xml,application/xml" />
 				<div id="kontrol_id_import_file_status" class="text-muted" style="margin-top:6px;">No file selected.</div>
 				<textarea name="kontrol_id_import_payload" id="kontrol_id_import_payload" style="display:none;"></textarea>

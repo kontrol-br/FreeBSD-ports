@@ -1,8 +1,8 @@
 #!/usr/local/bin/php
 <?php
 
-/* Isolated lab harness for the legacy E2Guardian proxy-after/Squid-parent
- * topology. It never edits the live E2Guardian or Squid configuration. */
+/* Isolated lab harness for the legacy Kontrol-ID proxy-after/Squid-parent
+ * topology. It never edits the live Kontrol-ID or Squid configuration. */
 
 if (PHP_SAPI !== 'cli' || $argc !== 2 ||
 	!in_array($argv[1], array('transparent', 'basic', 'kerberos', 'ntlm'), true)) {
@@ -71,7 +71,7 @@ function trial_replace_line($contents, $key, $value) {
 }
 
 if (!is_dir($source) || !is_file($source . '/e2guardian.conf')) {
-	throw new RuntimeException('Live E2Guardian configuration is unavailable.');
+	throw new RuntimeException('Live Kontrol-ID configuration is unavailable.');
 }
 if (!is_dir($root)) {
 	mkdir($root, 0755, true);

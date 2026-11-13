@@ -52,14 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			foreach ($rows as $index => $row) {
 				$number = $index + 1;
 				if ($row['ad_group'] === '' || $row['e2guardian_group'] === '') {
-					$input_errors[] = "Mapping {$number} must select both an AD group and an E2Guardian group.";
+					$input_errors[] = "Mapping {$number} must select both an AD group and an Kontrol-ID group.";
 					continue;
 				}
 				if (strlen($row['ad_group']) > 128 || preg_match('/[\x00-\x1f\x7f]/', $row['ad_group'])) {
 					$input_errors[] = "Mapping {$number} has an invalid AD group name.";
 				}
 				if (!array_key_exists($row['e2guardian_group'], $available)) {
-					$input_errors[] = "Mapping {$number} references an E2Guardian group that no longer exists.";
+					$input_errors[] = "Mapping {$number} references an Kontrol-ID group that no longer exists.";
 				}
 				$ad_key = strtolower($row['ad_group']);
 				$e2g_key = strtolower($row['e2guardian_group']);
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					$input_errors[] = "AD group '{$row['ad_group']}' is mapped more than once.";
 				}
 				if (isset($seen_e2g[$e2g_key])) {
-					$input_errors[] = "E2Guardian group '{$row['e2guardian_group']}' is mapped more than once.";
+					$input_errors[] = "Kontrol-ID group '{$row['e2guardian_group']}' is mapped more than once.";
 				}
 				$seen_ad[$ad_key] = true;
 				$seen_e2g[$e2g_key] = true;
@@ -132,20 +132,20 @@ if (!empty($savemsg)) {
 			<?php if (!$domain_joined): ?>Complete <a href="/kontrol_id_domain.php">Domain and Keytab</a> before enabling this feature.<?php endif; ?>
 		</div>
 		<?php if (empty($e2guardian_groups)): ?>
-		<div class="alert alert-warning">Create at least one policy under <a href="/pkg.php?xml=e2guardian_groups.xml">Services &gt; E2Guardian &gt; Groups</a> before configuring an AD mapping.</div>
+		<div class="alert alert-warning">Create at least one policy under <a href="/pkg.php?xml=e2guardian_groups.xml">Services &gt; Kontrol-ID &gt; Groups</a> before configuring an AD mapping.</div>
 		<?php endif; ?>
-		<div class="alert alert-info">The first E2Guardian group is the default/fallback policy for every identity that does not match another mapping. It can also be selected explicitly for an AD group; place a broad mapping such as Domain Users after more specific policies because the first matching row wins.</div>
+		<div class="alert alert-info">The first Kontrol-ID group is the default/fallback policy for every identity that does not match another mapping. It can also be selected explicitly for an AD group; place a broad mapping such as Domain Users after more specific policies because the first matching row wins.</div>
 		<form method="post" class="form-horizontal">
 			<div class="form-group">
 				<label class="col-sm-3 control-label">Enable AD policy mapping</label>
-				<div class="col-sm-8"><label class="checkbox-inline"><input type="checkbox" name="ad_policy_enable" value="on" <?=($settings['ad_policy_enable'] ?? '') === 'on' ? 'checked' : ''?>> Use Kerberos machine trust to maintain E2Guardian policy membership</label></div>
+				<div class="col-sm-8"><label class="checkbox-inline"><input type="checkbox" name="ad_policy_enable" value="on" <?=($settings['ad_policy_enable'] ?? '') === 'on' ? 'checked' : ''?>> Use Kerberos machine trust to maintain Kontrol-ID policy membership</label></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="ad_policy_cache_ttl">Membership cache TTL</label>
 				<div class="col-sm-3"><div class="input-group"><input class="form-control" id="ad_policy_cache_ttl" name="ad_policy_cache_ttl" type="number" min="60" max="86400" value="<?=htmlspecialchars($settings['ad_policy_cache_ttl'] ?? '300')?>"><span class="input-group-addon">seconds</span></div><span class="help-block">The cron checks every minute but contacts AD only when this cache expires.</span></div>
 			</div>
 			<table class="table table-striped table-hover" id="policy-mappings">
-				<thead><tr><th style="width:45%">Active Directory group</th><th style="width:45%">E2Guardian policy group</th><th style="width:10%"></th></tr></thead>
+				<thead><tr><th style="width:45%">Active Directory group</th><th style="width:45%">Kontrol-ID policy group</th><th style="width:10%"></th></tr></thead>
 				<tbody>
 				<?php foreach ($mappings as $mapping): ?>
 				<tr>
@@ -177,7 +177,7 @@ if (!empty($savemsg)) {
 		<form method="post"><button class="btn btn-info" name="sync_now" value="1" type="submit" <?=!kontrol_id_policy_enabled($settings) ? 'disabled' : ''?>><i class="fa fa-refresh"></i> Synchronize now</button></form>
 		<br>
 		<table class="table table-striped table-condensed">
-			<thead><tr><th>AD group</th><th>E2Guardian policy</th><th>Accounts</th><th>Cached identities</th></tr></thead>
+			<thead><tr><th>AD group</th><th>Kontrol-ID policy</th><th>Accounts</th><th>Cached identities</th></tr></thead>
 			<tbody>
 			<?php foreach ((array)($cache['mappings'] ?? array()) as $mapping): $identity_count = 0; foreach ((array)($mapping['members'] ?? array()) as $member) { $identity_count += count((array)($member['identities'] ?? array())); } ?>
 			<tr><td><?=htmlspecialchars($mapping['ad_group'] ?? '')?></td><td><?=htmlspecialchars($mapping['e2guardian_group'] ?? '')?></td><td><?=intval($mapping['account_count'] ?? 0)?></td><td><?=$identity_count?></td></tr>

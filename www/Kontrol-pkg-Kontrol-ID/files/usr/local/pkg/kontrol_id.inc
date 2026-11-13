@@ -24,6 +24,7 @@ define('KONTROL_ID_ENGINE_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kon
 define('KONTROL_ID_ENGINE_NTLM_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-ntlm.conf');
 define('KONTROL_ID_ENGINE_BASIC_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-basic.conf');
 define('KONTROL_ID_ENGINE_IDENTITY_CONF', '/usr/local/etc/e2guardian/authplugins/kontrol-identity.conf');
+define('KONTROL_ID_ENGINE_IP_AUTH_CONF', '/usr/local/etc/e2guardian/authplugins/ip.conf');
 define('KONTROL_ID_LOGIN_TEMPLATE_DIR', '/usr/local/pkg');
 define('KONTROL_ID_ENGINE_PID', '/var/run/kontrol-id.pid');
 define('KONTROL_ID_WINBIND_MARKER', KONTROL_ID_DOMAIN_DIR . '/winbind.enabled');
@@ -37,6 +38,10 @@ define('KONTROL_ID_SAMBA_RUN', '/var/run/kontrol-id-samba');
 define('KONTROL_ID_POLICY_CACHE', KONTROL_ID_DOMAIN_DIR . '/policy-members.json');
 define('KONTROL_ID_POLICY_STATUS', KONTROL_ID_DOMAIN_DIR . '/policy-status.json');
 define('KONTROL_ID_POLICY_LOCK', KONTROL_ID_DOMAIN_DIR . '/policy-sync.lock');
+define('KONTROL_ID_WPAD_FILE', '/usr/local/www/wpad.dat');
+define('KONTROL_ID_WPAD_PROXY_LINK', '/usr/local/www/proxy.pac');
+define('KONTROL_ID_WPAD_LEGACY_LINK', '/usr/local/www/wpad.da');
+define('KONTROL_ID_WPAD_DESCRIPTION', 'Kontrol-ID managed WPAD');
 define('KONTROL_ID_GROUP', 'kontrol-internet-users');
 define('KONTROL_ID_QUIC_SOURCE_ALIAS', 'KID_QUIC_SRC_BYPASS');
 define('KONTROL_ID_QUIC_DESTINATION_ALIAS', 'KID_QUIC_DST_BYPASS');
@@ -94,6 +99,15 @@ function kontrol_id_defaults() {
 		'verify_peer' => 'on',
 		'verify_host' => 'on',
 		'debug' => '',
+		'wpad_enable' => '',
+		'wpad_interfaces' => 'lan',
+		'wpad_manage_dhcp' => 'on',
+		'wpad_manage_dns' => 'on',
+		'wpad_domain' => '',
+		'wpad_pac' => '',
+		'wpad_file_owned' => '',
+		'wpad_dhcp_ownership' => '',
+		'wpad_dns_ownership' => '',
 		'enrollment_token_hash' => '',
 		'enrollment_token_expires' => '0',
 		'enrollment_token_uses' => '0',
@@ -112,6 +126,568 @@ function kontrol_id_defaults() {
 		'e2guardian_auth_snapshot_taken' => '',
 		'dependency_defaults_initialized' => ''
 	);
+}
+
+function kontrol_id_wpad_decode_state($encoded) {
+	if (empty($encoded)) {
+		return array();
+	}
+	$decoded = base64_decode((string)$encoded, true);
+	$state = ($decoded === false) ? null : json_decode($decoded, true);
+	return is_array($state) ? $state : array();
+}
+
+function kontrol_id_wpad_encode_state(array $state) {
+	return empty($state) ? '' : base64_encode(json_encode($state));
+}
+
+function kontrol_id_wpad_interfaces($settings) {
+	$value = is_array($settings['wpad_interfaces'] ?? null) ?
+		$settings['wpad_interfaces'] : preg_split('/[;,\s]+/', (string)($settings['wpad_interfaces'] ?? ''));
+	$interfaces = array();
+	foreach ((array)$value as $interface) {
+		$interface = trim((string)$interface);
+		if ($interface !== '' && $interface !== 'wan' &&
+			preg_match('/^[A-Za-z0-9_.-]+$/', $interface)) {
+			$interfaces[] = $interface;
+		}
+	}
+	return array_values(array_unique($interfaces));
+}
+
+function kontrol_id_wpad_interface_catalog() {
+	if (!function_exists('get_interface_ip')) {
+		require_once('interfaces.inc');
+	}
+	$catalog = array();
+	$interfaces = function_exists('get_configured_interface_with_descr') ?
+		get_configured_interface_with_descr() : array();
+	foreach ((array)$interfaces as $interface => $description) {
+		if ($interface === 'wan') {
+			continue;
+		}
+		$ip = get_interface_ip($interface);
+		if (!is_ipaddrv4($ip)) {
+			continue;
+		}
+		$catalog[$interface] = array(
+			'description' => (string)$description,
+			'ip' => $ip
+		);
+	}
+	return $catalog;
+}
+
+function kontrol_id_wpad_selected_interfaces($settings, $required = true) {
+	$catalog = kontrol_id_wpad_interface_catalog();
+	$selected = array();
+	foreach (kontrol_id_wpad_interfaces($settings) as $interface) {
+		if (!isset($catalog[$interface])) {
+			throw new Exception("WPAD interface '{$interface}' is not a configured internal IPv4 interface.");
+		}
+		$selected[$interface] = $catalog[$interface];
+	}
+	if ($required && empty($selected)) {
+		throw new Exception('Select at least one configured internal IPv4 interface for WPAD.');
+	}
+	return $selected;
+}
+
+function kontrol_id_wpad_domain($settings) {
+	$domain = strtolower(trim((string)($settings['wpad_domain'] ?? '')));
+	if ($domain === '') {
+		$domain = strtolower(trim((string)config_get_path('system/domain', '')));
+	}
+	return rtrim($domain, '.');
+}
+
+function kontrol_id_wpad_default_pac($settings) {
+	$interfaces = kontrol_id_wpad_selected_interfaces($settings, false);
+	$proxy = trim((string)($settings['proxy_fqdn'] ?? ''));
+	if ($proxy === '' && !empty($interfaces)) {
+		$first = reset($interfaces);
+		$proxy = $first['ip'];
+	}
+	if ($proxy === '') {
+		$proxy = '192.168.1.1';
+	}
+	$port = (int)($settings['http_proxy_port'] ?? 3128);
+	if ($port < 1 || $port > 65535) {
+		$port = 3128;
+	}
+	return "// Managed by Kontrol-ID. Keep valid JavaScript syntax.\n" .
+		"function FindProxyForURL(url, host) {\n" .
+		"    if (isPlainHostName(host) || shExpMatch(host, \"localhost\") ||\n" .
+		"        isInNet(dnsResolve(host), \"10.0.0.0\", \"255.0.0.0\") ||\n" .
+		"        isInNet(dnsResolve(host), \"172.16.0.0\", \"255.240.0.0\") ||\n" .
+		"        isInNet(dnsResolve(host), \"192.168.0.0\", \"255.255.0.0\")) {\n" .
+		"        return \"DIRECT\";\n" .
+		"    }\n" .
+		"    return \"PROXY {$proxy}:{$port}; DIRECT\";\n" .
+		"}\n";
+}
+
+function kontrol_id_wpad_pac_content($settings) {
+	$decoded = base64_decode((string)($settings['wpad_pac'] ?? ''), true);
+	return ($decoded === false || trim($decoded) === '') ?
+		kontrol_id_wpad_default_pac($settings) : str_replace("\r\n", "\n", $decoded);
+}
+
+function kontrol_id_wpad_validate_pac($content) {
+	$content = str_replace("\r\n", "\n", (string)$content);
+	if ($content === '' || strlen($content) > 131072 || strpos($content, "\0") !== false) {
+		throw new Exception('The PAC file must contain between 1 byte and 128 KiB of text.');
+	}
+	if (!preg_match('/function\s+FindProxyForURL\s*\(/', $content)) {
+		throw new Exception('The PAC file must define function FindProxyForURL(url, host).');
+	}
+	if (!is_executable('/usr/local/bin/qjsc')) {
+		throw new Exception('QuickJS syntax validator is not installed. Reinstall or upgrade the Kontrol-ID package.');
+	}
+	$source = tempnam('/tmp', 'kontrol-id-pac-');
+	$output = tempnam('/tmp', 'kontrol-id-pac-compiled-');
+	if ($source === false || $output === false) {
+		throw new Exception('Unable to create a temporary file for PAC validation.');
+	}
+	try {
+		file_put_contents($source, $content, LOCK_EX);
+		$result = kontrol_id_run_command(array('/usr/local/bin/qjsc', '-c', '-o', $output, $source), '', array(), 5);
+		if ($result['code'] !== 0) {
+			$detail = trim((string)($result['stderr'] ?: $result['stdout']));
+			throw new Exception('PAC JavaScript syntax validation failed' .
+				($detail !== '' ? ': ' . $detail : '.'));
+		}
+	} finally {
+		@unlink($source);
+		@unlink($output);
+	}
+	return $content;
+}
+
+function kontrol_id_wpad_allowed_networks($settings) {
+	$networks = array();
+	foreach (kontrol_id_wpad_selected_interfaces($settings, false) as $interface => $entry) {
+		$bits = (int)config_get_path("interfaces/{$interface}/subnet", 0);
+		if ($bits >= 1 && $bits <= 32 && function_exists('gen_subnet')) {
+			$networks[] = gen_subnet($entry['ip'], $bits) . '/' . $bits;
+		}
+	}
+	return array_values(array_unique(array_filter($networks)));
+}
+
+function kontrol_id_wpad_nginx_locations($settings, $indent = "\t\t") {
+	$allow = '';
+	foreach (kontrol_id_wpad_allowed_networks($settings) as $network) {
+		$allow .= $indent . "\tallow {$network};\n";
+	}
+	$allow .= $indent . "\tdeny all;\n";
+	$locations = '';
+	foreach (array('/wpad.dat', '/proxy.pac', '/wpad.da') as $path) {
+		$locations .= $indent . "location = {$path} {\n" .
+			$indent . "\tdefault_type application/x-ns-proxy-autoconfig;\n" .
+			$indent . "\tadd_header Cache-Control \"no-cache, no-store, must-revalidate\";\n" .
+			$allow .
+			$indent . "\ttry_files {$path} =404;\n" .
+			$indent . "}\n";
+	}
+	return $locations;
+}
+
+function kontrol_id_plugin_nginx($params) {
+	$settings = kontrol_id_get_settings();
+	if (($settings['wpad_enable'] ?? '') !== 'on') {
+		return '';
+	}
+	$section = is_array($params) ? ($params['section'] ?? '') : '';
+	if ($section === 'location') {
+		return kontrol_id_wpad_nginx_locations($settings);
+	}
+	if ($section !== 'server' || config_get_path('system/webgui/protocol', 'http') !== 'https') {
+		return '';
+	}
+	$names = array('wpad');
+	$domain = kontrol_id_wpad_domain($settings);
+	if ($domain !== '') {
+		$names[] = 'wpad.' . $domain;
+	}
+	foreach (kontrol_id_wpad_selected_interfaces($settings, false) as $entry) {
+		$names[] = $entry['ip'];
+	}
+	$names = implode(' ', array_unique($names));
+	$webgui_port = (int)config_get_path('system/webgui/port', 443);
+	$redirect_port = ($webgui_port > 0 && $webgui_port !== 443) ? ':' . $webgui_port : '';
+	return "\tserver {\n" .
+		"\t\tlisten 80;\n" .
+		"\t\tlisten [::]:80;\n" .
+		"\t\tserver_name {$names};\n" .
+		"\t\troot \"/usr/local/www/\";\n" .
+		"\t\taccess_log off;\n" .
+		kontrol_id_wpad_nginx_locations($settings) .
+		"\t\tlocation / { return 301 https://\$http_host{$redirect_port}\$request_uri; }\n" .
+		"\t}\n";
+}
+
+function kontrol_id_wpad_capture_path($path) {
+	if (is_link($path)) {
+		return array('type' => 'link', 'target' => readlink($path));
+	}
+	if (is_file($path)) {
+		return array('type' => 'file', 'content' => file_get_contents($path),
+			'mode' => fileperms($path) & 0777);
+	}
+	return array('type' => 'missing');
+}
+
+function kontrol_id_wpad_restore_path($path, $snapshot) {
+	if (is_link($path) || is_file($path)) {
+		@unlink($path);
+	}
+	if (($snapshot['type'] ?? '') === 'link') {
+		@symlink($snapshot['target'], $path);
+	} elseif (($snapshot['type'] ?? '') === 'file') {
+		kontrol_id_atomic_write($path, (string)$snapshot['content'], (int)$snapshot['mode']);
+	}
+}
+
+function kontrol_id_wpad_apply_files(&$settings) {
+	$enabled = (($settings['wpad_enable'] ?? '') === 'on');
+	$owned = (($settings['wpad_file_owned'] ?? '') === 'on');
+	$links = array(KONTROL_ID_WPAD_PROXY_LINK, KONTROL_ID_WPAD_LEGACY_LINK);
+	if (!$enabled) {
+		if ($owned) {
+			foreach ($links as $link) {
+				if (is_link($link) && readlink($link) === basename(KONTROL_ID_WPAD_FILE)) {
+					@unlink($link);
+				}
+			}
+			if (is_file(KONTROL_ID_WPAD_FILE) && !is_link(KONTROL_ID_WPAD_FILE)) {
+				@unlink(KONTROL_ID_WPAD_FILE);
+			}
+		}
+		$settings['wpad_file_owned'] = '';
+		return;
+	}
+	if (!$owned && (is_file(KONTROL_ID_WPAD_FILE) || is_link(KONTROL_ID_WPAD_FILE))) {
+		throw new Exception(KONTROL_ID_WPAD_FILE . ' already exists and is not owned by Kontrol-ID. Move it before enabling managed WPAD.');
+	}
+	foreach ($links as $link) {
+		if ((is_file($link) || is_link($link)) &&
+			(!is_link($link) || readlink($link) !== basename(KONTROL_ID_WPAD_FILE))) {
+			throw new Exception("{$link} already exists and is not a Kontrol-ID WPAD link.");
+		}
+	}
+	$content = kontrol_id_wpad_validate_pac(kontrol_id_wpad_pac_content($settings));
+	kontrol_id_atomic_write(KONTROL_ID_WPAD_FILE, $content, 0644);
+	foreach ($links as $link) {
+		if (!is_link($link)) {
+			if (!@symlink(basename(KONTROL_ID_WPAD_FILE), $link)) {
+				throw new Exception("Unable to create WPAD compatibility link {$link}.");
+			}
+		}
+	}
+	$settings['wpad_file_owned'] = 'on';
+}
+
+function kontrol_id_wpad_find_dhcp_option(array $options) {
+	$matches = array();
+	foreach ($options as $index => $option) {
+		if ((string)($option['number'] ?? '') === '252') {
+			$matches[$index] = base64_decode((string)($option['value'] ?? ''), true);
+		}
+	}
+	return $matches;
+}
+
+function kontrol_id_wpad_apply_dhcp_kea(&$settings, array $desired, array $old_owned) {
+	$changed = false;
+	$new_owned = array();
+	foreach (array_unique(array_merge(array_keys($old_owned), array_keys($desired))) as $interface) {
+		$previous = $old_owned[$interface] ?? null;
+		$wanted = $desired[$interface] ?? null;
+		$encoded = (string)config_get_path("dhcpd/{$interface}/custom_kea_config", '');
+		$custom = array();
+		if ($encoded !== '') {
+			$decoded = base64_decode($encoded, true);
+			$custom = ($decoded === false) ? null : json_decode($decoded, true);
+			if (!is_array($custom)) {
+				throw new Exception("DHCP interface '{$interface}' has invalid custom Kea JSON; Kontrol-ID did not modify it.");
+			}
+		}
+		$option_data = is_array($custom['option-data'] ?? null) ?
+			array_values($custom['option-data']) : array();
+		$matches = array();
+		foreach ($option_data as $index => $option) {
+			if ((string)($option['code'] ?? '') === '252' ||
+				strtolower((string)($option['name'] ?? '')) === 'wpad') {
+				$matches[$index] = $option;
+			}
+		}
+		if (count($matches) > 1) {
+			throw new Exception("DHCP interface '{$interface}' contains more than one Kea Option 252 entry.");
+		}
+
+		/* Migrate the first WPAD implementation, which used the legacy custom
+		 * option list that Kea deliberately ignores. Remove it only when its
+		 * exact value is still the one previously owned by Kontrol-ID. */
+		if (is_string($previous) && $previous !== '') {
+			$legacy = config_get_path("dhcpd/{$interface}/numberoptions/item", array());
+			$legacy = is_array($legacy) ? array_values($legacy) : array();
+			foreach ($legacy as $index => $option) {
+				if ((string)($option['number'] ?? '') === '252' &&
+					base64_decode((string)($option['value'] ?? ''), true) === $previous) {
+					unset($legacy[$index]);
+					config_set_path("dhcpd/{$interface}/numberoptions/item", array_values($legacy));
+					$changed = true;
+				}
+			}
+		}
+
+		$previous_data = is_array($previous) ? (string)($previous['data'] ?? '') : '';
+		if (!empty($matches)) {
+			$index = array_key_first($matches);
+			$current = $matches[$index];
+			$current_data = strtolower((string)($current['data'] ?? ''));
+			if ($previous_data !== '' && hash_equals(strtolower($previous_data), $current_data)) {
+				unset($option_data[$index]);
+				$option_data = array_values($option_data);
+				$matches = array();
+				$changed = true;
+			} elseif ($wanted !== null) {
+				throw new Exception("DHCP interface '{$interface}' already has an unmanaged Kea Option 252 value. Kontrol-ID did not overwrite it.");
+			}
+		}
+		if ($wanted !== null && empty($matches)) {
+			$data = bin2hex($wanted);
+			$option_data[] = array(
+				'code' => 252,
+				'space' => 'dhcp4',
+				'csv-format' => false,
+				'always-send' => true,
+				'data' => $data
+			);
+			$new_owned[$interface] = array('backend' => 'kea', 'url' => $wanted, 'data' => $data);
+			$changed = true;
+		}
+		if (empty($option_data)) {
+			unset($custom['option-data']);
+		} else {
+			$custom['option-data'] = array_values($option_data);
+		}
+		config_set_path("dhcpd/{$interface}/custom_kea_config",
+			empty($custom) ? '' : base64_encode(json_encode($custom, JSON_UNESCAPED_SLASHES)));
+	}
+	$settings['wpad_dhcp_ownership'] = kontrol_id_wpad_encode_state($new_owned);
+	return $changed;
+}
+
+function kontrol_id_wpad_apply_dhcp_isc(&$settings, array $desired, array $old_owned) {
+	$changed = false;
+	$new_owned = array();
+	foreach (array_unique(array_merge(array_keys($old_owned), array_keys($desired))) as $interface) {
+		$options = config_get_path("dhcpd/{$interface}/numberoptions/item", array());
+		$options = is_array($options) ? array_values($options) : array();
+		$matches = kontrol_id_wpad_find_dhcp_option($options);
+		if (count($matches) > 1) {
+			throw new Exception("DHCP interface '{$interface}' contains more than one Option 252 entry.");
+		}
+		$index = empty($matches) ? null : array_key_first($matches);
+		$current = ($index === null) ? null : $matches[$index];
+		$previous = $old_owned[$interface] ?? null;
+		$wanted = $desired[$interface] ?? null;
+
+		if ($previous !== null && $current === $previous) {
+			if ($wanted === null) {
+				unset($options[$index]);
+				$options = array_values($options);
+				$changed = true;
+			} else {
+				$options[$index] = array('number' => '252', 'type' => 'text',
+					'value' => base64_encode($wanted));
+				$new_owned[$interface] = $wanted;
+				$changed = $changed || ($wanted !== $current);
+			}
+		} elseif ($wanted !== null) {
+			if ($current === null) {
+				$options[] = array('number' => '252', 'type' => 'text',
+					'value' => base64_encode($wanted));
+				$new_owned[$interface] = $wanted;
+				$changed = true;
+			} elseif ($current !== $wanted) {
+				throw new Exception("DHCP interface '{$interface}' already has an unmanaged Option 252 value. Kontrol-ID did not overwrite it.");
+			}
+		}
+		config_set_path("dhcpd/{$interface}/numberoptions/item", array_values($options));
+	}
+	$settings['wpad_dhcp_ownership'] = kontrol_id_wpad_encode_state($new_owned);
+	return $changed;
+}
+
+function kontrol_id_wpad_apply_dhcp(&$settings) {
+	$old_owned = kontrol_id_wpad_decode_state($settings['wpad_dhcp_ownership'] ?? '');
+	$desired = array();
+	if (($settings['wpad_enable'] ?? '') === 'on' &&
+		($settings['wpad_manage_dhcp'] ?? '') === 'on') {
+		foreach (kontrol_id_wpad_selected_interfaces($settings) as $interface => $entry) {
+			$dhcp = config_get_path("dhcpd/{$interface}", array());
+			if (!is_array($dhcp) || !config_path_enabled("dhcpd/{$interface}", 'enable')) {
+				throw new Exception("DHCP is not enabled on WPAD interface '{$interface}'. Disable automatic Option 252 management or enable the DHCP scope first.");
+			}
+			$desired[$interface] = 'http://' . $entry['ip'] . '/wpad.dat';
+		}
+	}
+	if (!function_exists('dhcp_get_backend')) {
+		require_once('pfsense-utils.inc');
+	}
+	return dhcp_get_backend() === 'kea' ?
+		kontrol_id_wpad_apply_dhcp_kea($settings, $desired, $old_owned) :
+		kontrol_id_wpad_apply_dhcp_isc($settings, $desired, $old_owned);
+}
+
+function kontrol_id_wpad_dns_backend() {
+	if (config_path_enabled('unbound', 'enable')) {
+		return 'unbound';
+	}
+	if (config_path_enabled('dnsmasq', 'enable')) {
+		return 'dnsmasq';
+	}
+	return '';
+}
+
+function kontrol_id_wpad_apply_dns(&$settings) {
+	$old_owned = kontrol_id_wpad_decode_state($settings['wpad_dns_ownership'] ?? '');
+	$desired = array();
+	if (($settings['wpad_enable'] ?? '') === 'on' &&
+		($settings['wpad_manage_dns'] ?? '') === 'on') {
+		$backend = kontrol_id_wpad_dns_backend();
+		if ($backend === '') {
+			throw new Exception('Enable the DNS Resolver or DNS Forwarder before asking Kontrol-ID to manage the WPAD host override.');
+		}
+		$domain = kontrol_id_wpad_domain($settings);
+		if ($domain === '' || !is_domain($domain)) {
+			throw new Exception('Configure a valid WPAD DNS domain or a valid system domain.');
+		}
+		$interfaces = kontrol_id_wpad_selected_interfaces($settings);
+		$first = reset($interfaces);
+		$desired = array('backend' => $backend, 'host' => 'wpad', 'domain' => $domain,
+			'ip' => $first['ip'], 'descr' => KONTROL_ID_WPAD_DESCRIPTION);
+	}
+	$changed = false;
+	if (!empty($old_owned)) {
+		$path = ($old_owned['backend'] ?? '') . '/hosts';
+		$hosts = config_get_path($path, array());
+		$hosts = is_array($hosts) ? array_values($hosts) : array();
+		foreach ($hosts as $index => $host) {
+			if (($host['host'] ?? '') === ($old_owned['host'] ?? '') &&
+				($host['domain'] ?? '') === ($old_owned['domain'] ?? '') &&
+				($host['ip'] ?? '') === ($old_owned['ip'] ?? '') &&
+				($host['descr'] ?? '') === KONTROL_ID_WPAD_DESCRIPTION) {
+				unset($hosts[$index]);
+				config_set_path($path, array_values($hosts));
+				$changed = true;
+				break;
+			}
+		}
+	}
+	$new_owned = array();
+	if (!empty($desired)) {
+		$path = $desired['backend'] . '/hosts';
+		$hosts = config_get_path($path, array());
+		$hosts = is_array($hosts) ? array_values($hosts) : array();
+		$found = false;
+		foreach ($hosts as $host) {
+			if (($host['host'] ?? '') !== $desired['host'] ||
+				($host['domain'] ?? '') !== $desired['domain']) {
+				continue;
+			}
+			$found = true;
+			if (($host['ip'] ?? '') !== $desired['ip']) {
+				throw new Exception('An unmanaged DNS override already exists for wpad.' .
+					$desired['domain'] . '. Kontrol-ID did not overwrite it.');
+			}
+		}
+		if (!$found) {
+			$hosts[] = array('host' => $desired['host'], 'domain' => $desired['domain'],
+				'ip' => $desired['ip'], 'descr' => KONTROL_ID_WPAD_DESCRIPTION,
+				'aliases' => array('item' => array()));
+			config_set_path($path, array_values($hosts));
+			$new_owned = $desired;
+			$changed = true;
+		}
+	}
+	$settings['wpad_dns_ownership'] = kontrol_id_wpad_encode_state($new_owned);
+	return $changed;
+}
+
+function kontrol_id_wpad_reload_services($dhcp_changed, $dns_changed) {
+	if (!$dhcp_changed && !$dns_changed) {
+		return;
+	}
+	require_once('services.inc');
+	if ($dhcp_changed && function_exists('services_dhcpd_configure') &&
+		services_dhcpd_configure() != 0) {
+		throw new Exception('The DHCP service rejected the managed WPAD configuration.');
+	}
+	if ($dns_changed) {
+		/* A backend switch can remove an owned record from one resolver and add
+		 * it to the other in the same transaction. Reload every enabled DNS
+		 * service so neither one retains stale runtime host data. */
+		if (config_path_enabled('unbound', 'enable') &&
+			function_exists('services_unbound_configure')) {
+			services_unbound_configure();
+		}
+		if (config_path_enabled('dnsmasq', 'enable') &&
+			function_exists('services_dnsmasq_configure')) {
+			services_dnsmasq_configure();
+		}
+	}
+}
+
+function kontrol_id_wpad_apply_settings($settings, $sync = true, $restart_webgui = true) {
+	$old_settings = kontrol_id_get_settings();
+	$settings = array_merge(kontrol_id_defaults(), is_array($settings) ? $settings : array());
+	$snapshot = array(
+		'dhcpd' => config_get_path('dhcpd', array()),
+		'unbound' => config_get_path('unbound', array()),
+		'dnsmasq' => config_get_path('dnsmasq', array()),
+		'paths' => array(
+			KONTROL_ID_WPAD_FILE => kontrol_id_wpad_capture_path(KONTROL_ID_WPAD_FILE),
+			KONTROL_ID_WPAD_PROXY_LINK => kontrol_id_wpad_capture_path(KONTROL_ID_WPAD_PROXY_LINK),
+			KONTROL_ID_WPAD_LEGACY_LINK => kontrol_id_wpad_capture_path(KONTROL_ID_WPAD_LEGACY_LINK)
+		)
+	);
+	$dhcp_changed = false;
+	$dns_changed = false;
+	try {
+		kontrol_id_wpad_apply_files($settings);
+		$dhcp_changed = kontrol_id_wpad_apply_dhcp($settings);
+		$dns_changed = kontrol_id_wpad_apply_dns($settings);
+		kontrol_id_set_settings($settings);
+		write_config((($settings['wpad_enable'] ?? '') === 'on') ?
+			'Kontrol-ID WPAD configuration applied.' : 'Kontrol-ID WPAD configuration disabled and managed integrations removed.');
+		kontrol_id_wpad_reload_services($dhcp_changed, $dns_changed);
+	} catch (Throwable $exception) {
+		config_set_path('dhcpd', $snapshot['dhcpd']);
+		config_set_path('unbound', $snapshot['unbound']);
+		config_set_path('dnsmasq', $snapshot['dnsmasq']);
+		kontrol_id_set_settings($old_settings);
+		foreach ($snapshot['paths'] as $path => $path_snapshot) {
+			kontrol_id_wpad_restore_path($path, $path_snapshot);
+		}
+		write_config('Kontrol-ID WPAD update rolled back after validation or service failure.');
+		try {
+			kontrol_id_wpad_reload_services($dhcp_changed, $dns_changed);
+		} catch (Throwable $ignored) {
+			log_error('[Kontrol-ID] WPAD rollback service reload failed: ' . $ignored->getMessage());
+		}
+		throw $exception;
+	}
+	if ($restart_webgui) {
+		send_event('service restart webgui');
+	}
+	if ($sync) {
+		kontrol_id_sync_on_changes();
+	}
+	return $settings;
 }
 
 function kontrol_id_login_template_catalog() {
@@ -304,9 +880,20 @@ function kontrol_id_normalize_tls_bypass_sites($value, &$invalid = null) {
 	return array_values(array_unique($normalized));
 }
 
+function kontrol_id_normalize_bypass_separators($value) {
+	$normalized = array();
+	foreach (preg_split('/[;,\r\n]+/', (string)$value) as $entry) {
+		$entry = trim($entry);
+		if ($entry !== '') {
+			$normalized[] = $entry;
+		}
+	}
+	return implode(';', array_values(array_unique($normalized)));
+}
+
 function kontrol_id_normalize_destination_bypass($value) {
 	$normalized = array();
-	foreach (explode(';', (string)$value) as $entry) {
+	foreach (preg_split('/[;,\r\n]+/', (string)$value) as $entry) {
 		$entry = trim($entry);
 		if ($entry === '') {
 			continue;
@@ -392,8 +979,19 @@ function kontrol_id_transparent_identity_mode($settings = null) {
 	return ($settings['access_mode'] ?? 'transparent') === 'transparent';
 }
 
+function kontrol_id_endpoint_identity_mode($settings = null) {
+	if (!is_array($settings)) {
+		$settings = kontrol_id_get_settings();
+	}
+	return in_array(
+		$settings['access_mode'] ?? 'transparent',
+		array('transparent', 'explicit_identity'),
+		true
+	);
+}
+
 /* The policy package originally registered its own Services menu entry as
- * "E2guardian Proxy". Removing the <menu> block from the package XML prevents
+ * "Kontrol-ID Proxy". Removing the <menu> block from the package XML prevents
  * new installations from creating it, but pfSense preserves an already
  * imported installedpackages/menu item across package upgrades. Remove only
  * that exact legacy entry; the e2guardian_*.xml policy pages remain installed
@@ -410,7 +1008,7 @@ function kontrol_id_remove_legacy_e2guardian_menu() {
 		$name = trim((string)($menu['name'] ?? ''));
 		$url = html_entity_decode((string)($menu['url'] ?? ''), ENT_QUOTES, 'UTF-8');
 		$is_legacy_entry = (
-			strcasecmp($name, 'E2guardian Proxy') === 0 &&
+			strcasecmp($name, 'Kontrol-ID Proxy') === 0 &&
 			strpos($url, 'xml=e2guardian.xml') !== false
 		);
 		if ($is_legacy_entry) {
@@ -427,7 +1025,7 @@ function kontrol_id_remove_legacy_e2guardian_menu() {
 }
 
 /* Package upgrades preserve previous <service> registrations. Kontrol-ID now
- * owns the native service entry, so remove only the obsolete E2Guardian
+ * owns the native service entry, so remove only the obsolete Kontrol-ID
  * signature that points to the retired e2guardian.sh rc script and migrate
  * the existing Kontrol-ID entry to the renamed native executable. */
 function kontrol_id_remove_legacy_e2guardian_service() {
@@ -474,10 +1072,9 @@ function kontrol_id_tab_definitions() {
 	$tabs = array(
 		array('key' => 'general', 'text' => 'General', 'url' => '/pkg_edit.php?xml=kontrol_id.xml&amp;id=0')
 	);
-	if (kontrol_id_transparent_identity_mode()) {
-		$tabs[] = array('key' => 'status', 'text' => 'Status & Enrollment', 'url' => '/kontrol_id_status.php');
-	}
 	$tabs = array_merge($tabs, array(
+		array('key' => 'wpad', 'text' => 'WPAD', 'url' => '/kontrol_id_wpad.php'),
+		array('key' => 'status', 'text' => 'Status & Enrollment', 'url' => '/kontrol_id_status.php'),
 		array('key' => 'domain', 'text' => 'Domain & Keytab', 'url' => '/kontrol_id_domain.php'),
 		array('key' => 'policy', 'text' => 'AD Policy', 'url' => '/kontrol_id_policy.php'),
 		array('key' => 'limits', 'text' => 'Limits', 'url' => '/pkg_edit.php?xml=e2guardian_limits.xml&amp;id=0'),
@@ -500,8 +1097,10 @@ function kontrol_id_print_general_auth_visibility() {
 //<![CDATA[
 events.push(function() {
 	function kontrolIdUpdateExplicitAuthVisibility() {
-		var explicitMode = ($('#access_mode').val() === 'explicit');
-		var transparentHttps = !explicitMode && ($('#traffic_mode').val() === 'http_https');
+		var accessMode = $('#access_mode').val();
+		var explicitMode = (accessMode === 'explicit');
+		var transparentMode = (accessMode === 'transparent' || accessMode === 'transparent_no_identity');
+		var transparentHttps = transparentMode && ($('#traffic_mode').val() === 'http_https');
 		$('#explicit_auth').closest('.form-group').toggle(explicitMode);
 		$('#block_quic').closest('.form-group').toggle(transparentHttps);
 	}
@@ -529,6 +1128,7 @@ function kontrol_id_package_active_tab($name) {
 	$map = array(
 		'kontrolid' => 'general',
 		'kontrolidsync' => 'sync',
+		'kontrolidwpad' => 'wpad',
 		'e2guardian' => 'general',
 		'e2guardianconfig' => 'general',
 		'e2guardianlimits' => 'limits',
@@ -557,13 +1157,13 @@ function kontrol_id_adjust_policy_fields(&$pkg) {
 	}
 	foreach (array('title', 'delete_string', 'addedit_string') as $label) {
 		if (isset($pkg[$label]) && is_string($pkg[$label])) {
-			$pkg[$label] = str_ireplace('E2guardian', 'Kontrol-ID', $pkg[$label]);
+			$pkg[$label] = str_ireplace('Kontrol-ID', 'Kontrol-ID', $pkg[$label]);
 		}
 	}
 	if (!is_array($pkg['fields']['field'] ?? null)) {
 		return;
 	}
-	/* These controls belong to E2Guardian features retired by the Kontrol-ID
+	/* These controls belong to Kontrol-ID features retired by the Kontrol-ID
 	 * profile. Keep this defensive filter here as well as in the policy XMLs
 	 * so an older policy package cannot expose stale controls after an upgrade. */
 	$hidden = array(
@@ -600,13 +1200,13 @@ function kontrol_id_adjust_policy_fields(&$pkg) {
 		}
 		foreach (array('fielddescr', 'name') as $label) {
 			if (isset($field[$label]) && is_string($field[$label])) {
-				$field[$label] = str_ireplace('E2guardian', 'Kontrol-ID', $field[$label]);
+				$field[$label] = str_ireplace('Kontrol-ID', 'Kontrol-ID', $field[$label]);
 			}
 		}
 		foreach (array('description', 'sethelp') as $label) {
 			if (isset($field[$label]) && is_string($field[$label])) {
 				$field[$label] = str_replace(
-					array('E2guardian', 'E2Guardian'),
+					array('Kontrol-ID', 'Kontrol-ID'),
 					'Kontrol-ID',
 					$field[$label]
 				);
@@ -619,7 +1219,7 @@ function kontrol_id_adjust_policy_fields(&$pkg) {
 					continue;
 				}
 				if (isset($option['name']) && is_string($option['name'])) {
-					$option['name'] = str_ireplace('E2guardian', 'Kontrol-ID', $option['name']);
+					$option['name'] = str_ireplace('Kontrol-ID', 'Kontrol-ID', $option['name']);
 				}
 				$options[] = $option;
 			}
@@ -634,10 +1234,10 @@ function kontrol_id_adjust_policy_fields(&$pkg) {
 		), true)) {
 			unset($field['advancedfield']);
 			if (isset($field['fielddescr'])) {
-				$field['fielddescr'] = str_ireplace('E2guardian', 'Kontrol-ID', $field['fielddescr']);
+				$field['fielddescr'] = str_ireplace('Kontrol-ID', 'Kontrol-ID', $field['fielddescr']);
 			}
 			if (isset($field['description'])) {
-				$field['description'] = str_ireplace('E2guardian', 'Kontrol-ID', $field['description']);
+				$field['description'] = str_ireplace('Kontrol-ID', 'Kontrol-ID', $field['description']);
 			}
 		}
 		$fields[] = $field;
@@ -714,11 +1314,17 @@ function kontrol_id_handle_settings_transfer_request() {
 
 	$errors = array();
 	$payload = trim((string)($_POST['kontrol_id_import_payload'] ?? ''));
+	$local_wpad_ownership = array_intersect_key(kontrol_id_get_settings(), array_flip(array(
+		'wpad_file_owned', 'wpad_dhcp_ownership', 'wpad_dns_ownership'
+	)));
 	if ($payload === '') {
-		$errors[] = gettext('Choose a valid Kontrol-ID XML export file before importing.');
+		$errors[] = gettext('Choose a valid Kontrol-ID or legacy package XML export file before importing.');
 	} elseif (e2guardian_import_settings_xml($payload, $errors)) {
+		$imported_settings = kontrol_id_get_settings();
+		kontrol_id_set_settings(array_merge($imported_settings, $local_wpad_ownership));
 		write_config('Kontrol-ID package settings imported from configuration backup.');
 		kontrol_id_resync(false);
+		kontrol_id_wpad_apply_settings(kontrol_id_get_settings(), false, true);
 		file_notice(
 			'Kontrol-ID',
 			gettext('Import completed successfully.'),
@@ -1082,6 +1688,60 @@ function kontrol_id_ensure_portal_certificate() {
 	return $result;
 }
 
+function kontrol_id_prepare_secure_provisioning() {
+	$settings = kontrol_id_get_settings();
+	if (($settings['manage_portal_certificate'] ?? 'on') !== 'on') {
+		throw new Exception('Enable Manage Local Portal Certificate before preparing secure provisioning.');
+	}
+	if (trim((string)($settings['portal_url'] ?? '')) !== '') {
+		throw new Exception('Secure provisioning preparation requires the local Kontrol-ID portal URL.');
+	}
+
+	$original_protocol = (string)config_get_path('system/webgui/protocol', 'https');
+	$original_cert_ref = (string)config_get_path('system/webgui/ssl-certref', '');
+	$original_certificates = config_get_path('cert', array());
+	$original_settings = $settings;
+
+	try {
+		/* Generate and validate the managed certificate before the WebGUI is
+		 * restarted.  Setting the in-memory protocol first makes the existing
+		 * portal certificate routine build an HTTPS URL without exposing an
+		 * intermediate configuration on disk. */
+		config_set_path('system/webgui/protocol', 'https');
+		$result = kontrol_id_ensure_portal_certificate();
+
+		$settings = kontrol_id_get_settings();
+		$ca = kontrol_id_extract_item(lookup_ca($settings['ca_ref'] ?? ''));
+		$cert_ref = (string)config_get_path('system/webgui/ssl-certref', '');
+		$certificate = kontrol_id_extract_item(lookup_cert($cert_ref));
+		$portal_host = strtolower((string)parse_url(kontrol_id_portal_url(), PHP_URL_HOST));
+		if (!kontrol_id_certificate_matches_ca($certificate, $ca) ||
+			$portal_host === '' ||
+			!kontrol_id_certificate_covers_host($certificate, $portal_host)) {
+			throw new Exception('The managed WebGUI certificate failed validation.');
+		}
+		foreach (kontrol_id_portal_certificate_sans($settings, $portal_host) as $san) {
+			$separator = strpos($san, ':');
+			$name = ($separator === false) ? '' : substr($san, $separator + 1);
+			if ($name === '' || !kontrol_id_certificate_covers_host($certificate, $name)) {
+				throw new Exception('The managed WebGUI certificate is missing a required hostname or interface address.');
+			}
+		}
+
+		if ($original_protocol !== 'https') {
+			$result['changed'] = true;
+			$result['restart_webgui'] = true;
+		}
+		return $result;
+	} catch (Exception $exception) {
+		config_set_path('system/webgui/protocol', $original_protocol);
+		config_set_path('system/webgui/ssl-certref', $original_cert_ref);
+		config_set_path('cert', $original_certificates);
+		kontrol_id_set_settings($original_settings);
+		throw $exception;
+	}
+}
+
 function kontrol_id_load_pki_backup() {
 	if (!file_exists(KONTROL_ID_PKI_BACKUP)) {
 		return array();
@@ -1262,9 +1922,48 @@ function kontrol_id_ensure_storage() {
 		'ip TEXT PRIMARY KEY, username TEXT NOT NULL, backend TEXT NOT NULL, created_at INTEGER NOT NULL, ' .
 		'expires_at INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0)');
 	$db->exec('CREATE TABLE IF NOT EXISTS endpoints (' .
-		"ip TEXT PRIMARY KEY, hostname TEXT NOT NULL, fqdn TEXT NOT NULL DEFAULT '', " .
-		"cert_sha256 TEXT NOT NULL DEFAULT '', enrolled_at INTEGER NOT NULL, " .
+		"cert_sha256 TEXT PRIMARY KEY, ip TEXT NOT NULL DEFAULT '', hostname TEXT NOT NULL, " .
+		"fqdn TEXT NOT NULL DEFAULT '', enrolled_at INTEGER NOT NULL, " .
 		'last_seen INTEGER NOT NULL DEFAULT 0, revoked INTEGER NOT NULL DEFAULT 0)');
+	/* Versions through 0.5.0_66 used the current IP as the station primary key.
+	 * Keep the certificate fingerprint stable and make the IP a mutable binding
+	 * so DHCP changes can be authenticated and rebound without re-enrollment. */
+	$endpoint_pk = '';
+	$columns = $db->query('PRAGMA table_info(endpoints)');
+	while ($columns && ($column = $columns->fetchArray(SQLITE3_ASSOC))) {
+		if ((int)($column['pk'] ?? 0) === 1) {
+			$endpoint_pk = (string)($column['name'] ?? '');
+			break;
+		}
+	}
+	if ($columns instanceof SQLite3Result) {
+		$columns->finalize();
+	}
+	if ($endpoint_pk !== 'cert_sha256') {
+		$db->exec('BEGIN IMMEDIATE');
+		try {
+			if (!$db->exec('DROP TABLE IF EXISTS endpoints_device_migration') ||
+				!$db->exec('CREATE TABLE endpoints_device_migration (' .
+					"cert_sha256 TEXT PRIMARY KEY, ip TEXT NOT NULL DEFAULT '', hostname TEXT NOT NULL, " .
+					"fqdn TEXT NOT NULL DEFAULT '', enrolled_at INTEGER NOT NULL, " .
+					'last_seen INTEGER NOT NULL DEFAULT 0, revoked INTEGER NOT NULL DEFAULT 0)') ||
+				!$db->exec('INSERT OR REPLACE INTO endpoints_device_migration ' .
+					'(cert_sha256,ip,hostname,fqdn,enrolled_at,last_seen,revoked) ' .
+					"SELECT UPPER(REPLACE(cert_sha256, ':', '')),ip,hostname,fqdn,enrolled_at,last_seen,revoked " .
+					"FROM endpoints WHERE LENGTH(REPLACE(cert_sha256, ':', ''))=64 ORDER BY enrolled_at") ||
+				!$db->exec('DROP TABLE endpoints') ||
+				!$db->exec('ALTER TABLE endpoints_device_migration RENAME TO endpoints')) {
+				throw new Exception('Unable to migrate the Kontrol-ID endpoint database: ' .
+					$db->lastErrorMsg());
+			}
+			$db->exec('COMMIT');
+		} catch (Throwable $e) {
+			$db->exec('ROLLBACK');
+			$db->close();
+			throw $e;
+		}
+	}
+	$db->exec("CREATE UNIQUE INDEX IF NOT EXISTS endpoints_current_ip ON endpoints(ip) WHERE ip<>'' AND revoked=0");
 	$db->exec('CREATE TABLE IF NOT EXISTS auth_attempts (' .
 		'ip TEXT NOT NULL, attempted_at INTEGER NOT NULL, success INTEGER NOT NULL DEFAULT 0)');
 	$db->exec('CREATE TABLE IF NOT EXISTS provisioner_auth_attempts (' .
@@ -2108,7 +2807,7 @@ function kontrol_id_disable_before_unjoin() {
 		$settings['enable'] = '';
 		kontrol_id_set_settings($settings);
 	}
-	/* Restore the previously managed Squid/E2Guardian configuration and stop
+	/* Restore the previously managed Squid/Kontrol-ID configuration and stop
 	 * Winbind before removing credentials needed by explicit authentication. */
 	kontrol_id_resync(false);
 }
@@ -2216,7 +2915,8 @@ function kontrol_id_write_helper_config() {
 	$settings = kontrol_id_get_settings();
 	$contents = "# Automatically generated by Kontrol-ID. Do not edit.\n[general]\n";
 	$values = array(
-		'enabled' => ($settings['enable'] === 'on' ? 'true' : 'false'),
+		'enabled' => ($settings['enable'] === 'on' &&
+			kontrol_id_endpoint_identity_mode($settings) ? 'true' : 'false'),
 		'winrm_port' => $settings['winrm_port'],
 		'connect_timeout_ms' => $settings['connect_timeout_ms'],
 		'request_timeout_ms' => $settings['request_timeout_ms'],
@@ -2364,7 +3064,7 @@ function kontrol_id_squid_block($settings = null) {
 		/* This denial triggers the appropriate proxy authentication challenge.
 		 * Authenticated requests continue into the normal Squid network policy. */
 		$lines[] = 'http_access deny !kontrol_authenticated';
-	} elseif ($access_mode === 'transparent') {
+	} elseif (in_array($access_mode, array('transparent', 'explicit_identity'), true)) {
 		$lines[] = 'external_acl_type kontrol_identity children-startup=5 children-max=' . $processes .
 			' children-idle=5 ttl=5 negative_ttl=5 cache=65536 %SRC /usr/local/libexec/kontrol-identity-helper -c ' . KONTROL_ID_CONF;
 		$lines[] = 'acl kontrol_identity external kontrol_identity';
@@ -2378,18 +3078,20 @@ function kontrol_id_squid_block($settings = null) {
 		} elseif ($settings['unknown_action'] === 'deny') {
 			$lines[] = 'http_access deny kontrol_identity kontrol_identity_unknown';
 		}
+	} elseif ($access_mode === 'explicit_no_identity') {
+		$lines[] = '# Explicit proxy without user or endpoint identification.';
 	} else {
 		$lines[] = '# Transparent interception without user identification.';
 	}
 	if ($settings['e2guardian_integration'] === 'on') {
-		/* Squid performs the TLS bump. E2Guardian receives the resulting HTTP
+		/* Squid performs the TLS bump. Kontrol-ID receives the resulting HTTP
 		 * request and response over ICAP, including the real client IP and the
 		 * username returned by the Kontrol-ID external ACL helper. */
 		$lines[] = 'icap_enable on';
 		$lines[] = 'adaptation_send_client_ip on';
 		$lines[] = 'adaptation_send_username on';
 		$lines[] = 'icap_client_username_encode off';
-		/* E2Guardian 5.4 consumes Squid's ICAP identity from this header. The
+		/* Kontrol-ID 5.4 consumes Squid's ICAP identity from this header. The
 		 * Kerberos helper uses -r above so its value matches filtergroupslist. */
 		$lines[] = 'icap_client_username_header X-Client-Username';
 		$lines[] = 'icap_preview_enable on';
@@ -2423,7 +3125,7 @@ function kontrol_id_squid_conflicts($custom_options, $with_e2guardian) {
 		preg_match('/^\s*cache_peer\s+(127\.0\.0\.1|localhost)\s+parent\s+8080\b/im', $directives) ||
 		preg_match('/^\s*icap_service\s+\S+\s+\S+\s+icap:\/\/(127\.0\.0\.1|localhost):1344\/(request|response)\b/im', $directives)
 	)) {
-		$conflicts[] = 'an existing manual E2Guardian proxy or ICAP chain on loopback';
+		$conflicts[] = 'an existing manual Kontrol-ID proxy or ICAP chain on loopback';
 	}
 	return $conflicts;
 }
@@ -2560,7 +3262,7 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 		$e2g = array();
 	}
 	$plugins = array_filter(array_map('trim', explode(',', $e2g['auth_plugin'] ?? '')));
-	/* Versions through 0.3 used proxy-basic with E2Guardian as a parent
+	/* Versions through 0.3 used proxy-basic with Kontrol-ID as a parent
 	 * proxy. ICAP carries identity natively. Preserve the administrator's
 	 * complete plug-in selection, but suppress proxy-basic while the managed
 	 * ICAP chain is active. */
@@ -2594,7 +3296,7 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 				kontrol_id_e2guardian_managed_fields()
 			);
 		}
-		/* Squid is the only TLS interception point.  E2Guardian receives the
+		/* Squid is the only TLS interception point.  Kontrol-ID receives the
 		 * already decrypted and identified HTTP stream on loopback. */
 		$e2g_general['enable'] = 'on';
 		$e2g_general['interface'] = 'lo0';
@@ -2602,7 +3304,7 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 		$e2g_general['icapport'] = '1344';
 		$e2g_general['allow_interface'] = 'on';
 		/* Policy/list changes are applied without dropping the native ICAP
-		 * listener and every active Squid connection.  The E2Guardian package
+		 * listener and every active Squid connection.  The Kontrol-ID package
 		 * still probes both ICAP methods and refreshes Squid after the reload. */
 		$e2g_general['applyaction'] = '-r';
 		$e2g_general['transparent_proxy'] = '';
@@ -2614,7 +3316,7 @@ function kontrol_id_apply_e2guardian_integration($enabled) {
 		$e2g_general['proxyport'] = '';
 
 		/* Squid already owns TLS interception.  Preserve which groups had the
-		 * legacy E2Guardian MITM option so disabling the managed profile can
+		 * legacy Kontrol-ID MITM option so disabling the managed profile can
 		 * restore the administrator's prior policy exactly. */
 		if (!array_key_exists('previous_e2guardian_sslmitm_groups', $settings) ||
 			$settings['previous_e2guardian_sslmitm_groups'] === '') {
@@ -2699,7 +3401,7 @@ function kontrol_id_quic_bypass_addresses($list, $include_private = false) {
 
 	$addresses = $include_private ?
 		array('192.168.0.0/16', '172.16.0.0/12', '10.0.0.0/8') : array();
-	foreach (preg_split('/[;\r\n]+/', (string)$list) as $entry) {
+	foreach (preg_split('/[;,\r\n]+/', (string)$list) as $entry) {
 		$entry = trim($entry);
 		if ($entry === '') {
 			continue;
@@ -2821,11 +3523,19 @@ function kontrol_id_apply_standalone_engine($enabled) {
 		$engine['transparent_active_interface'] = $engine['interface'];
 		$engine['private_subnet_proxy_off'] =
 			(($settings['bypass_private_destinations'] ?? '') === 'on') ? 'on' : '';
-		$engine['defined_ip_proxy_off'] = trim((string)($settings['bypass_sources'] ?? ''));
+		$engine['defined_ip_proxy_off'] = kontrol_id_normalize_bypass_separators(
+			$settings['bypass_sources'] ?? '');
 		$engine['defined_ip_proxy_off_dest'] = kontrol_id_normalize_destination_bypass(
 			$settings['bypass_destinations'] ?? '');
-		$plugins['auth_plugin'] = ($enabled && $access_mode === 'transparent') ?
-			'kontrol-identity.conf' : '';
+		if (!$enabled) {
+			$plugins['auth_plugin'] = '';
+		} elseif ($access_mode === 'transparent') {
+			$plugins['auth_plugin'] = 'kontrol-identity.conf';
+		} else {
+			/* Anonymous transparent interception still needs the native IP
+			 * plugin so configured source-IP policy groups are evaluated. */
+			$plugins['auth_plugin'] = 'ip.conf';
+		}
 	} else {
 		$engine['transparent_proxy'] = '';
 		$engine['transparent_active_interface'] = '';
@@ -2838,9 +3548,17 @@ function kontrol_id_apply_standalone_engine($enabled) {
 			'ntlm' => 'kontrol-ntlm.conf',
 			'basic' => 'kontrol-basic.conf'
 		);
-		$auth_method = $settings['explicit_auth'] ?? 'kerberos';
-		$plugins['auth_plugin'] = $enabled ?
-			($auth_plugins[$auth_method] ?? $auth_plugins['kerberos']) : '';
+		if ($access_mode === 'explicit_identity') {
+			$plugins['auth_plugin'] = $enabled ? 'kontrol-identity.conf' : '';
+		} elseif ($access_mode === 'explicit_no_identity') {
+			/* Do not identify or challenge the client, but retain source-IP
+			 * group selection promised by the anonymous explicit mode. */
+			$plugins['auth_plugin'] = $enabled ? 'ip.conf' : '';
+		} else {
+			$auth_method = $settings['explicit_auth'] ?? 'kerberos';
+			$plugins['auth_plugin'] = $enabled ?
+				($auth_plugins[$auth_method] ?? $auth_plugins['kerberos']) : '';
+		}
 	}
 	kontrol_id_update_quic_bypass_aliases(
 		$engine,
@@ -2854,6 +3572,13 @@ function kontrol_id_apply_standalone_engine($enabled) {
 			$settings['tls_bypass_sites'] ?? '', $invalid_tls_bypass));
 
 	$domain = kontrol_id_domain_values($settings);
+	$ip_auth_config = "# Managed by Kontrol-ID.\n" .
+		"plugname = 'ip'\n" .
+		"story_function = 'auth_ip'\n" .
+		"ipgroups = '/usr/local/etc/e2guardian/lists/authplugins/ipgroups'\n" .
+		"defaulttransparentfiltergroup = 1\n";
+	kontrol_id_atomic_write(KONTROL_ID_ENGINE_IP_AUTH_CONF,
+		$ip_auth_config, 0640, 'wheel');
 	$auth_config = "# Managed by Kontrol-ID.\n" .
 		"plugname = 'kontrol-negotiate'\n" .
 		"story_function = 'auth_pf_basic'\n" .
@@ -2943,10 +3668,15 @@ function kontrol_id_chain_status() {
 	$access_mode = $settings['access_mode'] ?? 'transparent';
 	$explicit = $access_mode === 'explicit';
 	$transparent_identity = $access_mode === 'transparent';
+	$explicit_identity = $access_mode === 'explicit_identity';
+	$explicit_no_identity = $access_mode === 'explicit_no_identity';
+	$endpoint_identity = $transparent_identity || $explicit_identity;
+	$anonymous_ip_policy = in_array($access_mode,
+		array('transparent_no_identity', 'explicit_no_identity'), true);
 	$auth_method = $settings['explicit_auth'] ?? 'kerberos';
 	$http_port = (int)($settings['http_proxy_port'] ?? 3128);
 	$https_port = (int)($settings['https_intercept_port'] ?? 3129);
-	$https_listener_required =
+	$https_listener_required = kontrol_id_transparent_mode($settings) &&
 		($settings['traffic_mode'] ?? 'http_only') === 'http_https';
 	$auth_profiles = array(
 		'kerberos' => array(
@@ -2993,12 +3723,17 @@ function kontrol_id_chain_status() {
 		}
 	}
 	$credential_ready = $auth_profile['ready'];
-	$transparent_plugin_ok = $transparent_identity ?
+	$identity_plugin_ok = $endpoint_identity ?
 		(($plugins['auth_plugin'] ?? '') === 'kontrol-identity.conf' &&
 		is_executable('/usr/local/libexec/kontrol-identity-helper') &&
 		strpos((string)@file_get_contents(KONTROL_ID_ENGINE_IDENTITY_CONF),
 			"plugname = 'kontrol-identity'") !== false) :
-		(($plugins['auth_plugin'] ?? '') === '');
+		($anonymous_ip_policy ?
+			(($plugins['auth_plugin'] ?? '') === 'ip.conf' &&
+			strpos((string)@file_get_contents(
+				KONTROL_ID_ENGINE_IP_AUTH_CONF),
+				"plugname = 'ip'") !== false) :
+			(($plugins['auth_plugin'] ?? '') === ''));
 	return array(
 		array(
 			'name' => 'Kontrol-ID engine',
@@ -3007,17 +3742,20 @@ function kontrol_id_chain_status() {
 		),
 		array(
 			'name' => $explicit ? $auth_profile['label'] :
+				($explicit_identity ? 'Explicit endpoint identification' :
+				($explicit_no_identity ? 'Explicit proxy without identification' :
 				($transparent_identity ? 'Transparent identification' :
-				'Transparent proxy without identification'),
+					'Transparent proxy without identification'))),
 			'ok' => ($engine['enable'] ?? '') === 'on' &&
 				kontrol_id_normalize_interfaces($engine['interface'] ?? '') === $interfaces &&
 				($explicit ? ($credential_ready &&
 				(($plugins['auth_plugin'] ?? '') === $expected_plugin) &&
-				$auth_config_ok) : $transparent_plugin_ok),
+				$auth_config_ok) : $identity_plugin_ok),
 			'detail' => ($explicit ?
 				$auth_profile['detail'] :
-				($transparent_identity ? 'Native identity helper with user and source-IP policy mapping' :
-				'Native interception using the default policy group')) .
+				($endpoint_identity ? 'Native identity helper with user, hostname and source-IP policy mapping' :
+				($anonymous_ip_policy ? 'Anonymous proxy using the default and source-IP policy groups' :
+				'Native interception using the default policy group'))) .
 				' on ' . ($interfaces ?: 'no interface')
 		),
 		array(
@@ -3029,8 +3767,12 @@ function kontrol_id_chain_status() {
 			'name' => 'Listener ports',
 			'ok' => kontrol_id_listener_owned_by_engine($http_port) &&
 				(!$https_listener_required || kontrol_id_listener_owned_by_engine($https_port)),
-			'detail' => 'HTTP ' . $http_port . ($https_listener_required ?
-				'; transparent HTTPS ' . $https_port : '; transparent HTTPS listener not required')
+			'detail' => ($explicit || $explicit_identity || $explicit_no_identity ?
+				'Explicit HTTP/CONNECT proxy ' . $http_port .
+				'; separate transparent HTTPS listener not required' :
+				'HTTP ' . $http_port . ($https_listener_required ?
+					'; transparent HTTPS ' . $https_port :
+					'; transparent HTTPS listener not required'))
 		)
 	);
 }
@@ -3087,7 +3829,8 @@ function kontrol_id_validate(&$post, &$input_errors) {
 		$input_errors[] = 'Unknown user contains invalid characters.';
 	}
 	if (!in_array($post['access_mode'] ?? '', array(
-		'transparent', 'transparent_no_identity', 'explicit'
+		'transparent', 'transparent_no_identity', 'explicit_identity',
+		'explicit_no_identity', 'explicit'
 	), true)) {
 		$input_errors[] = 'Select a valid client access mode.';
 	}
@@ -3115,20 +3858,30 @@ function kontrol_id_validate(&$post, &$input_errors) {
 	}
 	foreach (array('bypass_sources', 'bypass_destinations') as $field) {
 		$value = (string)($post[$field] ?? '');
-		if (strlen($value) > 4096 || preg_match('/[\r\n]/', $value)) {
-			$input_errors[] = $field . ' must be a single line no longer than 4096 characters.';
+		if (strlen($value) > 16384) {
+			$input_errors[] = $field . ' must be no longer than 16384 characters.';
 		}
 	}
+	/* Store bypass lists with an explicit delimiter. Raw newlines in package
+	 * textarea values can be flattened by config.xml handling and otherwise
+	 * turn adjacent addresses into one invalid token. The GUI may still accept
+	 * one entry per line, commas or semicolons. */
+	$post['bypass_sources'] = kontrol_id_normalize_bypass_separators(
+		$post['bypass_sources'] ?? '');
+	$post['bypass_destinations'] = kontrol_id_normalize_destination_bypass(
+		$post['bypass_destinations'] ?? '');
 	if (strlen((string)($post['tls_bypass_sites'] ?? '')) > 16384) {
 		$input_errors[] = 'TLS inspection bypass sites must be no longer than 16384 characters.';
 	} else {
 		$invalid_tls_bypass = array();
-		kontrol_id_normalize_tls_bypass_sites(
+		$normalized_tls_bypass = kontrol_id_normalize_tls_bypass_sites(
 			$post['tls_bypass_sites'] ?? '', $invalid_tls_bypass);
 		if (!empty($invalid_tls_bypass)) {
 			$input_errors[] = 'Invalid TLS inspection bypass entr' .
 				(count($invalid_tls_bypass) === 1 ? 'y: ' : 'ies: ') .
 				implode(', ', $invalid_tls_bypass) . '.';
+		} else {
+			$post['tls_bypass_sites'] = implode(';', $normalized_tls_bypass);
 		}
 	}
 	$valid_limiters = array('none', '');
@@ -3455,6 +4208,9 @@ function kontrol_id_install() {
 		kontrol_id_ensure_pki();
 		write_config('Kontrol-ID installed with safe defaults.');
 		kontrol_id_resync(false, true);
+		if ((kontrol_id_get_settings()['wpad_enable'] ?? '') === 'on') {
+			kontrol_id_wpad_apply_settings(kontrol_id_get_settings(), false, true);
+		}
 	} catch (Exception $e) {
 		log_error('[Kontrol-ID] Installation failed: ' . $e->getMessage());
 	}
@@ -3490,6 +4246,11 @@ function kontrol_id_post_upgrade_domain_health() {
 
 function kontrol_id_deinstall() {
 	try {
+		$settings = kontrol_id_get_settings();
+		$settings['wpad_enable'] = '';
+		$settings['wpad_manage_dhcp'] = '';
+		$settings['wpad_manage_dns'] = '';
+		kontrol_id_wpad_apply_settings($settings, false, true);
 		$settings = kontrol_id_get_settings();
 		$settings['enable'] = '';
 		kontrol_id_set_settings($settings);
@@ -3601,7 +4362,8 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 			'previous_e2guardian_config', 'previous_e2guardian_auth_plugin',
 			'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added',
 			'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses',
-			'portal_cert_ref', 'previous_webgui_cert_ref'
+			'portal_cert_ref', 'previous_webgui_cert_ref',
+			'wpad_file_owned', 'wpad_dhcp_ownership', 'wpad_dns_ownership'
 		) as $local_field) {
 			unset($kontrolid['config'][0][$local_field]);
 		}
@@ -3636,7 +4398,7 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 		"\$kid_sync = json_decode(base64_decode('{$sync_payload}'), true);\n" .
 		"\$kid_local = kontrol_id_get_settings();\n" .
 		"\$kid_incoming = \$kid_sync['settings'];\n" .
-		"foreach (array('previous_squid_auth_method', 'previous_squid_auth_config', 'previous_squid_config', 'previous_e2guardian_config', 'previous_e2guardian_auth_plugin', 'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added', 'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses', 'portal_cert_ref', 'previous_webgui_cert_ref') as \$kid_local_field) {\n" .
+		"foreach (array('previous_squid_auth_method', 'previous_squid_auth_config', 'previous_squid_config', 'previous_e2guardian_config', 'previous_e2guardian_auth_plugin', 'e2guardian_auth_snapshot_taken', 'e2g_proxy_basic_added', 'enrollment_token_hash', 'enrollment_token_expires', 'enrollment_token_uses', 'portal_cert_ref', 'previous_webgui_cert_ref', 'wpad_file_owned', 'wpad_dhcp_ownership', 'wpad_dns_ownership') as \$kid_local_field) {\n" .
 		"  if (array_key_exists(\$kid_local_field, \$kid_local)) { \$kid_incoming[\$kid_local_field] = \$kid_local[\$kid_local_field]; }\n" .
 		"}\n" .
 		"config_set_path('installedpackages/kontrolid/config/0', array_merge(kontrol_id_defaults(), \$kid_incoming));\n" .
@@ -3655,7 +4417,8 @@ function kontrol_id_do_xmlrpc_sync($target, $timeout) {
 		"  if (!\$kid_found) { config_set_path(\$kid_section . '/', \$kid_item); }\n" .
 		"}\n" .
 		"write_config('Kontrol-ID PKI synchronized from XMLRPC master.');\n" .
-		"kontrol_id_resync(false);";
+		"kontrol_id_resync(false);\n" .
+		"kontrol_id_wpad_apply_settings(kontrol_id_get_settings(), false, true);";
 	$client->xmlrpc_exec_php($command, $timeout);
 	log_error("[Kontrol-ID] XMLRPC configuration synchronized to {$host}.");
 }

@@ -31,9 +31,9 @@
 	<faq>Currently there are no FAQ items provided.</faq>
 	<name>e2guardianips</name>
 	<version>1.0</version>
-	<title>Services: E2guardian</title>
-	<delete_string>E2guardian: removed a configuration item.</delete_string>
-	<addedit_string>E2guardian: changed settings.</addedit_string>
+	<title>Services: Kontrol-ID</title>
+	<delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+	<addedit_string>Kontrol-ID: changed settings.</addedit_string>
 	<include_file>/usr/local/pkg/e2guardian.inc</include_file>
 	<tabs>
 		<tab>

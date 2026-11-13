@@ -38,14 +38,14 @@ require_once("service-utils.inc");
 $e2guardian_cfg = $config['installedpackages']['e2guardian']['config'][0];
 $watchdog_cmd = "/usr/local/bin/e2g_watchdog.sh";
 
-e2g_log_info("e2guardian - rotating logs.");
-e2g_log_info("e2guardian - stopping watchdog processes before rotation.");
+e2g_log_info("Kontrol-ID: rotating logs.");
+e2g_log_info("Kontrol-ID: stopping watchdog processes before rotation.");
 mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
 
 //TODO: Make all of this less hardcoded and hacky
 mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' stop');
 
-e2g_log_info("e2guardian - stopping");
+e2g_log_info("Kontrol-ID: stopping for log rotation.");
 $e2guardian_log = $config['installedpackages']['e2guardianlog']['config'][0];
 $logfilecount = ($e2guardian_log['logcount'] ? $e2guardian_log['logcount'] : "30");
 $persistent_logs = array(
@@ -88,7 +88,7 @@ foreach (glob("{$realtime_log}.*") ?: array() as $realtime_archive) {
 //$result = system($script);
 //log_error("e2guardian - Rotate command result: " . $result);
 
-e2g_log_info("e2guardian - starting");
+e2g_log_info("Kontrol-ID: starting after log rotation.");
 mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' start');
 
 $e2guardian_pid_file = KONTROL_ID_PIDFILE;
@@ -108,14 +108,14 @@ for ($i = 0; $i < 30; $i++) {
 $e2guardian_cfg = $config['installedpackages']['e2guardian']['config'][0];
 if ($e2guardian_cfg['watchdog'] == "on") {
     if ($e2guardian_ready) {
-        e2g_log_info("e2guardian - restarting watchdog after rotation.");
+        e2g_log_info("Kontrol-ID: restarting watchdog after rotation.");
         mwexec_bg("/bin/sh {$watchdog_cmd}");
     } else {
-        e2g_log_warning("e2guardian - watchdog restart deferred: e2guardian pid not ready.");
+        e2g_log_warning("Kontrol-ID - watchdog restart deferred: gateway engine PID is not ready.");
     }
 } else {
-    e2g_log_info("e2guardian - watchdog remains disabled after rotation.");
+    e2g_log_info("Kontrol-ID: watchdog remains disabled after rotation.");
 }
 
-e2g_log_info("e2guardian - log rotation complete.");
+e2g_log_info("Kontrol-ID: log rotation complete.");
 ?>

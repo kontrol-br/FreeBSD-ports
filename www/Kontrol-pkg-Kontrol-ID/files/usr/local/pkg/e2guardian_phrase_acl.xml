@@ -30,9 +30,9 @@
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardianphraseacl</name>
     <version>1.0</version>
-    <title>Services: E2guardian - Access Lists</title>
-    <delete_string>E2guardian: removed a configuration item.</delete_string>
-    <addedit_string>E2guardian: changed settings.</addedit_string>
+    <title>Services: Kontrol-ID - Access Lists</title>
+    <delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+    <addedit_string>Kontrol-ID: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <tabs>
         <tab>
@@ -203,7 +203,7 @@
             <fielddescr>Config file</fielddescr>
             <fieldname>banned_phraselist</fieldname>
             <description><![CDATA[Enter Banned Phrase List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -234,7 +234,7 @@
             <fielddescr>Config file</fielddescr>
             <fieldname>weighted_phraselist</fieldname>
             <description><![CDATA[Enter Weighted Pharase List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -255,7 +255,7 @@
             <fielddescr>Config file</fielddescr>
             <fieldname>exception_phraselist</fieldname>
             <description><![CDATA[Enter exception Pharase List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>

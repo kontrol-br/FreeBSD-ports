@@ -30,9 +30,9 @@
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardianurlacl</name>
     <version>1.0</version>
-    <title>Services: E2guardian - Access Lists</title>
-    <delete_string>E2guardian: removed a configuration item.</delete_string>
-    <addedit_string>E2guardian: changed settings.</addedit_string>
+    <title>Services: Kontrol-ID - Access Lists</title>
+    <delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+    <addedit_string>Kontrol-ID: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <tabs>
         <tab>
@@ -188,7 +188,7 @@
             <fielddescr>Config</fielddescr>
             <fieldname>banned_urllist</fieldname>
             <description><![CDATA[Enter Banned Url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -198,7 +198,7 @@
             <fielddescr>Regexp</fielddescr>
             <fieldname>bannedregexp_urllist</fieldname>
             <description><![CDATA[Enter Banned Regex Url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -218,7 +218,7 @@
             <fielddescr>Grey</fielddescr>
             <fieldname>grey_urllist</fieldname>
             <description><![CDATA[Enter Gray url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -249,7 +249,7 @@
             <fielddescr>Config</fielddescr>
             <fieldname>exception_urllist</fieldname>
             <description><![CDATA[Enter exception url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -259,7 +259,7 @@
             <fielddescr>regexp</fielddescr>
             <fieldname>exceptionregexp_urllist</fieldname>
             <description><![CDATA[Enter exception regex url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -269,7 +269,7 @@
             <fielddescr>file</fielddescr>
             <fieldname>exceptionfile_urllist</fieldname>
             <description><![CDATA[Enter exception file url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -289,7 +289,7 @@
             <fielddescr>config</fielddescr>
             <fieldname>modify_urllist</fieldname>
             <description><![CDATA[Enter 'Modify URL List' for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -309,7 +309,7 @@
             <fielddescr>config</fielddescr>
             <fieldname>log_urllist</fieldname>
             <description><![CDATA[Enter log only url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>
@@ -319,7 +319,7 @@
             <fielddescr>regexp</fielddescr>
             <fieldname>logregexp_urllist</fieldname>
             <description><![CDATA[Enter log only regexp url List for this group.<br>
-                Leave empty to load e2guardian defaults]]></description>
+                Leave empty to load Kontrol-ID defaults]]></description>
             <type>textarea</type>
             <cols>80</cols>
             <rows>10</rows>

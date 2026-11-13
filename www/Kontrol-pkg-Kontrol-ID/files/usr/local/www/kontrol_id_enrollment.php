@@ -135,9 +135,28 @@ if (empty($client['crt'])) {
 }
 
 $cert_sha256 = strtoupper(openssl_x509_fingerprint($certificate, 'sha256'));
-$stmt = $db->prepare('INSERT INTO endpoints(ip,hostname,fqdn,cert_sha256,enrolled_at,last_seen,revoked) ' .
-	'VALUES(:ip,:hostname,:fqdn,:fingerprint,:now,0,0) ON CONFLICT(ip) DO UPDATE SET ' .
-	'hostname=excluded.hostname,fqdn=excluded.fqdn,cert_sha256=excluded.cert_sha256,' .
+$previous_ip = '';
+$stmt = $db->prepare('SELECT ip FROM endpoints WHERE cert_sha256=:fingerprint LIMIT 1');
+$stmt->bindValue(':fingerprint', $cert_sha256, SQLITE3_TEXT);
+$result = $stmt->execute();
+$previous = $result ? $result->fetchArray(SQLITE3_ASSOC) : false;
+if (is_array($previous)) {
+	$previous_ip = (string)($previous['ip'] ?? '');
+}
+if ($result instanceof SQLite3Result) {
+	$result->finalize();
+}
+
+$db->exec('BEGIN IMMEDIATE');
+/* An IP can be reassigned by DHCP. Keep the previous station enrolled but
+ * unbound until its certificate is seen again at its new address. */
+$stmt = $db->prepare("UPDATE endpoints SET ip='' WHERE ip=:ip AND cert_sha256<>:fingerprint");
+$stmt->bindValue(':ip', $remote_ip, SQLITE3_TEXT);
+$stmt->bindValue(':fingerprint', $cert_sha256, SQLITE3_TEXT);
+$stmt->execute();
+$stmt = $db->prepare('INSERT INTO endpoints(cert_sha256,ip,hostname,fqdn,enrolled_at,last_seen,revoked) ' .
+	'VALUES(:fingerprint,:ip,:hostname,:fqdn,:now,0,0) ON CONFLICT(cert_sha256) DO UPDATE SET ' .
+	'ip=excluded.ip,hostname=excluded.hostname,fqdn=excluded.fqdn,' .
 	'enrolled_at=excluded.enrolled_at,revoked=0');
 $stmt->bindValue(':ip', $remote_ip, SQLITE3_TEXT);
 $stmt->bindValue(':hostname', $hostname, SQLITE3_TEXT);
@@ -148,6 +167,18 @@ $stmt->execute();
 $stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
 $stmt->bindValue(':ip', $remote_ip, SQLITE3_TEXT);
 $stmt->execute();
+$stmt = $db->prepare('DELETE FROM portal_sessions WHERE ip=:ip');
+$stmt->bindValue(':ip', $remote_ip, SQLITE3_TEXT);
+$stmt->execute();
+if ($previous_ip !== '' && $previous_ip !== $remote_ip) {
+	$stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
+	$stmt->bindValue(':ip', $previous_ip, SQLITE3_TEXT);
+	$stmt->execute();
+	$stmt = $db->prepare('DELETE FROM portal_sessions WHERE ip=:ip');
+	$stmt->bindValue(':ip', $previous_ip, SQLITE3_TEXT);
+	$stmt->execute();
+}
+$db->exec('COMMIT');
 $db->close();
 
 if ($legacy_token) {

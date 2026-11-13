@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
-PORTREVISION=	66
+PORTREVISION=	71
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -15,6 +15,7 @@ LICENSE=	APACHE20
 
 RUN_DEPENDS=	kontrol-id>=5.4.23_18:www/kontrol-id \
 		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss \
+		${LOCALBASE}/bin/qjsc:lang/quickjs \
 		samba416>=4.16:net/samba416
 LIB_DEPENDS=	libcurl.so:ftp/curl \
 		libsqlite3.so:databases/sqlite3 \
@@ -40,7 +41,7 @@ do-build:
 		`${LOCALBASE}/bin/pkgconf --cflags libcurl sqlite3 libxml-2.0` \
 		${WRKSRC}/kontrol_identity_helper.cpp \
 		-o ${WRKSRC}/kontrol-identity-helper \
-		${LDFLAGS} `${LOCALBASE}/bin/pkgconf --libs libcurl sqlite3 libxml-2.0`
+		${LDFLAGS} `${LOCALBASE}/bin/pkgconf --libs libcurl sqlite3 libxml-2.0` -lmd
 
 do-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/libexec
@@ -85,6 +86,8 @@ do-install:
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_domain.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_policy.php \
+		${STAGEDIR}${PREFIX}/www
+	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_wpad.php \
 		${STAGEDIR}${PREFIX}/www
 	${INSTALL_DATA} ${FILESDIR}${PREFIX}/www/kontrol_id_portal.php \
 		${STAGEDIR}${PREFIX}/www

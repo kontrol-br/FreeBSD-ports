@@ -1,13 +1,13 @@
 <?php
 /*
- * Clone E2Guardian groups and active ACL definitions without changing the
+ * Clone Kontrol-ID groups and active ACL definitions without changing the
  * generic pfSense package editor.
  */
 
 ##|+PRIV
 ##|*IDENT=page-services-e2guardian-clone
-##|*NAME=Services: E2guardian clone ACLs and groups
-##|*DESCR=Allow cloning E2guardian ACLs and groups.
+##|*NAME=Services: Kontrol-ID clone ACLs and groups
+##|*DESCR=Allow cloning Kontrol-ID ACLs and groups.
 ##|*MATCH=e2guardian_clone.php*
 ##|-PRIV
 
@@ -16,7 +16,7 @@ require_once('/usr/local/pkg/e2guardian.inc');
 
 function e2guardian_clone_error($message, $xml = '') {
     global $pgtitle, $pglinks;
-    $pgtitle = array(gettext('Services'), gettext('E2guardian'), gettext('Clone'));
+    $pgtitle = array(gettext('Services'), gettext('Kontrol-ID'), gettext('Clone'));
     $pglinks = array('', '/pkg_edit.php?xml=e2guardian.xml', '@self');
     include('head.inc');
     print_info_box(htmlspecialchars($message), 'danger', false);
@@ -29,7 +29,7 @@ function e2guardian_clone_error($message, $xml = '') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    e2guardian_clone_error(gettext('Cloning requires a valid request from an E2guardian list.'));
+    e2guardian_clone_error(gettext('Cloning requires a valid request from a Kontrol-ID list.'));
 }
 
 $xml = basename((string)($_POST['xml'] ?? ''));
@@ -45,13 +45,13 @@ foreach ($lists as $candidate_name => $candidate_info) {
     }
 }
 if ($package_name === '' || !is_numeric($source_id) || (int)$source_id < 0) {
-    e2guardian_clone_error(gettext('The requested E2guardian item is invalid.'), $xml);
+    e2guardian_clone_error(gettext('The requested Kontrol-ID item is invalid.'), $xml);
 }
 
 $items = config_get_path("installedpackages/{$package_name}/config", array());
 $source_id = (int)$source_id;
 if (!isset($items[$source_id]) || !is_array($items[$source_id])) {
-    e2guardian_clone_error(gettext('The E2guardian item to clone no longer exists.'), $xml);
+    e2guardian_clone_error(gettext('The Kontrol-ID item to clone no longer exists.'), $xml);
 }
 
 $new_id = 0;

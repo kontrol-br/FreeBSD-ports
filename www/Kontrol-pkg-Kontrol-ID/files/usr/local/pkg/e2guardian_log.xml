@@ -31,9 +31,9 @@
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardianlog</name>
     <version>1.0</version>
-    <title>Services: E2guardian</title>
-    <delete_string>E2guardian: removed a configuration item.</delete_string>
-    <addedit_string>E2guardian: changed settings.</addedit_string>
+    <title>Services: Kontrol-ID</title>
+    <delete_string>Kontrol-ID: removed a configuration item.</delete_string>
+    <addedit_string>Kontrol-ID: changed settings.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <tabs>
         <tab>
@@ -193,7 +193,7 @@
         <field>
             <fielddescr>Report file</fielddescr>
             <fieldname>report_file</fieldname>
-            <description><![CDATA[E2guardian template.html error page whithout head or html tags<br>
+            <description><![CDATA[Kontrol-ID template.html error page whithout head or html tags<br>
                 Leave empty to load e2guardian default report file]]></description>
             <type>textarea</type>
             <cols>75</cols>
@@ -250,7 +250,7 @@
             <description><![CDATA[ Log File Format.]]></description>
             <type>select</type>
             <options>
-                <option><name>E2guardian format -space delimited (default)</name><value>1</value></option>
+                <option><name>Kontrol-ID format -space delimited (default)</name><value>1</value></option>
                 <option><name>CSV-style format</name><value>2</value></option>
                 <option><name>Squid Log File Format</name><value>3</value></option>
                 <option><name>Tab delimited</name><value>4</value></option>

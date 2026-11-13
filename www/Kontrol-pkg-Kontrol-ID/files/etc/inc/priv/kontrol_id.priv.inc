@@ -11,6 +11,7 @@ $priv_list['page-services-kontrol-id']['match'][] = 'pkg_edit.php?xml=kontrol_id
 $priv_list['page-services-kontrol-id']['match'][] = 'kontrol_id_status.php*';
 $priv_list['page-services-kontrol-id']['match'][] = 'kontrol_id_domain.php*';
 $priv_list['page-services-kontrol-id']['match'][] = 'kontrol_id_policy.php*';
+$priv_list['page-services-kontrol-id']['match'][] = 'kontrol_id_wpad.php*';
 
 $priv_list['page-services-kontrol-id-enroll'] = array();
 $priv_list['page-services-kontrol-id-enroll']['name'] = 'WebCfg - Services: Kontrol-ID: Authorize stations';

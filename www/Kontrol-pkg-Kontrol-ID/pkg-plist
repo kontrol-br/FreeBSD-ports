@@ -46,6 +46,7 @@ pkg/e2guardian_users.xml
 www/kontrol_id_status.php
 www/kontrol_id_domain.php
 www/kontrol_id_policy.php
+www/kontrol_id_wpad.php
 www/kontrol_id_portal.php
 www/kontrol_id_enrollment.php
 www/kontrol_id_api_authorize.php

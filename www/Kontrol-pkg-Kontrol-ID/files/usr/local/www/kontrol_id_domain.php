@@ -103,8 +103,12 @@ if (!empty($savemsg)) {
 			<dt>Proxy service</dt><dd><code><?=htmlspecialchars($domain['spn'] ?: 'Not configured')?></code></dd>
 			<dt>Authentication</dt><dd><?=htmlspecialchars(
 				($settings['access_mode'] ?? '') === 'explicit' ? $settings['explicit_auth'] :
+				(($settings['access_mode'] ?? '') === 'explicit_identity' ?
+				'Explicit endpoint identification' :
+				(($settings['access_mode'] ?? '') === 'explicit_no_identity' ?
+				'Explicit without identification' :
 				(($settings['access_mode'] ?? '') === 'transparent_no_identity' ?
-				'Transparent without identification' : 'Transparent identity')
+				'Transparent without identification' : 'Transparent identity')))
 			)?></dd>
 		</dl>
 		<div class="table-responsive">
@@ -182,7 +186,7 @@ if (!empty($savemsg)) {
 		<div class="alert alert-info">This appliance has not joined Active Directory yet. Domain removal becomes available after a machine trust is created.</div>
 		<?php endif; ?>
 		<p>Use a delegated domain account to remove this appliance cleanly from Active Directory. Kontrol-ID is disabled first,
-			its reversible Squid/E2Guardian configuration is restored, and only then are the package-owned keytab and Samba machine secrets deleted.</p>
+			its reversible Squid/Kontrol-ID configuration is restored, and only then are the package-owned keytab and Samba machine secrets deleted.</p>
 		<form method="post" class="form-horizontal" autocomplete="off"><fieldset<?=$remove_disabled?>>
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="unjoin_username">Delegated account</label>

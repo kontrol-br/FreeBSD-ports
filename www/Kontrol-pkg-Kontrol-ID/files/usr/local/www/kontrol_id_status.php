@@ -14,29 +14,47 @@ $search = trim(substr($_GET['q'] ?? '', 0, 100));
 $page = max(1, (int)($_GET['page'] ?? 1));
 $page_size = 50;
 
-if (!kontrol_id_transparent_identity_mode()) {
-	header('Location: /pkg_edit.php?xml=kontrol_id.xml&id=0&savemsg=' . rawurlencode(
-		'Status and Enrollment is available only in Transparent identification mode.'
-	));
-	exit;
-}
-
+kontrol_id_ensure_storage();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-	if (isset($_POST['revoke_endpoint']) && filter_var($_POST['revoke_endpoint'], FILTER_VALIDATE_IP)) {
+	if (isset($_POST['prepare_secure_provisioning'])) {
+		try {
+			$provisioning_result = kontrol_id_prepare_secure_provisioning();
+			write_config('Kontrol-ID secure HTTPS provisioning endpoint prepared.');
+			if (!empty($provisioning_result['restart_webgui'])) {
+				send_event('service restart webgui');
+			}
+			$savemsg = 'Secure provisioning is ready. Reopen this page using HTTPS if the WebGUI connection changes.';
+		} catch (Exception $exception) {
+			$saveerror = true;
+			$savemsg = 'Secure provisioning could not be prepared: ' . $exception->getMessage();
+		}
+	} elseif (isset($_POST['revoke_endpoint']) && preg_match('/^[A-Fa-f0-9]{64}$/D', $_POST['revoke_endpoint'])) {
 		$db = new SQLite3(KONTROL_ID_DB);
+		$stmt = $db->prepare('SELECT ip,hostname FROM endpoints WHERE cert_sha256=:fingerprint LIMIT 1');
+		$stmt->bindValue(':fingerprint', strtoupper($_POST['revoke_endpoint']), SQLITE3_TEXT);
+		$result = $stmt->execute();
+		$endpoint = $result ? $result->fetchArray(SQLITE3_ASSOC) : false;
+		$endpoint_ip = is_array($endpoint) ? (string)($endpoint['ip'] ?? '') : '';
+		$endpoint_name = is_array($endpoint) ? (string)($endpoint['hostname'] ?? '') : '';
+		if ($result instanceof SQLite3Result) {
+			$result->finalize();
+		}
 		$db->exec('BEGIN IMMEDIATE');
-		$stmt = $db->prepare('DELETE FROM endpoints WHERE ip=:ip');
-		$stmt->bindValue(':ip', $_POST['revoke_endpoint'], SQLITE3_TEXT);
+		$stmt = $db->prepare('DELETE FROM endpoints WHERE cert_sha256=:fingerprint');
+		$stmt->bindValue(':fingerprint', strtoupper($_POST['revoke_endpoint']), SQLITE3_TEXT);
 		$stmt->execute();
-		$stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
-		$stmt->bindValue(':ip', $_POST['revoke_endpoint'], SQLITE3_TEXT);
-		$stmt->execute();
-		$stmt = $db->prepare('DELETE FROM portal_sessions WHERE ip=:ip');
-		$stmt->bindValue(':ip', $_POST['revoke_endpoint'], SQLITE3_TEXT);
-		$stmt->execute();
+		if ($endpoint_ip !== '') {
+			$stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
+			$stmt->bindValue(':ip', $endpoint_ip, SQLITE3_TEXT);
+			$stmt->execute();
+			$stmt = $db->prepare('DELETE FROM portal_sessions WHERE ip=:ip');
+			$stmt->bindValue(':ip', $endpoint_ip, SQLITE3_TEXT);
+			$stmt->execute();
+		}
 		$db->exec('COMMIT');
 		$db->close();
-		write_config('Kontrol-ID station removed by administrator: ' . $_POST['revoke_endpoint']);
+		write_config('Kontrol-ID station removed by administrator: ' .
+			($endpoint_name !== '' ? $endpoint_name : strtoupper($_POST['revoke_endpoint'])));
 		$savemsg = 'Station removed.';
 	} elseif (isset($_POST['revoke_session']) && filter_var($_POST['revoke_session'], FILTER_VALIDATE_IP)) {
 		$db = new SQLite3(KONTROL_ID_DB);
@@ -48,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 }
 
-kontrol_id_ensure_storage();
 $db = new SQLite3(KONTROL_ID_DB, SQLITE3_OPEN_READONLY);
 $now = time();
 $endpoint_summary = $db->querySingle(
@@ -82,7 +99,7 @@ if ($view === 'stations') {
 	$max_page = max(1, (int)ceil($row_count / $page_size));
 	$page = min($page, $max_page);
 	$stmt = $db->prepare(
-		'SELECT ip,hostname,fqdn,enrolled_at,last_seen FROM endpoints' . $where .
+		'SELECT cert_sha256,ip,hostname,fqdn,enrolled_at,last_seen FROM endpoints' . $where .
 		' ORDER BY hostname,ip LIMIT :limit OFFSET :offset'
 	);
 	if ($search !== '') {
@@ -134,6 +151,25 @@ foreach ($chain_status as $check) {
 	}
 }
 $identity_ca = kontrol_id_extract_item(lookup_ca($settings['ca_ref']));
+$access_labels = array(
+	'transparent' => 'Transparent identification',
+	'transparent_no_identity' => 'Transparent without identification',
+	'explicit_identity' => 'Explicit proxy with endpoint identification',
+	'explicit_no_identity' => 'Explicit proxy without identification',
+	'explicit' => 'Explicit proxy authentication',
+);
+$access_label = $access_labels[$settings['access_mode'] ?? 'transparent'] ??
+	'Kontrol-ID gateway';
+$endpoint_identity_active = kontrol_id_endpoint_identity_mode($settings);
+$provisioning_authority = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+$provisioning_host = preg_match('/^(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\])(?::[0-9]{1,5})?$/D', $provisioning_authority) ?
+	strtolower((string)parse_url('https://' . $provisioning_authority, PHP_URL_HOST)) : '';
+$webcert_ref = (string)config_get_path('system/webgui/ssl-certref', '');
+$webcert = kontrol_id_extract_item(lookup_cert($webcert_ref));
+$provisioning_ready = config_get_path('system/webgui/protocol', 'https') === 'https' &&
+	$provisioning_host !== '' &&
+	kontrol_id_certificate_matches_ca($webcert, $identity_ca) &&
+	kontrol_id_certificate_covers_host($webcert, $provisioning_host);
 
 include('head.inc');
 
@@ -149,7 +185,7 @@ if (!empty($savemsg)) {
 	<div class="panel-body">
 		<p><strong>Client &rarr; Kontrol-ID secure web gateway &rarr; Internet</strong></p>
 		<p>
-			Access: <strong><?=($settings['access_mode'] === 'explicit') ? 'Explicit proxy / ' . htmlspecialchars($settings['explicit_auth']) : 'Transparent identification'?></strong> &nbsp;
+			Access: <strong><?=htmlspecialchars($access_label)?></strong> &nbsp;
 			Inspection: <strong><?=($settings['traffic_mode'] === 'http_https') ? 'HTTP + HTTPS' : 'HTTP only'?></strong> &nbsp;
 			Interfaces: <strong><?=htmlspecialchars(kontrol_id_normalize_interfaces($settings['intercept_interfaces']) ?: 'not selected')?></strong> &nbsp;
 			CA: <strong><?=htmlspecialchars($identity_ca['descr'] ?? 'unavailable')?></strong>
@@ -178,11 +214,19 @@ if (!empty($savemsg)) {
 <div class="panel panel-default">
 	<div class="panel-heading"><h2 class="panel-title">Windows Provisioning</h2></div>
 	<div class="panel-body">
-		<p>Download the Windows Provisioner configured with this appliance CA. The same executable can be reused on any number of stations and on other Kontrol appliances that share this CA.</p>
-		<?php if (config_get_path('system/webgui/protocol', 'https') !== 'https'): ?>
-			<div class="alert alert-danger">The enrollment API requires an HTTPS WebGUI. Enable HTTPS before provisioning stations.</div>
+		<?php if (!$endpoint_identity_active): ?>
+			<div class="alert alert-info">The Provisioner is available for advance station preparation. Automatic user and hostname queries remain on standby until an endpoint-identification mode is selected.</div>
 		<?php endif; ?>
-		<a class="btn btn-success" href="/kontrol_id_provisioner.php" download><i class="fa fa-download"></i> Download configured Provisioner</a>
+		<p>Download the Windows Provisioner configured with this appliance CA. The same executable can be reused on any number of stations and on other Kontrol appliances that share this CA.</p>
+		<?php if (!$provisioning_ready): ?>
+			<div class="alert alert-danger">The enrollment API requires an HTTPS WebGUI certificate issued by the selected Kontrol-ID CA and valid for the address used to access this appliance.</div>
+			<form method="post" class="form-inline">
+				<button class="btn btn-primary" type="submit" name="prepare_secure_provisioning" value="1"><i class="fa fa-lock"></i> Prepare secure provisioning</button>
+			</form>
+			<p class="help-block">This action creates and validates the managed server certificate before enabling HTTPS. The current WebGUI certificate and protocol are preserved if validation fails.</p>
+		<?php else: ?>
+			<a class="btn btn-success" href="/kontrol_id_provisioner.php" download><i class="fa fa-download"></i> Download configured Provisioner</a>
+		<?php endif; ?>
 		<p class="help-block">This executable contains the public certificate of the selected Kontrol-ID CA and the appliance address. Run it as administrator and authorize enrollment directly in the application with a Kontrol administrator account. Credentials and certificate data remain only in memory; no enrollment JSON file is created.</p>
 		<p class="help-block">Each station creates its own non-exportable private key and receives a unique WinRM HTTPS server certificate. Kontrol-ID uses one appliance client certificate to authenticate its queries; no shared station private key is distributed.</p>
 	</div>
@@ -222,10 +266,10 @@ if (!empty($savemsg)) {
 		<tbody>
 		<?php foreach ($rows as $row): ?>
 		<tr>
-			<td><?=htmlspecialchars($row['ip'])?></td><td><?=htmlspecialchars($row['hostname'])?></td><td><?=htmlspecialchars($row['fqdn'])?></td>
+			<td><?=$row['ip'] !== '' ? htmlspecialchars($row['ip']) : '<span class="text-muted">Awaiting current IP</span>'?></td><td><?=htmlspecialchars($row['hostname'])?></td><td><?=htmlspecialchars($row['fqdn'])?></td>
 			<td><?=htmlspecialchars(date('Y-m-d H:i:s', (int)$row['enrolled_at']))?></td>
 			<td><?=$row['last_seen'] ? htmlspecialchars(date('Y-m-d H:i:s', (int)$row['last_seen'])) : 'Never'?></td>
-			<td><form method="post"><button class="btn btn-xs btn-danger" name="revoke_endpoint" value="<?=htmlspecialchars($row['ip'])?>">Remove</button></form></td>
+			<td><form method="post"><button class="btn btn-xs btn-danger" name="revoke_endpoint" value="<?=htmlspecialchars($row['cert_sha256'])?>">Remove</button></form></td>
 		</tr>
 		<?php endforeach; ?>
 		<?php if (empty($rows)): ?><tr><td colspan="6">No station matches this search.</td></tr><?php endif; ?>

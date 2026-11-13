@@ -49,7 +49,7 @@ if (file_exists($file)) {
 
 
 if ($last_scheds !== $e2g_sched_in_use) {
-    e2g_log_info("e2guardian - change on schedules, reapplying config.");
+    e2g_log_info("Kontrol-ID: schedule changed; reapplying configuration.");
     print "changes on schedule\n";
     //update acl files
     sync_package_e2guardian("yes");

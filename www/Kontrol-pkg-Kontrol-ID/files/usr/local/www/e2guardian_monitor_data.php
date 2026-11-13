@@ -199,7 +199,7 @@ if ($_POST) {
 
                     break;
                 default:
-                    print "e2guardian log format selected is not implemented yet";
+                    print "The selected Kontrol-ID log format is not implemented yet";
                     break;
             }
             break;

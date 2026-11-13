@@ -60,6 +60,9 @@ $stmt->bindValue(':hostname', $hostname, SQLITE3_TEXT);
 $stmt->bindValue(':fingerprint', $fingerprint, SQLITE3_TEXT);
 $result = $stmt->execute();
 $endpoint = $result ? $result->fetchArray(SQLITE3_ASSOC) : false;
+if ($result instanceof SQLite3Result) {
+	$result->finalize();
+}
 
 $payload = "kontrol-id-unenroll-v1\n" . $hostname . "\n" . $timestamp . "\n" . $nonce . "\n" . $fingerprint;
 if (@openssl_verify($payload, $signature, $certificate, OPENSSL_ALGO_SHA256) !== 1) {
@@ -74,20 +77,21 @@ if (!is_array($endpoint)) {
 
 $ip = $endpoint['ip'];
 $db->exec('BEGIN IMMEDIATE');
-$stmt = $db->prepare('DELETE FROM endpoints WHERE ip=:ip AND cert_sha256=:fingerprint');
-$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
+$stmt = $db->prepare('DELETE FROM endpoints WHERE cert_sha256=:fingerprint');
 $stmt->bindValue(':fingerprint', $fingerprint, SQLITE3_TEXT);
 $stmt->execute();
-$stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
-$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
-$stmt->execute();
-$stmt = $db->prepare('DELETE FROM portal_sessions WHERE ip=:ip');
-$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
-$stmt->execute();
+if ($ip !== '') {
+	$stmt = $db->prepare('DELETE FROM identities WHERE ip=:ip');
+	$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
+	$stmt->execute();
+	$stmt = $db->prepare('DELETE FROM portal_sessions WHERE ip=:ip');
+	$stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
+	$stmt->execute();
+}
 $db->exec('COMMIT');
 $db->close();
 
-write_config('Kontrol-ID station removed: ' . $hostname . ' (' . $ip . ')');
+write_config('Kontrol-ID station removed: ' . $hostname . ($ip !== '' ? ' (' . $ip . ')' : ''));
 
 kontrol_id_unenroll_response(200, array('ok' => true, 'status' => 'removed'));
 

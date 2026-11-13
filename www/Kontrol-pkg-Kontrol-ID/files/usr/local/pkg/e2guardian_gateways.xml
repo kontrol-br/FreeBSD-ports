@@ -25,14 +25,14 @@
  */
         ]]>
     </copyright>
-    <description>E2guardian Outbound Gateway Policy Rules</description>
+    <description>Kontrol-ID Outbound Gateway Policy Rules</description>
     <requirements>None</requirements>
     <faq>Currently there are no FAQ items provided.</faq>
     <name>e2guardiangateways</name>
     <version>1.0</version>
-    <title>Services: E2guardian: Gateways</title>
-    <delete_string>E2guardian: removed a gateway policy rule.</delete_string>
-    <addedit_string>E2guardian: changed gateway policy rule.</addedit_string>
+    <title>Services: Kontrol-ID: Gateways</title>
+    <delete_string>Kontrol-ID: removed a gateway policy rule.</delete_string>
+    <addedit_string>Kontrol-ID: changed gateway policy rule.</addedit_string>
     <include_file>/usr/local/pkg/e2guardian.inc</include_file>
     <filter_rules_needed>e2g_generate_rules</filter_rules_needed>
     <tabs>
