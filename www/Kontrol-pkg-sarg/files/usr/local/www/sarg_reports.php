@@ -53,6 +53,14 @@ function sarg_valid_report_name($name) {
 	);
 }
 
+function sarg_report_folder_name($folder_suffix) {
+	$folder = preg_replace('/\W/', '', (string)$folder_suffix);
+	if ($folder === '' || !preg_match('/^[A-Za-z0-9_]+$/D', $folder)) {
+		return '';
+	}
+	return $folder;
+}
+
 function sarg_report_display_name($name) {
 	$matches = array();
 	if (preg_match('/^([0-9]{4})([A-Za-z]{3})([0-9]{2})-([0-9]{4})([A-Za-z]{3})([0-9]{2})(?:-[0-9]+)?$/D', $name, $matches)) {
@@ -166,9 +174,10 @@ $report_dirs = array('default' => '');
 if (isset($config['installedpackages']['sargschedule']['config']) &&
     is_array($config['installedpackages']['sargschedule']['config'])) {
 	foreach ($config['installedpackages']['sargschedule']['config'] as $schedule) {
-		$folder = isset($schedule['foldersuffix']) ? (string)$schedule['foldersuffix'] : '';
-		if ($folder !== '' && preg_match('/^[A-Za-z0-9_-]+$/D', $folder)) {
-			$report_dirs[$folder] = $folder;
+		$folder_label = isset($schedule['foldersuffix']) ? (string)$schedule['foldersuffix'] : '';
+		$folder = sarg_report_folder_name($folder_label);
+		if ($folder !== '') {
+			$report_dirs[$folder_label] = $folder;
 		}
 	}
 }
@@ -209,9 +218,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $report_entries = sarg_report_entries($report_root, $reserved_names);
 $latest = empty($report_entries) ? 0 : $report_entries[0]['mtime'];
 $latest_label = $latest > 0 ? date('d/m/Y H:i', $latest) : gettext('No report generated yet');
+$selected_report = empty($report_entries) ? null : $report_entries[0];
+$requested_report = isset($_GET['report']) ? (string)$_GET['report'] : '';
+if ($requested_report !== '') {
+	foreach ($report_entries as $report_entry) {
+		if (hash_equals($report_entry['name'], $requested_report)) {
+			$selected_report = $report_entry;
+			break;
+		}
+	}
+}
 $frame_query = array('dir' => $selected_dir, 'prevent' => mt_rand());
-if (!empty($report_entries)) {
-	$frame_query['file'] = $report_entries[0]['name'] . '/index.html';
+if (is_array($selected_report)) {
+	$frame_query['file'] = $selected_report['name'] . '/index.html';
 }
 $frame_src = '/sarg_frame.php?' . http_build_query($frame_query);
 $delete_confirmation = htmlspecialchars(
@@ -310,15 +329,18 @@ $source_label = (isset($source_names[$proxy]) ? $source_names[$proxy] : strtoupp
 		<?php if (!empty($report_entries)): ?>
 		<ul class="sarg-cleanup__list">
 			<?php foreach ($report_entries as $report):
-				$report_query = array('dir' => $selected_dir, 'file' => $report['name'] . '/index.html');
-				$report_url = '/sarg_frame.php?' . http_build_query($report_query);
+				$viewer_query = array('report' => $report['name']);
+				if ($selected_dir !== '') {
+					$viewer_query['dir'] = $selected_dir;
+				}
+				$report_url = '/sarg_reports.php?' . http_build_query($viewer_query) . '#sarg-report';
 			?>
 			<li class="sarg-cleanup__item">
 				<div class="sarg-cleanup__name">
 					<strong title="<?=htmlspecialchars($report['name'], ENT_QUOTES, 'UTF-8')?>"><?=htmlspecialchars($report['label'], ENT_QUOTES, 'UTF-8')?></strong>
 					<span><?=sprintf(gettext('Generated on %s'), date('d/m/Y H:i', $report['mtime']))?></span>
 				</div>
-				<a class="sarg-cleanup__open" href="<?=htmlspecialchars($report_url, ENT_QUOTES, 'UTF-8')?>" target="sarg-report"><?=gettext('View report')?></a>
+				<a class="sarg-cleanup__open" href="<?=htmlspecialchars($report_url, ENT_QUOTES, 'UTF-8')?>"><?=gettext('View report')?></a>
 				<form method="post" class="sarg-cleanup__delete" onsubmit="return confirm(<?=$delete_confirmation?>);">
 					<input type="hidden" name="action" value="delete_report">
 					<input type="hidden" name="dir" value="<?=htmlspecialchars($selected_dir, ENT_QUOTES, 'UTF-8')?>">
