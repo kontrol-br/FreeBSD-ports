@@ -1688,6 +1688,14 @@ function kontrol_id_ensure_portal_certificate() {
 	return $result;
 }
 
+function kontrol_id_secure_webgui_port($protocol, $port) {
+	$port = trim((string)$port);
+	if ((string)$protocol !== 'https' && ($port === '' || $port === '80')) {
+		return '443';
+	}
+	return $port;
+}
+
 function kontrol_id_prepare_secure_provisioning() {
 	$settings = kontrol_id_get_settings();
 	if (($settings['manage_portal_certificate'] ?? 'on') !== 'on') {
@@ -1698,15 +1706,19 @@ function kontrol_id_prepare_secure_provisioning() {
 	}
 
 	$original_protocol = (string)config_get_path('system/webgui/protocol', 'https');
+	$original_port = config_get_path('system/webgui/port', null);
 	$original_cert_ref = (string)config_get_path('system/webgui/ssl-certref', '');
 	$original_certificates = config_get_path('cert', array());
 	$original_settings = $settings;
 
 	try {
 		/* Generate and validate the managed certificate before the WebGUI is
-		 * restarted.  Setting the in-memory protocol first makes the existing
-		 * portal certificate routine build an HTTPS URL without exposing an
-		 * intermediate configuration on disk. */
+		 * restarted.  Move the default HTTP listener to the default HTTPS port,
+		 * while preserving an explicitly configured custom port. */
+		$secure_port = kontrol_id_secure_webgui_port($original_protocol, $original_port);
+		if ($secure_port !== (string)$original_port) {
+			config_set_path('system/webgui/port', $secure_port);
+		}
 		config_set_path('system/webgui/protocol', 'https');
 		$result = kontrol_id_ensure_portal_certificate();
 
@@ -1728,13 +1740,18 @@ function kontrol_id_prepare_secure_provisioning() {
 			}
 		}
 
-		if ($original_protocol !== 'https') {
+		if ($original_protocol !== 'https' || $secure_port !== (string)$original_port) {
 			$result['changed'] = true;
 			$result['restart_webgui'] = true;
 		}
 		return $result;
 	} catch (Exception $exception) {
 		config_set_path('system/webgui/protocol', $original_protocol);
+		if ($original_port === null) {
+			config_del_path('system/webgui/port');
+		} else {
+			config_set_path('system/webgui/port', $original_port);
+		}
 		config_set_path('system/webgui/ssl-certref', $original_cert_ref);
 		config_set_path('cert', $original_certificates);
 		kontrol_id_set_settings($original_settings);
