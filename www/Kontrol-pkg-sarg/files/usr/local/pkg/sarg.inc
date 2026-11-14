@@ -65,6 +65,37 @@ function sarg_native_gateway_log() {
 	return $legacy_log;
 }
 
+function sarg_native_gateway_enabled() {
+	$kontrol_id = config_get_path('installedpackages/kontrolid/config/0', null);
+	if (is_array($kontrol_id)) {
+		return (($kontrol_id['enable'] ?? '') === 'on');
+	}
+
+	$e2guardian = config_get_path('installedpackages/e2guardian/config/0', null);
+	if (is_array($e2guardian)) {
+		return (($e2guardian['enable'] ?? '') === 'on' ||
+			($e2guardian['enable_dg'] ?? '') === 'on');
+	}
+
+	return null;
+}
+
+function sarg_readable_log_files($pattern) {
+	if (!is_string($pattern) || $pattern === '') {
+		return array();
+	}
+
+	$candidates = (strpbrk($pattern, '*?[') !== false) ?
+		glob($pattern, GLOB_NOSORT) : array($pattern);
+	if (!is_array($candidates)) {
+		return array();
+	}
+
+	return array_values(array_filter($candidates, function ($path) {
+		return is_file($path) && is_readable($path) && @filesize($path) > 0;
+	}));
+}
+
 // STATIC VARS
 $GLOBALS['sarg_proxy']['squid_rc'] = SQUID_DIR . '/etc/rc.d/squid.sh';
 $GLOBALS['sarg_proxy']['squid_config'] = '/var/squid/logs/access.log';
@@ -228,6 +259,10 @@ function run_sarg($id = -1) {
 	if ($logs == "all logs") {
 	    $rs_file = $rs_file . "*";
 	}
+	if (empty(sarg_readable_log_files($rs_file))) {
+		logger(LOG_INFO, "Report generation skipped: no readable access records match {$rs_file}.", 'sarg');
+		return;
+	}
 
 	$args .= " -l $rs_file ";
 	$output_dir = "/usr/local/sarg-reports";
@@ -362,9 +397,13 @@ function sync_package_sarg() {
 	}
 	$sarg_title = ($sarg['proxy_server'] === 'e2guardian') ? 'Kontrol-ID / E2Guardian' : ucfirst($sarg['proxy_server']);
 	if (!file_exists($access_log) && $access_log != "") {
-		$error = "[sarg] Config error: " . $sarg['proxy_server'] . " log file ($access_log) does not exists";
-		log_error($error);
-		file_notice("Sarg", $error, "Sarg Settings", "");
+		if ($sarg['proxy_server'] === 'e2guardian' && sarg_native_gateway_enabled() === false) {
+			logger(LOG_INFO, "Kontrol-ID/E2Guardian access log is not present because the service is disabled; Sarg will wait for the first access record.", 'sarg');
+		} else {
+			$warning = "Access log is not present yet: {$access_log}. Reports will remain idle until records are available.";
+			logger(LOG_WARNING, $warning, 'sarg');
+			file_notice("Sarg", $warning, "Sarg Settings", "");
+		}
 	}
 
 	// general tab
