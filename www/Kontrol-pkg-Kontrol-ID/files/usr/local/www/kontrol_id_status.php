@@ -16,23 +16,7 @@ $page_size = 50;
 
 kontrol_id_ensure_storage();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-	if (isset($_POST['repair_auth_plugin'])) {
-		if (kontrol_id_get_settings()['enable'] !== 'on') {
-			$saveerror = true;
-			$savemsg = 'Enable Kontrol-ID in General Settings before rebuilding authentication.';
-		} else {
-			try {
-				if (kontrol_id_resync(false, true) === false) {
-					throw new Exception('The managed engine could not be restarted. Review the service log.');
-				}
-				$savemsg = 'Authentication configuration regenerated from the selected access mode.';
-			} catch (Exception $exception) {
-				$saveerror = true;
-				$savemsg = 'Authentication configuration could not be regenerated: ' .
-					$exception->getMessage();
-			}
-		}
-	} elseif (isset($_POST['prepare_secure_provisioning'])) {
+	if (isset($_POST['prepare_secure_provisioning'])) {
 		try {
 			$provisioning_result = kontrol_id_prepare_secure_provisioning();
 			write_config('Kontrol-ID secure HTTPS provisioning endpoint prepared.');
@@ -234,15 +218,6 @@ if (!empty($savemsg)) {
 				<span class="label label-success">Matches</span>
 			<?php endif; ?>
 		</p>
-		<?php if ($settings['enable'] === 'on'): ?>
-			<form method="post">
-				<button type="submit" class="btn btn-default btn-sm" name="repair_auth_plugin" value="1"
-					onclick="return confirm('Regenerate managed authentication and restart Kontrol-ID? Active proxy connections may be interrupted.');">
-					<i class="fa fa-refresh"></i> Regenerate authentication configuration
-				</button>
-				<span class="help-block">Rebuilds the plugin from the access mode selected in General Settings and restarts the service.</span>
-			</form>
-		<?php endif; ?>
 		<div class="alert alert-<?=$chain_ok ? 'success' : 'warning'?>">
 			<?=$chain_ok ? 'The saved configuration matches the complete managed chain.' : 'The managed chain has configuration drift. Review the failed checks below and save General Settings to reapply it.'?>
 		</div>
