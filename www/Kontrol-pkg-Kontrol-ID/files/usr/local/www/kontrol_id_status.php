@@ -160,6 +160,21 @@ $access_labels = array(
 );
 $access_label = $access_labels[$settings['access_mode'] ?? 'transparent'] ??
 	'Kontrol-ID gateway';
+$configured_auth_plugin = trim((string)config_get_path(
+	'installedpackages/e2guardianconfig/config/0/auth_plugin', ''));
+if ($configured_auth_plugin !== '') {
+	$configured_auth_plugin = implode(', ', array_map('basename',
+		preg_split('/\s*,\s*/', $configured_auth_plugin)));
+}
+$engine_auth_plugin = '';
+$engine_config = @file_get_contents('/usr/local/etc/e2guardian/e2guardian.conf');
+if ($engine_config !== false &&
+	preg_match_all('/^\s*authplugin\s*=\s*[\'\"]([^\'\"\r\n]*)[\'\"]/mi',
+		$engine_config, $auth_matches)) {
+	$engine_auth_plugin = implode(', ', array_map('basename', $auth_matches[1]));
+}
+$auth_plugin_active = $settings['enable'] === 'on' &&
+	!empty($chain_status[0]['ok']);
 $endpoint_identity_active = kontrol_id_endpoint_identity_mode($settings);
 $provisioning_authority = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
 $provisioning_host = preg_match('/^(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\])(?::[0-9]{1,5})?$/D', $provisioning_authority) ?
@@ -189,6 +204,19 @@ if (!empty($savemsg)) {
 			Inspection: <strong><?=($settings['traffic_mode'] === 'http_https') ? 'HTTP + HTTPS' : 'HTTP only'?></strong> &nbsp;
 			Interfaces: <strong><?=htmlspecialchars(kontrol_id_normalize_interfaces($settings['intercept_interfaces']) ?: 'not selected')?></strong> &nbsp;
 			CA: <strong><?=htmlspecialchars($identity_ca['descr'] ?? 'unavailable')?></strong>
+		</p>
+		<p>
+			Authentication plugin: configured <code><?=htmlspecialchars($configured_auth_plugin ?: 'none')?></code>;
+			engine configuration <code><?=htmlspecialchars($engine_auth_plugin ?: 'none')?></code>
+			<?php if (!$auth_plugin_active): ?>
+				<span class="text-muted">(service inactive)</span>
+			<?php elseif ($configured_auth_plugin !== $engine_auth_plugin): ?>
+				<span class="label label-warning">Mismatch</span>
+			<?php elseif ($configured_auth_plugin === ''): ?>
+				<span class="label label-default">No plugin selected</span>
+			<?php else: ?>
+				<span class="label label-success">Matches</span>
+			<?php endif; ?>
 		</p>
 		<div class="alert alert-<?=$chain_ok ? 'success' : 'warning'?>">
 			<?=$chain_ok ? 'The saved configuration matches the complete managed chain.' : 'The managed chain has configuration drift. Review the failed checks below and save General Settings to reapply it.'?>
