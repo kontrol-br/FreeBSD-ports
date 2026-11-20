@@ -2,7 +2,7 @@
 
 PORTNAME=	Kontrol-pkg-Kontrol-ID
 PORTVERSION=	0.5.0
-PORTREVISION=	73
+PORTREVISION=	74
 CATEGORIES=	www
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -13,7 +13,7 @@ COMMENT=	Standalone authenticated secure web gateway for Kontrol
 
 LICENSE=	APACHE20
 
-RUN_DEPENDS=	kontrol-id>=5.4.23_18:www/kontrol-id \
+RUN_DEPENDS=	kontrol-id>=5.4.23_20:www/kontrol-id \
 		${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss \
 		${LOCALBASE}/bin/qjsc:lang/quickjs \
 		samba416>=4.16:net/samba416

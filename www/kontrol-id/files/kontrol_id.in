@@ -32,7 +32,8 @@ pidfile=/var/run/kontrol-id.pid
 stop_postcmd="kontrol_id_stop_postcmd"
 start_precmd="kontrol_id_start_precmd"
 reload_cmd="kontrol_id_reload_cmd"
-extra_commands="reload"
+resourcecheck_cmd="kontrol_id_resourcecheck"
+extra_commands="reload resourcecheck"
 
 command_args="-c ${kontrol_id_config} >> ${kontrol_id_error_log} 2>&1"
 
@@ -40,6 +41,56 @@ kontrol_id_start_precmd() {
 	/usr/bin/install -d -m 0750 "${kontrol_id_logdir}"
 	/usr/bin/touch "${kontrol_id_error_log}"
 	/bin/chmod 0640 "${kontrol_id_error_log}"
+	kontrol_id_resourcecheck
+}
+
+kontrol_id_raise_limit() {
+	_key=$1
+	_target=$2
+	_current=$(/sbin/sysctl -n "${_key}" 2>/dev/null) || return 1
+	case "${_current}" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	if [ "${_current}" -ge "${_target}" ]; then
+		return 0
+	fi
+	/sbin/sysctl "${_key}=${_target}" >/dev/null 2>&1 || {
+		logger -p daemon.err "Kontrol-ID: unable to raise ${_key} to ${_target}"
+		return 1
+	}
+	_current=$(/sbin/sysctl -n "${_key}" 2>/dev/null) || return 1
+	[ "${_current}" -ge "${_target}" ]
+}
+
+kontrol_id_resourcecheck() {
+	if [ ! -r "${kontrol_id_config}" ]; then
+		logger -p daemon.err "Kontrol-ID: missing engine configuration ${kontrol_id_config}"
+		return 1
+	fi
+	_workers=$(/usr/bin/awk -F= '
+		/^[[:space:]]*httpworkers[[:space:]]*=/ {
+			gsub(/[[:space:]]/, "", $2)
+			if ($2 ~ /^[0-9]+$/) {
+				value = $2 + 0
+				if (value >= 64 && value <= 20000) workers = value
+			}
+		}
+		END { if (workers == "") exit 1; print workers }
+	' "${kontrol_id_config}") || {
+		logger -p daemon.err "Kontrol-ID: invalid or missing httpworkers in ${kontrol_id_config}"
+		return 1
+	}
+	_threads=$((_workers + 1024))
+	if [ "${_threads}" -lt 4096 ]; then
+		_threads=4096
+	fi
+	kontrol_id_raise_limit kern.maxfiles 131072 &&
+		kontrol_id_raise_limit kern.maxfilesperproc 104856 &&
+		kontrol_id_raise_limit kern.ipc.somaxconn 16384 &&
+		kontrol_id_raise_limit kern.threads.max_threads_per_proc "${_threads}" || {
+		logger -p daemon.err "Kontrol-ID: kernel resource preflight failed; service was not started"
+		return 1
+	}
 }
 
 kontrol_id_reload_cmd() {

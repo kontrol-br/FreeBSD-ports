@@ -39,8 +39,9 @@ $e2guardian_cfg = $config['installedpackages']['e2guardian']['config'][0];
 $watchdog_cmd = "/usr/local/bin/e2g_watchdog.sh";
 
 e2g_log_info("Kontrol-ID: rotating logs.");
-e2g_log_info("Kontrol-ID: stopping watchdog processes before rotation.");
-mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
+if (!KONTROL_ID_POLICY_MODE) {
+    e2g_stop_watchdog_processes();
+}
 
 //TODO: Make all of this less hardcoded and hacky
 mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' stop');
@@ -106,7 +107,7 @@ for ($i = 0; $i < 30; $i++) {
 }
 
 $e2guardian_cfg = $config['installedpackages']['e2guardian']['config'][0];
-if ($e2guardian_cfg['watchdog'] == "on") {
+if (!KONTROL_ID_POLICY_MODE && $e2guardian_cfg['watchdog'] == "on") {
     if ($e2guardian_ready) {
         e2g_log_info("Kontrol-ID: restarting watchdog after rotation.");
         mwexec_bg("/bin/sh {$watchdog_cmd}");

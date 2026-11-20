@@ -1463,23 +1463,12 @@ function e2guardian_retire_removed_features() {
 function sync_package_e2guardian($via_rpc = "no", $install_process = false) {
     global $config, $g, $savemsg, $e2g_sched_in_use;
 
-    // detect boot process
-    if (is_array($_POST)) {
-        if (preg_match("/\w+/", $_POST['__csrf_magic'])) {
-            unset($boot_process);
-        } else {
-            $boot_process = "on";
-        }
-    }
-
-    if (e2guardian_processes_running() && isset($boot_process) &&
-        $via_rpc == "no" && !$install_process) {
-        log_error("[Kontrol-ID] - Detected boot process pr:1 bp:" . isset($boot_process) . " rpc:" . $via_rpc);
-        log_error("[Kontrol-ID] - Aborting config file generation");
-        return;
-    } else {
-        e2g_log_info("[Kontrol-ID] - Save settings package call pr:" . (e2guardian_processes_running() ? '1' : '0') . " bp:" . isset($boot_process) . " rpc:" . $via_rpc);
-    }
+    // A missing WebGUI CSRF field also occurs in CLI, cron and XMLRPC calls.
+    // Use the platform's boot marker and always regenerate the runtime files.
+    $boot_process = function_exists('is_platform_booting') && is_platform_booting() ? 'on' : null;
+    e2g_log_info("[Kontrol-ID] - Save settings package call pr:" .
+        (e2guardian_processes_running() ? '1' : '0') .
+        " bp:" . (isset($boot_process) ? '1' : '0') . " rpc:" . $via_rpc);
 
     /* When Kontrol-ID owns the traffic chain, saving the Kontrol-ID page must
      * not silently re-enable transparent redirects or a second TLS MITM. */
@@ -2979,7 +2968,15 @@ EOF;
 
     //watchdog script;
     $cron_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
-    if ($e2guardian['watchdog'] == "on") {
+    if (KONTROL_ID_POLICY_MODE) {
+        // The native service owns restarts. Remove a cron job left by the
+        // pre-standalone package so it cannot revive the legacy process.
+        e2g_check_cron("/bin/sh $cron_cmd", "remove");
+        e2g_stop_watchdog_processes();
+        if (is_file($cron_cmd)) {
+            @unlink($cron_cmd);
+        }
+    } elseif ($e2guardian['watchdog'] == "on") {
         e2g_check_cron("/bin/sh $cron_cmd", "create");
         if ($e2guardian['parentmode'] == 'local') {
             //e2g parent
@@ -3166,7 +3163,10 @@ function e2g_check_cron($cron_cmd, $action, $min = "*", $hour = "*", $mday = "*"
 
 function e2g_stop_watchdog_processes() {
     $watchdog_cmd = E2GUARDIAN_BINDIR . "/e2g_watchdog.sh";
-    mwexec("/usr/bin/pkill -f {$watchdog_cmd} 2>/dev/null");
+    // pkill returns 1 when nothing matches; that is normal during boot and
+    // must not become a GUI notice from mwexec().
+    @exec('/usr/bin/pkill -f ' . escapeshellarg($watchdog_cmd) .
+        ' >/dev/null 2>&1');
 }
 
 function e2guardian_pid_is_e2guardian($pid) {
@@ -3764,10 +3764,11 @@ function e2guardian_start($via_rpc = "no", $install_process = false, $force_star
                 $status = mwexec(escapeshellarg(KONTROL_ID_ENGINE_BINARY) . ' -g');
             } elseif ($apply_action === '-Q') {
                 e2g_log_info('[Kontrol-ID] Replacing the running engine using its native -Q action.');
-                $status = mwexec('/usr/bin/env ' .
+                $preflight = mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' resourcecheck');
+                $status = ($preflight === 0) ? mwexec('/usr/bin/env ' .
                     'KRB5_CONFIG=/usr/local/etc/kontrol-id/krb5.conf ' .
                     'KRB5_KTNAME=/var/db/kontrol-id-domain/krb5.keytab ' .
-                    escapeshellarg(KONTROL_ID_ENGINE_BINARY) . ' -Q');
+                    escapeshellarg(KONTROL_ID_ENGINE_BINARY) . ' -Q') : $preflight;
             } else {
                 e2g_log_info('[Kontrol-ID] Restarting the native rc.d service while applying configuration.');
                 $status = mwexec(escapeshellarg(KONTROL_ID_SERVICE_SCRIPT) . ' restart');
