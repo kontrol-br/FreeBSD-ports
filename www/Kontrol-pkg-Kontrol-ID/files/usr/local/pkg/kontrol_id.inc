@@ -4057,6 +4057,10 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 	$current_identity_config = is_file(KONTROL_ID_ENGINE_IDENTITY_CONF) ?
 		(string)@file_get_contents(KONTROL_ID_ENGINE_IDENTITY_CONF) : '';
 	$structural_restart =
+		((int)($previous_engine['filterports'] ?? 3128) !==
+			(int)($settings['http_proxy_port'] ?? 3128)) ||
+		((int)($previous_engine['ssl_proxy_port'] ?? 3129) !==
+			(int)($settings['https_intercept_port'] ?? 3129)) ||
 		(($previous_plugins['auth_plugin'] ?? '') !== ($current_plugins['auth_plugin'] ?? '')) ||
 		($previous_identity_config !== $current_identity_config);
 	write_config('Kontrol-ID configuration updated.');
@@ -4098,8 +4102,8 @@ function kontrol_id_resync($sync = true, $force_engine_restart = false) {
 			$engine_start_ok = (e2guardian_start('no', false, true) !== false);
 			/* USR1 reloads policy data but cannot replace an instantiated auth
 			 * plugin, its structural configuration or upgraded executable text.
-			 * Force one controlled restart for package upgrades, access-mode
-			 * changes and identity fallback changes. */
+			 * Force one controlled restart for package upgrades, listener ports,
+			 * access-mode changes and identity fallback changes. */
 			$apply_action_restarts = in_array(($settings['applyaction'] ?? '-r'),
 				array('rc.d', '-Q'), true);
 			if ($stack_enabled && ($force_engine_restart || $structural_restart) &&

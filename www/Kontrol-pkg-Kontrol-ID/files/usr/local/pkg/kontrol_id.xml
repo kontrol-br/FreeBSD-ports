@@ -185,9 +185,9 @@
 			<description><![CDATA[
 				Controls how Kontrol-ID activates generated policy, list and group changes. <strong>Reload with USR1</strong> preserves
 				the running process, worker threads and active connections and is recommended for ordinary policy changes.
-				Choose a restart action after changing worker count, listener ports, authentication, TLS inspection or other engine-wide settings.
-				A change between transparent identification, anonymous transparent mode and explicit proxy authentication always triggers
-				one controlled restart, even when USR1 is selected, because the authentication plugin itself must be replaced.
+				Choose a restart action after changing worker count, TLS inspection or other engine-wide settings.
+				Changing listener ports or switching between transparent identification, anonymous transparent mode and explicit proxy
+				authentication automatically triggers one controlled restart, even when USR1 is selected.
 			]]></description>
 			<type>select</type>
 			<default_value>-r</default_value>

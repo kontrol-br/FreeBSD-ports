@@ -1,6 +1,6 @@
 PORTNAME=	kontrol-id
 PORTVERSION=	5.4.23
-PORTREVISION=	21
+PORTREVISION=	22
 DISTVERSIONPREFIX=	v
 CATEGORIES=	www
 GH_ACCOUNT=	kontrol-br
@@ -27,6 +27,11 @@ USE_GITHUB=	yes
 #BINARY_ALIAS=	autom4te2.72=autom4te-2.72
 
 USE_CXXSTD=	c++11
+# GSSAPI preserves an existing runtime path but otherwise adds /usr/lib.
+# Upgraded appliances may retain an obsolete libc++ there. Keep the current
+# FreeBSD base runtime in /lib ahead of that legacy directory, without changing
+# the isolated OpenSSL/MIT Kerberos libraries added by gssapi.
+LDFLAGS+=	-Wl,-rpath,/lib
 USE_RC_SUBR=	kontrol_id
 GNU_CONFIGURE=	yes
 CONFIGURE_ARGS=	--with-logdir=/var/log \
