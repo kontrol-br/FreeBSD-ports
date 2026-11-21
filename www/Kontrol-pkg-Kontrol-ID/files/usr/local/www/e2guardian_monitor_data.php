@@ -44,6 +44,26 @@ function e2gm($field){
     return $field;
 }
 
+function kontrol_id_realtime_reason($raw_reason, $is_live) {
+    $gateway = '';
+    if (preg_match_all('/\[GW:([^\]\r\n]+)\]/', $raw_reason, $matches)) {
+        $gateway = trim(end($matches[1]));
+    }
+    $clean_reason = preg_replace('/\s*\[GW:[^\]\r\n]+\]/', '', $raw_reason);
+    $clean_reason = trim(preg_replace('/\bhw[0-9]+:\s*/i', '', $clean_reason));
+    $reason = $is_live ?
+        gettext("Active TLS tunnel (SNI); final counters are recorded when it closes.") :
+        e2gm(html_autowrap(htmlspecialchars($clean_reason !== '' ? $clean_reason : '-',
+            ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
+    if ($gateway !== '') {
+        $reason = '<span class="label label-primary kid-log-gateway" title="' .
+            htmlspecialchars(gettext('Selected outbound gateway'), ENT_QUOTES, 'UTF-8') .
+            '">GW: ' . htmlspecialchars($gateway, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') .
+            '</span> ' . $reason;
+    }
+    return $reason;
+}
+
 /* Requests */
 if ($_POST) {
     global $filter, $program, $e2glog, $traffic, $display_limit;
@@ -86,8 +106,6 @@ if ($_POST) {
                                                     $logline[4] = preg_replace("@\<\>@","",$logline[4]);
                                                     $url = html_autowrap($url);
 
-                                                        $logline[5] = html_autowrap($logline[5]);
-
                             echo "<tr valign='top'>\n";
 
                             if ($is_live) {
@@ -109,10 +127,7 @@ if ($_POST) {
                                                     echo "<td $listr>" . e2gm($logline[9]) . "</td>\n";
                             $cat_val = ($logline[7] !== '' && $logline[7] !== '-') ? '<b>' . e2gm($logline[7]) . '</b>' : '-';
                             echo "<td $listr>" . $cat_val . "</td>\n";
-                            $clean_reason = preg_replace('/\bhw[0-9]+:\s*/i', '', $logline[5]);
-                            $reason = $is_live ?
-                                gettext("Active TLS tunnel (SNI); final counters are recorded when it closes.") :
-                                e2gm($clean_reason !== '' ? $clean_reason : '-');
+                            $reason = kontrol_id_realtime_reason($logline[5], $is_live);
                             echo "<td $listr>" . $reason . "</td>\n";
                                                     echo "</tr>\n";
                             $shown++;

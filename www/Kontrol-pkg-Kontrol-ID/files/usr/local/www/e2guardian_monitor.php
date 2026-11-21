@@ -220,6 +220,13 @@ if (is_array($config['installedpackages']['e2guardianlog'])) {
 .kid-log-table .fa {
     font-size: 13px;
 }
+.kid-log-table .kid-log-gateway {
+    display: inline-block;
+    margin: 0 .35rem .2rem 0;
+    font-size: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+}
 
 .kid-log-table .listr,
 .kid-log-table .listlr {

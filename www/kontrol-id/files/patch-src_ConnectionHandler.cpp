@@ -90,7 +90,7 @@
                  fg_resp->StoryB.runFunctEntry(ENT_STORYB_PROXY_RESPONSE, checkme);
  #ifdef E2DEBUG
                  std::cerr << thread_id << "After StoryB checkresponse " << checkme.isexception << " mess_no "
-@@ -1668,7 +1702,7 @@
+@@ -1668,7 +1702,12 @@
          fg_log->StoryB.runFunctEntry(ENT_STORYB_LOG_CHECK, cm);
      if(cm.nolog) return;
  
@@ -99,7 +99,12 @@
          what = thread_id;
      }
      what += cm.whatIsNaughtyLog;
-@@ -1836,10 +1870,12 @@
++    if (!cm.gateway_name.empty()) {
++        const std::string gw_tag = " [GW:" + cm.gateway_name + "]";
++        if (what.find(gw_tag) == std::string::npos)
++            what += gw_tag;
++    }
+@@ -1836,10 +1875,12 @@
  }
  
  void ConnectionHandler::doRQLog(std::string &who, std::string &from, NaughtyFilter &cm, std::string &funct) {
@@ -113,7 +118,16 @@
      what += funct;
      if (cm.isTLS)
          what += "_TLS";
-@@ -2175,12 +2211,6 @@
+@@ -1846,6 +1887,8 @@
+     if (cm.hasSNI)
+         what += "_SNI";
+     if (cm.ismitm)
+         what += "_MITM";
++    if (!cm.gateway_name.empty())
++        what += " [GW:" + cm.gateway_name + "]";
+     String how = rtype;
+     off_t size = cm.docsize;
+@@ -2175,12 +2218,6 @@
                              }
                          }
  
@@ -126,7 +140,7 @@
                          // if the header has been sent then likely displaying the
                          // template will break the download, however as this is
                          // only going to be happening if the unsafe trickle
-@@ -2204,6 +2234,16 @@
+@@ -2204,6 +2241,16 @@
                                                                                                &(checkme->clienthost), filtergroup,
                                                                                                fg_ptr->name,
                                                                                                hashed, localip, flags );
@@ -143,7 +157,7 @@
                      }
                  }
              }
-@@ -3015,11 +3055,14 @@
+@@ -3015,11 +3062,14 @@
          std::cerr << thread_id << " nf " << checkme.isItNaughty <<
                  " upfail " << checkme.upfailure << std::endl;
  #endif
@@ -160,7 +174,7 @@
          }
  
  //if we cant write the certificate its not the end of the world but it is slow
-@@ -3033,7 +3076,7 @@
+@@ -3033,7 +3083,7 @@
          std::cerr << thread_id << " -Handling connections inside ssl tunnel" << std::endl;
  #endif
  
@@ -169,7 +183,7 @@
              persistent_authed = true;
          }
  
-@@ -3047,17 +3090,23 @@
+@@ -3047,17 +3097,23 @@
  
  //stopssl on the proxy connection
  //if it was marked as naughty then show a deny page and close the connection
@@ -196,7 +210,7 @@
      }
  #ifdef E2DEBUG
      std::cerr << thread_id << " -Shutting down ssl to proxy" << std::endl;
-@@ -3608,7 +3657,7 @@
+@@ -3608,7 +3664,7 @@
  
              filtergroup = o.default_trans_fg;
  
@@ -205,7 +219,7 @@
                  std::string fnt = "THTTPS";
                  doRQLog(clientuser, clientip, checkme, fnt);
              }
-@@ -3652,8 +3701,21 @@
+@@ -3652,8 +3708,21 @@
                       }
                  }
                  checkme.filtergroup = filtergroup;
@@ -229,7 +243,7 @@
              }
  
  #ifdef E2DEBUG
-@@ -3676,6 +3738,11 @@
+@@ -3676,6 +3745,11 @@
              checkme.clientip = clientip;
  
              FOptionContainer *fg_trans = currentFG();
@@ -241,7 +255,7 @@
              if(fg_trans && checkme.hasSNI && !checkme.nomitm ) checkme.ismitmcandidate = fg_trans->ssl_mitm;
              if(fg_trans && checkme.ismitmcandidate) {
                  checkme.automitm = fg_trans->automitm;
-@@ -3784,6 +3851,11 @@
+@@ -3784,6 +3858,11 @@
  #ifdef E2DEBUG
                  std::cerr << thread_id << " -Tunnelling to client" << std::endl;
  #endif
@@ -253,7 +267,7 @@
                  if (!fdt.tunnel(proxysock, peerconn,true, -1 , true))
                      persistProxy = false;
                  checkme.docsize += fdt.throughput;
-@@ -4736,10 +4808,14 @@
+@@ -4736,10 +4815,14 @@
              persistPeer = false;
          }
  
