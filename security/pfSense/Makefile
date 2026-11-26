@@ -1,10 +1,13 @@
 PORTNAME=	pfSense
 DISTVERSION=	2.9.0
-PORTREVISION=	1
+PORTREVISION=	2
 CATEGORIES=	security
 MASTER_SITES=	# empty
 DISTFILES=	# empty
 EXTRACT_ONLY=	# empty
+
+# Package dependency updates do not imply a product patch release.
+PRODUCT_VERSION_PATCH?=	0
 
 MAINTAINER=	coreteam@pfsense.org
 COMMENT?=	Main pfSense package
@@ -123,7 +126,7 @@ RUN_DEPENDS+=	dmidecode>=0:sysutils/dmidecode \
 
 do-install:
 	${MKDIR} ${STAGEDIR}/etc
-	${ECHO} ${PORTREVISION} > ${STAGEDIR}/etc/version.patch
+	${ECHO} ${PRODUCT_VERSION_PATCH} > ${STAGEDIR}/etc/version.patch
 #	#${ECHO} "${PFSENSE_COMMITHASH}" > ${STAGEDIR}/etc/version.lastcommit
 #	#${ECHO} "${PFSENSE_DATESTRING}" > ${STAGEDIR}/etc/version.buildtime
 #	${MKDIR} "${STAGEDIR}/cf/conf"
