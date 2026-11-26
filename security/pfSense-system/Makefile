@@ -1,6 +1,7 @@
 PORTNAME=	pfSense-system
 DISTVERSION=	${PRODUCT_VERSION}
 DISTVERSIONPREFIX=	v
+PORTREVISION=	1
 CATEGORIES=	security
 
 MAINTAINER=	coreteam@pfsense.org
@@ -41,7 +42,7 @@ RUN_DEPENDS=	bind-tools>=0:dns/bind-tools \
 		miniupnpd>=0:net/miniupnpd \
 		mobile-broadband-provider-info>=0:net/mobile-broadband-provider-info \
 		mpd5>=0:net/mpd5 \
-		nginx>=0:www/nginx \
+		nginx>=1.30.8,3:www/nginx \
 		ntp>=0:net/ntp \
 		openvpn>=0:security/openvpn \
 		${PHP_PKGNAMEPREFIX}openssl_x509_crl>=0:security/php-openssl_x509_crl@${PHP_FLAVOR} \
